@@ -25,11 +25,11 @@ def broadcast_shapes(shape1, shape2):
     i = N - 1
     while i >= 0:
         if N1 - N + i >= 0:
-            d1 = shape1[i]
+            d1 = shape1[N1 - N + i]
         else:
             d1 = 1
         if N2 - N + i >= 0:
-            d2 = shape2[i]
+            d2 = shape2[N2 - N + i]
         else:
             d2 = 1
 
