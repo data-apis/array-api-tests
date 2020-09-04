@@ -47,7 +47,7 @@ mixed_signed_unsigned_promotion_table = {
     ('i2', 'u1'): 'i2',
     ('i2', 'u2'): 'i4',
     ('i2', 'u4'): 'i8',
-    ('i4', 'u1'): 'i2',
+    ('i4', 'u1'): 'i4',
     ('i4', 'u2'): 'i4',
     ('i4', 'u4'): 'i8',
 }
