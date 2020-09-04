@@ -20,3 +20,5 @@ else:
 
 array = mod.array
 dtype = mod.dtype
+
+add = mod.add
