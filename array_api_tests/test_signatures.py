@@ -37,4 +37,14 @@ def test_function_parameters(name):
         pytest.skip(f"{mod_name} does not have {name}, skipping.")
     stub_func = getattr(elementwise, name)
     mod_func = getattr(mod, name)
-    signature = inspect.signature(stub_func)
+    args = inspect.getfullargspec(stub_func).args
+    nargs = len(args)
+
+    a = mod.array([0])
+
+    for n in range(nargs+2):
+        if n == nargs:
+            doesnt_raise(lambda: mod_func(*[a]*n))
+        else:
+            # NumPy ufuncs raise ValueError instead of TypeError
+            raises((TypeError, ValueError), lambda: mod_func(*[a]*n), f"{name} should not accept {n} arguments")
