@@ -29,22 +29,39 @@ def doesnt_raise(function, message=''):
 
 @pytest.mark.parametrize('name', elementwise._names)
 def test_has_names_elementwise(name):
-    assert hasattr(mod, name), f"{mod_name} is missing the elementwise function {name}"
+    assert hasattr(mod, name), f"{mod_name} is missing the elementwise function {name}()"
 
 @pytest.mark.parametrize('name', elementwise._names)
-def test_function_parameters(name):
+def test_function_positional_args(name):
     if not hasattr(mod, name):
-        pytest.skip(f"{mod_name} does not have {name}, skipping.")
+        pytest.skip(f"{mod_name} does not have {name}(), skipping.")
     stub_func = getattr(elementwise, name)
     mod_func = getattr(mod, name)
     args = inspect.getfullargspec(stub_func).args
     nargs = len(args)
 
-    a = mod.array([1])
+    a = mod.array([1.])
 
     for n in range(nargs+2):
         if n == nargs:
             doesnt_raise(lambda: mod_func(*[a]*n))
         else:
             # NumPy ufuncs raise ValueError instead of TypeError
-            raises((TypeError, ValueError), lambda: mod_func(*[a]*n), f"{name} should not accept {n} positional arguments")
+            raises((TypeError, ValueError), lambda: mod_func(*[a]*n), f"{name}() should not accept {n} positional arguments")
+
+@pytest.mark.parametrize('name', elementwise._names)
+def test_function_keyword_only_args(name):
+    if not hasattr(mod, name):
+        pytest.skip(f"{mod_name} does not have {name}(), skipping.")
+    stub_func = getattr(elementwise, name)
+    mod_func = getattr(mod, name)
+    args = inspect.getfullargspec(stub_func).args
+    kwonlyargs = inspect.getfullargspec(stub_func).kwonlyargs
+    nargs = len(args)
+
+    a = mod.array([1.])
+    b = mod.array([1.])
+    for arg in kwonlyargs:
+        # The "only" part of keyword-only is tested by the positional test above.
+        doesnt_raise(lambda: mod_func(*[a]*nargs, **{arg: b}),
+                     f"{name}() should accept the keyword-only argument {arg}")
