@@ -112,3 +112,5 @@ def tanh(x, *, out=None):
 
 def trunc(x, *, out=None):
     pass
+
+_names = sorted([i for i in globals() if not i.startswith('_')])
