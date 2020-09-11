@@ -9,7 +9,9 @@ array_module = None
 if array_module is None:
     if 'ARRAY_API_TESTS_MODULE' in os.environ:
         mod_name = os.environ['ARRAY_API_TESTS_MODULE']
-        _module, _sub = mod_name.split('.', 1)
+        _module, _sub = mod_name, None
+        if '.' in mod_name:
+            _module, _sub = mod_name.split('.', 1)
         mod = import_module(_module)
         if _sub:
             mod = getattr(mod, _sub)
