@@ -17,7 +17,7 @@ if array_module is None:
         raise RuntimeError("No array module specified. Either edit _array_module.py or set the ARRAY_API_TESTS_MODULE environment variable")
 else:
     mod = array_module
-
+    mod_name = mod.__name__
 # Names from the spec. This is what should actually be imported from this
 # file.
 
