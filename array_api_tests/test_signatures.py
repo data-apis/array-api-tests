@@ -47,4 +47,4 @@ def test_function_parameters(name):
             doesnt_raise(lambda: mod_func(*[a]*n))
         else:
             # NumPy ufuncs raise ValueError instead of TypeError
-            raises((TypeError, ValueError), lambda: mod_func(*[a]*n), f"{name} should not accept {n} arguments")
+            raises((TypeError, ValueError), lambda: mod_func(*[a]*n), f"{name} should not accept {n} positional arguments")
