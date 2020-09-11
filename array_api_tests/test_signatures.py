@@ -64,4 +64,4 @@ def test_function_keyword_only_args(name):
     for arg in kwonlyargs:
         # The "only" part of keyword-only is tested by the positional test above.
         doesnt_raise(lambda: mod_func(*[a]*nargs, **{arg: b}),
-                     f"{name}() should accept the keyword-only argument {arg}")
+                     f"{name}() should accept the keyword-only argument {arg!r}")
