@@ -14,7 +14,13 @@ if array_module is None:
             _module, _sub = mod_name.split('.', 1)
         mod = import_module(_module)
         if _sub:
-            mod = getattr(mod, _sub)
+            try:
+                mod = getattr(mod, _sub)
+            except AttributeError:
+                # _sub may be a submodule that needs to be imported. WE can't
+                # do this in every case because some array modules are not
+                # submodules that can be imported (like mxnet.nd).
+                mod = import_module(mod_name)
     else:
         raise RuntimeError("No array module specified. Either edit _array_module.py or set the ARRAY_API_TESTS_MODULE environment variable")
 else:
