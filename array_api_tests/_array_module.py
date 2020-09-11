@@ -21,7 +21,20 @@ else:
 # Names from the spec. This is what should actually be imported from this
 # file.
 
-array = mod.array
-dtype = mod.dtype
+try:
+    array = mod.array
+except AttributeError:
+    def array(*args, **kwargs):
+        raise AssertionError(f"array is not defined in {mod_name}")
 
-add = mod.add
+try:
+    dtype = mod.dtype
+except AttributeError:
+    def dtype(*args, **kwargs):
+        raise AssertionError(f"dtype is not defined in {mod_name}")
+
+try:
+    add = mod.add
+except AttributeError:
+    def add(*args, **kwargs):
+        raise AssertionError(f"add is not defined in {mod_name}")
