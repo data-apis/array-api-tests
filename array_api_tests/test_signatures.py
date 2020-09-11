@@ -40,7 +40,7 @@ def test_function_parameters(name):
     args = inspect.getfullargspec(stub_func).args
     nargs = len(args)
 
-    a = mod.array([0])
+    a = mod.array([1])
 
     for n in range(nargs+2):
         if n == nargs:
