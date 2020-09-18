@@ -25,3 +25,5 @@ def nonzero(x):
 
 def where(condition, x1, x2):
     pass
+
+__all__ = ['argmax', 'argmin', 'nonzero', 'where']

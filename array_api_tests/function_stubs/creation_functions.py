@@ -46,3 +46,5 @@ def zeros(shape, *, dtype=None):
 
 def zeros_like(x, *, dtype=None):
     pass
+
+__all__ = ['arange', 'empty', 'empty_like', 'eye', 'full', 'full_like', 'linspace', 'ones', 'ones_like', 'zeros', 'zeros_like']

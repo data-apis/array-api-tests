@@ -16,3 +16,5 @@ here because
 
 def unique(x, *, return_counts=False, return_index=False, return_inverse=False, sorted=True):
     pass
+
+__all__ = ['unique']

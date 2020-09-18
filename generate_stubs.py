@@ -83,6 +83,10 @@ def {sig.replace(', /', '')}:
                 func_name = NAME_RE.match(sig).group(1)
                 modules[module_name].append(func_name)
 
+            f.write('\n__all__ = [')
+            f.write(', '.join(f"'{i}'" for i in modules[module_name]))
+            f.write(']\n')
+
     init_path = os.path.join('array_api_tests', 'function_stubs', '__init__.py')
     if args.write:
         with open(init_path, 'w') as f:

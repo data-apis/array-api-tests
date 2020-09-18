@@ -34,3 +34,5 @@ def sum(x, *, axis=None, keepdims=False):
 
 def var(x, *, axis=None, correction=0.0, keepdims=False):
     pass
+
+__all__ = ['max', 'mean', 'min', 'prod', 'std', 'sum', 'var']

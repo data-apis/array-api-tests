@@ -37,3 +37,5 @@ def trace(x, *, axis1=0, axis2=1, offset=0):
 
 def transpose(x, *, axes=None):
     pass
+
+__all__ = ['cross', 'det', 'diagonal', 'inv', 'norm', 'outer', 'trace', 'transpose']
