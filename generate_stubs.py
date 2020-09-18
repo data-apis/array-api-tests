@@ -14,6 +14,7 @@ import os
 import re
 
 SIGNATURE_RE = re.compile(r'#+ (?:<.*>) ?(.*\(.*\))')
+NAME_RE = re.compile(r'(.*)\(.*\)')
 
 STUB_FILE_HEADER = '''\
 """
@@ -33,6 +34,18 @@ here because
 """
 '''
 
+INIT_HEADER = '''\
+"""
+Stub definitions for functions defined in the spec
+
+These are used to test function signatures.
+
+NOTE: This file is generated automatically by the generate_stubs.py script. Do
+not modify it directly.
+"""
+
+__all__ = []
+'''
 
 def main():
     parser = argparse.ArgumentParser(__doc__)
@@ -42,7 +55,8 @@ def main():
     args = parser.parse_args()
 
     spec_dir = os.path.join(args.array_api_repo, 'spec', 'API_specification')
-    for filename in os.listdir(spec_dir):
+    modules = {}
+    for filename in sorted(os.listdir(spec_dir)):
         with open(os.path.join(spec_dir, filename)) as f:
                   text = f.read()
 
@@ -53,9 +67,12 @@ def main():
         if not args.write:
             continue
         py_file = filename.replace('.md', '.py')
+        py_path = os.path.join('array_api_tests', 'function_stubs', py_file)
         title = filename.replace('.md', '').replace('_', ' ')
-        print(f"Writing {py_file}")
-        with open(os.path.join('array_api_tests', 'function_stubs', py_file), 'w') as f:
+        module_name = py_file.replace('.py', '')
+        modules[module_name] = []
+        print(f"Writing {py_path}")
+        with open(py_path, 'w') as f:
             f.write(STUB_FILE_HEADER.format(filename=filename, title=title))
             for sig in signatures:
                 print(f"Writing stub for {sig}")
@@ -63,6 +80,19 @@ def main():
 def {sig.replace(', /', '')}:
     pass
 """)
+                func_name = NAME_RE.match(sig).group(1)
+                modules[module_name].append(func_name)
 
+    init_path = os.path.join('array_api_tests', 'function_stubs', '__init__.py')
+    if args.write:
+        with open(init_path, 'w') as f:
+            f.write(INIT_HEADER)
+            for module_name in modules:
+                f.write(f"\nfrom .{module_name} import ")
+                f.write(', '.join(modules[module_name]))
+                f.write('\n\n')
+                f.write('__all__ += [')
+                f.write(', '.join(f"'{i}'" for i in modules[module_name]))
+                f.write(']\n')
 if __name__ == '__main__':
     main()
