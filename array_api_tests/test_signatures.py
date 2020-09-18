@@ -10,6 +10,56 @@ def function_category(name):
     func_stub = getattr(function_stubs, name)
     return func_stub.__module__.split('_')[0]
 
+def example_argument(arg):
+    """
+    Get an example argument for the argument arg
+
+    The full tests for function behavior is in other files. We just need to
+    have an example input for each argument name that should work so that we
+    can check if the argument is implemented at all.
+
+    """
+    # Note: for keyword arguments that have a default, this should be
+    # different from the default, as the default argument is tested separately
+    # (it can have the same behavior as the default, just not literally the
+    # same value).
+    known_args = dict(
+        M=1,
+        N=1,
+        # These cannot be the same as each other, which is why all our test
+        # arrays have to have at least 3 dimensions.
+        axis1=2,
+        axis2=2,
+        axis=1,
+        axes=(2, 1, 0),
+        condition=mod.array([[[True]]]),
+        correction=1.0,
+        dtype=mod.float64,
+        endpoint=False,
+        fill_value=1.0,
+        k=1,
+        keepdims=True,
+        num=2,
+        offset=1,
+        ord=1,
+        return_counts=True,
+        return_index=True,
+        return_inverse=True,
+        shape=(1,),
+        sorted=False,
+        start=0,
+        step=2,
+        stop=1,
+        x1=mod.array([[[1.]]]),
+        x2=mod.array([[[1.]]]),
+        x=mod.array([[[1.]]]),
+    )
+
+    if arg in known_args:
+        return known_args[arg]
+    else:
+        raise RuntimeError(f"Don't know how to test argument {arg}. Please update test_signatures.py")
+
 def raises(exceptions, function, message=''):
     try:
         function()
@@ -44,14 +94,16 @@ def test_function_positional_args(name):
     args = inspect.getfullargspec(stub_func).args
     nargs = len(args)
 
-    a = mod.array([1.])
+    args = [example_argument(name) for name in args]
+    # Duplicate the last positional argument for the n+1 test.
+    args = args + [args[-1]]
 
     for n in range(nargs+2):
         if n == nargs:
-            doesnt_raise(lambda: mod_func(*[a]*n))
+            doesnt_raise(lambda: mod_func(*args[:n]))
         else:
             # NumPy ufuncs raise ValueError instead of TypeError
-            raises((TypeError, ValueError), lambda: mod_func(*[a]*n), f"{name}() should not accept {n} positional arguments")
+            raises((TypeError, ValueError), lambda: mod_func(*args[:n]), f"{name}() should not accept {n} positional arguments")
 
 @pytest.mark.parametrize('name', function_stubs.__all__)
 def test_function_keyword_only_args(name):
@@ -61,11 +113,11 @@ def test_function_keyword_only_args(name):
     mod_func = getattr(mod, name)
     args = inspect.getfullargspec(stub_func).args
     kwonlyargs = inspect.getfullargspec(stub_func).kwonlyargs
-    nargs = len(args)
 
-    a = mod.array([1.])
-    b = mod.array([1.])
+    args = [example_argument(name) for name in args]
+
     for arg in kwonlyargs:
+        value = example_argument(arg)
         # The "only" part of keyword-only is tested by the positional test above.
-        doesnt_raise(lambda: mod_func(*[a]*nargs, **{arg: b}),
+        doesnt_raise(lambda: mod_func(*args, **{arg: value}),
                      f"{name}() should accept the keyword-only argument {arg!r}")
