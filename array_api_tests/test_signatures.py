@@ -45,7 +45,7 @@ def example_argument(arg):
         return_counts=True,
         return_index=True,
         return_inverse=True,
-        shape=(1,),
+        shape=(1, 1, 1),
         sorted=False,
         start=0,
         step=2,
