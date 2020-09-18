@@ -100,8 +100,11 @@ def test_function_positional_args(name):
         pytest.skip(f"{mod_name} does not have {name}(), skipping.")
     stub_func = getattr(function_stubs, name)
     mod_func = getattr(mod, name)
-    args = inspect.getfullargspec(stub_func).args
+    argspec = inspect.getfullargspec(stub_func)
+    args = argspec.args
     nargs = len(args)
+    if argspec.defaults:
+        raise RuntimeError(f"Unexpected non-keyword-only keyword argument for {name}. Please update test_signatures.py")
 
     args = [example_argument(name) for name in args]
     # Duplicate the last positional argument for the n+1 test.
@@ -120,8 +123,10 @@ def test_function_keyword_only_args(name):
         pytest.skip(f"{mod_name} does not have {name}(), skipping.")
     stub_func = getattr(function_stubs, name)
     mod_func = getattr(mod, name)
-    args = inspect.getfullargspec(stub_func).args
-    kwonlyargs = inspect.getfullargspec(stub_func).kwonlyargs
+    argspec = inspect.getfullargspec(stub_func)
+    args = argspec.args
+    kwonlyargs = argspec.kwonlyargs
+    kwonlydefaults = argspec.kwonlydefaults
 
     args = [example_argument(name) for name in args]
 
@@ -130,3 +135,12 @@ def test_function_keyword_only_args(name):
         # The "only" part of keyword-only is tested by the positional test above.
         doesnt_raise(lambda: mod_func(*args, **{arg: value}),
                      f"{name}() should accept the keyword-only argument {arg!r}")
+
+        # Make sure the default is accepted. These tests are not granular
+        # enough to test that the default is actually the default, i.e., gives
+        # the same value if the keyword isn't passed. That is tested in the
+        # specific function tests.
+        if arg in kwonlydefaults:
+            default_value = kwonlydefaults[arg]
+            doesnt_raise(lambda: mod_func(*args, **{arg: default_value}),
+                         f"{name}() should accept the default value {default_value!r} for the keyword-only argument {arg!r}")
