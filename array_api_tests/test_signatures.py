@@ -61,6 +61,9 @@ def example_argument(arg):
         raise RuntimeError(f"Don't know how to test argument {arg}. Please update test_signatures.py")
 
 def raises(exceptions, function, message=''):
+    """
+    Like pytest.raises() except it allows custom error messages
+    """
     try:
         function()
     except exceptions:
@@ -72,6 +75,12 @@ def raises(exceptions, function, message=''):
     raise AssertionError(message)
 
 def doesnt_raise(function, message=''):
+    """
+    The inverse of raises().
+
+    Use doesnt_raise(function) to test that function() doesn't raise any
+    exceptions.
+    """
     if not callable(function):
         raise ValueError("doesnt_raise should take a lambda")
     try:
