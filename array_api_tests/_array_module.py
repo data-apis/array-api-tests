@@ -42,6 +42,12 @@ except AttributeError:
         raise AssertionError(f"dtype is not defined in {mod_name}")
 
 try:
+    float64 = mod.float64
+except AttributeError:
+    def float64(*args, **kwargs):
+        raise AssertionError(f"dtype is not defined in {mod_name}")
+
+try:
     add = mod.add
 except AttributeError:
     def add(*args, **kwargs):
