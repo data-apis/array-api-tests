@@ -4,7 +4,11 @@ import pytest
 
 from ._array_module import mod, mod_name
 
-from .function_stubs import elementwise
+from . import function_stubs
+
+def function_category(name):
+    func_stub = getattr(function_stubs, name)
+    return func_stub.__module__.split('_')[0]
 
 def raises(exceptions, function, message=''):
     try:
@@ -27,15 +31,15 @@ def doesnt_raise(function, message=''):
             raise AssertionError(f"Unexpected exception {e!r}: {message}")
         raise AssertionError(f"Unexpected exception {e!r}")
 
-@pytest.mark.parametrize('name', elementwise._names)
-def test_has_names_elementwise(name):
-    assert hasattr(mod, name), f"{mod_name} is missing the elementwise function {name}()"
+@pytest.mark.parametrize('name', function_stubs.__all__)
+def test_has_names(name):
+    assert hasattr(mod, name), f"{mod_name} is missing the {function_category(name)} function {name}()"
 
-@pytest.mark.parametrize('name', elementwise._names)
+@pytest.mark.parametrize('name', function_stubs.__all__)
 def test_function_positional_args(name):
     if not hasattr(mod, name):
         pytest.skip(f"{mod_name} does not have {name}(), skipping.")
-    stub_func = getattr(elementwise, name)
+    stub_func = getattr(function_stubs, name)
     mod_func = getattr(mod, name)
     args = inspect.getfullargspec(stub_func).args
     nargs = len(args)
@@ -49,11 +53,11 @@ def test_function_positional_args(name):
             # NumPy ufuncs raise ValueError instead of TypeError
             raises((TypeError, ValueError), lambda: mod_func(*[a]*n), f"{name}() should not accept {n} positional arguments")
 
-@pytest.mark.parametrize('name', elementwise._names)
+@pytest.mark.parametrize('name', function_stubs.__all__)
 def test_function_keyword_only_args(name):
     if not hasattr(mod, name):
         pytest.skip(f"{mod_name} does not have {name}(), skipping.")
-    stub_func = getattr(elementwise, name)
+    stub_func = getattr(function_stubs, name)
     mod_func = getattr(mod, name)
     args = inspect.getfullargspec(stub_func).args
     kwonlyargs = inspect.getfullargspec(stub_func).kwonlyargs
