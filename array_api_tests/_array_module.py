@@ -1,6 +1,8 @@
 import os
 from importlib import import_module
 
+from . import function_stubs
+
 # Replace this with a specific array module to test it, for example,
 #
 # import numpy as array_module
@@ -29,26 +31,18 @@ else:
 # Names from the spec. This is what should actually be imported from this
 # file.
 
-try:
-    array = mod.array
-except AttributeError:
-    def array(*args, **kwargs):
-        raise AssertionError(f"array is not defined in {mod_name}")
+class UndefinedStub:
+    def __init__(self, name):
+        self.name = name
 
-try:
-    dtype = mod.dtype
-except AttributeError:
-    def dtype(*args, **kwargs):
-        raise AssertionError(f"dtype is not defined in {mod_name}")
+    def _raise(self, *args, **kwargs):
+        raise AssertionError(f"{self.name} is not defined in {mod_name}")
 
-try:
-    float64 = mod.float64
-except AttributeError:
-    def float64(*args, **kwargs):
-        raise AssertionError(f"dtype is not defined in {mod_name}")
+    __call__ = _raise
+    __getattr__ = _raise
 
-try:
-    add = mod.add
-except AttributeError:
-    def add(*args, **kwargs):
-        raise AssertionError(f"add is not defined in {mod_name}")
+for func_name in function_stubs.__all__:
+    try:
+        globals()[func_name] = getattr(mod, func_name)
+    except AttributeError:
+        globals()[func_name] = UndefinedStub(func_name)
