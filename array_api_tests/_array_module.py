@@ -41,7 +41,21 @@ class UndefinedStub:
     __call__ = _raise
     __getattr__ = _raise
 
-for func_name in function_stubs.__all__:
+dtypes = [
+    'bool',
+    'int8',
+    'int16',
+    'int32',
+    'int64',
+    'uint8',
+    'uint16',
+    'uint32',
+    'uint64',
+    'float32',
+    'float64',
+]
+
+for func_name in function_stubs.__all__ + dtypes:
     try:
         globals()[func_name] = getattr(mod, func_name)
     except AttributeError:

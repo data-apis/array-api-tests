@@ -2,7 +2,22 @@
 https://github.com/data-apis/array-api/blob/master/spec/API_specification/type_promotion.md
 """
 
-from ._array_module import array, dtype, add
+from ._array_module import (arange, add, int8, int16, int32, int64, uint8,
+                            uint16, uint32, uint64, float32, float64)
+
+
+dtypes = {
+    'i1': int8,
+    'i2': int16,
+    'i4': int32,
+    'i8': int64,
+    'u1': uint8,
+    'u2': uint16,
+    'u4': uint32,
+    'u8': uint64,
+    'f4': float32,
+    'f8': float64,
+}
 
 signed_integer_promotion_table = {
     ('i1', 'i1'): 'i1',
@@ -73,12 +88,12 @@ promotion_table = {
 
 def test_add():
     for (type1, type2), res_type in promotion_table.items():
-        dtype1 = dtype(type1)
-        dtype2 = dtype(type2)
-        a1 = array([0, 1], dtype=dtype1)
-        a2 = array([0, 1], dtype=dtype2)
+        dtype1 = dtypes[type1]
+        dtype2 = dtypes[type2]
+        a1 = arange(2, dtype=dtype1)
+        a2 = arange(2, dtype=dtype2)
         res = add(a1, a2)
-        res_dtype = dtype(res_type)
+        res_dtype = dtypes[res_type]
 
         assert res.dtype == res_dtype, f"({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype}"
 

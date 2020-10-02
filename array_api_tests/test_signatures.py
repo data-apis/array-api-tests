@@ -2,7 +2,7 @@ import inspect
 
 import pytest
 
-from ._array_module import mod, mod_name, array, float64
+from ._array_module import mod, mod_name, ones, float64
 
 from . import function_stubs
 
@@ -32,7 +32,7 @@ def example_argument(arg):
         axis2=2,
         axis=1,
         axes=(2, 1, 0),
-        condition=array([[[True]]]),
+        condition=ones((1, 1, 1), dtype=bool),
         correction=1.0,
         dtype=float64,
         endpoint=False,
@@ -50,9 +50,9 @@ def example_argument(arg):
         start=0,
         step=2,
         stop=1,
-        x1=array([[[1.]]]),
-        x2=array([[[1.]]]),
-        x=array([[[1.]]]),
+        x1=ones((1, 1, 1)),
+        x2=ones((1, 1, 1)),
+        x=ones((1, 1, 1)),
     )
 
     if arg in known_args:
