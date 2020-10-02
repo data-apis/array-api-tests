@@ -97,6 +97,17 @@ def test_add():
 
         assert res.dtype == res_dtype, f"({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype}"
 
+def test_add_0d():
+    for (type1, type2), res_type in promotion_table.items():
+        dtype1 = dtypes[type1]
+        dtype2 = dtypes[type2]
+        a1 = arange(0, dtype=dtype1)
+        a2 = arange(0, dtype=dtype2)
+        res = add(a1, a2)
+        res_dtype = dtypes[res_type]
+
+        assert res.dtype == res_dtype, f"({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype}"
+
 if __name__ == '__main__':
     for (i, j), p in promotion_table.items():
         print(f"({i}, {j}) -> {p}")
