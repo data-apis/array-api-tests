@@ -32,6 +32,15 @@ else:
 # file.
 
 class UndefinedStub:
+    """
+    Standing for undefined names, so the tests can be imported even if they
+    fail
+
+    If this object appears in a test failure, it means a name is not defined
+    in a function. This typically happens for things like dtype literals not
+    being defined.
+
+    """
     def __init__(self, name):
         self.name = name
 
