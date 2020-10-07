@@ -17,12 +17,12 @@ def doesnt_raise(function, message=''):
     The inverse of raises().
 
     Use doesnt_raise(function) to test that function() doesn't raise any
-    exceptions.
+    exceptions. Returns the result of calling function.
     """
     if not callable(function):
         raise ValueError("doesnt_raise should take a lambda")
     try:
-        function()
+        return function()
     except Exception as e:
         if message:
             raise AssertionError(f"Unexpected exception {e!r}: {message}")
