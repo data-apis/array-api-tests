@@ -3,6 +3,7 @@ import inspect
 import pytest
 
 from ._array_module import mod, mod_name, ones, float64
+from .pytest_helpers import raises, doesnt_raise
 
 from . import function_stubs
 
@@ -59,36 +60,6 @@ def example_argument(arg):
         return known_args[arg]
     else:
         raise RuntimeError(f"Don't know how to test argument {arg}. Please update test_signatures.py")
-
-def raises(exceptions, function, message=''):
-    """
-    Like pytest.raises() except it allows custom error messages
-    """
-    try:
-        function()
-    except exceptions:
-        return
-    except Exception as e:
-        if message:
-            raise AssertionError(f"Unexpected exception {e!r} (expected {exceptions}): {message}")
-        raise AssertionError(f"Unexpected exception {e!r} (expected {exceptions})")
-    raise AssertionError(message)
-
-def doesnt_raise(function, message=''):
-    """
-    The inverse of raises().
-
-    Use doesnt_raise(function) to test that function() doesn't raise any
-    exceptions.
-    """
-    if not callable(function):
-        raise ValueError("doesnt_raise should take a lambda")
-    try:
-        function()
-    except Exception as e:
-        if message:
-            raise AssertionError(f"Unexpected exception {e!r}: {message}")
-        raise AssertionError(f"Unexpected exception {e!r}")
 
 @pytest.mark.parametrize('name', function_stubs.__all__)
 def test_has_names(name):
