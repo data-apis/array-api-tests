@@ -47,6 +47,9 @@ class _UndefinedStub:
     def _raise(self, *args, **kwargs):
         raise AssertionError(f"{self.name} is not defined in {mod_name}")
 
+    def __repr__(self):
+        return f"<undefined stub for {self.name!r}>"
+
     __call__ = _raise
     __getattr__ = _raise
 
