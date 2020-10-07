@@ -31,7 +31,7 @@ else:
 # Names from the spec. This is what should actually be imported from this
 # file.
 
-class UndefinedStub:
+class _UndefinedStub:
     """
     Standing for undefined names, so the tests can be imported even if they
     fail
@@ -50,7 +50,7 @@ class UndefinedStub:
     __call__ = _raise
     __getattr__ = _raise
 
-dtypes = [
+_dtypes = [
     'bool',
     'int8',
     'int16',
@@ -64,8 +64,8 @@ dtypes = [
     'float64',
 ]
 
-for func_name in function_stubs.__all__ + dtypes:
+for func_name in function_stubs.__all__ + _dtypes:
     try:
         globals()[func_name] = getattr(mod, func_name)
     except AttributeError:
-        globals()[func_name] = UndefinedStub(func_name)
+        globals()[func_name] = _UndefinedStub(func_name)
