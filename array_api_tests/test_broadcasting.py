@@ -2,7 +2,15 @@
 https://github.com/data-apis/array-api/blob/master/spec/API_specification/broadcasting.md
 """
 
-from pytest import raises
+from functools import reduce
+
+from hypothesis import given, assume
+
+from .hypothesis_helpers import (multiarg_array_functions_names,
+                                 multiarg_array_functions, nonbroadcastable_ones_array_args)
+from .pytest_helpers import raises, doesnt_raise
+
+from ._array_module import _UndefinedStub
 
 # The spec does not specify what exception is raised on broadcast errors. We
 # use a custom exception to distinguish it from potential bugs in
@@ -93,3 +101,18 @@ def test_broadcast_shapes_explicit_spec():
     shape1 = (15, 3, 5)
     shape2 = (15, 3)
     raises(BroadcastError, lambda: broadcast_shapes(shape1, shape2)) # singleton dimensions can only be prepended, not appended
+
+@given(multiarg_array_functions_names, multiarg_array_functions, nonbroadcastable_ones_array_args)
+def test_broadcasting_hypothesis(func_name, func, args):
+    if isinstance(func, _UndefinedStub):
+        assume(False)
+    shapes = [i.shape for i in args]
+    try:
+        broadcast_shape = reduce(broadcast_shapes, shapes)
+    except BroadcastError:
+        raises(Exception, lambda: func(*args),
+               f"{func_name} should raise an exception from not being able to broadcast inputs with shapes {shapes}")
+    else:
+        result = doesnt_raise(lambda: func(*args),
+            f"{func_name} raise an unexpected exception from broadcastable inputs with shapes {shapes}")
+        assert result.shape == broadcast_shape, "broadcast shapes incorrect"
