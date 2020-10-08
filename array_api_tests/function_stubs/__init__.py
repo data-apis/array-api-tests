@@ -36,3 +36,7 @@ __all__ += ['unique']
 from .statistical_functions import max, mean, min, prod, std, sum, var
 
 __all__ += ['max', 'mean', 'min', 'prod', 'std', 'sum', 'var']
+
+from .utility_functions import all, any
+
+__all__ += ['all', 'any']
