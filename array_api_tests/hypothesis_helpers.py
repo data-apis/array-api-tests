@@ -12,8 +12,7 @@ from .function_stubs import elementwise_functions
 
 dtype_objects = [getattr(_array_module, t) for t in _dtypes]
 dtypes = sampled_from(dtype_objects)
-
-
+shared_dtypes = shared(dtypes)
 
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
@@ -51,6 +50,6 @@ shapes = tuples(integers(0, 10)).filter(
              lambda shape: prod([i for i in shape if i]) < MAX_ARRAY_SIZE)
 
 
-ones_arrays = builds(ones, shapes, dtype=dtypes)
+ones_arrays = builds(ones, shapes, dtype=shared_dtypes)
 
 nonbroadcastable_ones_array_two_args = hypotheses_tuples(ones_arrays, ones_arrays)
