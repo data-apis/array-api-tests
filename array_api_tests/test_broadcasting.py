@@ -4,13 +4,15 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/broadc
 
 from functools import reduce
 
+import pytest
+
 from hypothesis import given, assume
 
-from .hypothesis_helpers import (multiarg_array_functions_names,
-                                 multiarg_array_functions, nonbroadcastable_ones_array_args)
-from .pytest_helpers import raises, doesnt_raise
+from .hypothesis_helpers import nonbroadcastable_ones_array_two_args
+from .pytest_helpers import raises, doesnt_raise, nargs
 
-from ._array_module import _UndefinedStub
+from .function_stubs import elementwise_functions
+from . import _array_module
 
 # The spec does not specify what exception is raised on broadcast errors. We
 # use a custom exception to distinguish it from potential bugs in
@@ -102,10 +104,19 @@ def test_broadcast_shapes_explicit_spec():
     shape2 = (15, 3)
     raises(BroadcastError, lambda: broadcast_shapes(shape1, shape2)) # singleton dimensions can only be prepended, not appended
 
-@given(multiarg_array_functions_names, multiarg_array_functions, nonbroadcastable_ones_array_args)
-def test_broadcasting_hypothesis(func_name, func, args):
-    if isinstance(func, _UndefinedStub):
-        assume(False)
+# TODO: Extend this to all functions (not just elementwise), and handle
+# functions that take more than 2 args
+@pytest.mark.parametrize('func_name', [i for i in
+                                       elementwise_functions.__all__ if
+                                       nargs(i) > 1])
+@given(args=nonbroadcastable_ones_array_two_args)
+def test_broadcasting_hypothesis(func_name, args):
+    assert nargs(func_name) == 2
+    func = getattr(_array_module, func_name)
+
+    if isinstance(func, _array_module._UndefinedStub):
+        func._raise()
+
     shapes = [i.shape for i in args]
     try:
         broadcast_shape = reduce(broadcast_shapes, shapes)

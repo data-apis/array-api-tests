@@ -1,22 +1,19 @@
 from functools import reduce
 from operator import mul
-from inspect import getfullargspec
 
 from hypothesis.strategies import (lists, integers, builds, sampled_from,
 shared, tuples as hypotheses_tuples)
 
+from .pytest_helpers import nargs
 from ._array_module import _dtypes, ones
 from . import _array_module
 
 from .function_stubs import elementwise_functions
-from . import function_stubs
 
 dtype_objects = [getattr(_array_module, t) for t in _dtypes]
 dtypes = sampled_from(dtype_objects)
 
 
-def nargs(func_name):
-    return len(getfullargspec(getattr(function_stubs, func_name)).args)
 
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
@@ -56,5 +53,4 @@ shapes = tuples(integers(0, 10)).filter(
 
 ones_arrays = builds(ones, shapes, dtype=dtypes)
 
-nonbroadcastable_ones_array_args = array_functions_names.flatmap(
-    lambda func_name: hypotheses_tuples(*[ones_arrays for i in range(nargs(func_name))]))
+nonbroadcastable_ones_array_two_args = hypotheses_tuples(ones_arrays, ones_arrays)

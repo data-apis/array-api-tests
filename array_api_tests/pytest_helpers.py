@@ -1,3 +1,6 @@
+from inspect import getfullargspec
+from . import function_stubs
+
 def raises(exceptions, function, message=''):
     """
     Like pytest.raises() except it allows custom error messages
@@ -27,3 +30,6 @@ def doesnt_raise(function, message=''):
         if message:
             raise AssertionError(f"Unexpected exception {e!r}: {message}")
         raise AssertionError(f"Unexpected exception {e!r}")
+
+def nargs(func_name):
+    return len(getfullargspec(getattr(function_stubs, func_name)).args)
