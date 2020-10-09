@@ -125,5 +125,5 @@ def test_broadcasting_hypothesis(func_name, args):
                f"{func_name} should raise an exception from not being able to broadcast inputs with shapes {shapes}")
     else:
         result = doesnt_raise(lambda: func(*args),
-            f"{func_name} raise an unexpected exception from broadcastable inputs with shapes {shapes}")
+            f"{func_name} raised an unexpected exception from broadcastable inputs with shapes {shapes}")
         assert result.shape == broadcast_shape, "broadcast shapes incorrect"
