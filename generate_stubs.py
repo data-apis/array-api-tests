@@ -12,6 +12,7 @@ This will update the stub files in array_api_tests/function_stubs/
 import argparse
 import os
 import re
+from collections import defaultdict
 
 SIGNATURE_RE = re.compile(r'#+ (?:<.*>) ?(.*\(.*\))')
 NAME_RE = re.compile(r'(.*)\(.*\)')
@@ -60,6 +61,8 @@ def main():
     for filename in sorted(os.listdir(spec_dir)):
         with open(os.path.join(spec_dir, filename)) as f:
                   text = f.read()
+        if filename == 'elementwise_functions.md':
+            special_values = parse_special_values(text)
 
         signatures = SIGNATURE_RE.findall(text)
         if not signatures:
@@ -102,5 +105,65 @@ def {sig.replace(', /', '')}:
                 f.write('__all__ += [')
                 f.write(', '.join(f"'{i}'" for i in modules[module_name]))
                 f.write(']\n')
+
+
+_value = r"(?:`([^`]*)`|(finite)|(positive)|(negative)|(a nonzero finite number)|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?)|(a signed infinity with the sign determined by the rule already stated above)"
+SPECIAL_VALUE_TYPES = dict(
+    ONE_ARG_EQUAL = re.compile(rf'- +If `x_i` is ?{_value}, the result is {_value}\.'),
+    ONE_ARG_GREATER = re.compile(rf'- +If `x_i` is greater than {_value}, the result is {_value}\.'),
+    ONE_ARG_LESS = re.compile(rf'- +If `x_i` is less than {_value}, the result is {_value}\.'),
+    ONE_ARG_ALREADY_INTEGER_VALUED = re.compile(rf'- +If `x_i` is already integer-valued, the result is {_value}\.'),
+
+    TWO_ARGS_EQUAL_EQUAL = re.compile(rf'- +If `x1_i` is {_value} and `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_GREATER_EQUAL = re.compile(rf'- +If `x1_i` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_GREATER_FINITE_EQUAL = re.compile(rf'- +If `x1_i` is greater than {_value}, `x1_i` is finite, and `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_LESS_EQUAL = re.compile(rf'- +If `x1_i` is less than {_value} and `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_LESS_FINITE_EQUAL = re.compile(rf'- +If `x1_i` is less than {_value}, `x1_i` is finite, and `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_EQUAL_GREATER = re.compile(rf'- +If `x1_i` is {_value} and `x2_i` is greater than {_value}, the result is {_value}\.'),
+    TWO_ARGS_EQUAL_LESS = re.compile(rf'- +If `x1_i` is {_value} and `x2_i` is less than {_value}, the result is {_value}\.'),
+    TWO_ARGS_NOTEQUAL_EQUAL = re.compile(rf'- +If `x1_i` is not equal to {_value} and `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_ABS_EQUAL_EQUAL = re.compile(rf'- +If `abs\(x1_i\)` is {_value} and `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_ABS_GREATER_EQUAL = re.compile(rf'- +If `abs\(x1_i\)` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_ABS_LESS_EQUAL = re.compile(rf'- +If `abs\(x1_i\)` is less than {_value} and `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_EITHER = re.compile(rf'- +If either `x1_i` or `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_EITHER_1 = re.compile(rf'- +If `x1_i` is either {_value} or {_value} and `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_EITHER_2 = re.compile(rf'- +If `x1_i` is {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.'),
+    TWO_ARGS_EITHER_12 = re.compile(rf'- +If `x1_i` is either {_value} or {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.'),
+    TWO_ARGS_SAME_SIGN = re.compile(rf'- +If both `x1_i` and `x2_i` have the same sign, the result is {_value}\.'),
+    TWO_ARGS_DIFFERENT_SIGNS = re.compile(rf'- +If `x1_i` and `x2_i` have different signs, the result is {_value}\.'),
+    TWO_ARGS_EVEN_IF_2 = re.compile(rf'- +If `x2_i` is {_value}, the result is {_value}, even if `x1_i` is {_value}\.'),
+
+    TWO_INTEGERS_EQUALLY_CLOSE = re.compile(rf'- +If two integers are equally close to `x_i`, the result is whichever integer is farthest from {_value}\.'),
+    REMAINING = re.compile(r"- +In the remaining cases, (.*)"),
+)
+
+def parse_special_values(spec_text):
+    special_values = {}
+    in_block = False
+    for line in spec_text.splitlines():
+        m = SIGNATURE_RE.match(line)
+        if m:
+            name = NAME_RE.match(m.group(1)).group(1)
+            special_values[name] = defaultdict(list)
+            continue
+        if line == '#### Special Values':
+            in_block = True
+            continue
+        elif line.startswith('#'):
+            in_block = False
+            continue
+        if in_block:
+            if '- ' not in line:
+                continue
+            for typ, regex in SPECIAL_VALUE_TYPES.items():
+                m = regex.match(line)
+                if m:
+                    special_values[name][typ].append(m)
+                    break
+            else:
+                raise ValueError(f"Unrecognized special value string for '{name}':\n{line}")
+
+    return special_values
+
 if __name__ == '__main__':
     main()
