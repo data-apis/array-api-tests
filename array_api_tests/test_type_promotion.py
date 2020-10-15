@@ -2,11 +2,19 @@
 https://github.com/data-apis/array-api/blob/master/spec/API_specification/type_promotion.md
 """
 
-from ._array_module import (arange, add, int8, int16, int32, int64, uint8,
+import pytest
+
+from hypothesis import given, example
+
+from .hypothesis_helpers import shapes
+from .pytest_helpers import nargs
+
+from .function_stubs import elementwise_functions
+from ._array_module import (ones, int8, int16, int32, int64, uint8,
                             uint16, uint32, uint64, float32, float64)
+from . import _array_module
 
-
-dtypes = {
+dtype_mapping = {
     'i1': int8,
     'i2': int16,
     'i4': int32,
@@ -86,27 +94,34 @@ promotion_table = {
     **float_promotion_table,
 }
 
-def test_add():
-    for (type1, type2), res_type in promotion_table.items():
-        dtype1 = dtypes[type1]
-        dtype2 = dtypes[type2]
-        a1 = arange(2, dtype=dtype1)
-        a2 = arange(2, dtype=dtype2)
-        res = add(a1, a2)
-        res_dtype = dtypes[res_type]
+# TODO: Extend this to all functions (not just elementwise), and handle
+# functions that take more than 2 args
+@pytest.mark.parametrize('func_name', [i for i in
+                                       elementwise_functions.__all__ if
+                                       nargs(i) > 1])
+@pytest.mark.parametrize('dtypes', promotion_table.items())
+# The spec explicitly requires type promotion to work for shape 0
+@example(shape=(0,))
+@given(shape=shapes)
+def test_promotion(func_name, shape, dtypes):
+    assert nargs(func_name) == 2
+    func = getattr(_array_module, func_name)
 
-        assert res.dtype == res_dtype, f"({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype}"
 
-def test_add_0d():
-    for (type1, type2), res_type in promotion_table.items():
-        dtype1 = dtypes[type1]
-        dtype2 = dtypes[type2]
-        a1 = arange(0, dtype=dtype1)
-        a2 = arange(0, dtype=dtype2)
-        res = add(a1, a2)
-        res_dtype = dtypes[res_type]
+    (type1, type2), res_type = dtypes
+    dtype1 = dtype_mapping[type1]
+    dtype2 = dtype_mapping[type2]
+    res_dtype = dtype_mapping[res_type]
 
-        assert res.dtype == res_dtype, f"({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype}"
+    for i in [func, dtype1, dtype2, res_dtype]:
+        if isinstance(i, _array_module._UndefinedStub):
+            func._raise()
+
+    a1 = ones(shape, dtype=dtype1)
+    a2 = ones(shape, dtype=dtype2)
+    res = func(a1, a2)
+
+    assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape})"
 
 if __name__ == '__main__':
     for (i, j), p in promotion_table.items():
