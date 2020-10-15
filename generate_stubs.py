@@ -52,6 +52,7 @@ def main():
     parser.add_argument('array_api_repo', help="Path to clone of the array-api repository")
     parser.add_argument('--no-write', help="""Print what it would do but don't
     write any files""", action='store_false', dest='write')
+    parser.add_argument('--quiet', help="""Don't print any output to the terminal""", action='store_true', dest='quiet')
     args = parser.parse_args()
 
     spec_dir = os.path.join(args.array_api_repo, 'spec', 'API_specification')
@@ -63,7 +64,8 @@ def main():
         signatures = SIGNATURE_RE.findall(text)
         if not signatures:
             continue
-        print(f"Found signatures in {filename}")
+        if not args.quiet:
+            print(f"Found signatures in {filename}")
         if not args.write:
             continue
         py_file = filename.replace('.md', '.py')
@@ -71,11 +73,13 @@ def main():
         title = filename.replace('.md', '').replace('_', ' ')
         module_name = py_file.replace('.py', '')
         modules[module_name] = []
-        print(f"Writing {py_path}")
+        if not args.quiet:
+            print(f"Writing {py_path}")
         with open(py_path, 'w') as f:
             f.write(STUB_FILE_HEADER.format(filename=filename, title=title))
             for sig in signatures:
-                print(f"Writing stub for {sig}")
+                if not args.quiet:
+                    print(f"Writing stub for {sig}")
                 f.write(f"""
 def {sig.replace(', /', '')}:
     pass
