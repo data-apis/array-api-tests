@@ -11,11 +11,11 @@ This will update the stub files in array_api_tests/function_stubs/
 """
 import argparse
 import os
-import re
+import regex
 from collections import defaultdict
 
-SIGNATURE_RE = re.compile(r'#+ (?:<.*>) ?(.*\(.*\))')
-NAME_RE = re.compile(r'(.*)\(.*\)')
+SIGNATURE_RE = regex.compile(r'#+ (?:<.*>) ?(.*\(.*\))')
+NAME_RE = regex.compile(r'(.*)\(.*\)')
 
 STUB_FILE_HEADER = '''\
 """
@@ -108,39 +108,39 @@ def {sig.replace(', /', '')}:
 
 _value = r"(?:`([^`]*)`|(finite)|(positive)|(negative)|(nonzero)|(a nonzero finite number)|(an integer value)|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?|a (signed (?:infinity|zero)) with the sign determined by the rule already stated above)"
 SPECIAL_VALUE_REGEXS = dict(
-    ONE_ARG_EQUAL = re.compile(rf'^- +If `x_i` is ?{_value}, the result is {_value}\.$'),
-    ONE_ARG_GREATER = re.compile(rf'^- +If `x_i` is greater than {_value}, the result is {_value}\.$'),
-    ONE_ARG_LESS = re.compile(rf'^- +If `x_i` is less than {_value}, the result is {_value}\.$'),
-    ONE_ARG_ALREADY_INTEGER_VALUED = re.compile(rf'^- +If `x_i` is already integer-valued, the result is {_value}\.$'),
-    ONE_ARG_EITHER = re.compile(rf'^- +If `x_i` is either {_value} or {_value}, the result is {_value}\.$'),
+    ONE_ARG_EQUAL = regex.compile(rf'^- +If `x_i` is ?{_value}, the result is {_value}\.$'),
+    ONE_ARG_GREATER = regex.compile(rf'^- +If `x_i` is greater than {_value}, the result is {_value}\.$'),
+    ONE_ARG_LESS = regex.compile(rf'^- +If `x_i` is less than {_value}, the result is {_value}\.$'),
+    ONE_ARG_ALREADY_INTEGER_VALUED = regex.compile(rf'^- +If `x_i` is already integer-valued, the result is {_value}\.$'),
+    ONE_ARG_EITHER = regex.compile(rf'^- +If `x_i` is either {_value} or {_value}, the result is {_value}\.$'),
 
-    TWO_ARGS_EQUAL_EQUAL = re.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_GREATER_EQUAL = re.compile(rf'^- +If `x1_i` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_GREATER_FINITE_EQUAL = re.compile(rf'^- +If `x1_i` is greater than {_value}, `x1_i` is finite, and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_LESS_EQUAL = re.compile(rf'^- +If `x1_i` is less than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_LESS_FINITE_EQUAL = re.compile(rf'^- +If `x1_i` is less than {_value}, `x1_i` is finite, and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_LESS_FINITE_EQUAL_NOTEQUAL = re.compile(rf'^- +If `x1_i` is less than {_value}, `x1_i` is finite, `x2_i` is {_value}, and `x2_i` is not {_value}, the result is {_value}\.$'),
-    TWO_ARGS_EQUAL_GREATER = re.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is greater than {_value}, the result is {_value}\.$'),
-    TWO_ARGS_EQUAL_LESS = re.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is less than {_value}, the result is {_value}\.$'),
-    TWO_ARGS_EQUAL_NOTEQUAL = re.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is not (?:equal to )?{_value}, the result is {_value}\.$'),
-    TWO_ARGS_EQUAL_LESS_ODD = re.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is less than {_value}, and `x2_i` is an odd integer value, the result is {_value}\.$'),
-    TWO_ARGS_EQUAL_LESS_NOT_ODD = re.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is less than {_value}, and `x2_i` is not an odd integer value, the result is {_value}\.$'),
-    TWO_ARGS_EQUAL_GREATER_ODD = re.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is greater than {_value}, and `x2_i` is an odd integer value, the result is {_value}\.$'),
-    TWO_ARGS_EQUAL_GREATER_NOT_ODD = re.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is greater than {_value}, and `x2_i` is not an odd integer value, the result is {_value}\.$'),
-    TWO_ARGS_NOTEQUAL_EQUAL = re.compile(rf'^- +If `x1_i` is not equal to {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_ABS_EQUAL_EQUAL = re.compile(rf'^- +If `abs\(x1_i\)` is {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_ABS_GREATER_EQUAL = re.compile(rf'^- +If `abs\(x1_i\)` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_ABS_LESS_EQUAL = re.compile(rf'^- +If `abs\(x1_i\)` is less than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_EITHER = re.compile(rf'^- +If either `x1_i` or `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_EITHER_1 = re.compile(rf'^- +If `x1_i` is either {_value} or {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_EITHER_2 = re.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
-    TWO_ARGS_EITHER_12 = re.compile(rf'^- +If `x1_i` is either {_value} or {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
-    TWO_ARGS_SAME_SIGN = re.compile(rf'^- +If both `x1_i` and `x2_i` have the same sign, the result is {_value}\.$'),
-    TWO_ARGS_DIFFERENT_SIGNS = re.compile(rf'^- +If `x1_i` and `x2_i` have different signs, the result is {_value}\.$'),
-    TWO_ARGS_EVEN_IF_2 = re.compile(rf'^- +If `x2_i` is {_value}, the result is {_value}, even if `x1_i` is {_value}\.$'),
+    TWO_ARGS_EQUAL_EQUAL = regex.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_GREATER_EQUAL = regex.compile(rf'^- +If `x1_i` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_GREATER_FINITE_EQUAL = regex.compile(rf'^- +If `x1_i` is greater than {_value}, `x1_i` is finite, and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_LESS_EQUAL = regex.compile(rf'^- +If `x1_i` is less than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_LESS_FINITE_EQUAL = regex.compile(rf'^- +If `x1_i` is less than {_value}, `x1_i` is finite, and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_LESS_FINITE_EQUAL_NOTEQUAL = regex.compile(rf'^- +If `x1_i` is less than {_value}, `x1_i` is finite, `x2_i` is {_value}, and `x2_i` is not {_value}, the result is {_value}\.$'),
+    TWO_ARGS_EQUAL_GREATER = regex.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is greater than {_value}, the result is {_value}\.$'),
+    TWO_ARGS_EQUAL_LESS = regex.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is less than {_value}, the result is {_value}\.$'),
+    TWO_ARGS_EQUAL_NOTEQUAL = regex.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is not (?:equal to )?{_value}, the result is {_value}\.$'),
+    TWO_ARGS_EQUAL_LESS_ODD = regex.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is less than {_value}, and `x2_i` is an odd integer value, the result is {_value}\.$'),
+    TWO_ARGS_EQUAL_LESS_NOT_ODD = regex.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is less than {_value}, and `x2_i` is not an odd integer value, the result is {_value}\.$'),
+    TWO_ARGS_EQUAL_GREATER_ODD = regex.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is greater than {_value}, and `x2_i` is an odd integer value, the result is {_value}\.$'),
+    TWO_ARGS_EQUAL_GREATER_NOT_ODD = regex.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is greater than {_value}, and `x2_i` is not an odd integer value, the result is {_value}\.$'),
+    TWO_ARGS_NOTEQUAL_EQUAL = regex.compile(rf'^- +If `x1_i` is not equal to {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_ABS_EQUAL_EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_ABS_GREATER_EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_ABS_LESS_EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is less than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_EITHER = regex.compile(rf'^- +If either `x1_i` or `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_EITHER_1 = regex.compile(rf'^- +If `x1_i` is either {_value} or {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_EITHER_2 = regex.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
+    TWO_ARGS_EITHER_12 = regex.compile(rf'^- +If `x1_i` is either {_value} or {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
+    TWO_ARGS_SAME_SIGN = regex.compile(rf'^- +If both `x1_i` and `x2_i` have the same sign, the result is {_value}\.$'),
+    TWO_ARGS_DIFFERENT_SIGNS = regex.compile(rf'^- +If `x1_i` and `x2_i` have different signs, the result is {_value}\.$'),
+    TWO_ARGS_EVEN_IF_2 = regex.compile(rf'^- +If `x2_i` is {_value}, the result is {_value}, even if `x1_i` is {_value}\.$'),
 
-    TWO_INTEGERS_EQUALLY_CLOSE = re.compile(rf'^- +If two integers are equally close to `x_i`, the result is whichever integer is farthest from {_value}\.$'),
-    REMAINING = re.compile(r"^- +In the remaining cases, (.*)$"),
+    TWO_INTEGERS_EQUALLY_CLOSE = regex.compile(rf'^- +If two integers are equally close to `x_i`, the result is whichever integer is farthest from {_value}\.$'),
+    REMAINING = regex.compile(r"^- +In the remaining cases, (.*)$"),
 )
 
 def parse_special_values(spec_text):
