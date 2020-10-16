@@ -106,21 +106,27 @@ def {sig.replace(', /', '')}:
                 f.write(', '.join(f"'{i}'" for i in modules[module_name]))
                 f.write(']\n')
 
-
-_value = r"(?:`([^`]*)`|(finite)|(positive)|(negative)|(a nonzero finite number)|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?)|(a signed infinity with the sign determined by the rule already stated above)"
-SPECIAL_VALUE_TYPES = dict(
+_value = r"(?:`([^`]*)`|(finite)|(positive)|(negative)|(nonzero)|(a nonzero finite number)|(an integer value)|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?|a (signed (?:infinity|zero)) with the sign determined by the rule already stated above)"
+SPECIAL_VALUE_REGEXS = dict(
     ONE_ARG_EQUAL = re.compile(rf'- +If `x_i` is ?{_value}, the result is {_value}\.'),
     ONE_ARG_GREATER = re.compile(rf'- +If `x_i` is greater than {_value}, the result is {_value}\.'),
     ONE_ARG_LESS = re.compile(rf'- +If `x_i` is less than {_value}, the result is {_value}\.'),
     ONE_ARG_ALREADY_INTEGER_VALUED = re.compile(rf'- +If `x_i` is already integer-valued, the result is {_value}\.'),
+    ONE_ARG_EITHER = re.compile(rf'- +If `x_i` is either {_value} or {_value}, the result is {_value}\.'),
 
     TWO_ARGS_EQUAL_EQUAL = re.compile(rf'- +If `x1_i` is {_value} and `x2_i` is {_value}, the result is {_value}\.'),
     TWO_ARGS_GREATER_EQUAL = re.compile(rf'- +If `x1_i` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.'),
     TWO_ARGS_GREATER_FINITE_EQUAL = re.compile(rf'- +If `x1_i` is greater than {_value}, `x1_i` is finite, and `x2_i` is {_value}, the result is {_value}\.'),
     TWO_ARGS_LESS_EQUAL = re.compile(rf'- +If `x1_i` is less than {_value} and `x2_i` is {_value}, the result is {_value}\.'),
     TWO_ARGS_LESS_FINITE_EQUAL = re.compile(rf'- +If `x1_i` is less than {_value}, `x1_i` is finite, and `x2_i` is {_value}, the result is {_value}\.'),
+    TWO_ARGS_LESS_FINITE_EQUAL_NOTEQUAL = re.compile(rf'- +If `x1_i` is less than {_value}, `x1_i` is finite, `x2_i` is {_value}, and `x2_i` is not {_value}, the result is {_value}\.'),
     TWO_ARGS_EQUAL_GREATER = re.compile(rf'- +If `x1_i` is {_value} and `x2_i` is greater than {_value}, the result is {_value}\.'),
     TWO_ARGS_EQUAL_LESS = re.compile(rf'- +If `x1_i` is {_value} and `x2_i` is less than {_value}, the result is {_value}\.'),
+    TWO_ARGS_EQUAL_NOTEQUAL = re.compile(rf'- +If `x1_i` is {_value} and `x2_i` is not (?:equal to )?{_value}, the result is {_value}\.'),
+    TWO_ARGS_EQUAL_LESS_ODD = re.compile(rf'- +If `x1_i` is {_value}, `x2_i` is less than {_value}, and `x2_i` is an odd integer value, the result is {_value}\.'),
+    TWO_ARGS_EQUAL_LESS_NOT_ODD = re.compile(rf'- +If `x1_i` is {_value}, `x2_i` is less than {_value}, and `x2_i` is not an odd integer value, the result is {_value}\.'),
+    TWO_ARGS_EQUAL_GREATER_ODD = re.compile(rf'- +If `x1_i` is {_value}, `x2_i` is greater than {_value}, and `x2_i` is an odd integer value, the result is {_value}\.'),
+    TWO_ARGS_EQUAL_GREATER_NOT_ODD = re.compile(rf'- +If `x1_i` is {_value}, `x2_i` is greater than {_value}, and `x2_i` is not an odd integer value, the result is {_value}\.'),
     TWO_ARGS_NOTEQUAL_EQUAL = re.compile(rf'- +If `x1_i` is not equal to {_value} and `x2_i` is {_value}, the result is {_value}\.'),
     TWO_ARGS_ABS_EQUAL_EQUAL = re.compile(rf'- +If `abs\(x1_i\)` is {_value} and `x2_i` is {_value}, the result is {_value}\.'),
     TWO_ARGS_ABS_GREATER_EQUAL = re.compile(rf'- +If `abs\(x1_i\)` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.'),
@@ -155,8 +161,8 @@ def parse_special_values(spec_text):
         if in_block:
             if '- ' not in line:
                 continue
-            for typ, regex in SPECIAL_VALUE_TYPES.items():
-                m = regex.match(line)
+            for typ, reg in SPECIAL_VALUE_REGEXS.items():
+                m = reg.match(line)
                 if m:
                     special_values[name][typ].append(m)
                     break
