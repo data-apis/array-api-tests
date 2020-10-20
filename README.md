@@ -55,6 +55,14 @@ import numpy as array_module
   progress to enable reporting the errors in a way that makes them easy to
   understand, even if there are a large number of them.
 
+- The spec documents are the ground source of truth. If the test suite appears
+  to be testing something that is different from the spec, or something that
+  isn't actually mentioned in the spec, this is a bug. [Please report
+  it](https://github.com/data-apis/array-api-tests/issues/new). Furthermore,
+  be aware that some aspects of the spec are either impossible or extremely
+  difficult to actually test, so they are not covered in the test suite (TODO:
+  list what these are).
+
 ## Contributing
 
 ### Adding Tests
