@@ -72,7 +72,7 @@ of the standard. This means that, for instance, when creating test arrays, you
 should only use array creation functions that are part of the spec, such as
 `ones` or `full`. It also means that many array testing functions that are
 built-in to libraries like numpy are reimplemented in the test suite (see
-`array_api_tests/pytest_helpers.py` and
+`array_api_tests/pytest_helpers.py`, `array_api_tests/array_helpers.py`, and
 `array_api_tests/hypothesis_helpers.py`).
 
 In order to enforce this, the `array_api_tests._array_module` should be used
