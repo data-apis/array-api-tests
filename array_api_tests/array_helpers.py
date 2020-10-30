@@ -1,6 +1,7 @@
 from _array_module import (isnan, all, equal, logical_not, isfinite, greater,
-                           less, zeros, ones, full, float32, float64, nan,
-                           inf, pi)
+                           less, zeros, ones, full, bool, int8, int16, int32,
+                           int64, uint8, uint16, uint32, uint64, float32,
+                           float64, nan, inf, pi, remainder)
 
 def zero(dtype):
     """
@@ -65,6 +66,14 @@ def π(dtype):
         raise RuntimeError(f"Unexpected dtype {dtype} in infinity().")
     return full((), pi, dtype=dtype)
 
+def equal_nan(x, y):
+    """
+    Same as equal(x, y) except if y is nan, it is True where x is nan.
+    """
+    if all(isnan(y)):
+        return isnan(x)
+    return equal(x, y)
+
 def assert_equal(x, y):
     """
     Test that the arrays x and y are equal.
@@ -94,3 +103,23 @@ def assert_positive(x):
 
 def assert_negative(x):
     assert all(less(x, zero(x.dtype))), "The input array is not negative"
+
+def isintegral(x):
+    """
+    Returns a mask the shape of x where the values are integral
+
+    x is integral if its dtype is an integer dtype, or if it is a floating
+    point value that can be exactly represented as an integer.
+    """
+    if x.dtype in [int8, int16, int32, int64, uint8, uint16, uint32, uint64]:
+        return full(x.shape, True, dtype=bool)
+    elif x.dtype in [float32, float64]:
+        return equal(remainder(x, one(x.dtype)), zero(x.dtype))
+    else:
+        return full(x.shape, False, dtype=bool)
+
+def assert_integral(x):
+    """
+    Check that x has only integer values
+    """
+    assert all(isintegral(x)), "The input array has nonintegral values"
