@@ -1,7 +1,8 @@
-from _array_module import (isnan, all, equal, logical_not, isfinite, greater,
-                           less, zeros, ones, full, bool, int8, int16, int32,
-                           int64, uint8, uint16, uint32, uint64, float32,
-                           float64, nan, inf, pi, remainder)
+from ._array_module import (isnan, all, equal, logical_and, logical_or,
+                            isfinite, greater, less, zeros, ones, full, bool,
+                            int8, int16, int32, int64, uint8, uint16, uint32,
+                            uint64, float32, float64, nan, inf, pi, remainder,
+                            divide)
 
 def zero(dtype):
     """
@@ -66,12 +67,45 @@ def π(dtype):
         raise RuntimeError(f"Unexpected dtype {dtype} in infinity().")
     return full((), pi, dtype=dtype)
 
-def equal_nan(x, y):
+def isnegzero(x):
     """
-    Same as equal(x, y) except if y is nan, it is True where x is nan.
+    Returns a mask where x is -0.
     """
-    if all(isnan(y)):
-        return isnan(x)
+    # TODO: If copysign or signbit are added to the spec, use those instead.
+    dtype = x.dtype
+    return equal(divide(one(dtype), x), -infinity(dtype))
+
+def isposzero(x):
+    """
+    Returns a mask where x is +0 (but not -0).
+    """
+    # TODO: If copysign or signbit are added to the spec, use those instead.
+    dtype = x.dtype
+    return equal(divide(one(dtype), x), infinity(dtype))
+
+def exactly_equal(x, y):
+    """
+    Same as equal(x, y) except it gives true where both values are nan, and
+    distinguishes +0 and -0.
+
+    This function implicitly assumes x and y have the same shape and dtype.
+    """
+    if x.dtype in [float32, float64]:
+        xnegzero = isnegzero(x)
+        ynegzero = isnegzero(y)
+
+        xposzero = isposzero(x)
+        yposzero = isposzero(y)
+
+        xnan = isnan(x)
+        ynan = isnan(y)
+
+        # (x == y OR x == y == NaN) AND xnegzero == ynegzero AND xposzero == y poszero
+        return logical_and(logical_and(
+            logical_or(equal(x, y), logical_and(xnan, ynan)),
+            equal(xnegzero, ynegzero)),
+            equal(xposzero, yposzero))
+
     return equal(x, y)
 
 def assert_equal(x, y):
@@ -82,15 +116,7 @@ def assert_equal(x, y):
 
     assert x.dtype == y.dtype, "The input arrays do not have the same dtype"
 
-    xnans = isnan(x)
-    ynans = isnan(y)
-
-    assert all(equal(xnans, ynans)), "The input arrays have NaN values in different locations."
-
-    notxnan = logical_not(xnans)
-    notynan = logical_not(ynans)
-
-    assert all(equal(x[notxnan], y[notynan])), "The input arrays have different values"
+    assert all(exactly_equal(x, y)), "The input arrays have different values"
 
 def assert_finite(x):
     """
