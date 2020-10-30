@@ -87,10 +87,10 @@ def assert_finite(x):
     """
     Test that the array x is finite
     """
-    assert isfinite(x), "The input array is not finite"
+    assert all(isfinite(x)), "The input array is not finite"
 
 def assert_positive(x):
-    assert greater(x, zero(x.dtype)), "The input array is not positive"
+    assert all(greater(x, zero(x.dtype))), "The input array is not positive"
 
 def assert_negative(x):
-    assert less(x, zero(x.dtype)), "The input array is not negative"
+    assert all(less(x, zero(x.dtype))), "The input array is not negative"
