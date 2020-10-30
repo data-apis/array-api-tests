@@ -9,6 +9,10 @@ not modify it directly.
 
 __all__ = []
 
+from .constants import e, inf, nan, pi
+
+__all__ += ['e', 'inf', 'nan', 'pi']
+
 from .creation_functions import arange, empty, empty_like, eye, full, full_like, linspace, ones, ones_like, zeros, zeros_like
 
 __all__ += ['arange', 'empty', 'empty_like', 'eye', 'full', 'full_like', 'linspace', 'ones', 'ones_like', 'zeros', 'zeros_like']

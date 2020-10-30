@@ -70,6 +70,9 @@ def test_function_positional_args(name):
     if not hasattr(mod, name):
         pytest.skip(f"{mod_name} does not have {name}(), skipping.")
     stub_func = getattr(function_stubs, name)
+    if stub_func is None:
+        # TODO: Can we make this skip the parameterization entirely?
+        pytest.skip(f"{name} is not a function, skipping.")
     mod_func = getattr(mod, name)
     argspec = inspect.getfullargspec(stub_func)
     args = argspec.args
@@ -93,6 +96,9 @@ def test_function_keyword_only_args(name):
     if not hasattr(mod, name):
         pytest.skip(f"{mod_name} does not have {name}(), skipping.")
     stub_func = getattr(function_stubs, name)
+    if stub_func is None:
+        # TODO: Can we make this skip the parameterization entirely?
+        pytest.skip(f"{name} is not a function, skipping.")
     mod_func = getattr(mod, name)
     argspec = inspect.getfullargspec(stub_func)
     args = argspec.args

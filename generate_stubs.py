@@ -15,6 +15,7 @@ import regex
 from collections import defaultdict
 
 SIGNATURE_RE = regex.compile(r'#+ (?:<.*>) ?(.*\(.*\))')
+CONSTANT_RE = regex.compile(r'#+ (?:<.*>) ?([^\(\n]*)\n')
 NAME_RE = regex.compile(r'(.*)\(.*\)')
 
 STUB_FILE_HEADER = '''\
@@ -65,7 +66,8 @@ def main():
             special_values = parse_special_values(text)
 
         signatures = SIGNATURE_RE.findall(text)
-        if not signatures:
+        constants = CONSTANT_RE.findall(text)
+        if not (signatures or constants):
             continue
         if not args.quiet:
             print(f"Found signatures in {filename}")
@@ -89,6 +91,12 @@ def {sig.replace(', /', '')}:
 """)
                 func_name = NAME_RE.match(sig).group(1)
                 modules[module_name].append(func_name)
+
+            for const in constants:
+                if not args.quiet:
+                    print(f"Writing stub for {const}")
+                f.write(f"\n{const} = None\n")
+                modules[module_name].append(const)
 
             f.write('\n__all__ = [')
             f.write(', '.join(f"'{i}'" for i in modules[module_name]))
