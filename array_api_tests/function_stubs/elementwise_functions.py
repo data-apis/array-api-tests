@@ -41,6 +41,24 @@ def atan2(x1, x2):
 def atanh(x):
     pass
 
+def bitwise_and(x1, x2):
+    pass
+
+def bitwise_left_shift(x1, x2):
+    pass
+
+def bitwise_invert(x):
+    pass
+
+def bitwise_or(x1, x2):
+    pass
+
+def bitwise_right_shift(x1, x2):
+    pass
+
+def bitwise_xor(x1, x2):
+    pass
+
 def ceil(x):
     pass
 
@@ -63,6 +81,9 @@ def expm1(x):
     pass
 
 def floor(x):
+    pass
+
+def floor_divide(x1, x2):
     pass
 
 def greater(x1, x2):
@@ -113,10 +134,19 @@ def logical_xor(x1, x2):
 def multiply(x1, x2):
     pass
 
+def negative(x):
+    pass
+
 def not_equal(x1, x2):
     pass
 
+def positive(x):
+    pass
+
 def pow(x1, x2):
+    pass
+
+def remainder(x1, x2):
     pass
 
 def round(x):
@@ -149,4 +179,4 @@ def tanh(x):
 def trunc(x):
     pass
 
-__all__ = ['abs', 'acos', 'acosh', 'add', 'asin', 'asinh', 'atan', 'atan2', 'atanh', 'ceil', 'cos', 'cosh', 'divide', 'equal', 'exp', 'expm1', 'floor', 'greater', 'greater_equal', 'isfinite', 'isinf', 'isnan', 'less', 'less_equal', 'log', 'log1p', 'log2', 'log10', 'logical_and', 'logical_not', 'logical_or', 'logical_xor', 'multiply', 'not_equal', 'pow', 'round', 'sign', 'sin', 'sinh', 'square', 'sqrt', 'subtract', 'tan', 'tanh', 'trunc']
+__all__ = ['abs', 'acos', 'acosh', 'add', 'asin', 'asinh', 'atan', 'atan2', 'atanh', 'bitwise_and', 'bitwise_left_shift', 'bitwise_invert', 'bitwise_or', 'bitwise_right_shift', 'bitwise_xor', 'ceil', 'cos', 'cosh', 'divide', 'equal', 'exp', 'expm1', 'floor', 'floor_divide', 'greater', 'greater_equal', 'isfinite', 'isinf', 'isnan', 'less', 'less_equal', 'log', 'log1p', 'log2', 'log10', 'logical_and', 'logical_not', 'logical_or', 'logical_xor', 'multiply', 'negative', 'not_equal', 'positive', 'pow', 'remainder', 'round', 'sign', 'sin', 'sinh', 'square', 'sqrt', 'subtract', 'tan', 'tanh', 'trunc']
