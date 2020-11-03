@@ -1,8 +1,8 @@
-from ._array_module import (isnan, all, equal, logical_and, logical_or,
-                            isfinite, greater, less, zeros, ones, full, bool,
-                            int8, int16, int32, int64, uint8, uint16, uint32,
-                            uint64, float32, float64, nan, inf, pi, remainder,
-                            divide)
+from ._array_module import (isnan, all, equal, not_equal, logical_and,
+                            logical_or, isfinite, greater, less, zeros, ones,
+                            full, bool, int8, int16, int32, int64, uint8,
+                            uint16, uint32, uint64, float32, float64, nan,
+                            inf, pi, remainder, divide)
 
 def zero(dtype):
     """
@@ -108,9 +108,9 @@ def exactly_equal(x, y):
 
     return equal(x, y)
 
-def assert_equal(x, y):
+def assert_exactly_equal(x, y):
     """
-    Test that the arrays x and y are equal.
+    Test that the arrays x and y are exactly equal.
 
     If x and y do not have the same shape and dtype, they are not considered
     equal.
@@ -128,11 +128,23 @@ def assert_finite(x):
     """
     assert all(isfinite(x)), "The input array is not finite"
 
+def nonzero(x):
+    not_equal(x, zero(x.dtype))
+
+def assert_nonzero(x):
+    assert all(nonzero(x)), "The input array is not nonzero"
+
+def ispositive(x):
+    return greater(x, zero(x.dtype))
+
 def assert_positive(x):
-    assert all(greater(x, zero(x.dtype))), "The input array is not positive"
+    assert all(ispositive(x)), "The input array is not positive"
+
+def isnegative(x):
+    return less(x, zero(x.dtype))
 
 def assert_negative(x):
-    assert all(less(x, zero(x.dtype))), "The input array is not negative"
+    assert all(isnegative(x)), "The input array is not negative"
 
 def isintegral(x):
     """
