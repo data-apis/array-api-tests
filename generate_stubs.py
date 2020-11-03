@@ -168,12 +168,60 @@ SPECIAL_VALUE_REGEXS = dict(
 )
 
 
+def parse_value(value, arg):
+    if value == 'NaN':
+        return f"NaN({arg}.dtype)"
+    elif value == "+infinity":
+        return f"infinity({arg}.dtype)"
+    elif value == "-infinity":
+        return f"-infinity({arg}.dtype)"
+    elif value in ["0", "+0"]:
+        return f"zero({arg}.dtype)"
+    elif value == "-0":
+        return f"-zero({arg}.dtype)"
+    elif value in ["1", "+1"]:
+        return f"one({arg}.dtype)"
+    elif value == "-1":
+        return f"-one({arg}.dtype)"
+    elif 'π' in value:
+        return value.replace('π', f'π({arg}.dtype)')
+    elif 'x1_i' in value:
+        return value
+    elif value in ['finite', 'nonzero', 'a nonzero finite number']:
+        return value
+    else:
+        raise RuntimeError(f"Unexpected input value {value!r}")
+
+def get_mask(typ, arg, value):
+    if typ.startswith("not_"):
+        return f"logical_not({get_mask(typ[4:], arg, value)})"
+    if typ.startswith("abs_"):
+        return get_mask(typ[4:], f"abs({arg})", value)
+    if value == 'finite':
+        if not typ == 'exactly_equal':
+            raise RuntimeError(f"Unexpected mask type {typ}: {value}")
+        return f"isfinite({arg})"
+    elif value == 'nonzero':
+        if not typ == 'exactly_equal':
+            raise RuntimeError(f"Unexpected mask type {typ}: {value}")
+        return f"nonzero({arg})"
+    elif value == 'a nonzero finite number':
+        if not typ == 'exactly_equal':
+            raise RuntimeError(f"Unexpected mask type {typ}: {value}")
+        return f"logical_and(isfinite({arg}), nonzero({arg}))"
+    elif 'x1_i' in value:
+        return f"{typ}({arg}, {value.replace('x1_i', 'arg1')}"
+    return f"{typ}({arg}, {value})"
+
+def get_assert(typ, lhs, result):
+    return f"assert_{typ}({lhs}, {result})"
+
 ONE_ARG_TEMPLATE = """
 {decorator}
 def test_{func}_special_values_{test_name_extra}(arg1):
     {doc}
     mask = {mask}
-    assert_equal({func}(arg1)[mask], {result})
+    {assertion}
 """
 
 TWO_ARGS_TEMPLATE = """
@@ -181,121 +229,162 @@ TWO_ARGS_TEMPLATE = """
 def test_{func}_special_values_{test_name_extra}(arg1, arg2):
     {doc}
     mask = {mask}
-    assert_{assert_type}({func}(arg1, arg2)[mask], {result})
+    {assertion}
 """
 
 TWO_INTEGERS_EQUALLY_CLOSE = "# TODO: Implement TWO_INTEGERS_EQUALLY_CLOSE"
 REMAINING = "# TODO: Implement REMAINING"
 
-def parse_values(values, arg):
-    res = []
-    for value in values:
-        if value == 'NaN':
-            res.append(f"NaN({arg}.dtype)")
-        elif value == "+infinity":
-            res.append(f"infinity({arg}.dtype)")
-        elif value == "-infinity":
-            res.append(f"-infinity({arg}.dtype)")
-        elif value in ["0", "+0"]:
-            res.append(f"zero({arg}.dtype)")
-        elif value == "-0":
-            res.append(f"-zero({arg}.dtype)")
-        elif value in ["1", "+1"]:
-            res.append(f"one({arg}.dtype)")
-        elif value == "-1":
-            res.append(f"-one({arg}.dtype)")
-        elif 'π' in value:
-            res.append(value.replace('π', f'π({arg}.dtype)'))
-        else:
-            raise RuntimeError(f"Unexpected input value {value}")
-    return res
-
 def generate_special_value_test(func, typ, m, test_name_extra):
-    if typ.startswith("ONE_ARG"):
-        decorator = "@given(numeric_arrays)"
-        doc = f'''"""
+    doc = f'''"""
     Special value test for {func}(x):
 
         {m.group(0)}
 
     """
 '''
+    if typ.startswith("ONE_ARG"):
+        decorator = "@given(numeric_arrays)"
         if typ == "ONE_ARG_EQUAL":
-            value1, result = parse_values(m.groups(), 'arg1')
-            mask = f"equal(arg1, {value1})"
+            value1, result = [parse_value(i, 'arg1') for i in m.groups()]
+            mask = get_mask("exactly_equal", "arg1", value1)
         elif typ == "ONE_ARG_GREATER":
-            value1, result = parse_values(m.groups(), 'arg1')
-            mask = f"greater(arg1, {value1})"
+            value1, result = [parse_value(i, 'arg1') for i in m.groups()]
+            mask = get_mask("greater", "arg1", value1)
         elif typ == "ONE_ARG_LESS":
-            value1, result = parse_values(m.groups(), 'arg1')
-            mask = f"less(arg1, {value1})"
+            value1, result = [parse_value(i, 'arg1') for i in m.groups()]
+            mask = get_mask("less", "arg1", value1)
         elif typ == "ONE_ARG_EITHER":
-            value1, value2, result = parse_values(m.groups(), 'arg1')
-            mask = f"logical_or(equal(arg1, {value1}), equal(arg1, {value2}))"
+            value1, value2, result = [parse_value(i, 'arg1') for i in m.groups()]
+            mask1 = get_mask("exactly_equal", "arg1", value1)
+            mask2 = get_mask("exactly_equal", "arg1", value2)
+            mask = f"logical_or({mask1}, {mask2})"
         elif typ == "ONE_ARG_ALREADY_INTEGER_VALUED":
             return
         else:
             raise ValueError(f"Unrecognized special value type {typ}")
+        assertion = get_assert("exactly_equal", f"{func}(arg1)[mask]", result)
         return ONE_ARG_TEMPLATE.format(
             decorator=decorator,
             func=func,
             test_name_extra=test_name_extra,
             doc=doc,
             mask=mask,
-            result=result,
+            assertion=assertion,
         )
 
-    if typ == "TWO_ARGS_EQUAL__EQUAL":
-        pass
-    if typ == "TWO_ARGS_GREATER__EQUAL":
-        pass
-    if typ == "TWO_ARGS_GREATER_EQUAL__EQUAL":
-        pass
-    if typ == "TWO_ARGS_LESS__EQUAL":
-        pass
-    if typ == "TWO_ARGS_LESS_EQUAL__EQUAL":
-        pass
-    if typ == "TWO_ARGS_LESS_EQUAL__EQUAL_NOTEQUAL":
-        pass
-    if typ == "TWO_ARGS_EQUAL__GREATER":
-        pass
-    if typ == "TWO_ARGS_EQUAL__LESS":
-        pass
-    if typ == "TWO_ARGS_EQUAL__NOTEQUAL":
-        pass
-    if typ == "TWO_ARGS_EQUAL__LESS_EQUAL":
-        pass
-    if typ == "TWO_ARGS_EQUAL__LESS_NOTEQUAL":
-        pass
-    if typ == "TWO_ARGS_EQUAL__GREATER_EQUAL":
-        pass
-    if typ == "TWO_ARGS_EQUAL__GREATER_NOTEQUAL":
-        pass
-    if typ == "TWO_ARGS_NOTEQUAL__EQUAL":
-        pass
-    if typ == "TWO_ARGS_ABS_EQUAL__EQUAL":
-        pass
-    if typ == "TWO_ARGS_ABS_GREATER__EQUAL":
-        pass
-    if typ == "TWO_ARGS_ABS_LESS__EQUAL":
-        pass
-    if typ == "TWO_ARGS_EITHER":
-        pass
-    if typ == "TWO_ARGS_EITHER__EQUAL":
-        pass
-    if typ == "TWO_ARGS_EQUAL__EITHER":
-        pass
-    if typ == "TWO_ARGS_EITHER__EITHER":
-        pass
-    if typ == "TWO_ARGS_SAME_SIGN":
-        pass
-    if typ == "TWO_ARGS_DIFFERENT_SIGNS":
-        pass
-    if typ == "TWO_ARGS_EVEN_IF":
-        pass
+    if typ.startswith("TWO_ARGS"):
+        decorator = "@given(numeric_arrays, numeric_arrays)"
+        if typ in [
+                "TWO_ARGS_EQUAL__EQUAL",
+                "TWO_ARGS_GREATER__EQUAL",
+                "TWO_ARGS_LESS__EQUAL",
+                "TWO_ARGS_EQUAL__GREATER",
+                "TWO_ARGS_EQUAL__LESS",
+                "TWO_ARGS_EQUAL__NOTEQUAL",
+                "TWO_ARGS_NOTEQUAL__EQUAL",
+                "TWO_ARGS_ABS_EQUAL__EQUAL",
+                "TWO_ARGS_ABS_GREATER__EQUAL",
+                "TWO_ARGS_ABS_LESS__EQUAL",
+        ]:
+            value1, value2, result = m.groups()
+            value1 = parse_value(value1, 'arg1')
+            value2 = parse_value(value2, 'arg2')
+            result = parse_value(result, 'arg1')
 
-    if typ == "TWO_INTEGERS_EQUALLY_CLOSE":
-        pass
+            if typ == "TWO_ARGS_EQUAL__EQUAL":
+                mask1 = get_mask("exactly_equal", "arg1", value1)
+                mask2 = get_mask("exactly_equal", "arg2", value2)
+            elif typ == "TWO_ARGS_GREATER__EQUAL":
+                mask1 = get_mask("greater", "arg1", value1)
+                mask2 = get_mask("exactly_equal", "arg2", value2)
+            elif typ == "TWO_ARGS_LESS__EQUAL":
+                mask1 = get_mask("less", "arg1", value1)
+                mask2 = get_mask("exactly_equal", "arg2", value2)
+            elif typ == "TWO_ARGS_EQUAL__GREATER":
+                mask1 = get_mask("exactly_equal", "arg1", value1)
+                mask2 = get_mask("greater", "arg2", value2)
+            elif typ == "TWO_ARGS_EQUAL__LESS":
+                mask1 = get_mask("exactly_equal", "arg1", value1)
+                mask2 = get_mask("less", "arg2", value2)
+            elif typ == "TWO_ARGS_EQUAL__NOTEQUAL":
+                mask1 = get_mask("exactly_equal", "arg1", value1)
+                mask2 = get_mask("not_exactly_equal", "arg2", value2)
+            elif typ == "TWO_ARGS_NOTEQUAL__EQUAL":
+                mask1 = get_mask("not_exactly_equal", "arg1", value1)
+                mask2 = get_mask("exactly_equal", "arg2", value2)
+            elif typ == "TWO_ARGS_ABS_EQUAL__EQUAL":
+                mask1 = get_mask("abs_equal", "arg1", value1)
+                mask2 = get_mask("exactly_equal", "arg2", value2)
+            elif typ == "TWO_ARGS_ABS_GREATER__EQUAL":
+                mask1 = get_mask("abs_greater", "arg1", value1)
+                mask2 = get_mask("exactly_equal", "arg2", value2)
+            elif typ == "TWO_ARGS_ABS_LESS__EQUAL":
+                mask1 = get_mask("abs_less", "arg1", value1)
+                mask2 = get_mask("exactly_equal", "arg2", value2)
+            else:
+                raise RuntimeError(f"Unexpected type {typ}")
+
+            mask = f"logical_and({mask1}, {mask2})"
+            assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
+
+
+        elif typ == "TWO_ARGS_GREATER_EQUAL__EQUAL":
+            return
+        elif typ == "TWO_ARGS_LESS_EQUAL__EQUAL":
+            return
+        elif typ == "TWO_ARGS_LESS_EQUAL__EQUAL_NOTEQUAL":
+            return
+        elif typ == "TWO_ARGS_EQUAL__GREATER":
+            return
+        elif typ == "TWO_ARGS_EQUAL__LESS":
+            return
+        elif typ == "TWO_ARGS_EQUAL__NOTEQUAL":
+            return
+        elif typ == "TWO_ARGS_EQUAL__LESS_EQUAL":
+            return
+        elif typ == "TWO_ARGS_EQUAL__LESS_NOTEQUAL":
+            return
+        elif typ == "TWO_ARGS_EQUAL__GREATER_EQUAL":
+            return
+        elif typ == "TWO_ARGS_EQUAL__GREATER_NOTEQUAL":
+            return
+        elif typ == "TWO_ARGS_NOTEQUAL__EQUAL":
+            return
+        elif typ == "TWO_ARGS_ABS_EQUAL__EQUAL":
+            return
+        elif typ == "TWO_ARGS_ABS_GREATER__EQUAL":
+            return
+        elif typ == "TWO_ARGS_ABS_LESS__EQUAL":
+            return
+        elif typ == "TWO_ARGS_EITHER":
+            return
+        elif typ == "TWO_ARGS_EITHER__EQUAL":
+            return
+        elif typ == "TWO_ARGS_EQUAL__EITHER":
+            return
+        elif typ == "TWO_ARGS_EITHER__EITHER":
+            return
+        elif typ == "TWO_ARGS_SAME_SIGN":
+            return
+        elif typ == "TWO_ARGS_DIFFERENT_SIGNS":
+            return
+        elif typ == "TWO_ARGS_EVEN_IF":
+            return
+
+        elif typ == "TWO_INTEGERS_EQUALLY_CLOSE":
+            return
+        else:
+            raise ValueError(f"Unrecognized special value type {typ}")
+        return TWO_ARGS_TEMPLATE.format(
+            decorator=decorator,
+            func=func,
+            test_name_extra=test_name_extra,
+            doc=doc,
+            mask=mask,
+            assertion=assertion,
+        )
+
     if typ == "REMAINING":
         pass
 
