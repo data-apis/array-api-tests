@@ -63,7 +63,15 @@ def main():
         with open(os.path.join(spec_dir, filename)) as f:
                   text = f.read()
         if filename == 'elementwise_functions.md':
-            special_values = parse_special_values(text)
+            special_values = parse_special_values(text, verbose=True)
+            for func in special_values:
+                for typ in special_values[func]:
+                    multiple = len(special_values[func][typ]) > 1
+                    for i, m in enumerate(special_values[func][typ], 1):
+                        test_name_extra = typ.lower()
+                        if multiple:
+                            test_name_extra += f"_{i}"
+                        print(generate_special_value_test(func, typ, m, test_name_extra))
 
         signatures = SIGNATURE_RE.findall(text)
         constants = CONSTANT_RE.findall(text)
@@ -154,7 +162,139 @@ SPECIAL_VALUE_REGEXS = dict(
     REMAINING = regex.compile(r"^- +In the remaining cases, (.*)$"),
 )
 
-def parse_special_values(spec_text):
+
+ONE_ARG_TEMPLATE = """
+{decorator}
+def test_{func}_special_values_{test_name_extra}(arg1):
+    {doc}
+    mask = {mask}
+    assert_equal({func}(arg1)[mask], {result})
+"""
+
+TWO_ARGS_TEMPLATE = """
+{decorator}
+def test_{func}_special_values_{test_name_extra}(arg1, arg2):
+    {doc}
+    mask = {mask}
+    assert_{assert_type}({func}(arg1, arg2)[mask], {result})
+"""
+
+TWO_INTEGERS_EQUALLY_CLOSE = "# TODO: Implement TWO_INTEGERS_EQUALLY_CLOSE"
+REMAINING = "# TODO: Implement REMAINING"
+
+def parse_values(values, arg):
+    res = []
+    for value in values:
+        if value == 'NaN':
+            res.append(f"NaN({arg}.dtype)")
+        elif value == "+infinity":
+            res.append(f"infinity({arg}.dtype)")
+        elif value == "-infinity":
+            res.append(f"-infinity({arg}.dtype)")
+        elif value in ["0", "+0"]:
+            res.append(f"zero({arg}.dtype)")
+        elif value == "-0":
+            res.append(f"-zero({arg}.dtype)")
+        elif value in ["1", "+1"]:
+            res.append(f"one({arg}.dtype)")
+        elif value == "-1":
+            res.append(f"-one({arg}.dtype)")
+        elif 'π' in value:
+            res.append(value.replace('π', f'π({arg}.dtype)'))
+        else:
+            raise RuntimeError(f"Unexpected input value {value}")
+    return res
+
+def generate_special_value_test(func, typ, m, test_name_extra):
+    if typ.startswith("ONE_ARG"):
+        decorator = "@given(numeric_arrays)"
+        doc = f'''"""
+    Special value test for {func}(x):
+
+        {m.group(0)}
+
+    """
+'''
+        if typ == "ONE_ARG_EQUAL":
+            value1, result = parse_values(m.groups(), 'arg1')
+            mask = f"equal(arg1, {value1})"
+        elif typ == "ONE_ARG_GREATER":
+            value1, result = parse_values(m.groups(), 'arg1')
+            mask = f"greater(arg1, {value1})"
+        elif typ == "ONE_ARG_LESS":
+            value1, result = parse_values(m.groups(), 'arg1')
+            mask = f"less(arg1, {value1})"
+        elif typ == "ONE_ARG_EITHER":
+            value1, value2, result = parse_values(m.groups(), 'arg1')
+            mask = f"logical_or(equal(arg1, {value1}), equal(arg1, {value2}))"
+        elif typ == "ONE_ARG_ALREADY_INTEGER_VALUED":
+            return
+        else:
+            raise ValueError(f"Unrecognized special value type {typ}")
+        return ONE_ARG_TEMPLATE.format(
+            decorator=decorator,
+            func=func,
+            test_name_extra=test_name_extra,
+            doc=doc,
+            mask=mask,
+            result=result,
+        )
+
+    if typ == "TWO_ARGS_EQUAL__EQUAL":
+        pass
+    if typ == "TWO_ARGS_GREATER__EQUAL":
+        pass
+    if typ == "TWO_ARGS_GREATER_EQUAL__EQUAL":
+        pass
+    if typ == "TWO_ARGS_LESS__EQUAL":
+        pass
+    if typ == "TWO_ARGS_LESS_EQUAL__EQUAL":
+        pass
+    if typ == "TWO_ARGS_LESS_EQUAL__EQUAL_NOTEQUAL":
+        pass
+    if typ == "TWO_ARGS_EQUAL__GREATER":
+        pass
+    if typ == "TWO_ARGS_EQUAL__LESS":
+        pass
+    if typ == "TWO_ARGS_EQUAL__NOTEQUAL":
+        pass
+    if typ == "TWO_ARGS_EQUAL__LESS_EQUAL":
+        pass
+    if typ == "TWO_ARGS_EQUAL__LESS_NOTEQUAL":
+        pass
+    if typ == "TWO_ARGS_EQUAL__GREATER_EQUAL":
+        pass
+    if typ == "TWO_ARGS_EQUAL__GREATER_NOTEQUAL":
+        pass
+    if typ == "TWO_ARGS_NOTEQUAL__EQUAL":
+        pass
+    if typ == "TWO_ARGS_ABS_EQUAL__EQUAL":
+        pass
+    if typ == "TWO_ARGS_ABS_GREATER__EQUAL":
+        pass
+    if typ == "TWO_ARGS_ABS_LESS__EQUAL":
+        pass
+    if typ == "TWO_ARGS_EITHER":
+        pass
+    if typ == "TWO_ARGS_EITHER__EQUAL":
+        pass
+    if typ == "TWO_ARGS_EQUAL__EITHER":
+        pass
+    if typ == "TWO_ARGS_EITHER__EITHER":
+        pass
+    if typ == "TWO_ARGS_SAME_SIGN":
+        pass
+    if typ == "TWO_ARGS_DIFFERENT_SIGNS":
+        pass
+    if typ == "TWO_ARGS_EVEN_IF":
+        pass
+
+    if typ == "TWO_INTEGERS_EQUALLY_CLOSE":
+        pass
+    if typ == "REMAINING":
+        pass
+
+def parse_special_values(spec_text, verbose=False):
     special_values = {}
     in_block = False
     for line in spec_text.splitlines():
@@ -175,6 +315,8 @@ def parse_special_values(spec_text):
             for typ, reg in SPECIAL_VALUE_REGEXS.items():
                 m = reg.match(line)
                 if m:
+                    if verbose:
+                        print(f"Matched {typ} for {name}: {m.groups()}")
                     special_values[name][typ].append(m)
                     break
             else:
