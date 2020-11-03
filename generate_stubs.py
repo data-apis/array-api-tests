@@ -71,7 +71,12 @@ def main():
                         test_name_extra = typ.lower()
                         if multiple:
                             test_name_extra += f"_{i}"
-                        print(generate_special_value_test(func, typ, m, test_name_extra))
+                        try:
+                            print(generate_special_value_test(func, typ, m,
+                                                              test_name_extra))
+                        except:
+                            print(f"Error with {func}() {typ}: {m.group(0)}:\n")
+                            raise
 
         signatures = SIGNATURE_RE.findall(text)
         constants = CONSTANT_RE.findall(text)
