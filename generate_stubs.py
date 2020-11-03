@@ -114,9 +114,12 @@ def {sig.replace(', /', '')}:
                 f.write(', '.join(f"'{i}'" for i in modules[module_name]))
                 f.write(']\n')
 
+# (?|...) is a branch reset (regex module only feature). It works like (?:...)
+# except only the matched alternative is assigned group numbers, so \1, \2, and
+# so on will always refer to a single match from _value.
 _value = r"(?|`([^`]*)`|(finite)|(positive)|(negative)|(nonzero)|(a nonzero finite number)|(an integer value)|(an odd integer value)|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?|a (signed (?:infinity|zero)) with the sign determined by the rule already stated above)"
 SPECIAL_VALUE_REGEXS = dict(
-    ONE_ARG_EQUAL = regex.compile(rf'^- +If `x_i` is ?{_value}, the result is {_value}\.$'),
+    ONE_ARG_EQUAL = regex.compile(rf'^- +If `x_i` is {_value}, the result is {_value}\.$'),
     ONE_ARG_GREATER = regex.compile(rf'^- +If `x_i` is greater than {_value}, the result is {_value}\.$'),
     ONE_ARG_LESS = regex.compile(rf'^- +If `x_i` is less than {_value}, the result is {_value}\.$'),
     ONE_ARG_ALREADY_INTEGER_VALUED = regex.compile(rf'^- +If `x_i` is already integer-valued, the result is {_value}\.$'),
@@ -145,7 +148,7 @@ SPECIAL_VALUE_REGEXS = dict(
     TWO_ARGS_EITHER__EITHER = regex.compile(rf'^- +If `x1_i` is either {_value} or {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
     TWO_ARGS_SAME_SIGN = regex.compile(rf'^- +If both `x1_i` and `x2_i` have the same sign, the result is {_value}\.$'),
     TWO_ARGS_DIFFERENT_SIGNS = regex.compile(rf'^- +If `x1_i` and `x2_i` have different signs, the result is {_value}\.$'),
-    TWO_ARGS_EVEN_IF_2 = regex.compile(rf'^- +If `x2_i` is {_value}, the result is {_value}, even if `x1_i` is {_value}\.$'),
+    TWO_ARGS_EVEN_IF = regex.compile(rf'^- +If `x2_i` is {_value}, the result is {_value}, even if `x1_i` is {_value}\.$'),
 
     TWO_INTEGERS_EQUALLY_CLOSE = regex.compile(rf'^- +If two integers are equally close to `x_i`, the result is whichever integer is farthest from {_value}\.$'),
     REMAINING = regex.compile(r"^- +In the remaining cases, (.*)$"),
