@@ -85,7 +85,7 @@ def isposzero(x):
 
 def exactly_equal(x, y):
     """
-    Same as equal(x, y) except it gives true where both values are nan, and
+    Same as equal(x, y) except it gives True where both values are nan, and
     distinguishes +0 and -0.
 
     This function implicitly assumes x and y have the same shape and dtype.
@@ -111,6 +111,10 @@ def exactly_equal(x, y):
 def assert_equal(x, y):
     """
     Test that the arrays x and y are equal.
+
+    If x and y do not have the same shape and dtype, they are not considered
+    equal.
+
     """
     assert x.shape == y.shape, "The input arrays do not have the same shapes"
 
