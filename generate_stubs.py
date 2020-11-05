@@ -296,121 +296,36 @@ def generate_special_value_test(func, typ, m, test_name_extra):
                 "TWO_ARGS_ABSEQUAL__EQUAL",
                 "TWO_ARGS_ABSGREATER__EQUAL",
                 "TWO_ARGS_ABSLESS__EQUAL",
+                "TWO_ARGS_GREATER_EQUAL__EQUAL",
+                "TWO_ARGS_LESS_EQUAL__EQUAL",
+                "TWO_ARGS_EQUAL__LESS_EQUAL",
+                "TWO_ARGS_EQUAL__LESS_NOTEQUAL",
+                "TWO_ARGS_EQUAL__GREATER_EQUAL",
+                "TWO_ARGS_EQUAL__GREATER_NOTEQUAL",
+                "TWO_ARGS_LESS_EQUAL__EQUAL_NOTEQUAL",
         ]:
-            value1, value2, result = m.groups()
-            value1 = parse_value(value1, 'arg1')
-            value2 = parse_value(value2, 'arg2')
+            arg1typs, arg2typs = [i.split('_') for i in typ[len("TWO_ARGS_"):].split("__")]
+            *values, result = m.groups()
+            if len(values) != len(arg1typs) + len(arg2typs):
+                raise RuntimeError(f"Unexpected number of parsed values for {typ}: len({values}) != len({arg1typs}) + len({arg2typs})")
+            arg1values, arg2values = values[:len(arg1typs)], values[len(arg1typs):]
+            arg1values = [parse_value(value, 'arg1') for value in arg1values]
+            arg2values = [parse_value(value, 'arg2') for value in arg2values]
             result = parse_value(result, 'arg1')
 
-            if typ == "TWO_ARGS_EQUAL__EQUAL":
-                mask1 = get_mask("exactly_equal", "arg1", value1)
-                mask2 = get_mask("exactly_equal", "arg2", value2)
-            elif typ == "TWO_ARGS_GREATER__EQUAL":
-                mask1 = get_mask("greater", "arg1", value1)
-                mask2 = get_mask("exactly_equal", "arg2", value2)
-            elif typ == "TWO_ARGS_LESS__EQUAL":
-                mask1 = get_mask("less", "arg1", value1)
-                mask2 = get_mask("exactly_equal", "arg2", value2)
-            elif typ == "TWO_ARGS_EQUAL__GREATER":
-                mask1 = get_mask("exactly_equal", "arg1", value1)
-                mask2 = get_mask("greater", "arg2", value2)
-            elif typ == "TWO_ARGS_EQUAL__LESS":
-                mask1 = get_mask("exactly_equal", "arg1", value1)
-                mask2 = get_mask("less", "arg2", value2)
-            elif typ == "TWO_ARGS_EQUAL__NOTEQUAL":
-                mask1 = get_mask("exactly_equal", "arg1", value1)
-                mask2 = get_mask("not_exactly_equal", "arg2", value2)
-            elif typ == "TWO_ARGS_NOTEQUAL__EQUAL":
-                mask1 = get_mask("not_exactly_equal", "arg1", value1)
-                mask2 = get_mask("exactly_equal", "arg2", value2)
-            elif typ == "TWO_ARGS_ABSEQUAL__EQUAL":
-                mask1 = get_mask("absexactly_equal", "arg1", value1)
-                mask2 = get_mask("exactly_equal", "arg2", value2)
-            elif typ == "TWO_ARGS_ABSGREATER__EQUAL":
-                mask1 = get_mask("absgreater", "arg1", value1)
-                mask2 = get_mask("exactly_equal", "arg2", value2)
-            elif typ == "TWO_ARGS_ABSLESS__EQUAL":
-                mask1 = get_mask("absless", "arg1", value1)
-                mask2 = get_mask("exactly_equal", "arg2", value2)
+            tomask = lambda t: t.lower().replace("not", "not_").replace("equal", "exactly_equal")
+            value1masks = [get_mask(tomask(t), 'arg1', v) for t, v in
+                           zip(arg1typs, arg1values)]
+            value2masks = [get_mask(tomask(t), 'arg2', v) for t, v in
+                           zip(arg2typs, arg2values)]
+            if len(value1masks) > 1:
+                mask1 = f"logical_and({value1masks[0]}, {value1masks[1]})"
             else:
-                raise RuntimeError(f"Unexpected type {typ}")
-
-            mask = f"logical_and({mask1}, {mask2})"
-            assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
-
-        elif typ in ["TWO_ARGS_GREATER_EQUAL__EQUAL",
-                     "TWO_ARGS_LESS_EQUAL__EQUAL",
-                     ]:
-            value1, value2, value3, result = m.groups()
-            value1 = parse_value(value1, 'arg1')
-            value2 = parse_value(value2, 'arg1')
-            value3 = parse_value(value3, 'arg2')
-            result = parse_value(result, 'arg1')
-
-            if typ == "TWO_ARGS_GREATER_EQUAL__EQUAL":
-                mask1_1 = get_mask("greater", "arg1", value1)
-                mask1_2 = get_mask("exactly_equal", "arg1", value2)
-                mask1 = f"logical_and({mask1_1}, {mask1_2})"
-                mask2 = get_mask("exactly_equal", "arg2", value3)
-            elif typ == "TWO_ARGS_LESS_EQUAL__EQUAL":
-                mask1_1 = get_mask("less", "arg1", value1)
-                mask1_2 = get_mask("exactly_equal", "arg1", value2)
-                mask1 = f"logical_and({mask1_1}, {mask1_2})"
-                mask2 = get_mask("exactly_equal", "arg2", value3)
-
-            mask = f"logical_and({mask1}, {mask2})"
-            assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
-
-        elif typ in ["TWO_ARGS_EQUAL__LESS_EQUAL",
-                     "TWO_ARGS_EQUAL__LESS_NOTEQUAL",
-                     "TWO_ARGS_EQUAL__GREATER_EQUAL",
-                     "TWO_ARGS_EQUAL__GREATER_NOTEQUAL",
-                     ]:
-            value1, value2, value3, result = m.groups()
-            value1 = parse_value(value1, 'arg1')
-            value2 = parse_value(value2, 'arg2')
-            value3 = parse_value(value3, 'arg2')
-            result = parse_value(result, 'arg1')
-
-            if typ == "TWO_ARGS_EQUAL__LESS_EQUAL":
-                mask1 = get_mask("exactly_equal", "arg1", value1)
-                mask2_1 = get_mask("less", "arg2", value2)
-                mask2_2 = get_mask("exactly_equal", "arg2", value3)
-                mask2 = f"logical_and({mask2_1}, {mask2_2})"
-            elif typ == "TWO_ARGS_EQUAL__LESS_NOTEQUAL":
-                mask1 = get_mask("exactly_equal", "arg1", value1)
-                mask2_1 = get_mask("less", "arg2", value2)
-                mask2_2 = get_mask("not_exactly_equal", "arg2", value3)
-                mask2 = f"logical_and({mask2_1}, {mask2_2})"
-            elif typ == "TWO_ARGS_EQUAL__GREATER_EQUAL":
-                mask1 = get_mask("exactly_equal", "arg1", value1)
-                mask2_1 = get_mask("greater", "arg2", value2)
-                mask2_2 = get_mask("exactly_equal", "arg2", value3)
-                mask2 = f"logical_and({mask2_1}, {mask2_2})"
-            elif typ == "TWO_ARGS_EQUAL__GREATER_NOTEQUAL":
-                mask1 = get_mask("exactly_equal", "arg1", value1)
-                mask2_1 = get_mask("greater", "arg2", value2)
-                mask2_2 = get_mask("not_exactly_equal", "arg2", value3)
-                mask2 = f"logical_and({mask2_1}, {mask2_2})"
-
-            mask = f"logical_and({mask1}, {mask2})"
-            assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
-
-        elif typ == "TWO_ARGS_LESS_EQUAL__EQUAL_NOTEQUAL":
-            value1, value2, value3, value4, result = m.groups()
-            value1 = parse_value(value1, 'arg1')
-            value2 = parse_value(value2, 'arg1')
-            value3 = parse_value(value3, 'arg2')
-            value4 = parse_value(value4, 'arg2')
-            result = parse_value(result, 'arg1')
-
-            mask1_1 = get_mask("less", "arg1", value1)
-            mask1_2 = get_mask("exactly_equal", "arg1", value2)
-            mask2_1 = get_mask("exactly_equal", "arg2", value3)
-            mask2_2 = get_mask("not_exactly_equal", "arg2", value4)
-            mask1 = f"logical_and({mask1_1}, {mask1_2})"
-            mask2 = f"logical_and({mask2_1}, {mask2_2})"
-
+                mask1 = value1masks[0]
+            if len(value2masks) > 1:
+                mask2 = f"logical_and({value2masks[0]}, {value2masks[1]})"
+            else:
+                mask2 = value2masks[0]
             mask = f"logical_and({mask1}, {mask2})"
             assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
 
