@@ -198,7 +198,7 @@ def get_mask(typ, arg, value):
     if typ.startswith("not_"):
         return f"logical_not({get_mask(typ[4:], arg, value)})"
     if typ.startswith("abs"):
-        return get_mask(typ[4:], f"abs({arg})", value)
+        return get_mask(typ[len("abs"):], f"abs({arg})", value)
     if value == 'finite':
         if not typ == 'exactly_equal':
             raise RuntimeError(f"Unexpected mask type {typ}: {value}")
