@@ -324,7 +324,7 @@ def generate_special_value_test(func, typ, m, test_name_extra):
                 mask1 = get_mask("not_exactly_equal", "arg1", value1)
                 mask2 = get_mask("exactly_equal", "arg2", value2)
             elif typ == "TWO_ARGS_ABSEQUAL__EQUAL":
-                mask1 = get_mask("absequal", "arg1", value1)
+                mask1 = get_mask("absexactly_equal", "arg1", value1)
                 mask2 = get_mask("exactly_equal", "arg2", value2)
             elif typ == "TWO_ARGS_ABSGREATER__EQUAL":
                 mask1 = get_mask("absgreater", "arg1", value1)
@@ -374,7 +374,7 @@ def generate_special_value_test(func, typ, m, test_name_extra):
 
             if typ == "TWO_ARGS_EQUAL__LESS_EQUAL":
                 mask1 = get_mask("exactly_equal", "arg1", value1)
-                mask2_1 = get_mask("less", "arg1", value2)
+                mask2_1 = get_mask("less", "arg2", value2)
                 mask2_2 = get_mask("exactly_equal", "arg2", value3)
                 mask2 = f"logical_and({mask2_1}, {mask2_2})"
             elif typ == "TWO_ARGS_EQUAL__LESS_NOTEQUAL":
