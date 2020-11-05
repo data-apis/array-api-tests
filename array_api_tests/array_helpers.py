@@ -165,3 +165,6 @@ def assert_integral(x):
     Check that x has only integer values
     """
     assert all(isintegral(x)), "The input array has nonintegral values"
+
+def isodd(x):
+    return logical_and(isintegral(x), equal(remainder(x, 2*one(x.dtype)), one(x.dtype)))
