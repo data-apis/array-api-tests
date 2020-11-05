@@ -152,9 +152,9 @@ SPECIAL_VALUE_REGEXS = dict(
     TWO_ARGS_EQUAL__GREATER_EQUAL = regex.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is greater than {_value}, and `x2_i` is {_value}, the result is {_value}\.$'),
     TWO_ARGS_EQUAL__GREATER_NOTEQUAL = regex.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is greater than {_value}, and `x2_i` is not {_value}, the result is {_value}\.$'),
     TWO_ARGS_NOTEQUAL__EQUAL = regex.compile(rf'^- +If `x1_i` is not equal to {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_ABS_EQUAL__EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_ABS_GREATER__EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
-    TWO_ARGS_ABS_LESS__EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is less than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_ABSEQUAL__EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_ABSGREATER__EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_ABSLESS__EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is less than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
     TWO_ARGS_EITHER = regex.compile(rf'^- +If either `x1_i` or `x2_i` is {_value}, the result is {_value}\.$'),
     TWO_ARGS_EITHER__EQUAL = regex.compile(rf'^- +If `x1_i` is either {_value} or {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
     TWO_ARGS_EQUAL__EITHER = regex.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
@@ -197,7 +197,7 @@ def parse_value(value, arg):
 def get_mask(typ, arg, value):
     if typ.startswith("not_"):
         return f"logical_not({get_mask(typ[4:], arg, value)})"
-    if typ.startswith("abs_"):
+    if typ.startswith("abs"):
         return get_mask(typ[4:], f"abs({arg})", value)
     if value == 'finite':
         if not typ == 'exactly_equal':
@@ -293,9 +293,9 @@ def generate_special_value_test(func, typ, m, test_name_extra):
                 "TWO_ARGS_EQUAL__LESS",
                 "TWO_ARGS_EQUAL__NOTEQUAL",
                 "TWO_ARGS_NOTEQUAL__EQUAL",
-                "TWO_ARGS_ABS_EQUAL__EQUAL",
-                "TWO_ARGS_ABS_GREATER__EQUAL",
-                "TWO_ARGS_ABS_LESS__EQUAL",
+                "TWO_ARGS_ABSEQUAL__EQUAL",
+                "TWO_ARGS_ABSGREATER__EQUAL",
+                "TWO_ARGS_ABSLESS__EQUAL",
         ]:
             value1, value2, result = m.groups()
             value1 = parse_value(value1, 'arg1')
@@ -323,14 +323,14 @@ def generate_special_value_test(func, typ, m, test_name_extra):
             elif typ == "TWO_ARGS_NOTEQUAL__EQUAL":
                 mask1 = get_mask("not_exactly_equal", "arg1", value1)
                 mask2 = get_mask("exactly_equal", "arg2", value2)
-            elif typ == "TWO_ARGS_ABS_EQUAL__EQUAL":
-                mask1 = get_mask("abs_equal", "arg1", value1)
+            elif typ == "TWO_ARGS_ABSEQUAL__EQUAL":
+                mask1 = get_mask("absequal", "arg1", value1)
                 mask2 = get_mask("exactly_equal", "arg2", value2)
-            elif typ == "TWO_ARGS_ABS_GREATER__EQUAL":
-                mask1 = get_mask("abs_greater", "arg1", value1)
+            elif typ == "TWO_ARGS_ABSGREATER__EQUAL":
+                mask1 = get_mask("absgreater", "arg1", value1)
                 mask2 = get_mask("exactly_equal", "arg2", value2)
-            elif typ == "TWO_ARGS_ABS_LESS__EQUAL":
-                mask1 = get_mask("abs_less", "arg1", value1)
+            elif typ == "TWO_ARGS_ABSLESS__EQUAL":
+                mask1 = get_mask("absless", "arg1", value1)
                 mask2 = get_mask("exactly_equal", "arg2", value2)
             else:
                 raise RuntimeError(f"Unexpected type {typ}")
