@@ -184,6 +184,7 @@ def parse_value(value, arg):
     elif value == "-1":
         return f"-one({arg}.dtype)"
     elif 'π' in value:
+        value = regex.sub(r'(\d+)π', r'\1*π', value)
         return value.replace('π', f'π({arg}.dtype)')
     elif 'x1_i' in value:
         return value
