@@ -230,6 +230,12 @@ def get_mask(typ, arg, value):
     return f"{typ}({arg}, {value})"
 
 def get_assert(typ, lhs, result):
+    if result == "signed infinity":
+        if not typ == 'exactly_equal':
+            raise RuntimeError(f"Unexpected mask type {typ}: {result}")
+        return f"assert_isinf({lhs})"
+    # TODO: Get use something better than arg1 here for the arg
+    result = parse_value(result, "arg1")
     return f"assert_{typ}({lhs}, {result})"
 
 ONE_ARG_TEMPLATE = """
@@ -262,16 +268,21 @@ def generate_special_value_test(func, typ, m, test_name_extra):
     if typ.startswith("ONE_ARG"):
         decorator = "@given(numeric_arrays)"
         if typ == "ONE_ARG_EQUAL":
-            value1, result = [parse_value(i, 'arg1') for i in m.groups()]
+            value1, result = m.groups()
+            value1 = parse_value(value1, 'arg1')
             mask = get_mask("exactly_equal", "arg1", value1)
         elif typ == "ONE_ARG_GREATER":
-            value1, result = [parse_value(i, 'arg1') for i in m.groups()]
+            value1, result = m.groups()
+            value1 = parse_value(value1, 'arg1')
             mask = get_mask("greater", "arg1", value1)
         elif typ == "ONE_ARG_LESS":
-            value1, result = [parse_value(i, 'arg1') for i in m.groups()]
+            value1, result = m.groups()
+            value1 = parse_value(value1, 'arg1')
             mask = get_mask("less", "arg1", value1)
         elif typ == "ONE_ARG_EITHER":
-            value1, value2, result = [parse_value(i, 'arg1') for i in m.groups()]
+            value1, value2, result = m.groups()
+            value1 = parse_value(value1, 'arg1')
+            value2 = parse_value(value2, 'arg1')
             mask1 = get_mask("exactly_equal", "arg1", value1)
             mask2 = get_mask("exactly_equal", "arg1", value2)
             mask = f"logical_or({mask1}, {mask2})"
@@ -324,7 +335,6 @@ def generate_special_value_test(func, typ, m, test_name_extra):
             arg1values, arg2values = values[:len(arg1typs)], values[len(arg1typs):]
             arg1values = [parse_value(value, 'arg1') for value in arg1values]
             arg2values = [parse_value(value, 'arg2') for value in arg2values]
-            result = parse_value(result, 'arg1')
 
             tomask = lambda t: t.lower().replace("either_equal", "equal").replace("equal", "exactly_equal")
             value1masks = [get_mask(tomask(t), 'arg1', v) for t, v in
