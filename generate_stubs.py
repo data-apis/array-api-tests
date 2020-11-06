@@ -371,8 +371,10 @@ def generate_special_value_test(func, typ, m, test_name_extra):
         elif typ == "TWO_ARGS_DIFFERENT_SIGNS":
             return
         elif typ == "TWO_ARGS_EVEN_IF":
-            return
-
+            value1, result, value2 = m.groups()
+            value1 = parse_value(value1, "arg1")
+            mask = get_mask("exactly_equal", "arg1", value1)
+            assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
         else:
             raise ValueError(f"Unrecognized special value type {typ}")
         return TWO_ARGS_TEMPLATE.format(
