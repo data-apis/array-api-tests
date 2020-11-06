@@ -2,7 +2,7 @@ from ._array_module import (isnan, all, equal, not_equal, logical_and,
                             logical_or, isfinite, greater, less, zeros, ones,
                             full, bool, int8, int16, int32, int64, uint8,
                             uint16, uint32, uint64, float32, float64, nan,
-                            inf, pi, remainder, divide)
+                            inf, pi, remainder, divide, isinf)
 
 def zero(dtype):
     """
@@ -168,3 +168,9 @@ def assert_integral(x):
 
 def isodd(x):
     return logical_and(isintegral(x), equal(remainder(x, 2*one(x.dtype)), one(x.dtype)))
+
+def assert_isinf(x):
+    """
+    Check that x is an infinity
+    """
+    assert all(isinf(x))
