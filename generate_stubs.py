@@ -183,10 +183,14 @@ def parse_value(value, arg):
         return f"one({arg}.dtype)"
     elif value == "-1":
         return f"-one({arg}.dtype)"
+    # elif value == 'signed infinity':
+
+    elif value == 'signed zero':
+        return f"zero({arg}.dtype))"
     elif 'π' in value:
         value = regex.sub(r'(\d+)π', r'\1*π', value)
         return value.replace('π', f'π({arg}.dtype)')
-    elif 'x1_i' in value:
+    elif 'x1_i' in value or 'x2_i' in value:
         return value
     elif value in ['finite', 'nonzero', 'a nonzero finite number',
                    "an integer value", "an odd integer value"]:
@@ -195,8 +199,8 @@ def parse_value(value, arg):
         raise RuntimeError(f"Unexpected input value {value!r}")
 
 def get_mask(typ, arg, value):
-    if typ.startswith("not_"):
-        return f"logical_not({get_mask(typ[4:], arg, value)})"
+    if typ.startswith("not"):
+        return f"logical_not({get_mask(typ[len('not'):], arg, value)})"
     if typ.startswith("abs"):
         return get_mask(typ[len("abs"):], f"abs({arg})", value)
     if value == 'finite':
@@ -221,6 +225,8 @@ def get_mask(typ, arg, value):
         return f"isodd({arg})"
     elif 'x1_i' in value:
         return f"{typ}({arg}, {value.replace('x1_i', 'arg1')}"
+    elif 'x2_i' in value:
+        return f"{typ}({arg}, {value.replace('x2_i', 'arg2')}"
     return f"{typ}({arg}, {value})"
 
 def get_assert(typ, lhs, result):
@@ -303,8 +309,15 @@ def generate_special_value_test(func, typ, m, test_name_extra):
                 "TWO_ARGS_EQUAL__GREATER_EQUAL",
                 "TWO_ARGS_EQUAL__GREATER_NOTEQUAL",
                 "TWO_ARGS_LESS_EQUAL__EQUAL_NOTEQUAL",
+                "TWO_ARGS_EITHER__EQUAL",
+                "TWO_ARGS_EQUAL__EITHER",
+                "TWO_ARGS_EITHER__EITHER",
         ]:
             arg1typs, arg2typs = [i.split('_') for i in typ[len("TWO_ARGS_"):].split("__")]
+            if arg1typs == ["EITHER"]:
+                arg1typs = ["EITHER_EQUAL", "EITHER_EQUAL"]
+            if arg2typs == ["EITHER"]:
+                arg2typs = ["EITHER_EQUAL", "EITHER_EQUAL"]
             *values, result = m.groups()
             if len(values) != len(arg1typs) + len(arg2typs):
                 raise RuntimeError(f"Unexpected number of parsed values for {typ}: len({values}) != len({arg1typs}) + len({arg2typs})")
@@ -313,29 +326,29 @@ def generate_special_value_test(func, typ, m, test_name_extra):
             arg2values = [parse_value(value, 'arg2') for value in arg2values]
             result = parse_value(result, 'arg1')
 
-            tomask = lambda t: t.lower().replace("not", "not_").replace("equal", "exactly_equal")
+            tomask = lambda t: t.lower().replace("either_equal", "equal").replace("equal", "exactly_equal")
             value1masks = [get_mask(tomask(t), 'arg1', v) for t, v in
                            zip(arg1typs, arg1values)]
             value2masks = [get_mask(tomask(t), 'arg2', v) for t, v in
                            zip(arg2typs, arg2values)]
             if len(value1masks) > 1:
-                mask1 = f"logical_and({value1masks[0]}, {value1masks[1]})"
+                if arg1typs[0] == "EITHER_EQUAL":
+                    mask1 = f"logical_or({value1masks[0]}, {value1masks[1]})"
+                else:
+                    mask1 = f"logical_and({value1masks[0]}, {value1masks[1]})"
             else:
                 mask1 = value1masks[0]
             if len(value2masks) > 1:
-                mask2 = f"logical_and({value2masks[0]}, {value2masks[1]})"
+                if arg2typs[0] == "EITHER_EQUAL":
+                    mask2 = f"logical_or({value2masks[0]}, {value2masks[1]})"
+                else:
+                    mask2 = f"logical_and({value2masks[0]}, {value2masks[1]})"
             else:
                 mask2 = value2masks[0]
             mask = f"logical_and({mask1}, {mask2})"
             assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
 
         elif typ == "TWO_ARGS_EITHER":
-            return
-        elif typ == "TWO_ARGS_EITHER__EQUAL":
-            return
-        elif typ == "TWO_ARGS_EQUAL__EITHER":
-            return
-        elif typ == "TWO_ARGS_EITHER__EITHER":
             return
         elif typ == "TWO_ARGS_SAME_SIGN":
             return
