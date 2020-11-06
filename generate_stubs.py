@@ -355,11 +355,17 @@ def generate_special_value_test(func, typ, m, test_name_extra):
                     mask2 = f"logical_and({value2masks[0]}, {value2masks[1]})"
             else:
                 mask2 = value2masks[0]
+
             mask = f"logical_and({mask1}, {mask2})"
             assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
 
         elif typ == "TWO_ARGS_EITHER":
-            return
+            value, result = m.groups()
+            value = parse_value(value, "arg1")
+            mask1 = get_mask("exactly_equal", "arg1", value)
+            mask2 = get_mask("exactly_equal", "arg2", value)
+            mask = f"logical_or({mask1}, {mask2})"
+            assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
         elif typ == "TWO_ARGS_SAME_SIGN":
             return
         elif typ == "TWO_ARGS_DIFFERENT_SIGNS":
