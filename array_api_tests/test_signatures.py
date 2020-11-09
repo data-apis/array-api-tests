@@ -27,6 +27,7 @@ def example_argument(arg):
     known_args = dict(
         M=1,
         N=1,
+        arrays=(ones((1, 1, 1)), ones((1, 1, 1))),
         # These cannot be the same as each other, which is why all our test
         # arrays have to have at least 3 dimensions.
         axis1=2,
@@ -35,6 +36,7 @@ def example_argument(arg):
         axes=(2, 1, 0),
         condition=ones((1, 1, 1), dtype=bool),
         correction=1.0,
+        descending=True,
         dtype=float64,
         endpoint=False,
         fill_value=1.0,
@@ -47,7 +49,9 @@ def example_argument(arg):
         return_index=True,
         return_inverse=True,
         shape=(1, 1, 1),
+        shift=1,
         sorted=False,
+        stable=False,
         start=0,
         step=2,
         stop=1,

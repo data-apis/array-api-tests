@@ -37,6 +37,10 @@ from .set_functions import unique
 
 __all__ += ['unique']
 
+from .sorting_functions import argsort, sort
+
+__all__ += ['argsort', 'sort']
+
 from .statistical_functions import max, mean, min, prod, std, sum, var
 
 __all__ += ['max', 'mean', 'min', 'prod', 'std', 'sum', 'var']
