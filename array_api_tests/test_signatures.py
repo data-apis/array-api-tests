@@ -7,9 +7,19 @@ from .pytest_helpers import raises, doesnt_raise
 
 from . import function_stubs
 
+
+def stub_module(name):
+    submodules = [m for m in dir(function_stubs) if
+                  inspect.ismodule(getattr(function_stubs, m))]
+    for m in submodules:
+        if name in getattr(function_stubs, m).__all__:
+            return m
+
+def array_method(name):
+    return stub_module(name) == 'array_object'
+
 def function_category(name):
-    func_stub = getattr(function_stubs, name)
-    return func_stub.__module__.split('_')[0]
+    return stub_module(name).split('_')[0]
 
 def example_argument(arg):
     """
@@ -42,6 +52,7 @@ def example_argument(arg):
         fill_value=1.0,
         k=1,
         keepdims=True,
+        key=0,
         num=2,
         offset=1,
         ord=1,
@@ -55,6 +66,7 @@ def example_argument(arg):
         start=0,
         step=2,
         stop=1,
+        value=0,
         x1=ones((1, 1, 1)),
         x2=ones((1, 1, 1)),
         x=ones((1, 1, 1)),
@@ -67,26 +79,40 @@ def example_argument(arg):
 
 @pytest.mark.parametrize('name', function_stubs.__all__)
 def test_has_names(name):
-    assert hasattr(mod, name), f"{mod_name} is missing the {function_category(name)} function {name}()"
+    if array_method(name):
+        arr = ones((1,))
+        assert hasattr(arr, name), f"The array object is missing the method {name}()"
+    else:
+        assert hasattr(mod, name), f"{mod_name} is missing the {function_category(name)} function {name}()"
 
 @pytest.mark.parametrize('name', function_stubs.__all__)
 def test_function_positional_args(name):
-    if not hasattr(mod, name):
+    if array_method(name):
+        _mod = ones((1,))
+    else:
+        _mod = mod
+
+    if not hasattr(_mod, name):
         pytest.skip(f"{mod_name} does not have {name}(), skipping.")
     stub_func = getattr(function_stubs, name)
     if stub_func is None:
         # TODO: Can we make this skip the parameterization entirely?
         pytest.skip(f"{name} is not a function, skipping.")
-    mod_func = getattr(mod, name)
+    mod_func = getattr(_mod, name)
     argspec = inspect.getfullargspec(stub_func)
     args = argspec.args
+    if name.startswith('__'):
+        args = args[1:]
     nargs = len(args)
     if argspec.defaults:
         raise RuntimeError(f"Unexpected non-keyword-only keyword argument for {name}. Please update test_signatures.py")
 
     args = [example_argument(name) for name in args]
-    # Duplicate the last positional argument for the n+1 test.
-    args = args + [args[-1]]
+    if not args:
+        args = [example_argument('x')]
+    else:
+        # Duplicate the last positional argument for the n+1 test.
+        args = args + [args[-1]]
 
     for n in range(nargs+2):
         if n == nargs:
@@ -97,15 +123,22 @@ def test_function_positional_args(name):
 
 @pytest.mark.parametrize('name', function_stubs.__all__)
 def test_function_keyword_only_args(name):
-    if not hasattr(mod, name):
+    if array_method(name):
+        _mod = ones((1,))
+    else:
+        _mod = mod
+
+    if not hasattr(_mod, name):
         pytest.skip(f"{mod_name} does not have {name}(), skipping.")
     stub_func = getattr(function_stubs, name)
     if stub_func is None:
         # TODO: Can we make this skip the parameterization entirely?
         pytest.skip(f"{name} is not a function, skipping.")
-    mod_func = getattr(mod, name)
+    mod_func = getattr(_mod, name)
     argspec = inspect.getfullargspec(stub_func)
     args = argspec.args
+    if name.startswith('__'):
+        args = args[1:]
     kwonlyargs = argspec.kwonlyargs
     kwonlydefaults = argspec.kwonlydefaults
 

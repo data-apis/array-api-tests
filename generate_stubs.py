@@ -96,6 +96,7 @@ def main():
         with open(py_path, 'w') as f:
             f.write(STUB_FILE_HEADER.format(filename=filename, title=title))
             for sig in signatures:
+                sig = sig.replace(r'\_', '_')
                 if not args.quiet:
                     print(f"Writing stub for {sig}")
                 f.write(f"""

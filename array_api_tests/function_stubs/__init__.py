@@ -9,6 +9,10 @@ not modify it directly.
 
 __all__ = []
 
+from .array_object import __abs__, __add__, __and__, __eq__, __floordiv__, __ge__, __getitem__, __gt__, __invert__, __le__, __len__, __lshift__, __lt__, __matmul__, __mod__, __mul__, __ne__, __neg__, __or__, __pos__, __pow__, __rshift__, __setitem__, __sub__, __truediv__, __xor__, dtype, ndim, shape, size, T
+
+__all__ += ['__abs__', '__add__', '__and__', '__eq__', '__floordiv__', '__ge__', '__getitem__', '__gt__', '__invert__', '__le__', '__len__', '__lshift__', '__lt__', '__matmul__', '__mod__', '__mul__', '__ne__', '__neg__', '__or__', '__pos__', '__pow__', '__rshift__', '__setitem__', '__sub__', '__truediv__', '__xor__', 'dtype', 'ndim', 'shape', 'size', 'T']
+
 from .constants import e, inf, nan, pi
 
 __all__ += ['e', 'inf', 'nan', 'pi']
