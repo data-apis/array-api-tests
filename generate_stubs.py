@@ -14,8 +14,10 @@ import os
 import regex
 from collections import defaultdict
 
-SIGNATURE_RE = regex.compile(r'#+ (?:<.*>) ?(.*\(.*\))')
-CONSTANT_RE = regex.compile(r'#+ (?:<.*>) ?([^\(\n]*)\n')
+FUNCTION_RE = regex.compile(r'\(function-.*\)=\n#+ ?(.*\(.*\))')
+METHOD_RE = regex.compile(r'\(method-.*\)=\n#+ ?(.*\(.*\))')
+CONSTANT_RE = regex.compile(r'\(constant-.*\)=\n#+ ?(.*)')
+ATTRIBUTE_RE = regex.compile(r'\(attribute-.*\)=\n#+ ?(.*)')
 NAME_RE = regex.compile(r'(.*)\(.*\)')
 
 STUB_FILE_HEADER = '''\
@@ -78,9 +80,11 @@ def main():
                             print(f"Error with {func}() {typ}: {m.group(0)}:\n")
                             raise
 
-        signatures = SIGNATURE_RE.findall(text)
+        functions = FUNCTION_RE.findall(text)
+        methods = METHOD_RE.findall(text)
         constants = CONSTANT_RE.findall(text)
-        if not (signatures or constants):
+        attributes = ATTRIBUTE_RE.findall(text)
+        if not (functions or methods or constants or attributes):
             continue
         if not args.quiet:
             print(f"Found signatures in {filename}")
@@ -95,7 +99,7 @@ def main():
             print(f"Writing {py_path}")
         with open(py_path, 'w') as f:
             f.write(STUB_FILE_HEADER.format(filename=filename, title=title))
-            for sig in signatures:
+            for sig in functions + methods:
                 sig = sig.replace(r'\_', '_')
                 if not args.quiet:
                     print(f"Writing stub for {sig}")
@@ -106,7 +110,7 @@ def {sig.replace(', /', '')}:
                 func_name = NAME_RE.match(sig).group(1)
                 modules[module_name].append(func_name)
 
-            for const in constants:
+            for const in constants + attributes:
                 if not args.quiet:
                     print(f"Writing stub for {const}")
                 f.write(f"\n{const} = None\n")
@@ -398,7 +402,7 @@ def parse_special_values(spec_text, verbose=False):
     special_values = {}
     in_block = False
     for line in spec_text.splitlines():
-        m = SIGNATURE_RE.match(line)
+        m = FUNCTION_RE.match(line)
         if m:
             name = NAME_RE.match(m.group(1)).group(1)
             special_values[name] = defaultdict(list)
