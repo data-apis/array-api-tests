@@ -100,19 +100,29 @@ def main():
         with open(py_path, 'w') as f:
             f.write(STUB_FILE_HEADER.format(filename=filename, title=title))
             for sig in functions + methods:
+                ismethod = sig in methods
                 sig = sig.replace(r'\_', '_')
+                func_name = NAME_RE.match(sig).group(1)
+                doc = ""
+                if ismethod:
+                    doc = f'''
+    """
+    Note: {func_name} is a method of the array object.
+    """'''
                 if not args.quiet:
                     print(f"Writing stub for {sig}")
                 f.write(f"""
-def {sig.replace(', /', '')}:
+def {sig.replace(', /', '')}:{doc}
     pass
 """)
-                func_name = NAME_RE.match(sig).group(1)
                 modules[module_name].append(func_name)
 
             for const in constants + attributes:
                 if not args.quiet:
                     print(f"Writing stub for {const}")
+                isattr = const in attributes
+                if isattr:
+                    f.write(f"\n# Note: {const} is an attribute of the array object.")
                 f.write(f"\n{const} = None\n")
                 modules[module_name].append(const)
 
