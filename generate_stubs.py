@@ -14,6 +14,7 @@ import os
 import regex
 from collections import defaultdict
 
+FUNCTION_HEADER_RE = regex.compile(r'\(function-(.*?)\)')
 FUNCTION_RE = regex.compile(r'\(function-.*\)=\n#+ ?(.*\(.*\))')
 METHOD_RE = regex.compile(r'\(method-.*\)=\n#+ ?(.*\(.*\))')
 CONSTANT_RE = regex.compile(r'\(constant-.*\)=\n#+ ?(.*)')
@@ -65,16 +66,16 @@ def main():
         with open(os.path.join(spec_dir, filename)) as f:
                   text = f.read()
         if filename == 'elementwise_functions.md':
-            special_values = parse_special_values(text, verbose=True)
-            for func in special_values:
-                for typ in special_values[func]:
-                    multiple = len(special_values[func][typ]) > 1
-                    for i, m in enumerate(special_values[func][typ], 1):
+            special_cases = parse_special_cases(text, verbose=True)
+            for func in special_cases:
+                for typ in special_cases[func]:
+                    multiple = len(special_cases[func][typ]) > 1
+                    for i, m in enumerate(special_cases[func][typ], 1):
                         test_name_extra = typ.lower()
                         if multiple:
                             test_name_extra += f"_{i}"
                         try:
-                            print(generate_special_value_test(func, typ, m,
+                            print(generate_special_case_test(func, typ, m,
                                                               test_name_extra))
                         except:
                             print(f"Error with {func}() {typ}: {m.group(0)}:\n")
@@ -145,8 +146,8 @@ def {sig.replace(', /', '')}:{doc}
 # (?|...) is a branch reset (regex module only feature). It works like (?:...)
 # except only the matched alternative is assigned group numbers, so \1, \2, and
 # so on will always refer to a single match from _value.
-_value = r"(?|`([^`]*)`|(finite)|(positive)|(negative)|(nonzero)|(a nonzero finite number)|(an integer value)|(an odd integer value)|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?|a (signed (?:infinity|zero)) with the sign determined by the rule already stated above)"
-SPECIAL_VALUE_REGEXS = dict(
+_value = r"(?|`([^`]*)`|a (finite) number|a (positive \(i\.e\., greater than `0`\) finite) number|a (negative \(i\.e\., less than `0`\) finite) number|(finite)|(positive)|(negative)|(nonzero)|(?:a )?(nonzero finite) numbers?|an (integer) value|an (odd integer) value|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?|a (signed (?:infinity|zero)) with the mathematical sign determined by the rule already stated above|(positive) mathematical sign|(negative) mathematical sign)"
+SPECIAL_CASE_REGEXS = dict(
     ONE_ARG_EQUAL = regex.compile(rf'^- +If `x_i` is {_value}, the result is {_value}\.$'),
     ONE_ARG_GREATER = regex.compile(rf'^- +If `x_i` is greater than {_value}, the result is {_value}\.$'),
     ONE_ARG_LESS = regex.compile(rf'^- +If `x_i` is less than {_value}, the result is {_value}\.$'),
@@ -174,8 +175,10 @@ SPECIAL_VALUE_REGEXS = dict(
     TWO_ARGS_EITHER__EQUAL = regex.compile(rf'^- +If `x1_i` is either {_value} or {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
     TWO_ARGS_EQUAL__EITHER = regex.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
     TWO_ARGS_EITHER__EITHER = regex.compile(rf'^- +If `x1_i` is either {_value} or {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
-    TWO_ARGS_SAME_SIGN = regex.compile(rf'^- +If both `x1_i` and `x2_i` have the same sign, the result is {_value}\.$'),
-    TWO_ARGS_DIFFERENT_SIGNS = regex.compile(rf'^- +If `x1_i` and `x2_i` have different signs, the result is {_value}\.$'),
+    TWO_ARGS_SAME_SIGN = regex.compile(rf'^- +If `x1_i` and `x2_i` have the same mathematical sign, the result has a {_value}\.$'),
+    TWO_ARGS_SAME_SIGN_BOTH = regex.compile(rf'^- +If `x1_i` and `x2_i` have the same mathematical sign and are both {_value}, the result has a {_value}\.$'),
+    TWO_ARGS_DIFFERENT_SIGNS = regex.compile(rf'^- +If `x1_i` and `x2_i` have different mathematical signs, the result has a {_value}\.$'),
+    TWO_ARGS_DIFFERENT_SIGNS_BOTH = regex.compile(rf'^- +If `x1_i` and `x2_i` have different mathematical signs and are both {_value}, the result has a {_value}\.$'),
     TWO_ARGS_EVEN_IF = regex.compile(rf'^- +If `x2_i` is {_value}, the result is {_value}, even if `x1_i` is {_value}\.$'),
 
     TWO_INTEGERS_EQUALLY_CLOSE = regex.compile(rf'^- +If two integers are equally close to `x_i`, the result is whichever integer is farthest from {_value}\.$'),
@@ -199,7 +202,6 @@ def parse_value(value, arg):
     elif value == "-1":
         return f"-one({arg}.dtype)"
     # elif value == 'signed infinity':
-
     elif value == 'signed zero':
         return f"zero({arg}.dtype))"
     elif 'π' in value:
@@ -207,36 +209,54 @@ def parse_value(value, arg):
         return value.replace('π', f'π({arg}.dtype)')
     elif 'x1_i' in value or 'x2_i' in value:
         return value
-    elif value in ['finite', 'nonzero', 'a nonzero finite number',
-                   "an integer value", "an odd integer value"]:
+    elif value in ['finite', 'nonzero', 'nonzero finite',
+                   "integer", "odd integer", "positive",
+                   "negative"]:
         return value
+    # There's no way to remove the parenthetical from the matching group in
+    # the regular expression.
+    elif value == "positive (i.e., greater than `0`) finite":
+        return "positive finite"
+    elif value == 'negative (i.e., less than `0`) finite':
+        return "negative finite"
     else:
         raise RuntimeError(f"Unexpected input value {value!r}")
 
 def get_mask(typ, arg, value):
+    def _check_exactly_equal():
+        if not typ == 'exactly_equal':
+            raise RuntimeError(f"Unexpected mask type {typ}: {value}")
+
     if typ.startswith("not"):
         return f"logical_not({get_mask(typ[len('not'):], arg, value)})"
     if typ.startswith("abs"):
         return get_mask(typ[len("abs"):], f"abs({arg})", value)
     if value == 'finite':
-        if not typ == 'exactly_equal':
-            raise RuntimeError(f"Unexpected mask type {typ}: {value}")
+        _check_exactly_equal()
         return f"isfinite({arg})"
     elif value == 'nonzero':
-        if not typ == 'exactly_equal':
-            raise RuntimeError(f"Unexpected mask type {typ}: {value}")
+        _check_exactly_equal()
         return f"nonzero({arg})"
-    elif value == 'a nonzero finite number':
-        if not typ == 'exactly_equal':
-            raise RuntimeError(f"Unexpected mask type {typ}: {value}")
+    elif value == 'positive finite':
+        _check_exactly_equal()
+        return f"logical_and(isfinite({arg}), ispositive({arg}))"
+    elif value == 'negative finite':
+        _check_exactly_equal()
+        return f"logical_and(isfinite({arg}), isnegative({arg}))"
+    elif value == 'nonzero finite':
+        _check_exactly_equal()
         return f"logical_and(isfinite({arg}), nonzero({arg}))"
-    elif value == 'an integer value':
-        if not typ == 'exactly_equal':
-            raise RuntimeError(f"Unexpected mask type {typ}: {value}")
+    elif value == 'positive':
+        _check_exactly_equal()
+        return f"ispositive({arg})"
+    elif value == 'negative':
+        _check_exactly_equal()
+        return f"isnegative({arg})"
+    elif value == 'integer':
+        _check_exactly_equal()
         return f"isintegral({arg})"
-    elif value == 'an odd integer value':
-        if not typ == 'exactly_equal':
-            raise RuntimeError(f"Unexpected mask type {typ}: {value}")
+    elif value == 'odd integer':
+        _check_exactly_equal()
         return f"isodd({arg})"
     elif 'x1_i' in value:
         return f"{typ}({arg}, {value.replace('x1_i', 'arg1')}"
@@ -255,7 +275,7 @@ def get_assert(typ, lhs, result):
 
 ONE_ARG_TEMPLATE = """
 {decorator}
-def test_{func}_special_values_{test_name_extra}(arg1):
+def test_{func}_special_cases_{test_name_extra}(arg1):
     {doc}
     mask = {mask}
     {assertion}
@@ -263,7 +283,7 @@ def test_{func}_special_values_{test_name_extra}(arg1):
 
 TWO_ARGS_TEMPLATE = """
 {decorator}
-def test_{func}_special_values_{test_name_extra}(arg1, arg2):
+def test_{func}_special_cases_{test_name_extra}(arg1, arg2):
     {doc}
     mask = {mask}
     {assertion}
@@ -272,9 +292,9 @@ def test_{func}_special_values_{test_name_extra}(arg1, arg2):
 TWO_INTEGERS_EQUALLY_CLOSE = "# TODO: Implement TWO_INTEGERS_EQUALLY_CLOSE"
 REMAINING = "# TODO: Implement REMAINING"
 
-def generate_special_value_test(func, typ, m, test_name_extra):
+def generate_special_case_test(func, typ, m, test_name_extra):
     doc = f'''"""
-    Special value test for {func}(x):
+    Special case test for {func}(x):
 
         {m.group(0)}
 
@@ -383,7 +403,14 @@ def generate_special_value_test(func, typ, m, test_name_extra):
             assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
         elif typ == "TWO_ARGS_SAME_SIGN":
             return
+            result = m.groups()
+
+            assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
+        elif typ == "TWO_ARGS_SAME_SIGN_BOTH":
+            return
         elif typ == "TWO_ARGS_DIFFERENT_SIGNS":
+            return
+        elif typ == "TWO_ARGS_DIFFERENT_SIGNS_BOTH":
             return
         elif typ == "TWO_ARGS_EVEN_IF":
             value1, result, value2 = m.groups()
@@ -408,16 +435,16 @@ def generate_special_value_test(func, typ, m, test_name_extra):
     else:
         raise RuntimeError(f"Unexpected type {typ}")
 
-def parse_special_values(spec_text, verbose=False):
-    special_values = {}
+def parse_special_cases(spec_text, verbose=False):
+    special_cases = {}
     in_block = False
     for line in spec_text.splitlines():
-        m = FUNCTION_RE.match(line)
+        m = FUNCTION_HEADER_RE.match(line)
         if m:
-            name = NAME_RE.match(m.group(1)).group(1)
-            special_values[name] = defaultdict(list)
+            name = m.group(1)
+            special_cases[name] = defaultdict(list)
             continue
-        if line == '#### Special Values':
+        if line == '#### Special Cases':
             in_block = True
             continue
         elif line.startswith('#'):
@@ -426,17 +453,17 @@ def parse_special_values(spec_text, verbose=False):
         if in_block:
             if '- ' not in line:
                 continue
-            for typ, reg in SPECIAL_VALUE_REGEXS.items():
+            for typ, reg in SPECIAL_CASE_REGEXS.items():
                 m = reg.match(line)
                 if m:
                     if verbose:
                         print(f"Matched {typ} for {name}: {m.groups()}")
-                    special_values[name][typ].append(m)
+                    special_cases[name][typ].append(m)
                     break
             else:
-                raise ValueError(f"Unrecognized special value string for '{name}':\n{line}")
+                raise ValueError(f"Unrecognized special case string for '{name}':\n{line}")
 
-    return special_values
+    return special_cases
 
 if __name__ == '__main__':
     main()
