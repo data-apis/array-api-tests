@@ -289,7 +289,7 @@ def get_assert(typ, result):
         # This won't catch all unknown values, but will catch some.
         ast.parse(result)
     except SyntaxError:
-        raise RuntimeError(f"Unexpected result value {result!r} for {typ}")
+        raise RuntimeError(f"Unexpected result value {result!r} for {typ} (bad syntax)")
     return f"assert_{typ}(res[mask], {result})"
 
 ONE_ARG_TEMPLATE = """
