@@ -11,6 +11,7 @@ This will update the stub files in array_api_tests/function_stubs/
 """
 import argparse
 import os
+import sys
 import ast
 from collections import defaultdict
 
@@ -135,7 +136,7 @@ def {sig}:{doc}
                                 raise NotImplementedError("Special case test not implemented")
                             print(test)
                         except:
-                            print(f"Error with {func}() {typ}: {m.group(0)}:\n")
+                            print(f"Error with {func}() {typ}: {m.group(0)}:\n", file=sys.stderr)
                             raise
 
 
