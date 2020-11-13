@@ -173,4 +173,24 @@ def assert_isinf(x):
     """
     Check that x is an infinity
     """
-    assert all(isinf(x))
+    assert all(isinf(x)), "The input array is not infinite"
+
+def same_sign(x, y):
+    """
+    Check if x and y have the "same sign"
+
+    x and y have the same sign if they are both nonnegative or both negative.
+    For the purposes of this function 0 and 1 have the same sign and -0 and -1
+    have the same sign. The value of this function is False if either x or y
+    is nan, as signed nans are not required by the spec.
+    """
+    logical_or(
+        logical_and(
+            logical_or(greater(x, 0), isposzero(x)),
+            logical_or(greater(y, 0), isposzero(y))),
+        logical_and(
+            logical_or(less(x, 0), isnegzero(x)),
+            logical_or(less(y, 0), isnegzero(y))))
+
+def assert_same_sign(x, y):
+    assert all(same_sign(x, y)), "The input arrays do not have the same sign"
