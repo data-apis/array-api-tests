@@ -158,6 +158,7 @@ SPECIAL_CASE_REGEXS = dict(
     ONE_ARG_LESS = regex.compile(rf'^- +If `x_i` is less than {_value}, the result is {_value}\.$'),
     ONE_ARG_ALREADY_INTEGER_VALUED = regex.compile(rf'^- +If `x_i` is already integer-valued, the result is {_value}\.$'),
     ONE_ARG_EITHER = regex.compile(rf'^- +If `x_i` is either {_value} or {_value}, the result is {_value}\.$'),
+    ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE = regex.compile(rf'^- +If two integers are equally close to `x_i`, the result is whichever integer is farthest from {_value}\.$'),
 
     TWO_ARGS_EQUAL__EQUAL = regex.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
     TWO_ARGS_GREATER__EQUAL = regex.compile(rf'^- +If `x1_i` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
@@ -186,7 +187,6 @@ SPECIAL_CASE_REGEXS = dict(
     TWO_ARGS_DIFFERENT_SIGNS_BOTH = regex.compile(rf'^- +If `x1_i` and `x2_i` have different mathematical signs and are both {_value}, the result has a {_value}\.$'),
     TWO_ARGS_EVEN_IF = regex.compile(rf'^- +If `x2_i` is {_value}, the result is {_value}, even if `x1_i` is {_value}\.$'),
 
-    TWO_INTEGERS_EQUALLY_CLOSE = regex.compile(rf'^- +If two integers are equally close to `x_i`, the result is whichever integer is farthest from {_value}\.$'),
     REMAINING = regex.compile(r"^- +In the remaining cases, (.*)$"),
 )
 
@@ -213,6 +213,8 @@ def parse_value(value, arg):
         value = regex.sub(r'(\d+)π', r'\1*π', value)
         return value.replace('π', f'π({arg}.dtype)')
     elif 'x1_i' in value or 'x2_i' in value:
+        return value
+    elif value.startswith('where('):
         return value
     elif value in ['finite', 'nonzero', 'nonzero finite',
                    "integer", "odd integer", "positive",
@@ -308,7 +310,6 @@ def test_{func}_special_cases_{test_name_extra}(arg1, arg2):
     {assertion}
 """
 
-TWO_INTEGERS_EQUALLY_CLOSE = "# TODO: Implement TWO_INTEGERS_EQUALLY_CLOSE"
 REMAINING = "# TODO: Implement REMAINING"
 
 def generate_special_case_test(func, typ, m, test_name_extra, sigs):
@@ -342,6 +343,11 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
             mask = f"logical_or({mask1}, {mask2})"
         elif typ == "ONE_ARG_ALREADY_INTEGER_VALUED":
             return
+        elif typ == "ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE":
+            result, = m.groups()
+            mask = "equal(subtract(arg1, floor(arg1)), subtract(ceiling(arg1), arg1))"
+            result = parse_value(result, "arg1")
+            result = f"where(greater(abs(subtract({result}, floor(arg1))), abs(subtract(ceiling(arg1), {result}))), floor(arg1), ceil(arg1))"
         else:
             raise ValueError(f"Unrecognized special value type {typ}")
         assertion = get_assert("exactly_equal", result)
@@ -456,8 +462,6 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
             assertion=assertion,
         )
 
-    elif typ == "TWO_INTEGERS_EQUALLY_CLOSE":
-        pass
     elif typ == "REMAINING":
         pass
     else:
