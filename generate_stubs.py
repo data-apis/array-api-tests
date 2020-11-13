@@ -129,8 +129,11 @@ def {sig}:{doc}
                         if multiple:
                             test_name_extra += f"_{i}"
                         try:
-                            print(generate_special_case_test(func, typ, m,
-                                                              test_name_extra, sigs))
+                            test = generate_special_case_test(func, typ, m,
+                                                              test_name_extra, sigs)
+                            if test is None:
+                                raise NotImplementedError("Special case test not implemented")
+                            print(test)
                         except:
                             print(f"Error with {func}() {typ}: {m.group(0)}:\n")
                             raise
