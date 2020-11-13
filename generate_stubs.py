@@ -11,8 +11,10 @@ This will update the stub files in array_api_tests/function_stubs/
 """
 import argparse
 import os
-import regex
+import ast
 from collections import defaultdict
+
+import regex
 
 FUNCTION_HEADER_RE = regex.compile(r'\(function-(.*?)\)')
 FUNCTION_RE = regex.compile(r'\(function-.*\)=\n#+ ?(.*\(.*\))')
@@ -65,22 +67,6 @@ def main():
     for filename in sorted(os.listdir(spec_dir)):
         with open(os.path.join(spec_dir, filename)) as f:
                   text = f.read()
-        if filename == 'elementwise_functions.md':
-            special_cases = parse_special_cases(text, verbose=True)
-            for func in special_cases:
-                for typ in special_cases[func]:
-                    multiple = len(special_cases[func][typ]) > 1
-                    for i, m in enumerate(special_cases[func][typ], 1):
-                        test_name_extra = typ.lower()
-                        if multiple:
-                            test_name_extra += f"_{i}"
-                        try:
-                            print(generate_special_case_test(func, typ, m,
-                                                              test_name_extra))
-                        except:
-                            print(f"Error with {func}() {typ}: {m.group(0)}:\n")
-                            raise
-
         functions = FUNCTION_RE.findall(text)
         methods = METHOD_RE.findall(text)
         constants = CONSTANT_RE.findall(text)
@@ -98,6 +84,7 @@ def main():
         modules[module_name] = []
         if not args.quiet:
             print(f"Writing {py_path}")
+        sigs = {}
         with open(py_path, 'w') as f:
             f.write(STUB_FILE_HEADER.format(filename=filename, title=title))
             for sig in functions + methods:
@@ -112,12 +99,13 @@ def main():
     """'''
                 if not args.quiet:
                     print(f"Writing stub for {sig}")
+                sig = sig.replace(', /', '')
                 f.write(f"""
-def {sig.replace(', /', '')}:{doc}
+def {sig}:{doc}
     pass
 """)
                 modules[module_name].append(func_name)
-
+                sigs[func_name] = sig
             for const in constants + attributes:
                 if not args.quiet:
                     print(f"Writing stub for {const}")
@@ -130,6 +118,23 @@ def {sig.replace(', /', '')}:{doc}
             f.write('\n__all__ = [')
             f.write(', '.join(f"'{i}'" for i in modules[module_name]))
             f.write(']\n')
+
+        if filename == 'elementwise_functions.md':
+            special_cases = parse_special_cases(text, verbose=True)
+            for func in special_cases:
+                for typ in special_cases[func]:
+                    multiple = len(special_cases[func][typ]) > 1
+                    for i, m in enumerate(special_cases[func][typ], 1):
+                        test_name_extra = typ.lower()
+                        if multiple:
+                            test_name_extra += f"_{i}"
+                        try:
+                            print(generate_special_case_test(func, typ, m,
+                                                              test_name_extra, sigs))
+                        except:
+                            print(f"Error with {func}() {typ}: {m.group(0)}:\n")
+                            raise
+
 
     init_path = os.path.join('array_api_tests', 'function_stubs', '__init__.py')
     if args.write:
@@ -222,61 +227,74 @@ def parse_value(value, arg):
     else:
         raise RuntimeError(f"Unexpected input value {value!r}")
 
+def _check_exactly_equal(typ, value):
+    if not typ == 'exactly_equal':
+        raise RuntimeError(f"Unexpected mask type {typ}: {value}")
+
 def get_mask(typ, arg, value):
-    def _check_exactly_equal():
-        if not typ == 'exactly_equal':
-            raise RuntimeError(f"Unexpected mask type {typ}: {value}")
 
     if typ.startswith("not"):
         return f"logical_not({get_mask(typ[len('not'):], arg, value)})"
     if typ.startswith("abs"):
         return get_mask(typ[len("abs"):], f"abs({arg})", value)
     if value == 'finite':
-        _check_exactly_equal()
+        _check_exactly_equal(typ, value)
         return f"isfinite({arg})"
     elif value == 'nonzero':
-        _check_exactly_equal()
+        _check_exactly_equal(typ, value)
         return f"nonzero({arg})"
     elif value == 'positive finite':
-        _check_exactly_equal()
+        _check_exactly_equal(typ, value)
         return f"logical_and(isfinite({arg}), ispositive({arg}))"
     elif value == 'negative finite':
-        _check_exactly_equal()
+        _check_exactly_equal(typ, value)
         return f"logical_and(isfinite({arg}), isnegative({arg}))"
     elif value == 'nonzero finite':
-        _check_exactly_equal()
+        _check_exactly_equal(typ, value)
         return f"logical_and(isfinite({arg}), nonzero({arg}))"
     elif value == 'positive':
-        _check_exactly_equal()
+        _check_exactly_equal(typ, value)
         return f"ispositive({arg})"
     elif value == 'negative':
-        _check_exactly_equal()
+        _check_exactly_equal(typ, value)
         return f"isnegative({arg})"
     elif value == 'integer':
-        _check_exactly_equal()
+        _check_exactly_equal(typ, value)
         return f"isintegral({arg})"
     elif value == 'odd integer':
-        _check_exactly_equal()
+        _check_exactly_equal(typ, value)
         return f"isodd({arg})"
     elif 'x1_i' in value:
-        return f"{typ}({arg}, {value.replace('x1_i', 'arg1')}"
+        return f"{typ}({arg}, {value.replace('x1_i', 'arg1')})"
     elif 'x2_i' in value:
-        return f"{typ}({arg}, {value.replace('x2_i', 'arg2')}"
+        return f"{typ}({arg}, {value.replace('x2_i', 'arg2')})"
     return f"{typ}({arg}, {value})"
 
-def get_assert(typ, lhs, result):
+def get_assert(typ, result):
     if result == "signed infinity":
-        if not typ == 'exactly_equal':
-            raise RuntimeError(f"Unexpected mask type {typ}: {result}")
-        return f"assert_isinf({lhs})"
+        _check_exactly_equal(typ, result)
+        return "assert_isinf(res)"
+    elif result == "positive":
+        _check_exactly_equal(typ, result)
+        return "assert_positive(res)"
+    elif 'x1_i' in result:
+        return f"assert_{typ}(res, {result.replace('x1_i', 'arg1')})"
+    elif 'x2_i' in result:
+        return f"assert_{typ}(res, {result.replace('x2_i', 'arg2')})"
     # TODO: Get use something better than arg1 here for the arg
     result = parse_value(result, "arg1")
-    return f"assert_{typ}({lhs}, {result})"
+    try:
+        # This won't catch all unknown values, but will catch some.
+        ast.parse(result)
+    except SyntaxError:
+        raise RuntimeError(f"Unexpected result value {result!r} for {typ}")
+    return f"assert_{typ}(res[mask], {result})"
 
 ONE_ARG_TEMPLATE = """
 {decorator}
 def test_{func}_special_cases_{test_name_extra}(arg1):
     {doc}
+    res = {func}(arg1)
     mask = {mask}
     {assertion}
 """
@@ -285,6 +303,7 @@ TWO_ARGS_TEMPLATE = """
 {decorator}
 def test_{func}_special_cases_{test_name_extra}(arg1, arg2):
     {doc}
+    res = {func}(arg1, arg2)
     mask = {mask}
     {assertion}
 """
@@ -292,14 +311,14 @@ def test_{func}_special_cases_{test_name_extra}(arg1, arg2):
 TWO_INTEGERS_EQUALLY_CLOSE = "# TODO: Implement TWO_INTEGERS_EQUALLY_CLOSE"
 REMAINING = "# TODO: Implement REMAINING"
 
-def generate_special_case_test(func, typ, m, test_name_extra):
+def generate_special_case_test(func, typ, m, test_name_extra, sigs):
+
     doc = f'''"""
-    Special case test for {func}(x):
+    Special case test for `{sigs[func]}`:
 
         {m.group(0)}
 
-    """
-'''
+    """'''
     if typ.startswith("ONE_ARG"):
         decorator = "@given(numeric_arrays)"
         if typ == "ONE_ARG_EQUAL":
@@ -325,7 +344,7 @@ def generate_special_case_test(func, typ, m, test_name_extra):
             return
         else:
             raise ValueError(f"Unrecognized special value type {typ}")
-        assertion = get_assert("exactly_equal", f"{func}(arg1)[mask]", result)
+        assertion = get_assert("exactly_equal", result)
         return ONE_ARG_TEMPLATE.format(
             decorator=decorator,
             func=func,
@@ -392,7 +411,7 @@ def generate_special_case_test(func, typ, m, test_name_extra):
                 mask2 = value2masks[0]
 
             mask = f"logical_and({mask1}, {mask2})"
-            assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
+            assertion = get_assert("exactly_equal", result)
 
         elif typ == "TWO_ARGS_EITHER":
             value, result = m.groups()
@@ -400,23 +419,32 @@ def generate_special_case_test(func, typ, m, test_name_extra):
             mask1 = get_mask("exactly_equal", "arg1", value)
             mask2 = get_mask("exactly_equal", "arg2", value)
             mask = f"logical_or({mask1}, {mask2})"
-            assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
+            assertion = get_assert("exactly_equal", result)
         elif typ == "TWO_ARGS_SAME_SIGN":
-            return
-            result = m.groups()
-
-            assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
+            result, = m.groups()
+            mask = "same_sign(arg1, arg2)"
+            assertion = get_assert("exactly_equal", result)
         elif typ == "TWO_ARGS_SAME_SIGN_BOTH":
-            return
+            value, result = m.groups()
+            mask1 = get_mask("exactly_equal", "arg1", value)
+            mask2 = get_mask("exactly_equal", "arg2", value)
+            mask = f"logical_and(same_sign(arg1, arg2), logical_and({mask1}, {mask2}))"
+            assertion = get_assert("exactly_equal", result)
         elif typ == "TWO_ARGS_DIFFERENT_SIGNS":
-            return
+            result, = m.groups()
+            mask = "logical_not(same_sign(arg1, arg2))"
+            assertion = get_assert("exactly_equal", result)
         elif typ == "TWO_ARGS_DIFFERENT_SIGNS_BOTH":
-            return
+            value, result = m.groups()
+            mask1 = get_mask("exactly_equal", "arg1", value)
+            mask2 = get_mask("exactly_equal", "arg2", value)
+            mask = f"logical_and(logical_not(same_sign(arg1, arg2)), logical_and({mask1}, {mask2}))"
+            assertion = get_assert("exactly_equal", result)
         elif typ == "TWO_ARGS_EVEN_IF":
             value1, result, value2 = m.groups()
             value1 = parse_value(value1, "arg1")
             mask = get_mask("exactly_equal", "arg1", value1)
-            assertion = get_assert("exactly_equal", f"{func}(arg1, arg2)[mask]", result)
+            assertion = get_assert("exactly_equal", result)
         else:
             raise ValueError(f"Unrecognized special value type {typ}")
         return TWO_ARGS_TEMPLATE.format(
