@@ -154,12 +154,11 @@ def {sig}:{doc}
 # (?|...) is a branch reset (regex module only feature). It works like (?:...)
 # except only the matched alternative is assigned group numbers, so \1, \2, and
 # so on will always refer to a single match from _value.
-_value = r"(?|`([^`]*)`|a (finite) number|a (positive \(i\.e\., greater than `0`\) finite) number|a (negative \(i\.e\., less than `0`\) finite) number|(finite)|(positive)|(negative)|(nonzero)|(?:a )?(nonzero finite) numbers?|an (integer) value|an (odd integer) value|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?|a (signed (?:infinity|zero)) with the mathematical sign determined by the rule already stated above|(positive) mathematical sign|(negative) mathematical sign)"
+_value = r"(?|`([^`]*)`|a (finite) number|a (positive \(i\.e\., greater than `0`\) finite) number|a (negative \(i\.e\., less than `0`\) finite) number|(finite)|(positive)|(negative)|(nonzero)|(?:a )?(nonzero finite) numbers?|an (integer) value|already (integer)-valued|an (odd integer) value|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?|a (signed (?:infinity|zero)) with the mathematical sign determined by the rule already stated above|(positive) mathematical sign|(negative) mathematical sign)"
 SPECIAL_CASE_REGEXS = dict(
     ONE_ARG_EQUAL = regex.compile(rf'^- +If `x_i` is {_value}, the result is {_value}\.$'),
     ONE_ARG_GREATER = regex.compile(rf'^- +If `x_i` is greater than {_value}, the result is {_value}\.$'),
     ONE_ARG_LESS = regex.compile(rf'^- +If `x_i` is less than {_value}, the result is {_value}\.$'),
-    ONE_ARG_ALREADY_INTEGER_VALUED = regex.compile(rf'^- +If `x_i` is already integer-valued, the result is {_value}\.$'),
     ONE_ARG_EITHER = regex.compile(rf'^- +If `x_i` is either {_value} or {_value}, the result is {_value}\.$'),
     ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE = regex.compile(rf'^- +If two integers are equally close to `x_i`, the result is whichever integer is farthest from {_value}\.$'),
 
@@ -269,6 +268,8 @@ def get_mask(typ, arg, value):
     elif value == 'odd integer':
         _check_exactly_equal(typ, value)
         return f"isodd({arg})"
+    elif 'x_i' in value:
+        return f"{typ}({arg}, {value.replace('x_i', 'arg1')})"
     elif 'x1_i' in value:
         return f"{typ}({arg}, {value.replace('x1_i', 'arg1')})"
     elif 'x2_i' in value:
@@ -278,14 +279,16 @@ def get_mask(typ, arg, value):
 def get_assert(typ, result):
     if result == "signed infinity":
         _check_exactly_equal(typ, result)
-        return "assert_isinf(res)"
+        return "assert_isinf(res[mask])"
     elif result == "positive":
         _check_exactly_equal(typ, result)
-        return "assert_positive(res)"
+        return "assert_positive(res[mask])"
+    elif 'x_i' in result:
+        return f"assert_{typ}(res[mask], {result.replace('x_i', 'arg1')})"
     elif 'x1_i' in result:
-        return f"assert_{typ}(res, {result.replace('x1_i', 'arg1')})"
+        return f"assert_{typ}(res[mask], {result.replace('x1_i', 'arg1')})"
     elif 'x2_i' in result:
-        return f"assert_{typ}(res, {result.replace('x2_i', 'arg2')})"
+        return f"assert_{typ}(res[mask], {result.replace('x2_i', 'arg2')})"
     # TODO: Get use something better than arg1 here for the arg
     result = parse_value(result, "arg1")
     try:
@@ -345,7 +348,8 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
             mask2 = get_mask("exactly_equal", "arg1", value2)
             mask = f"logical_or({mask1}, {mask2})"
         elif typ == "ONE_ARG_ALREADY_INTEGER_VALUED":
-            return
+            result, = m.groups()
+            mask = parse_value("integer", "arg1")
         elif typ == "ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE":
             result, = m.groups()
             mask = "equal(subtract(arg1, floor(arg1)), subtract(ceiling(arg1), arg1))"
