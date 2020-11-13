@@ -310,7 +310,7 @@ def test_{func}_special_cases_{test_name_extra}(arg1, arg2):
     {assertion}
 """
 
-REMAINING = "# TODO: Implement REMAINING"
+REMAINING_TEMPLATE = "# TODO: Implement REMAINING"
 
 def generate_special_case_test(func, typ, m, test_name_extra, sigs):
 
@@ -463,7 +463,7 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
         )
 
     elif typ == "REMAINING":
-        pass
+        return REMAINING_TEMPLATE
     else:
         raise RuntimeError(f"Unexpected type {typ}")
 
