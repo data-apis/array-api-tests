@@ -4,6 +4,10 @@ from ._array_module import (isnan, all, equal, not_equal, logical_and,
                             uint16, uint32, uint64, float32, float64, nan,
                             inf, pi, remainder, divide, isinf)
 
+# These are exported here so that they can be included in the special cases
+# tests from this file.
+from ._array_module import logical_not, subtract, floor, ceil, where
+
 def zero(dtype):
     """
     Returns a scalar 0 of the given dtype.
@@ -194,3 +198,10 @@ def same_sign(x, y):
 
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
+
+__all__ = ['logical_not', 'subtract', 'floor', 'ceil', 'where', 'zero', 'one',
+           'NaN', 'infinity', 'π', 'isnegzero', 'isposzero', 'exactly_equal',
+           'assert_exactly_equal', 'assert_finite', 'nonzero',
+           'assert_nonzero', 'ispositive', 'assert_positive', 'isnegative',
+           'assert_negative', 'isintegral', 'assert_integral', 'isodd',
+           'assert_isinf', 'same_sign', 'assert_same_sign']
