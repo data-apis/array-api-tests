@@ -121,7 +121,7 @@ def {sig}:{doc}
             f.write(']\n')
 
         if filename == 'elementwise_functions.md':
-            special_cases = parse_special_cases(text, verbose=True)
+            special_cases = parse_special_cases(text, verbose=not args.quiet)
             for func in special_cases:
                 for typ in special_cases[func]:
                     multiple = len(special_cases[func][typ]) > 1
