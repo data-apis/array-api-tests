@@ -16,6 +16,7 @@ import ast
 from collections import defaultdict
 
 import regex
+from removestar.removestar import fix_code
 
 FUNCTION_HEADER_RE = regex.compile(r'\(function-(.*?)\)')
 FUNCTION_RE = regex.compile(r'\(function-.*\)=\n#+ ?(.*\(.*\))')
@@ -53,6 +54,24 @@ not modify it directly.
 """
 
 __all__ = []
+'''
+
+SPECIAL_CASES_HEADER = '''\
+"""
+Special cases tests for {func}.
+
+These tests are generated from the special cases listed in the spec.
+
+NOTE: This file is generated automatically by the generate_stubs.py script. Do
+not modify it directly.
+"""
+
+from ..array_helpers import *
+from ..hypothesis_helpers import numeric_arrays
+from .._array_module import {func}
+
+from hypothesis import given
+
 '''
 
 def main():
@@ -123,6 +142,8 @@ def {sig}:{doc}
         if filename == 'elementwise_functions.md':
             special_cases = parse_special_cases(text, verbose=not args.quiet)
             for func in special_cases:
+                py_path = os.path.join('array_api_tests', 'special_cases', func + '.py')
+                tests = []
                 for typ in special_cases[func]:
                     multiple = len(special_cases[func][typ]) > 1
                     for i, m in enumerate(special_cases[func][typ], 1):
@@ -134,11 +155,16 @@ def {sig}:{doc}
                                                               test_name_extra, sigs)
                             if test is None:
                                 raise NotImplementedError("Special case test not implemented")
-                            print(test)
+                            tests.append(test)
                         except:
                             print(f"Error with {func}() {typ}: {m.group(0)}:\n", file=sys.stderr)
                             raise
-
+                code = SPECIAL_CASES_HEADER.format(func=func) + '\n'.join(tests)
+                # quiet=False will make it print a warning if a name is not found (indicating an error)
+                code = fix_code(code, file=py_path, verbose=False, quiet=False)
+                if args.write:
+                    with open(py_path, 'w') as f:
+                        f.write(code)
 
     init_path = os.path.join('array_api_tests', 'function_stubs', '__init__.py')
     if args.write:
