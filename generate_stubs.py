@@ -284,6 +284,9 @@ def get_assert(typ, result):
     elif result == "positive":
         _check_exactly_equal(typ, result)
         return "assert_positive(res[mask])"
+    elif result == "negative":
+        _check_exactly_equal(typ, result)
+        return "assert_negative(res[mask])"
     elif 'x_i' in result:
         return f"assert_{typ}(res[mask], {result.replace('x_i', 'arg1')})"
     elif 'x1_i' in result:
