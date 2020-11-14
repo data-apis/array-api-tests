@@ -384,9 +384,9 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
             mask = parse_value("integer", "arg1")
         elif typ == "ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE":
             result, = m.groups()
-            mask = "equal(subtract(arg1, floor(arg1)), subtract(ceiling(arg1), arg1))"
+            mask = "equal(subtract(arg1, floor(arg1)), subtract(ceil(arg1), arg1))"
             result = parse_value(result, "arg1")
-            result = f"where(greater(abs(subtract({result}, floor(arg1))), abs(subtract(ceiling(arg1), {result}))), floor(arg1), ceil(arg1))"
+            result = f"where(greater(abs(subtract({result}, floor(arg1))), abs(subtract(ceil(arg1), {result}))), floor(arg1), ceil(arg1))"
         else:
             raise ValueError(f"Unrecognized special value type {typ}")
         assertion = get_assert("exactly_equal", result)
