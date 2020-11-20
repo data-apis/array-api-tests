@@ -142,7 +142,7 @@ def {sig}:{doc}
         if filename == 'elementwise_functions.md':
             special_cases = parse_special_cases(text, verbose=not args.quiet)
             for func in special_cases:
-                py_path = os.path.join('array_api_tests', 'special_cases', func + '.py')
+                py_path = os.path.join('array_api_tests', 'special_cases', f'test_{func}.py')
                 tests = []
                 for typ in special_cases[func]:
                     multiple = len(special_cases[func][typ]) > 1
