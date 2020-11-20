@@ -274,7 +274,7 @@ def get_mask(typ, arg, value):
         return f"isfinite({arg})"
     elif value == 'nonzero':
         _check_exactly_equal(typ, value)
-        return f"nonzero({arg})"
+        return f"non_zero({arg})"
     elif value == 'positive finite':
         _check_exactly_equal(typ, value)
         return f"logical_and(isfinite({arg}), ispositive({arg}))"
@@ -283,7 +283,7 @@ def get_mask(typ, arg, value):
         return f"logical_and(isfinite({arg}), isnegative({arg}))"
     elif value == 'nonzero finite':
         _check_exactly_equal(typ, value)
-        return f"logical_and(isfinite({arg}), nonzero({arg}))"
+        return f"logical_and(isfinite({arg}), non_zero({arg}))"
     elif value == 'positive':
         _check_exactly_equal(typ, value)
         return f"ispositive({arg})"

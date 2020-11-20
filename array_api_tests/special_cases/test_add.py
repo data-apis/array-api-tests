@@ -8,7 +8,7 @@ not modify it directly.
 """
 
 from ..array_helpers import (NaN, assert_exactly_equal, exactly_equal, infinity, isfinite,
-                             logical_and, logical_or, nonzero, zero)
+                             logical_and, logical_or, non_zero, zero)
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import add
 
@@ -193,7 +193,7 @@ def test_add_special_cases_two_args_equal__equal_13(arg1, arg2):
 
     """
     res = add(arg1, arg2)
-    mask = logical_and(logical_and(isfinite(arg1), nonzero(arg1)), exactly_equal(arg2, -arg1))
+    mask = logical_and(logical_and(isfinite(arg1), non_zero(arg1)), exactly_equal(arg2, -arg1))
     assert_exactly_equal(res[mask], zero(arg1.shape, arg1.dtype)[mask])
 
 
@@ -206,7 +206,7 @@ def test_add_special_cases_two_args_either__equal(arg1, arg2):
 
     """
     res = add(arg1, arg2)
-    mask = logical_and(logical_or(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg1, -zero(arg1.shape, arg1.dtype))), logical_and(isfinite(arg2), nonzero(arg2)))
+    mask = logical_and(logical_or(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg1, -zero(arg1.shape, arg1.dtype))), logical_and(isfinite(arg2), non_zero(arg2)))
     assert_exactly_equal(res[mask], arg2[mask])
 
 
@@ -219,7 +219,7 @@ def test_add_special_cases_two_args_equal__either(arg1, arg2):
 
     """
     res = add(arg1, arg2)
-    mask = logical_and(logical_and(isfinite(arg1), nonzero(arg1)), logical_or(exactly_equal(arg2, zero(arg2.shape, arg2.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype))))
+    mask = logical_and(logical_and(isfinite(arg1), non_zero(arg1)), logical_or(exactly_equal(arg2, zero(arg2.shape, arg2.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype))))
     assert_exactly_equal(res[mask], arg1[mask])
 
 # TODO: Implement REMAINING test for:

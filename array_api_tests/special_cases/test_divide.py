@@ -9,7 +9,7 @@ not modify it directly.
 
 from ..array_helpers import (NaN, assert_exactly_equal, assert_negative, assert_positive,
                              exactly_equal, greater, infinity, isfinite, isnegative, ispositive,
-                             less, logical_and, logical_not, logical_or, nonzero, same_sign, zero)
+                             less, logical_and, logical_not, logical_or, non_zero, same_sign, zero)
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import divide
 
@@ -272,7 +272,7 @@ def test_divide_special_cases_two_args_same_sign_both(arg1, arg2):
 
     """
     res = divide(arg1, arg2)
-    mask = logical_and(same_sign(arg1, arg2), logical_and(logical_and(isfinite(arg1), nonzero(arg1)), logical_and(isfinite(arg2), nonzero(arg2))))
+    mask = logical_and(same_sign(arg1, arg2), logical_and(logical_and(isfinite(arg1), non_zero(arg1)), logical_and(isfinite(arg2), non_zero(arg2))))
     assert_positive(res[mask])
 
 
@@ -285,7 +285,7 @@ def test_divide_special_cases_two_args_different_signs_both(arg1, arg2):
 
     """
     res = divide(arg1, arg2)
-    mask = logical_and(logical_not(same_sign(arg1, arg2)), logical_and(logical_and(isfinite(arg1), nonzero(arg1)), logical_and(isfinite(arg2), nonzero(arg2))))
+    mask = logical_and(logical_not(same_sign(arg1, arg2)), logical_and(logical_and(isfinite(arg1), non_zero(arg1)), logical_and(isfinite(arg2), non_zero(arg2))))
     assert_negative(res[mask])
 
 # TODO: Implement REMAINING test for:

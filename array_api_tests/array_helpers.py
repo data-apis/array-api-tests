@@ -8,10 +8,11 @@ from ._array_module import (isnan, all, equal, not_equal, logical_and,
 # tests from this file.
 from ._array_module import logical_not, subtract, floor, ceil, where
 
-__all__ = ['logical_and', 'logical_or', 'logical_not', 'less', 'greater', 'subtract',
-           'floor', 'ceil', 'where', 'isfinite', 'equal', 'zero', 'one', 'NaN', 'infinity', 'π',
-           'isnegzero', 'isposzero', 'exactly_equal', 'assert_exactly_equal',
-           'assert_finite', 'nonzero', 'assert_nonzero', 'ispositive',
+__all__ = ['logical_and', 'logical_or', 'logical_not', 'less', 'greater',
+           'subtract', 'floor', 'ceil', 'where', 'isfinite', 'equal', 'zero',
+           'one', 'NaN', 'infinity', 'π', 'isnegzero', 'non_zero',
+           'isposzero', 'exactly_equal', 'assert_exactly_equal',
+           'assert_finite', 'assert_non_zero', 'ispositive',
            'assert_positive', 'isnegative', 'assert_negative', 'isintegral',
            'assert_integral', 'isodd', 'assert_isinf', 'same_sign',
            'assert_same_sign']
@@ -142,11 +143,11 @@ def assert_finite(x):
     """
     assert all(isfinite(x)), "The input array is not finite"
 
-def nonzero(x):
-    not_equal(x, zero(x.dtype))
+def non_zero(x):
+    return not_equal(x, zero(x.shape, x.dtype))
 
-def assert_nonzero(x):
-    assert all(nonzero(x)), "The input array is not nonzero"
+def assert_non_zero(x):
+    assert all(non_zero(x)), "The input array is not nonzero"
 
 def ispositive(x):
     return greater(x, zero(x.shape, x.dtype))

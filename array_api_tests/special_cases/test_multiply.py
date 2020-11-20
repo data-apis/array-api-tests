@@ -9,7 +9,7 @@ not modify it directly.
 
 from ..array_helpers import (NaN, assert_exactly_equal, assert_isinf, assert_negative,
                              assert_positive, exactly_equal, infinity, isfinite, logical_and,
-                             logical_not, logical_or, nonzero, same_sign, zero)
+                             logical_not, logical_or, non_zero, same_sign, zero)
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import multiply
 
@@ -103,7 +103,7 @@ def test_multiply_special_cases_two_args_either__equal(arg1, arg2):
 
     """
     res = multiply(arg1, arg2)
-    mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype))), logical_and(isfinite(arg2), nonzero(arg2)))
+    mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype))), logical_and(isfinite(arg2), non_zero(arg2)))
     assert_isinf(res[mask])
 
 
@@ -116,7 +116,7 @@ def test_multiply_special_cases_two_args_equal__either(arg1, arg2):
 
     """
     res = multiply(arg1, arg2)
-    mask = logical_and(logical_and(isfinite(arg1), nonzero(arg1)), logical_or(exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype))))
+    mask = logical_and(logical_and(isfinite(arg1), non_zero(arg1)), logical_or(exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype))))
     assert_isinf(res[mask])
 
 # TODO: Implement REMAINING test for:
