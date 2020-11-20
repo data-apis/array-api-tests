@@ -2,10 +2,11 @@ from functools import reduce
 from operator import mul
 
 from hypothesis.strategies import (lists, integers, builds, sampled_from,
-shared, tuples as hypotheses_tuples)
+                                   shared, tuples as hypotheses_tuples,
+                                   floats, just)
 
 from .pytest_helpers import nargs
-from ._array_module import _dtypes, ones
+from ._array_module import _dtypes, ones, full
 from . import _array_module
 
 from .function_stubs import elementwise_functions
@@ -53,3 +54,6 @@ shapes = tuples(integers(0, 10)).filter(
 ones_arrays = builds(ones, shapes, dtype=shared_dtypes)
 
 nonbroadcastable_ones_array_two_args = hypotheses_tuples(ones_arrays, ones_arrays)
+
+# TODO: Generate general arrays here, rather than just scalars.
+numeric_arrays = builds(full, just((1,)), floats())
