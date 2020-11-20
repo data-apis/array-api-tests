@@ -159,12 +159,13 @@ def {sig}:{doc}
                         except:
                             print(f"Error with {func}() {typ}: {m.group(0)}:\n", file=sys.stderr)
                             raise
-                code = SPECIAL_CASES_HEADER.format(func=func) + '\n'.join(tests)
-                # quiet=False will make it print a warning if a name is not found (indicating an error)
-                code = fix_code(code, file=py_path, verbose=False, quiet=False)
-                if args.write:
-                    with open(py_path, 'w') as f:
-                        f.write(code)
+                if tests:
+                    code = SPECIAL_CASES_HEADER.format(func=func) + '\n'.join(tests)
+                    # quiet=False will make it print a warning if a name is not found (indicating an error)
+                    code = fix_code(code, file=py_path, verbose=False, quiet=False)
+                    if args.write:
+                        with open(py_path, 'w') as f:
+                            f.write(code)
 
     init_path = os.path.join('array_api_tests', 'function_stubs', '__init__.py')
     if args.write:
