@@ -8,6 +8,14 @@ from ._array_module import (isnan, all, equal, not_equal, logical_and,
 # tests from this file.
 from ._array_module import logical_not, subtract, floor, ceil, where
 
+__all__ = ['logical_and', 'logical_or', 'logical_not', 'less', 'greater', 'subtract',
+           'floor', 'ceil', 'where', 'isfinite', 'equal', 'zero', 'one', 'NaN', 'infinity', 'π',
+           'isnegzero', 'isposzero', 'exactly_equal', 'assert_exactly_equal',
+           'assert_finite', 'nonzero', 'assert_nonzero', 'ispositive',
+           'assert_positive', 'isnegative', 'assert_negative', 'isintegral',
+           'assert_integral', 'isodd', 'assert_isinf', 'same_sign',
+           'assert_same_sign']
+
 def zero(dtype):
     """
     Returns a scalar 0 of the given dtype.
@@ -198,10 +206,3 @@ def same_sign(x, y):
 
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
-
-__all__ = ['logical_not', 'subtract', 'floor', 'ceil', 'where', 'zero', 'one',
-           'NaN', 'infinity', 'π', 'isnegzero', 'isposzero', 'exactly_equal',
-           'assert_exactly_equal', 'assert_finite', 'nonzero',
-           'assert_nonzero', 'ispositive', 'assert_positive', 'isnegative',
-           'assert_negative', 'isintegral', 'assert_integral', 'isodd',
-           'assert_isinf', 'same_sign', 'assert_same_sign']

@@ -8,8 +8,8 @@ not modify it directly.
 """
 
 from ..array_helpers import (NaN, assert_exactly_equal, assert_isinf, assert_negative,
-                             assert_positive, exactly_equal, infinity, logical_not, nonzero,
-                             same_sign, zero)
+                             assert_positive, exactly_equal, infinity, isfinite, logical_and,
+                             logical_not, logical_or, nonzero, same_sign, zero)
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import multiply
 

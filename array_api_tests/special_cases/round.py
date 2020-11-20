@@ -7,7 +7,8 @@ NOTE: This file is generated automatically by the generate_stubs.py script. Do
 not modify it directly.
 """
 
-from ..array_helpers import assert_exactly_equal, ceil, floor, isintegral, subtract, where, zero
+from ..array_helpers import (assert_exactly_equal, ceil, equal, floor, greater, isintegral,
+                             subtract, where, zero)
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import round
 

@@ -7,7 +7,7 @@ NOTE: This file is generated automatically by the generate_stubs.py script. Do
 not modify it directly.
 """
 
-from ..array_helpers import assert_exactly_equal, exactly_equal, one, zero
+from ..array_helpers import assert_exactly_equal, exactly_equal, greater, less, logical_or, one, zero
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import sign
 

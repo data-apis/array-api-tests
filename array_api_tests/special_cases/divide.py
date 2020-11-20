@@ -8,8 +8,8 @@ not modify it directly.
 """
 
 from ..array_helpers import (NaN, assert_exactly_equal, assert_negative, assert_positive,
-                             exactly_equal, infinity, isnegative, ispositive, logical_not, nonzero,
-                             same_sign, zero)
+                             exactly_equal, greater, infinity, isfinite, isnegative, ispositive,
+                             less, logical_and, logical_not, logical_or, nonzero, same_sign, zero)
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import divide
 
