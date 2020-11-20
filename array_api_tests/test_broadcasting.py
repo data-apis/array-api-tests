@@ -6,7 +6,7 @@ from functools import reduce
 
 import pytest
 
-from hypothesis import given, assume
+from hypothesis import given
 
 from .hypothesis_helpers import nonbroadcastable_ones_array_two_args
 from .pytest_helpers import raises, doesnt_raise, nargs
