@@ -24,7 +24,7 @@ def test_sign_special_cases_one_arg_less(arg1):
     """
     res = sign(arg1)
     mask = less(arg1, zero(arg1.dtype))
-    assert_exactly_equal(res[mask], -one(arg1.dtype))
+    assert_exactly_equal(res[mask], -one(arg1.dtype)[mask])
 
 
 @given(numeric_arrays)
@@ -37,7 +37,7 @@ def test_sign_special_cases_one_arg_either(arg1):
     """
     res = sign(arg1)
     mask = logical_or(exactly_equal(arg1, -zero(arg1.dtype)), exactly_equal(arg1, zero(arg1.dtype)))
-    assert_exactly_equal(res[mask], zero(arg1.dtype))
+    assert_exactly_equal(res[mask], zero(arg1.dtype)[mask])
 
 
 @given(numeric_arrays)
@@ -50,4 +50,4 @@ def test_sign_special_cases_one_arg_greater(arg1):
     """
     res = sign(arg1)
     mask = greater(arg1, zero(arg1.dtype))
-    assert_exactly_equal(res[mask], one(arg1.dtype))
+    assert_exactly_equal(res[mask], one(arg1.dtype)[mask])

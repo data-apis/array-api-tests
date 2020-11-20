@@ -25,7 +25,7 @@ def test_add_special_cases_two_args_either(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_or(exactly_equal(arg1, NaN(arg1.dtype)), exactly_equal(arg2, NaN(arg1.dtype)))
-    assert_exactly_equal(res[mask], NaN(arg1.dtype))
+    assert_exactly_equal(res[mask], NaN(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -38,7 +38,7 @@ def test_add_special_cases_two_args_equal__equal_1(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.dtype)), exactly_equal(arg2, -infinity(arg2.dtype)))
-    assert_exactly_equal(res[mask], NaN(arg1.dtype))
+    assert_exactly_equal(res[mask], NaN(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -51,7 +51,7 @@ def test_add_special_cases_two_args_equal__equal_2(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.dtype)), exactly_equal(arg2, infinity(arg2.dtype)))
-    assert_exactly_equal(res[mask], NaN(arg1.dtype))
+    assert_exactly_equal(res[mask], NaN(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -64,7 +64,7 @@ def test_add_special_cases_two_args_equal__equal_3(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.dtype)), exactly_equal(arg2, infinity(arg2.dtype)))
-    assert_exactly_equal(res[mask], infinity(arg1.dtype))
+    assert_exactly_equal(res[mask], infinity(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -77,7 +77,7 @@ def test_add_special_cases_two_args_equal__equal_4(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.dtype)), exactly_equal(arg2, -infinity(arg2.dtype)))
-    assert_exactly_equal(res[mask], -infinity(arg1.dtype))
+    assert_exactly_equal(res[mask], -infinity(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -90,7 +90,7 @@ def test_add_special_cases_two_args_equal__equal_5(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.dtype)), isfinite(arg2))
-    assert_exactly_equal(res[mask], infinity(arg1.dtype))
+    assert_exactly_equal(res[mask], infinity(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -103,7 +103,7 @@ def test_add_special_cases_two_args_equal__equal_6(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.dtype)), isfinite(arg2))
-    assert_exactly_equal(res[mask], -infinity(arg1.dtype))
+    assert_exactly_equal(res[mask], -infinity(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -116,7 +116,7 @@ def test_add_special_cases_two_args_equal__equal_7(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(isfinite(arg1), exactly_equal(arg2, infinity(arg2.dtype)))
-    assert_exactly_equal(res[mask], infinity(arg1.dtype))
+    assert_exactly_equal(res[mask], infinity(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -129,7 +129,7 @@ def test_add_special_cases_two_args_equal__equal_8(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(isfinite(arg1), exactly_equal(arg2, -infinity(arg2.dtype)))
-    assert_exactly_equal(res[mask], -infinity(arg1.dtype))
+    assert_exactly_equal(res[mask], -infinity(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -142,7 +142,7 @@ def test_add_special_cases_two_args_equal__equal_9(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -zero(arg1.dtype)), exactly_equal(arg2, -zero(arg2.dtype)))
-    assert_exactly_equal(res[mask], -zero(arg1.dtype))
+    assert_exactly_equal(res[mask], -zero(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -155,7 +155,7 @@ def test_add_special_cases_two_args_equal__equal_10(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -zero(arg1.dtype)), exactly_equal(arg2, zero(arg2.dtype)))
-    assert_exactly_equal(res[mask], zero(arg1.dtype))
+    assert_exactly_equal(res[mask], zero(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -168,7 +168,7 @@ def test_add_special_cases_two_args_equal__equal_11(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, zero(arg1.dtype)), exactly_equal(arg2, -zero(arg2.dtype)))
-    assert_exactly_equal(res[mask], zero(arg1.dtype))
+    assert_exactly_equal(res[mask], zero(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -181,7 +181,7 @@ def test_add_special_cases_two_args_equal__equal_12(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, zero(arg1.dtype)), exactly_equal(arg2, zero(arg2.dtype)))
-    assert_exactly_equal(res[mask], zero(arg1.dtype))
+    assert_exactly_equal(res[mask], zero(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -194,7 +194,7 @@ def test_add_special_cases_two_args_equal__equal_13(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(logical_and(isfinite(arg1), nonzero(arg1)), exactly_equal(arg2, -arg1))
-    assert_exactly_equal(res[mask], zero(arg1.dtype))
+    assert_exactly_equal(res[mask], zero(arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)

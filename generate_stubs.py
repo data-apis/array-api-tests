@@ -327,7 +327,7 @@ def get_assert(typ, result):
         ast.parse(result)
     except SyntaxError:
         raise RuntimeError(f"Unexpected result value {result!r} for {typ} (bad syntax)")
-    return f"assert_{typ}(res[mask], {result})"
+    return f"assert_{typ}(res[mask], {result}[mask])"
 
 ONE_ARG_TEMPLATE = """
 {decorator}
