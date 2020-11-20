@@ -207,7 +207,7 @@ def test_add_special_cases_two_args_either__equal(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(logical_or(exactly_equal(arg1, zero(arg1.dtype)), exactly_equal(arg1, -zero(arg1.dtype))), logical_and(isfinite(arg2), nonzero(arg2)))
-    assert_exactly_equal(res[mask], arg2)
+    assert_exactly_equal(res[mask], arg2[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -220,7 +220,7 @@ def test_add_special_cases_two_args_equal__either(arg1, arg2):
     """
     res = add(arg1, arg2)
     mask = logical_and(logical_and(isfinite(arg1), nonzero(arg1)), logical_or(exactly_equal(arg2, zero(arg2.dtype)), exactly_equal(arg2, -zero(arg2.dtype))))
-    assert_exactly_equal(res[mask], arg1)
+    assert_exactly_equal(res[mask], arg1[mask])
 
 # TODO: Implement REMAINING test for:
 # -   In the remaining cases, when neither `infinity`, `+0`, `-0`, nor a `NaN` is involved, and the operands have the same mathematical sign or have different magnitudes, the sum must be computed and rounded to the nearest representable value according to IEEE 754-2019 and a supported round mode. If the magnitude is too large to represent, the operation overflows and the result is an `infinity` of appropriate mathematical sign.

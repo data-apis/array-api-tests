@@ -24,4 +24,4 @@ def test_ceil_special_cases_one_arg_equal(arg1):
     """
     res = ceil(arg1)
     mask = isintegral(arg1)
-    assert_exactly_equal(res[mask], arg1)
+    assert_exactly_equal(res[mask], arg1[mask])

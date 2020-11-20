@@ -25,7 +25,7 @@ def test_round_special_cases_one_arg_equal(arg1):
     """
     res = round(arg1)
     mask = isintegral(arg1)
-    assert_exactly_equal(res[mask], arg1)
+    assert_exactly_equal(res[mask], arg1[mask])
 
 
 @given(numeric_arrays)
