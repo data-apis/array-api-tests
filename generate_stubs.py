@@ -223,25 +223,25 @@ SPECIAL_CASE_REGEXS = dict(
 
 def parse_value(value, arg):
     if value == 'NaN':
-        return f"NaN({arg}.dtype)"
+        return f"NaN({arg}.shape, {arg}.dtype)"
     elif value == "+infinity":
-        return f"infinity({arg}.dtype)"
+        return f"infinity({arg}.shape, {arg}.dtype)"
     elif value == "-infinity":
-        return f"-infinity({arg}.dtype)"
+        return f"-infinity({arg}.shape, {arg}.dtype)"
     elif value in ["0", "+0"]:
-        return f"zero({arg}.dtype)"
+        return f"zero({arg}.shape, {arg}.dtype)"
     elif value == "-0":
-        return f"-zero({arg}.dtype)"
+        return f"-zero({arg}.shape, {arg}.dtype)"
     elif value in ["1", "+1"]:
-        return f"one({arg}.dtype)"
+        return f"one({arg}.shape, {arg}.dtype)"
     elif value == "-1":
-        return f"-one({arg}.dtype)"
+        return f"-one({arg}.shape, {arg}.dtype)"
     # elif value == 'signed infinity':
     elif value == 'signed zero':
-        return f"zero({arg}.dtype))"
+        return f"zero({arg}.shape, {arg}.dtype))"
     elif 'π' in value:
         value = regex.sub(r'(\d+)π', r'\1*π', value)
-        return value.replace('π', f'π({arg}.dtype)')
+        return value.replace('π', f'π({arg}.shape, {arg}.dtype)')
     elif 'x1_i' in value or 'x2_i' in value:
         return value
     elif value.startswith('where('):

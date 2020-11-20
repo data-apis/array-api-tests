@@ -16,7 +16,7 @@ __all__ = ['logical_and', 'logical_or', 'logical_not', 'less', 'greater', 'subtr
            'assert_integral', 'isodd', 'assert_isinf', 'same_sign',
            'assert_same_sign']
 
-def zero(dtype):
+def zero(shape, dtype):
     """
     Returns a scalar 0 of the given dtype.
 
@@ -28,9 +28,9 @@ def zero(dtype):
     To get -0, use -zero(dtype) (note that -0 is only defined for floating
     point dtypes).
     """
-    return zeros((), dtype=dtype)
+    return zeros(shape, dtype=dtype)
 
-def one(dtype):
+def one(shape, dtype):
     """
     Returns a scalar 1 of the given dtype.
 
@@ -41,19 +41,19 @@ def one(dtype):
 
     To get -1, use -one(dtype).
     """
-    return ones((), dtype=dtype)
+    return ones(shape, dtype=dtype)
 
-def NaN(dtype):
+def NaN(shape, dtype):
     """
     Returns a scalar nan of the given dtype.
 
     Note that this is only defined for floating point dtypes.
     """
     if dtype not in [float32, float64]:
-        raise RuntimeError(f"Unexpected dtype {dtype} in nan().")
-    return full((), nan, dtype=dtype)
+        raise RuntimeError(f"Unexpected dtype {dtype} in NaN().")
+    return full(shape, nan, dtype=dtype)
 
-def infinity(dtype):
+def infinity(shape, dtype):
     """
     Returns a scalar positive infinity of the given dtype.
 
@@ -64,9 +64,9 @@ def infinity(dtype):
     """
     if dtype not in [float32, float64]:
         raise RuntimeError(f"Unexpected dtype {dtype} in infinity().")
-    return full((), inf, dtype=dtype)
+    return full(shape, inf, dtype=dtype)
 
-def π(dtype):
+def π(shape, dtype):
     """
     Returns a scalar π.
 
@@ -76,24 +76,26 @@ def π(dtype):
 
     """
     if dtype not in [float32, float64]:
-        raise RuntimeError(f"Unexpected dtype {dtype} in infinity().")
-    return full((), pi, dtype=dtype)
+        raise RuntimeError(f"Unexpected dtype {dtype} in π().")
+    return full(shape, pi, dtype=dtype)
 
 def isnegzero(x):
     """
     Returns a mask where x is -0.
     """
     # TODO: If copysign or signbit are added to the spec, use those instead.
+    shape = x.shape
     dtype = x.dtype
-    return equal(divide(one(dtype), x), -infinity(dtype))
+    return equal(divide(one(shape, dtype), x), -infinity(shape, dtype))
 
 def isposzero(x):
     """
     Returns a mask where x is +0 (but not -0).
     """
     # TODO: If copysign or signbit are added to the spec, use those instead.
+    shape = x.shape
     dtype = x.dtype
-    return equal(divide(one(dtype), x), infinity(dtype))
+    return equal(divide(one(shape, dtype), x), infinity(shape, dtype))
 
 def exactly_equal(x, y):
     """
@@ -147,13 +149,13 @@ def assert_nonzero(x):
     assert all(nonzero(x)), "The input array is not nonzero"
 
 def ispositive(x):
-    return greater(x, zero(x.dtype))
+    return greater(x, zero(x.shape, x.dtype))
 
 def assert_positive(x):
     assert all(ispositive(x)), "The input array is not positive"
 
 def isnegative(x):
-    return less(x, zero(x.dtype))
+    return less(x, zero(x.shape, x.dtype))
 
 def assert_negative(x):
     assert all(isnegative(x)), "The input array is not negative"
@@ -168,7 +170,7 @@ def isintegral(x):
     if x.dtype in [int8, int16, int32, int64, uint8, uint16, uint32, uint64]:
         return full(x.shape, True, dtype=bool)
     elif x.dtype in [float32, float64]:
-        return equal(remainder(x, one(x.dtype)), zero(x.dtype))
+        return equal(remainder(x, one(x.shape, x.dtype)), zero(x.shape, x.dtype))
     else:
         return full(x.shape, False, dtype=bool)
 
@@ -179,7 +181,11 @@ def assert_integral(x):
     assert all(isintegral(x)), "The input array has nonintegral values"
 
 def isodd(x):
-    return logical_and(isintegral(x), equal(remainder(x, 2*one(x.dtype)), one(x.dtype)))
+    return logical_and(
+        isintegral(x),
+        equal(
+            remainder(x, 2*one(x.shape, x.dtype)),
+            one(x.shape, x.dtype)))
 
 def assert_isinf(x):
     """

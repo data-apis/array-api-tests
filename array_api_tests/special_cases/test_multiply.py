@@ -25,8 +25,8 @@ def test_multiply_special_cases_two_args_either(arg1, arg2):
 
     """
     res = multiply(arg1, arg2)
-    mask = logical_or(exactly_equal(arg1, NaN(arg1.dtype)), exactly_equal(arg2, NaN(arg1.dtype)))
-    assert_exactly_equal(res[mask], NaN(arg1.dtype)[mask])
+    mask = logical_or(exactly_equal(arg1, NaN(arg1.shape, arg1.dtype)), exactly_equal(arg2, NaN(arg1.shape, arg1.dtype)))
+    assert_exactly_equal(res[mask], NaN(arg1.shape, arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -64,8 +64,8 @@ def test_multiply_special_cases_two_args_either__either_1(arg1, arg2):
 
     """
     res = multiply(arg1, arg2)
-    mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.dtype)), exactly_equal(arg1, -infinity(arg1.dtype))), logical_or(exactly_equal(arg2, zero(arg2.dtype)), exactly_equal(arg2, -zero(arg2.dtype))))
-    assert_exactly_equal(res[mask], NaN(arg1.dtype)[mask])
+    mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype))), logical_or(exactly_equal(arg2, zero(arg2.shape, arg2.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype))))
+    assert_exactly_equal(res[mask], NaN(arg1.shape, arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -77,8 +77,8 @@ def test_multiply_special_cases_two_args_either__either_2(arg1, arg2):
 
     """
     res = multiply(arg1, arg2)
-    mask = logical_and(logical_or(exactly_equal(arg1, zero(arg1.dtype)), exactly_equal(arg1, -zero(arg1.dtype))), logical_or(exactly_equal(arg2, infinity(arg2.dtype)), exactly_equal(arg2, -infinity(arg2.dtype))))
-    assert_exactly_equal(res[mask], NaN(arg1.dtype)[mask])
+    mask = logical_and(logical_or(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg1, -zero(arg1.shape, arg1.dtype))), logical_or(exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype))))
+    assert_exactly_equal(res[mask], NaN(arg1.shape, arg1.dtype)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -90,7 +90,7 @@ def test_multiply_special_cases_two_args_either__either_3(arg1, arg2):
 
     """
     res = multiply(arg1, arg2)
-    mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.dtype)), exactly_equal(arg1, -infinity(arg1.dtype))), logical_or(exactly_equal(arg2, infinity(arg2.dtype)), exactly_equal(arg2, -infinity(arg2.dtype))))
+    mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype))), logical_or(exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype))))
     assert_isinf(res[mask])
 
 
@@ -103,7 +103,7 @@ def test_multiply_special_cases_two_args_either__equal(arg1, arg2):
 
     """
     res = multiply(arg1, arg2)
-    mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.dtype)), exactly_equal(arg1, -infinity(arg1.dtype))), logical_and(isfinite(arg2), nonzero(arg2)))
+    mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype))), logical_and(isfinite(arg2), nonzero(arg2)))
     assert_isinf(res[mask])
 
 
@@ -116,7 +116,7 @@ def test_multiply_special_cases_two_args_equal__either(arg1, arg2):
 
     """
     res = multiply(arg1, arg2)
-    mask = logical_and(logical_and(isfinite(arg1), nonzero(arg1)), logical_or(exactly_equal(arg2, infinity(arg2.dtype)), exactly_equal(arg2, -infinity(arg2.dtype))))
+    mask = logical_and(logical_and(isfinite(arg1), nonzero(arg1)), logical_or(exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype))))
     assert_isinf(res[mask])
 
 # TODO: Implement REMAINING test for:

@@ -38,4 +38,4 @@ def test_round_special_cases_one_arg_two_integers_equally_close(arg1):
     """
     res = round(arg1)
     mask = equal(subtract(arg1, floor(arg1)), subtract(ceil(arg1), arg1))
-    assert_exactly_equal(res[mask], where(greater(abs(subtract(zero(arg1.dtype), floor(arg1))), abs(subtract(ceil(arg1), zero(arg1.dtype)))), floor(arg1), ceil(arg1))[mask])
+    assert_exactly_equal(res[mask], where(greater(abs(subtract(zero(arg1.shape, arg1.dtype), floor(arg1))), abs(subtract(ceil(arg1), zero(arg1.shape, arg1.dtype)))), floor(arg1), ceil(arg1))[mask])

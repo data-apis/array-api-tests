@@ -23,8 +23,8 @@ def test_sqrt_special_cases_one_arg_equal_1(arg1):
 
     """
     res = sqrt(arg1)
-    mask = exactly_equal(arg1, NaN(arg1.dtype))
-    assert_exactly_equal(res[mask], NaN(arg1.dtype)[mask])
+    mask = exactly_equal(arg1, NaN(arg1.shape, arg1.dtype))
+    assert_exactly_equal(res[mask], NaN(arg1.shape, arg1.dtype)[mask])
 
 
 @given(numeric_arrays)
@@ -36,8 +36,8 @@ def test_sqrt_special_cases_one_arg_equal_2(arg1):
 
     """
     res = sqrt(arg1)
-    mask = exactly_equal(arg1, zero(arg1.dtype))
-    assert_exactly_equal(res[mask], zero(arg1.dtype)[mask])
+    mask = exactly_equal(arg1, zero(arg1.shape, arg1.dtype))
+    assert_exactly_equal(res[mask], zero(arg1.shape, arg1.dtype)[mask])
 
 
 @given(numeric_arrays)
@@ -49,8 +49,8 @@ def test_sqrt_special_cases_one_arg_equal_3(arg1):
 
     """
     res = sqrt(arg1)
-    mask = exactly_equal(arg1, -zero(arg1.dtype))
-    assert_exactly_equal(res[mask], -zero(arg1.dtype)[mask])
+    mask = exactly_equal(arg1, -zero(arg1.shape, arg1.dtype))
+    assert_exactly_equal(res[mask], -zero(arg1.shape, arg1.dtype)[mask])
 
 
 @given(numeric_arrays)
@@ -62,8 +62,8 @@ def test_sqrt_special_cases_one_arg_equal_4(arg1):
 
     """
     res = sqrt(arg1)
-    mask = exactly_equal(arg1, infinity(arg1.dtype))
-    assert_exactly_equal(res[mask], infinity(arg1.dtype)[mask])
+    mask = exactly_equal(arg1, infinity(arg1.shape, arg1.dtype))
+    assert_exactly_equal(res[mask], infinity(arg1.shape, arg1.dtype)[mask])
 
 
 @given(numeric_arrays)
@@ -75,5 +75,5 @@ def test_sqrt_special_cases_one_arg_less(arg1):
 
     """
     res = sqrt(arg1)
-    mask = less(arg1, zero(arg1.dtype))
-    assert_exactly_equal(res[mask], NaN(arg1.dtype)[mask])
+    mask = less(arg1, zero(arg1.shape, arg1.dtype))
+    assert_exactly_equal(res[mask], NaN(arg1.shape, arg1.dtype)[mask])
