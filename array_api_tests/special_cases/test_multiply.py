@@ -7,9 +7,10 @@ NOTE: This file is generated automatically by the generate_stubs.py script. Do
 not modify it directly.
 """
 
-from ..array_helpers import (NaN, assert_exactly_equal, assert_isinf, assert_negative,
-                             assert_positive, exactly_equal, infinity, isfinite, logical_and,
-                             logical_not, logical_or, non_zero, same_sign, zero)
+from ..array_helpers import (NaN, assert_exactly_equal, assert_isinf,
+                             assert_negative_mathematical_sign, assert_positive_mathematical_sign,
+                             exactly_equal, infinity, isfinite, logical_and, logical_not,
+                             logical_or, non_zero, same_sign, zero)
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import multiply
 
@@ -39,7 +40,7 @@ def test_multiply_special_cases_two_args_same_sign(arg1, arg2):
     """
     res = multiply(arg1, arg2)
     mask = same_sign(arg1, arg2)
-    assert_positive(res[mask])
+    assert_positive_mathematical_sign(res[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -52,7 +53,7 @@ def test_multiply_special_cases_two_args_different_signs(arg1, arg2):
     """
     res = multiply(arg1, arg2)
     mask = logical_not(same_sign(arg1, arg2))
-    assert_negative(res[mask])
+    assert_negative_mathematical_sign(res[mask])
 
 
 @given(numeric_arrays, numeric_arrays)

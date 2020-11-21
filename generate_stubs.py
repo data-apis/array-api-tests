@@ -182,7 +182,7 @@ def {sig}:{doc}
 # (?|...) is a branch reset (regex module only feature). It works like (?:...)
 # except only the matched alternative is assigned group numbers, so \1, \2, and
 # so on will always refer to a single match from _value.
-_value = r"(?|`([^`]*)`|a (finite) number|a (positive \(i\.e\., greater than `0`\) finite) number|a (negative \(i\.e\., less than `0`\) finite) number|(finite)|(positive)|(negative)|(nonzero)|(?:a )?(nonzero finite) numbers?|an (integer) value|already (integer)-valued|an (odd integer) value|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?|a (signed (?:infinity|zero)) with the mathematical sign determined by the rule already stated above|(positive) mathematical sign|(negative) mathematical sign)"
+_value = r"(?|`([^`]*)`|a (finite) number|a (positive \(i\.e\., greater than `0`\) finite) number|a (negative \(i\.e\., less than `0`\) finite) number|(finite)|(positive)|(negative)|(nonzero)|(?:a )?(nonzero finite) numbers?|an (integer) value|already (integer)-valued|an (odd integer) value|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?|a (signed (?:infinity|zero)) with the mathematical sign determined by the rule already stated above|(positive mathematical sign)|(negative mathematical sign))"
 SPECIAL_CASE_REGEXS = dict(
     ONE_ARG_EQUAL = regex.compile(rf'^- +If `x_i` is {_value}, the result is {_value}\.$'),
     ONE_ARG_GREATER = regex.compile(rf'^- +If `x_i` is greater than {_value}, the result is {_value}\.$'),
@@ -248,7 +248,8 @@ def parse_value(value, arg):
         return value
     elif value in ['finite', 'nonzero', 'nonzero finite',
                    "integer", "odd integer", "positive",
-                   "negative"]:
+                   "negative", "positive mathematical sign",
+                   "negative mathematical sign"]:
         return value
     # There's no way to remove the parenthetical from the matching group in
     # the regular expression.
@@ -287,9 +288,15 @@ def get_mask(typ, arg, value):
     elif value == 'positive':
         _check_exactly_equal(typ, value)
         return f"ispositive({arg})"
+    elif value == 'positive mathematical sign':
+        _check_exactly_equal(typ, value)
+        return f"positive_mathematical_sign({arg})"
     elif value == 'negative':
         _check_exactly_equal(typ, value)
         return f"isnegative({arg})"
+    elif value == 'negative mathematical sign':
+        _check_exactly_equal(typ, value)
+        return f"negative_mathematical_sign({arg})"
     elif value == 'integer':
         _check_exactly_equal(typ, value)
         return f"isintegral({arg})"
@@ -311,9 +318,15 @@ def get_assert(typ, result):
     elif result == "positive":
         _check_exactly_equal(typ, result)
         return "assert_positive(res[mask])"
+    elif result == "positive mathematical sign":
+        _check_exactly_equal(typ, result)
+        return "assert_positive_mathematical_sign(res[mask])"
     elif result == "negative":
         _check_exactly_equal(typ, result)
         return "assert_negative(res[mask])"
+    elif result == "negative mathematical sign":
+        _check_exactly_equal(typ, result)
+        return "assert_negative_mathematical_sign(res[mask])"
     elif 'x_i' in result:
         return f"assert_{typ}(res[mask], {result.replace('x_i', 'arg1')}[mask])"
     elif 'x1_i' in result:

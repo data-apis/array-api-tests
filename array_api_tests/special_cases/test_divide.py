@@ -7,9 +7,10 @@ NOTE: This file is generated automatically by the generate_stubs.py script. Do
 not modify it directly.
 """
 
-from ..array_helpers import (NaN, assert_exactly_equal, assert_negative, assert_positive,
-                             exactly_equal, greater, infinity, isfinite, isnegative, ispositive,
-                             less, logical_and, logical_not, logical_or, non_zero, same_sign, zero)
+from ..array_helpers import (NaN, assert_exactly_equal, assert_negative_mathematical_sign,
+                             assert_positive_mathematical_sign, exactly_equal, greater, infinity,
+                             isfinite, isnegative, ispositive, less, logical_and, logical_not,
+                             logical_or, non_zero, same_sign, zero)
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import divide
 
@@ -273,7 +274,7 @@ def test_divide_special_cases_two_args_same_sign_both(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(same_sign(arg1, arg2), logical_and(logical_and(isfinite(arg1), non_zero(arg1)), logical_and(isfinite(arg2), non_zero(arg2))))
-    assert_positive(res[mask])
+    assert_positive_mathematical_sign(res[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -286,7 +287,7 @@ def test_divide_special_cases_two_args_different_signs_both(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(logical_not(same_sign(arg1, arg2)), logical_and(logical_and(isfinite(arg1), non_zero(arg1)), logical_and(isfinite(arg2), non_zero(arg2))))
-    assert_negative(res[mask])
+    assert_negative_mathematical_sign(res[mask])
 
 # TODO: Implement REMAINING test for:
 # -   In the remaining cases, where neither `-infinity`, `+0`, `-0`, nor `NaN` is involved, the quotient must be computed and rounded to the nearest representable value according to IEEE 754-2019 and a supported rounding mode. If the magnitude is too larger to represent, the operation overflows and the result is an `infinity` of appropriate mathematical sign. If the magnitude is too small to represent, the operation underflows and the result is a zero of appropriate mathematical sign.

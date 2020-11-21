@@ -14,8 +14,10 @@ __all__ = ['logical_and', 'logical_or', 'logical_not', 'less', 'greater',
            'isposzero', 'exactly_equal', 'assert_exactly_equal',
            'assert_finite', 'assert_non_zero', 'ispositive',
            'assert_positive', 'isnegative', 'assert_negative', 'isintegral',
-           'assert_integral', 'isodd', 'assert_isinf', 'same_sign',
-           'assert_same_sign']
+           'assert_integral', 'isodd', 'assert_isinf',
+           'positive_mathematical_sign', 'assert_positive_mathematical_sign',
+           'negative_mathematical_sign', 'assert_negative_mathematical_sign',
+           'same_sign', 'assert_same_sign']
 
 def zero(shape, dtype):
     """
@@ -194,6 +196,34 @@ def assert_isinf(x):
     """
     assert all(isinf(x)), "The input array is not infinite"
 
+def positive_mathematical_sign(x):
+    """
+    Check if x has a positive "mathematical sign"
+
+    The "mathematical sign" here means the sign bit is 0. This includes 0,
+    positive finite numbers, and positive infinity. It does not include any
+    nans, as signed nans are not required by the spec.
+
+    """
+    return logical_or(greater(x, 0), isposzero(x))
+
+def assert_positive_mathematical_sign(x):
+    assert all(positive_mathematical_sign(x)), "The input arrays do not have a positive mathematical sign"
+
+def negative_mathematical_sign(x):
+    """
+    Check if x has a negative "mathematical sign"
+
+    The "mathematical sign" here means the sign bit is 1. This includes -0,
+    negative finite numbers, and negative infinity. It does not include any
+    nans, as signed nans are not required by the spec.
+
+    """
+    return logical_or(less(x, 0), isnegzero(x))
+
+def assert_negative_mathematical_sign(x):
+    assert all(negative_mathematical_sign(x)), "The input arrays do not have a negative mathematical sign"
+
 def same_sign(x, y):
     """
     Check if x and y have the "same sign"
@@ -203,13 +233,9 @@ def same_sign(x, y):
     have the same sign. The value of this function is False if either x or y
     is nan, as signed nans are not required by the spec.
     """
-    logical_or(
-        logical_and(
-            logical_or(greater(x, 0), isposzero(x)),
-            logical_or(greater(y, 0), isposzero(y))),
-        logical_and(
-            logical_or(less(x, 0), isnegzero(x)),
-            logical_or(less(y, 0), isnegzero(y))))
+    return logical_or(
+        logical_and(positive_mathematical_sign(x), positive_mathematical_sign(y)),
+        logical_and(negative_mathematical_sign(x), negative_mathematical_sign(y)))
 
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
