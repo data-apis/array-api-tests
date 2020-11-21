@@ -31,28 +31,28 @@ def test_multiply_special_cases_two_args_either(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test_multiply_special_cases_two_args_same_sign(arg1, arg2):
+def test_multiply_special_cases_two_args_same_sign_except(arg1, arg2):
     """
     Special case test for `multiply(x1, x2)`:
 
-        -   If `x1_i` and `x2_i` have the same mathematical sign, the result has a positive mathematical sign.
+        -   If `x1_i` and `x2_i` have the same mathematical sign, the result has a positive mathematical sign, except where it is `NaN` as in the rules below.
 
     """
     res = multiply(arg1, arg2)
-    mask = same_sign(arg1, arg2)
+    mask = logical_and(same_sign(arg1, arg2), logical_not(exactly_equal(res, NaN(res.shape, res.dtype))))
     assert_positive_mathematical_sign(res[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test_multiply_special_cases_two_args_different_signs(arg1, arg2):
+def test_multiply_special_cases_two_args_different_signs_except(arg1, arg2):
     """
     Special case test for `multiply(x1, x2)`:
 
-        -   If `x1_i` and `x2_i` have different mathematical signs, the result has a negative mathematical sign.
+        -   If `x1_i` and `x2_i` have different mathematical signs, the result has a negative mathematical sign, except where it is `NaN` as in the rules below.
 
     """
     res = multiply(arg1, arg2)
-    mask = logical_not(same_sign(arg1, arg2))
+    mask = logical_and(logical_not(same_sign(arg1, arg2)), logical_not(exactly_equal(res, NaN(res.shape, res.dtype))))
     assert_negative_mathematical_sign(res[mask])
 
 

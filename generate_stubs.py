@@ -212,8 +212,10 @@ SPECIAL_CASE_REGEXS = dict(
     TWO_ARGS_EQUAL__EITHER = regex.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
     TWO_ARGS_EITHER__EITHER = regex.compile(rf'^- +If `x1_i` is either {_value} or {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
     TWO_ARGS_SAME_SIGN = regex.compile(rf'^- +If `x1_i` and `x2_i` have the same mathematical sign, the result has a {_value}\.$'),
+    TWO_ARGS_SAME_SIGN_EXCEPT = regex.compile(rf'^- +If `x1_i` and `x2_i` have the same mathematical sign, the result has a {_value}, except where it is {_value} as in the rules below\.$'),
     TWO_ARGS_SAME_SIGN_BOTH = regex.compile(rf'^- +If `x1_i` and `x2_i` have the same mathematical sign and are both {_value}, the result has a {_value}\.$'),
     TWO_ARGS_DIFFERENT_SIGNS = regex.compile(rf'^- +If `x1_i` and `x2_i` have different mathematical signs, the result has a {_value}\.$'),
+    TWO_ARGS_DIFFERENT_SIGNS_EXCEPT = regex.compile(rf'^- +If `x1_i` and `x2_i` have different mathematical signs, the result has a {_value}, except where it is {_value} as in the rules below\.$'),
     TWO_ARGS_DIFFERENT_SIGNS_BOTH = regex.compile(rf'^- +If `x1_i` and `x2_i` have different mathematical signs and are both {_value}, the result has a {_value}\.$'),
     TWO_ARGS_EVEN_IF = regex.compile(rf'^- +If `x2_i` is {_value}, the result is {_value}, even if `x1_i` is {_value}\.$'),
 
@@ -483,6 +485,11 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
             result, = m.groups()
             mask = "same_sign(arg1, arg2)"
             assertion = get_assert("exactly_equal", result)
+        elif typ == "TWO_ARGS_SAME_SIGN_EXCEPT":
+            result, value = m.groups()
+            value = parse_value(value, "res")
+            mask = f"logical_and(same_sign(arg1, arg2), logical_not(exactly_equal(res, {value})))"
+            assertion = get_assert("exactly_equal", result)
         elif typ == "TWO_ARGS_SAME_SIGN_BOTH":
             value, result = m.groups()
             mask1 = get_mask("exactly_equal", "arg1", value)
@@ -492,6 +499,11 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
         elif typ == "TWO_ARGS_DIFFERENT_SIGNS":
             result, = m.groups()
             mask = "logical_not(same_sign(arg1, arg2))"
+            assertion = get_assert("exactly_equal", result)
+        elif typ == "TWO_ARGS_DIFFERENT_SIGNS_EXCEPT":
+            result, value = m.groups()
+            value = parse_value(value, "res")
+            mask = f"logical_and(logical_not(same_sign(arg1, arg2)), logical_not(exactly_equal(res, {value})))"
             assertion = get_assert("exactly_equal", result)
         elif typ == "TWO_ARGS_DIFFERENT_SIGNS_BOTH":
             value, result = m.groups()
