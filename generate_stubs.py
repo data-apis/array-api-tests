@@ -331,7 +331,7 @@ def get_assert(typ, result):
         return "assert_negative_mathematical_sign(res[mask])"
     elif result == 'even integer closest to `x_i`':
         _check_exactly_equal(typ, result)
-        return "assert_iseven(res[mask])\n    assert_positive(subtract(abs(subtract(arg1[mask], res[mask]), one(arg1[mask].shape, arg1[mask].dtype))))"
+        return "assert_iseven(res[mask])\n    assert_positive(subtract(one(arg1[mask].shape, arg1[mask].dtype), abs(subtract(arg1[mask], res[mask]))))"
     elif 'x_i' in result:
         return f"assert_{typ}(res[mask], {result.replace('x_i', 'arg1')}[mask])"
     elif 'x1_i' in result:
@@ -404,7 +404,7 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
             mask = parse_value("integer", "arg1")
         elif typ == "ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE":
             result, = m.groups()
-            mask = "equal(subtract(arg1, floor(arg1)), subtract(ceil(arg1), arg1))"
+            mask = "logical_and(not_equal(floor(arg1), ceil(arg1)), equal(subtract(arg1, floor(arg1)), subtract(ceil(arg1), arg1)))"
         else:
             raise ValueError(f"Unrecognized special value type {typ}")
         assertion = get_assert("exactly_equal", result)

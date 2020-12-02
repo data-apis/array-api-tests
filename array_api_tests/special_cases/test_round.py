@@ -8,7 +8,7 @@ not modify it directly.
 """
 
 from ..array_helpers import (assert_exactly_equal, assert_iseven, assert_positive, ceil, equal,
-                             floor, isintegral, one, subtract)
+                             floor, isintegral, logical_and, not_equal, one, subtract)
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import round
 
@@ -37,6 +37,6 @@ def test_round_special_cases_one_arg_two_integers_equally_close(arg1):
 
     """
     res = round(arg1)
-    mask = equal(subtract(arg1, floor(arg1)), subtract(ceil(arg1), arg1))
+    mask = logical_and(not_equal(floor(arg1), ceil(arg1)), equal(subtract(arg1, floor(arg1)), subtract(ceil(arg1), arg1)))
     assert_iseven(res[mask])
-    assert_positive(subtract(abs(subtract(arg1[mask], res[mask]), one(arg1[mask].shape, arg1[mask].dtype))))
+    assert_positive(subtract(one(arg1[mask].shape, arg1[mask].dtype), abs(subtract(arg1[mask], res[mask]))))

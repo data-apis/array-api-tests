@@ -9,9 +9,9 @@ from ._array_module import (isnan, all, equal, not_equal, logical_and,
 from ._array_module import logical_not, subtract, floor, ceil, where
 
 __all__ = ['logical_and', 'logical_or', 'logical_not', 'less', 'greater',
-           'subtract', 'floor', 'ceil', 'where', 'isfinite', 'equal', 'zero',
-           'one', 'NaN', 'infinity', 'π', 'isnegzero', 'non_zero',
-           'isposzero', 'exactly_equal', 'assert_exactly_equal',
+           'subtract', 'floor', 'ceil', 'where', 'isfinite', 'equal',
+           'not_equal', 'zero', 'one', 'NaN', 'infinity', 'π', 'isnegzero',
+           'non_zero', 'isposzero', 'exactly_equal', 'assert_exactly_equal',
            'assert_finite', 'assert_non_zero', 'ispositive',
            'assert_positive', 'isnegative', 'assert_negative', 'isintegral',
            'assert_integral', 'isodd', 'iseven', "assert_iseven",
