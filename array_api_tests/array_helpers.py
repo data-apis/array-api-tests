@@ -14,10 +14,11 @@ __all__ = ['logical_and', 'logical_or', 'logical_not', 'less', 'greater',
            'isposzero', 'exactly_equal', 'assert_exactly_equal',
            'assert_finite', 'assert_non_zero', 'ispositive',
            'assert_positive', 'isnegative', 'assert_negative', 'isintegral',
-           'assert_integral', 'isodd', 'assert_isinf',
-           'positive_mathematical_sign', 'assert_positive_mathematical_sign',
-           'negative_mathematical_sign', 'assert_negative_mathematical_sign',
-           'same_sign', 'assert_same_sign']
+           'assert_integral', 'isodd', 'iseven', "assert_iseven",
+           'assert_isinf', 'positive_mathematical_sign',
+           'assert_positive_mathematical_sign', 'negative_mathematical_sign',
+           'assert_negative_mathematical_sign', 'same_sign',
+           'assert_same_sign']
 
 def zero(shape, dtype):
     """
@@ -189,6 +190,19 @@ def isodd(x):
         equal(
             remainder(x, 2*one(x.shape, x.dtype)),
             one(x.shape, x.dtype)))
+
+def iseven(x):
+    return logical_and(
+        isintegral(x),
+        equal(
+            remainder(x, 2*one(x.shape, x.dtype)),
+            zero(x.shape, x.dtype)))
+
+def assert_iseven(x):
+    """
+    Check that x is an even integer
+    """
+    assert all(iseven(x)), "The input array is not even"
 
 def assert_isinf(x):
     """

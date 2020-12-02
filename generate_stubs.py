@@ -182,13 +182,13 @@ def {sig}:{doc}
 # (?|...) is a branch reset (regex module only feature). It works like (?:...)
 # except only the matched alternative is assigned group numbers, so \1, \2, and
 # so on will always refer to a single match from _value.
-_value = r"(?|`([^`]*)`|a (finite) number|a (positive \(i\.e\., greater than `0`\) finite) number|a (negative \(i\.e\., less than `0`\) finite) number|(finite)|(positive)|(negative)|(nonzero)|(?:a )?(nonzero finite) numbers?|an (integer) value|already (integer)-valued|an (odd integer) value|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?|a (signed (?:infinity|zero)) with the mathematical sign determined by the rule already stated above|(positive mathematical sign)|(negative mathematical sign))"
+_value = r"(?|`([^`]*)`|a (finite) number|a (positive \(i\.e\., greater than `0`\) finite) number|a (negative \(i\.e\., less than `0`\) finite) number|(finite)|(positive)|(negative)|(nonzero)|(?:a )?(nonzero finite) numbers?|an (integer) value|already (integer)-valued|an (odd integer) value|(even integer closest to `x_i`)|an implementation-dependent approximation to `([^`]*)`(?: \(rounded\))?|a (signed (?:infinity|zero)) with the mathematical sign determined by the rule already stated above|(positive mathematical sign)|(negative mathematical sign))"
 SPECIAL_CASE_REGEXS = dict(
     ONE_ARG_EQUAL = regex.compile(rf'^- +If `x_i` is {_value}, the result is {_value}\.$'),
     ONE_ARG_GREATER = regex.compile(rf'^- +If `x_i` is greater than {_value}, the result is {_value}\.$'),
     ONE_ARG_LESS = regex.compile(rf'^- +If `x_i` is less than {_value}, the result is {_value}\.$'),
     ONE_ARG_EITHER = regex.compile(rf'^- +If `x_i` is either {_value} or {_value}, the result is {_value}\.$'),
-    ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE = regex.compile(rf'^- +If two integers are equally close to `x_i`, the result is whichever integer is farthest from {_value}\.$'),
+    ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE = regex.compile(rf'^- +If two integers are equally close to `x_i`, the result is the {_value}\.$'),
 
     TWO_ARGS_EQUAL__EQUAL = regex.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
     TWO_ARGS_GREATER__EQUAL = regex.compile(rf'^- +If `x1_i` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
@@ -212,10 +212,10 @@ SPECIAL_CASE_REGEXS = dict(
     TWO_ARGS_EQUAL__EITHER = regex.compile(rf'^- +If `x1_i` is {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
     TWO_ARGS_EITHER__EITHER = regex.compile(rf'^- +If `x1_i` is either {_value} or {_value} and `x2_i` is either {_value} or {_value}, the result is {_value}\.$'),
     TWO_ARGS_SAME_SIGN = regex.compile(rf'^- +If `x1_i` and `x2_i` have the same mathematical sign, the result has a {_value}\.$'),
-    TWO_ARGS_SAME_SIGN_EXCEPT = regex.compile(rf'^- +If `x1_i` and `x2_i` have the same mathematical sign, the result has a {_value}, except where it is {_value} as in the rules below\.$'),
+    TWO_ARGS_SAME_SIGN_EXCEPT = regex.compile(rf'^- +If `x1_i` and `x2_i` have the same mathematical sign, the result has a {_value}, unless the result is {_value}\. If the result is {_value}, the "sign" of {_value} is implementation-defined\.$'),
     TWO_ARGS_SAME_SIGN_BOTH = regex.compile(rf'^- +If `x1_i` and `x2_i` have the same mathematical sign and are both {_value}, the result has a {_value}\.$'),
     TWO_ARGS_DIFFERENT_SIGNS = regex.compile(rf'^- +If `x1_i` and `x2_i` have different mathematical signs, the result has a {_value}\.$'),
-    TWO_ARGS_DIFFERENT_SIGNS_EXCEPT = regex.compile(rf'^- +If `x1_i` and `x2_i` have different mathematical signs, the result has a {_value}, except where it is {_value} as in the rules below\.$'),
+    TWO_ARGS_DIFFERENT_SIGNS_EXCEPT = regex.compile(rf'^- +If `x1_i` and `x2_i` have different mathematical signs, the result has a {_value}, unless the result is {_value}\. If the result is {_value}, the "sign" of {_value} is implementation-defined\.$'),
     TWO_ARGS_DIFFERENT_SIGNS_BOTH = regex.compile(rf'^- +If `x1_i` and `x2_i` have different mathematical signs and are both {_value}, the result has a {_value}\.$'),
     TWO_ARGS_EVEN_IF = regex.compile(rf'^- +If `x2_i` is {_value}, the result is {_value}, even if `x1_i` is {_value}\.$'),
 
@@ -267,7 +267,6 @@ def _check_exactly_equal(typ, value):
         raise RuntimeError(f"Unexpected mask type {typ}: {value}")
 
 def get_mask(typ, arg, value):
-
     if typ.startswith("not"):
         return f"logical_not({get_mask(typ[len('not'):], arg, value)})"
     if typ.startswith("abs"):
@@ -314,6 +313,7 @@ def get_mask(typ, arg, value):
     return f"{typ}({arg}, {value})"
 
 def get_assert(typ, result):
+    # TODO: Refactor this so typ is actually what it should be
     if result == "signed infinity":
         _check_exactly_equal(typ, result)
         return "assert_isinf(res[mask])"
@@ -329,12 +329,16 @@ def get_assert(typ, result):
     elif result == "negative mathematical sign":
         _check_exactly_equal(typ, result)
         return "assert_negative_mathematical_sign(res[mask])"
+    elif result == 'even integer closest to `x_i`':
+        _check_exactly_equal(typ, result)
+        return "assert_iseven(res[mask])\n    assert_positive(subtract(abs(subtract(arg1[mask], res[mask]), one(arg1[mask].shape, arg1[mask].dtype))))"
     elif 'x_i' in result:
         return f"assert_{typ}(res[mask], {result.replace('x_i', 'arg1')}[mask])"
     elif 'x1_i' in result:
         return f"assert_{typ}(res[mask], {result.replace('x1_i', 'arg1')}[mask])"
     elif 'x2_i' in result:
         return f"assert_{typ}(res[mask], {result.replace('x2_i', 'arg2')}[mask])"
+
     # TODO: Get use something better than arg1 here for the arg
     result = parse_value(result, "arg1")
     try:
@@ -401,8 +405,6 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
         elif typ == "ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE":
             result, = m.groups()
             mask = "equal(subtract(arg1, floor(arg1)), subtract(ceil(arg1), arg1))"
-            result = parse_value(result, "arg1")
-            result = f"where(greater(abs(subtract({result}, floor(arg1))), abs(subtract(ceil(arg1), {result}))), floor(arg1), ceil(arg1))"
         else:
             raise ValueError(f"Unrecognized special value type {typ}")
         assertion = get_assert("exactly_equal", result)
@@ -486,7 +488,8 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
             mask = "same_sign(arg1, arg2)"
             assertion = get_assert("exactly_equal", result)
         elif typ == "TWO_ARGS_SAME_SIGN_EXCEPT":
-            result, value = m.groups()
+            result, value, value1, value2 = m.groups()
+            assert value == value1 == value2
             value = parse_value(value, "res")
             mask = f"logical_and(same_sign(arg1, arg2), logical_not(exactly_equal(res, {value})))"
             assertion = get_assert("exactly_equal", result)
@@ -501,7 +504,8 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
             mask = "logical_not(same_sign(arg1, arg2))"
             assertion = get_assert("exactly_equal", result)
         elif typ == "TWO_ARGS_DIFFERENT_SIGNS_EXCEPT":
-            result, value = m.groups()
+            result, value, value1, value2 = m.groups()
+            assert value == value1 == value2
             value = parse_value(value, "res")
             mask = f"logical_and(logical_not(same_sign(arg1, arg2)), logical_not(exactly_equal(res, {value})))"
             assertion = get_assert("exactly_equal", result)

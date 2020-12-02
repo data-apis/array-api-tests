@@ -7,8 +7,8 @@ NOTE: This file is generated automatically by the generate_stubs.py script. Do
 not modify it directly.
 """
 
-from ..array_helpers import (assert_exactly_equal, ceil, equal, floor, greater, isintegral,
-                             subtract, where, zero)
+from ..array_helpers import (assert_exactly_equal, assert_iseven, assert_positive, ceil, equal,
+                             floor, isintegral, one, subtract)
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import round
 
@@ -33,9 +33,10 @@ def test_round_special_cases_one_arg_two_integers_equally_close(arg1):
     """
     Special case test for `round(x)`:
 
-        -   If two integers are equally close to `x_i`, the result is whichever integer is farthest from `0`.
+        -   If two integers are equally close to `x_i`, the result is the even integer closest to `x_i`.
 
     """
     res = round(arg1)
     mask = equal(subtract(arg1, floor(arg1)), subtract(ceil(arg1), arg1))
-    assert_exactly_equal(res[mask], where(greater(abs(subtract(zero(arg1.shape, arg1.dtype), floor(arg1))), abs(subtract(ceil(arg1), zero(arg1.shape, arg1.dtype)))), floor(arg1), ceil(arg1))[mask])
+    assert_iseven(res[mask])
+    assert_positive(subtract(abs(subtract(arg1[mask], res[mask]), one(arg1[mask].shape, arg1[mask].dtype))))
