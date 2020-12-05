@@ -1,13 +1,15 @@
 """
-https://github.com/data-apis/array-api/blob/master/spec/API_specification/type_promotion.md
+https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html
 """
 
 import pytest
 
 from hypothesis import given, example
+from hypothesis.strategies import from_type, data
 
 from .hypothesis_helpers import shapes
 from .pytest_helpers import nargs
+from .array_helpers import assert_exactly_equal
 
 from .function_stubs import elementwise_functions
 from ._array_module import (ones, int8, int16, int32, int64, uint8,
@@ -94,6 +96,52 @@ promotion_table = {
     **float_promotion_table,
 }
 
+
+binary_operators = {
+    '__add__': '+',
+    '__and__': '&',
+    '__eq__': '==',
+    '__floordiv__': '//',
+    '__ge__': '>=',
+    '__gt__': '>',
+    '__le__': '<=',
+    '__lshift__': '<<',
+    '__lt__': '<',
+    '__matmul__': '@',
+    '__mod__': '%',
+    '__mul__': '*',
+    '__ne__': '!=',
+    '__or__': '|',
+    '__pow__': '**',
+    '__rshift__': '>>',
+    '__sub__': '-',
+    '__truediv__': '/',
+    '__xor__': '^',
+}
+
+unary_operators = {
+    '__invert__': '~',
+    '__neg__': '-',
+    '__pos__': '+',
+}
+
+dtypes_to_scalar = {
+    _array_module.bool: bool,
+    _array_module.int8: int,
+    _array_module.int16: int,
+    _array_module.int32: int,
+    _array_module.int64: int,
+    _array_module.uint8: int,
+    _array_module.uint16: int,
+    _array_module.uint32: int,
+    _array_module.uint64: int,
+    _array_module.float32: float,
+    _array_module.float64: float,
+}
+
+scalar_to_dtype = {s: [d for d, _s in dtypes_to_scalar.items() if _s == s] for
+                   s in dtypes_to_scalar.values()}
+
 # TODO: Extend this to all functions (not just elementwise), and handle
 # functions that take more than 2 args
 @pytest.mark.parametrize('func_name', [i for i in
@@ -122,6 +170,43 @@ def test_promotion(func_name, shape, dtypes):
     res = func(a1, a2)
 
     assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape})"
+
+@pytest.mark.parametrize('binary_op', sorted(set(binary_operators.values()) - {'@'}))
+@pytest.mark.parametrize('scalar_type,dtype', [(s, d) for s in scalar_to_dtype
+                                               for d in scalar_to_dtype[s]])
+@given(shape=shapes, scalars=data())
+def test_operator_scalar_promotion(binary_op, scalar_type, dtype, shape, scalars):
+    """
+    See https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html#mixing-arrays-with-python-scalars
+    """
+    if binary_op == '@':
+        pytest.skip("matmul (@) is not supported for scalars")
+    a = ones(shape, dtype=dtype)
+    s = scalars.draw(from_type(scalar_type))
+    scalar_as_array = _array_module.full((), s, dtype=dtype)
+    get_locals = lambda: dict(a=a, s=s, scalar_as_array=scalar_as_array)
+
+    # As per the spec:
+
+    # The expected behavior is then equivalent to:
+    #
+    # 1. Convert the scalar to a 0-D array with the same dtype as that of the
+    #    array used in the expression.
+    #
+    # 2. Execute the operation for `array <op> 0-D array` (or `0-D array <op>
+    #    array` if `scalar` was the left-hand argument).
+
+    array_scalar = f'a {binary_op} s'
+    array_scalar_expected = f'a {binary_op} scalar_as_array'
+    res = eval(array_scalar, get_locals())
+    expected = eval(array_scalar_expected, get_locals())
+    assert_exactly_equal(res, expected)
+
+    scalar_array = f's {binary_op} a'
+    scalar_array_expected = f'scalar_as_array {binary_op} a'
+    res = eval(scalar_array, get_locals())
+    expected = eval(scalar_array_expected, get_locals())
+    assert_exactly_equal(res, expected)
 
 if __name__ == '__main__':
     for (i, j), p in promotion_table.items():
