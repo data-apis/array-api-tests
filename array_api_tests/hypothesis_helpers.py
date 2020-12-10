@@ -3,7 +3,8 @@ from operator import mul
 
 from hypothesis.strategies import (lists, integers, builds, sampled_from,
                                    shared, tuples as hypotheses_tuples,
-                                   floats, just)
+                                   floats, just, composite, one_of, none)
+from hypothesis import assume
 
 from .pytest_helpers import nargs
 from ._array_module import _dtypes, ones, full
@@ -50,6 +51,8 @@ shapes = tuples(integers(0, 10)).filter(lambda shape: prod(shape) < MAX_ARRAY_SI
 shapes = tuples(integers(0, 10)).filter(
              lambda shape: prod([i for i in shape if i]) < MAX_ARRAY_SIZE)
 
+sizes = integers(0, MAX_ARRAY_SIZE)
+slice_sizes = shared(sizes, key='slice_sizes')
 
 ones_arrays = builds(ones, shapes, dtype=shared_dtypes)
 
@@ -57,3 +60,25 @@ nonbroadcastable_ones_array_two_args = hypotheses_tuples(ones_arrays, ones_array
 
 # TODO: Generate general arrays here, rather than just scalars.
 numeric_arrays = builds(full, just((1,)), floats())
+
+@composite
+def slices(draw):
+    size = draw(slice_sizes)
+    # The spec does not specify out of bounds behavior.
+    start = draw(one_of(integers(-size, max(0, size-1)), none()))
+    stop = draw(one_of(integers(-size, size)), none())
+    max_step_size = draw(integers(1, max(1, size)))
+    step = draw(one_of(integers(-max_step_size, -1), integers(1, max_step_size), none()))
+    s = slice(start, stop, step)
+    l = list(range(size))
+    sliced_list = l[s]
+    if (sliced_list == []
+        and size != 0
+        and start is not None
+        and stop is not None
+        and stop != start
+        ):
+        # The spec does not specify behavior for out-of-bounds slices, except
+        # for the case where stop == start.
+        assume(False)
+    return s
