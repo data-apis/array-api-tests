@@ -81,3 +81,10 @@ def slices(draw, sizes):
         # for the case where stop == start.
         assume(False)
     return s
+
+@composite
+def integer_indices(draw, sizes):
+    size = draw(sizes)
+    if size == 0:
+        assume(False)
+    return draw(integers(-size, size - 1))
