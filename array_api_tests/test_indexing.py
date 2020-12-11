@@ -3,13 +3,14 @@ https://data-apis.github.io/array-api/latest/API_specification/indexing.html
 """
 
 from hypothesis import given
+from hypothesis.strategies import shared
 
-from .hypothesis_helpers import slice_sizes, slices
+from .hypothesis_helpers import slices, sizes
 from ._array_module import arange
 
-@given(slice_sizes, slices())
+@given(shared(sizes, key='array_sizes'), slices(shared(sizes, key='array_sizes')))
 def test_slicing(size, s):
-    # Test that slices on arrays give the same result as arrays.
+    # Test that slices on arrays give the same result as Python lists.
 
     # Sanity check that the strategies are working properly
     if s.start is not None:

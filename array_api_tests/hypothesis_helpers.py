@@ -52,7 +52,6 @@ shapes = tuples(integers(0, 10)).filter(
              lambda shape: prod([i for i in shape if i]) < MAX_ARRAY_SIZE)
 
 sizes = integers(0, MAX_ARRAY_SIZE)
-slice_sizes = shared(sizes, key='slice_sizes')
 
 ones_arrays = builds(ones, shapes, dtype=shared_dtypes)
 
@@ -62,8 +61,8 @@ nonbroadcastable_ones_array_two_args = hypotheses_tuples(ones_arrays, ones_array
 numeric_arrays = builds(full, just((1,)), floats())
 
 @composite
-def slices(draw):
-    size = draw(slice_sizes)
+def slices(draw, sizes):
+    size = draw(sizes)
     # The spec does not specify out of bounds behavior.
     start = draw(one_of(integers(-size, max(0, size-1)), none()))
     stop = draw(one_of(integers(-size, size)), none())
