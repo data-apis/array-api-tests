@@ -61,6 +61,13 @@ nonbroadcastable_ones_array_two_args = hypotheses_tuples(ones_arrays, ones_array
 numeric_arrays = builds(full, just((1,)), floats())
 
 @composite
+def integer_indices(draw, sizes):
+    size = draw(sizes)
+    if size == 0:
+        assume(False)
+    return draw(integers(-size, size - 1))
+
+@composite
 def slices(draw, sizes):
     size = draw(sizes)
     # The spec does not specify out of bounds behavior.
@@ -83,8 +90,23 @@ def slices(draw, sizes):
     return s
 
 @composite
-def integer_indices(draw, sizes):
-    size = draw(sizes)
-    if size == 0:
-        assume(False)
-    return draw(integers(-size, size - 1))
+def multiaxis_indices(draw, shapes):
+    res = []
+    # Generate tuples no longer than the shape, with indices corresponding to
+    # each dimension.
+    shape = draw(shapes)
+    guard = draw(tuples(just(object()), max_size=len(shape)))
+    from hypothesis import note
+    note(f"multiaxis_indices guard: {guard}")
+
+    for size, _ in zip(shape, guard):
+        res.append(draw(one_of(
+            integer_indices(just(size)),
+            slices(just(size)),
+            just(...))))
+    # Sometimes add more entries than necessary to test this.
+    if len(guard) == len(shape) and ... not in res:
+        note("Adding extra")
+        extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
+        res += extra
+    return tuple(res)
