@@ -96,8 +96,8 @@ def multiaxis_indices(draw, shapes):
     # each dimension.
     shape = draw(shapes)
     guard = draw(tuples(just(object()), max_size=len(shape)))
-    from hypothesis import note
-    note(f"multiaxis_indices guard: {guard}")
+    # from hypothesis import note
+    # note(f"multiaxis_indices guard: {guard}")
 
     for size, _ in zip(shape, guard):
         res.append(draw(one_of(
@@ -106,7 +106,7 @@ def multiaxis_indices(draw, shapes):
             just(...))))
     # Sometimes add more entries than necessary to test this.
     if len(guard) == len(shape) and ... not in res:
-        note("Adding extra")
+        # note("Adding extra")
         extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
         res += extra
     return tuple(res)
