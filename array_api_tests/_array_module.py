@@ -54,7 +54,7 @@ class _UndefinedStub:
     __getattr__ = _raise
 
 _integer_dtypes = [
-        'int8',
+    'int8',
     'int16',
     'int32',
     'int64',

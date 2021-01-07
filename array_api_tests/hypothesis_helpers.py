@@ -4,12 +4,15 @@ from math import sqrt
 
 from hypothesis.strategies import (lists, integers, builds, sampled_from,
                                    shared, tuples as hypotheses_tuples,
-                                   floats, just, composite, one_of, none)
+                                   floats, just, composite, one_of, none,
+                                   booleans)
 from hypothesis import assume
 
 from .pytest_helpers import nargs
+from .array_helpers import dtype_ranges
 from ._array_module import (_integer_dtypes, _floating_dtypes,
-                            _numeric_dtypes, _dtypes, ones, full)
+                            _numeric_dtypes, _dtypes, ones, full, float32,
+                            float64, bool as bool_dtype)
 from . import _array_module
 
 from .function_stubs import elementwise_functions
@@ -72,6 +75,24 @@ nonbroadcastable_ones_array_two_args = hypotheses_tuples(ones_arrays, ones_array
 
 # TODO: Generate general arrays here, rather than just scalars.
 numeric_arrays = builds(full, just((1,)), floats())
+
+@composite
+def shared_scalars(draw):
+    """
+    Strategy to generate a scalar that matches the dtype from shared_dtypes
+    """
+    dtype = draw(shared_dtypes)
+    if dtype in dtype_ranges:
+        m, M = dtype_ranges[dtype]
+        return draw(integers(m, M))
+    elif dtype == bool_dtype:
+        return draw(booleans())
+    elif dtype == float64:
+        return draw(floats())
+    elif dtype == float32:
+        return draw(floats(width=32))
+    else:
+        raise ValueError(f"Unrecognized dtype {dtype}")
 
 @composite
 def integer_indices(draw, sizes):

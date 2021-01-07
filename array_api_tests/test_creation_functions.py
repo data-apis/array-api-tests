@@ -1,7 +1,9 @@
-from ._array_module import arange, ceil, empty, _floating_dtypes, eye
+from ._array_module import (arange, ceil, empty, _floating_dtypes, eye, full,
+equal, all)
 from .array_helpers import is_integer_dtype, dtype_ranges
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
-                                 shapes, sizes, sqrt_sizes)
+                                 shapes, sizes, sqrt_sizes, shared_dtypes,
+                                 shared_scalars)
 
 from hypothesis import assume, given
 from hypothesis.strategies import integers, floats, one_of, none
@@ -98,3 +100,19 @@ def test_eye(N, M, k, dtype):
                 assert a[i, j] == 1, "eye() did not produce a 1 on the diagonal"
             else:
                 assert a[i, j] == 0, "eye() did not produce a 0 off the diagonal"
+
+@given(shapes, shared_scalars(), one_of(none(), shared_dtypes))
+def test_full(shape, fill_value, dtype):
+    kwargs = {} if dtype is None else {'dtype': dtype}
+
+    a = full(shape, fill_value, **kwargs)
+
+    if dtype is None:
+        # TODO: Should it actually match the fill_value?
+        # assert a.dtype in _floating_dtypes, "eye() should produce an array with the default floating point dtype"
+        pass
+    else:
+        assert a.dtype == dtype
+
+    assert a.shape == shape, "full() produced an array with incorrect shape"
+    assert all(equal(a, fill_value)), "full() array did not equal the fill value"
