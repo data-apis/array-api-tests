@@ -58,7 +58,7 @@ def test_arange(start, stop, step, dtype):
                  or step < 0 and stop <= start)):
             assert a.size == ceil((stop-start)/step), "arange() produced an array of the incorrect size"
 
-@given(one_of(shapes, sizes), one_of(dtypes, none()))
+@given(one_of(shapes, sizes), one_of(none(), dtypes))
 def test_empty(shape, dtype):
     if dtype is None:
         a = empty(shape)
