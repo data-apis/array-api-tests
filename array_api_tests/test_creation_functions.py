@@ -10,7 +10,7 @@ float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE, allow_nan=False)
 @given(one_of(int_range, float_range),
        one_of(none(), int_range, float_range),
        one_of(none(), int_range, float_range).filter(lambda x: x != 0),
-       numeric_dtypes)
+       one_of(none(), numeric_dtypes))
 def test_arange(start, stop, step, dtype):
     if dtype in dtype_ranges:
         m, M = dtype_ranges[dtype]
@@ -18,6 +18,8 @@ def test_arange(start, stop, step, dtype):
             or isinstance(stop, int) and not (m <= stop <= M)
             or isinstance(step, int) and not (m <= step <= M)):
             assume(False)
+
+    kwargs = {} if dtype is None else {'dtype': dtype}
 
     all_int = (is_integer_dtype(dtype)
                and isinstance(start, int)
@@ -27,18 +29,22 @@ def test_arange(start, stop, step, dtype):
     if stop is None:
         # NB: "start" is really the stop
         # step is ignored in this case
-        a = arange(start, dtype=dtype)
+        a = arange(start, **kwargs)
         if all_int:
             r = range(start)
     elif step is None:
-        a = arange(start, stop, dtype=dtype)
+        a = arange(start, stop, **kwargs)
         if all_int:
             r = range(start, stop)
     else:
-        a = arange(start, stop, step, dtype=dtype)
+        a = arange(start, stop, step, **kwargs)
         if all_int:
             r = range(start, stop, step)
-    assert a.dtype == dtype, "arange() produced an incorrect dtype"
+    if dtype is None:
+        # TODO: What is the correct dtype of a?
+        pass
+    else:
+        assert a.dtype == dtype, "arange() produced an incorrect dtype"
     assert a.ndim == 1, "arange() should return a 1-dimensional array"
     if all_int:
         assert a.shape == (len(r),), "arange() produced incorrect shape"
