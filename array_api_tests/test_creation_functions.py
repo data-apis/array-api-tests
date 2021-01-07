@@ -8,8 +8,8 @@ from hypothesis.strategies import integers, floats, one_of, none
 int_range = integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
 float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE, allow_nan=False)
 @given(one_of(int_range, float_range),
-       one_of(int_range, float_range, none()),
-       one_of(int_range, float_range, none()).filter(lambda x: x != 0),
+       one_of(none(), int_range, float_range),
+       one_of(none(), int_range, float_range).filter(lambda x: x != 0),
        numeric_dtypes)
 def test_arange(start, stop, step, dtype):
     if dtype in dtype_ranges:
