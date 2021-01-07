@@ -1,6 +1,6 @@
-from ._array_module import arange, ceil
+from ._array_module import arange, ceil, empty, _floating_dtypes
 from .array_helpers import is_integer_dtype, dtype_ranges
-from .hypothesis_helpers import numeric_dtypes, MAX_ARRAY_SIZE
+from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE, shapes, sizes)
 
 from hypothesis import assume, given
 from hypothesis.strategies import integers, floats, one_of, none
@@ -51,3 +51,16 @@ def test_arange(start, stop, step, dtype):
             and (step > 0 and stop >= start
                  or step < 0 and stop <= start)):
             assert a.size == ceil((stop-start)/step), "arange() produced an array of the incorrect size"
+
+@given(one_of(shapes, sizes), one_of(dtypes, none()))
+def test_empty(shape, dtype):
+    if dtype is None:
+        a = empty(shape)
+        assert a.dtype in _floating_dtypes, "empty() should produce an array with the default floating point dtype"
+    else:
+        a = empty(shape, dtype=dtype)
+        assert a.dtype == dtype
+
+    if isinstance(shape, int):
+        shape = (shape,)
+    assert a.shape == shape, "empty() produced an array with an incorrect shape"
