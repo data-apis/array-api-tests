@@ -53,9 +53,8 @@ class _UndefinedStub:
     __call__ = _raise
     __getattr__ = _raise
 
-_dtypes = [
-    'bool',
-    'int8',
+_integer_dtypes = [
+        'int8',
     'int16',
     'int32',
     'int64',
@@ -63,8 +62,21 @@ _dtypes = [
     'uint16',
     'uint32',
     'uint64',
+]
+
+_floating_dtypes = [
     'float32',
     'float64',
+]
+
+_numeric_dtypes = [
+    *_integer_dtypes,
+    *_floating_dtypes,
+]
+
+_dtypes = [
+    'bool',
+    *_numeric_dtypes
 ]
 
 for func_name in function_stubs.__all__ + _dtypes:
