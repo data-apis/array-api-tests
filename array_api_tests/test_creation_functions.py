@@ -1,6 +1,7 @@
-from ._array_module import arange, ceil, empty, _floating_dtypes
+from ._array_module import arange, ceil, empty, _floating_dtypes, eye
 from .array_helpers import is_integer_dtype, dtype_ranges
-from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE, shapes, sizes)
+from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
+                                 shapes, sizes, sqrt_sizes)
 
 from hypothesis import assume, given
 from hypothesis.strategies import integers, floats, one_of, none
@@ -70,3 +71,30 @@ def test_empty(shape, dtype):
     if isinstance(shape, int):
         shape = (shape,)
     assert a.shape == shape, "empty() produced an array with an incorrect shape"
+
+# TODO: implement empty_like (requires hypothesis arrays support)
+def test_empty_like():
+    pass
+
+@given(sqrt_sizes, one_of(none(), sqrt_sizes), one_of(none(), integers()), numeric_dtypes)
+def test_eye(N, M, k, dtype):
+    kwargs = {k: v for k, v in {'M': M, 'k': k, 'dtype': dtype}.items() if v
+              is not None}
+    a = eye(N, **kwargs)
+    if dtype is None:
+        assert a.dtype in _floating_dtypes, "eye() should produce an array with the default floating point dtype"
+    else:
+        assert a.dtype == dtype
+
+    if M is None:
+        M = N
+    assert a.shape == (N, M), "eye() produced an array with incorrect shape"
+
+    if k is None:
+        k = 0
+    for i in range(N):
+        for j in range(M):
+            if j - i == k:
+                assert a[i, j] == 1, "eye() did not produce a 1 on the diagonal"
+            else:
+                assert a[i, j] == 0, "eye() did not produce a 0 off the diagonal"

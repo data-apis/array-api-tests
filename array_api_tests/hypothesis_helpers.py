@@ -1,5 +1,6 @@
 from functools import reduce
 from operator import mul
+from math import sqrt
 
 from hypothesis.strategies import (lists, integers, builds, sampled_from,
                                    shared, tuples as hypotheses_tuples,
@@ -42,6 +43,8 @@ multiarg_array_functions = multiarg_array_functions_names.map(
 
 # Limit the total size of an array shape
 MAX_ARRAY_SIZE = 10000
+# Size to use for 2-dim arrays
+SQRT_MAX_ARRAY_SIZE = int(sqrt(MAX_ARRAY_SIZE))
 
 # np.prod and others have overflow and math.prod is Python 3.8+ only
 def prod(seq):
@@ -61,6 +64,7 @@ shapes = tuples(integers(0, 10)).filter(
              lambda shape: prod([i for i in shape if i]) < MAX_ARRAY_SIZE)
 
 sizes = integers(0, MAX_ARRAY_SIZE)
+sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
 
 ones_arrays = builds(ones, shapes, dtype=shared_dtypes)
 
