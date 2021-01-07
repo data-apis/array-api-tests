@@ -253,3 +253,22 @@ def same_sign(x, y):
 
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
+
+def is_integer_dtype(dtype):
+    return dtype in [int8, int16, int32, int16, uint8, uint16, uint32, uint64]
+
+def is_float_dtype(dtype):
+    # TODO: Return True even for floating point dtypes that aren't part of the
+    # spec, like np.float16
+    return dtype in [float32, float64]
+
+dtype_ranges = {
+    int8: [-128, +127],
+    int16: [-32_767, +32_767],
+    int32: [-2_147_483_647, +2_147_483_647],
+    int64: [-9_223_372_036_854_775_807, +9_223_372_036_854_775_807],
+    uint8: [0, +255],
+    uint16: [0, +65_535],
+    uint32: [0, +4_294_967_295],
+    uint64: [0, +18_446_744_073_709_551_615],
+}
