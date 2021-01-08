@@ -1,5 +1,5 @@
 from ._array_module import (arange, ceil, empty, _floating_dtypes, eye, full,
-equal, all, linspace, ones, zeros)
+equal, all, linspace, ones, zeros, isnan)
 from .array_helpers import (is_integer_dtype, dtype_ranges,
                             assert_exactly_equal, isintegral)
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
@@ -116,7 +116,10 @@ def test_full(shape, fill_value, dtype):
         assert a.dtype == dtype
 
     assert a.shape == shape, "full() produced an array with incorrect shape"
-    assert all(equal(a, fill_value)), "full() array did not equal the fill value"
+    if isnan(fill_value):
+        assert all(isnan(a)), "full() array did not equal the fill value"
+    else:
+        assert all(equal(a, fill_value)), "full() array did not equal the fill value"
 
 # TODO: implement full_like (requires hypothesis arrays support)
 def test_full_like():
