@@ -1,5 +1,5 @@
 from ._array_module import (arange, ceil, empty, _floating_dtypes, eye, full,
-equal, all, linspace)
+equal, all, linspace, ones, zeros)
 from .array_helpers import (is_integer_dtype, dtype_ranges,
                             assert_exactly_equal, isintegral)
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
@@ -169,3 +169,45 @@ def test_linspace(start, stop, num, dtype, endpoint):
         # n = num - 1 if endpoint in [None, True] else num
         # for i in range(1, num):
         #     assert all(equal(a[i], full((), i*(stop - start)/n + start, dtype=dtype))), f"linspace() produced an array with an incorrect value at index {i}"
+
+@given(shapes, one_of(none(), dtypes))
+def test_ones(shape, dtype):
+    kwargs = {} if dtype is None else {'dtype': dtype}
+
+    a = ones(shape, **kwargs)
+
+    if dtype is None:
+        # TODO: Should it actually match the fill_value?
+        # assert a.dtype in _floating_dtypes, "eye() should produce an array with the default floating point dtype"
+        pass
+    else:
+        assert a.dtype == dtype
+
+    assert a.shape == shape, "ones() produced an array with incorrect shape"
+    assert all(equal(a, full((), 1, **kwargs))), "ones() array did not equal 1"
+
+# TODO: implement ones_like (requires hypothesis arrays support)
+def test_ones_like():
+    pass
+
+
+
+@given(shapes, one_of(none(), dtypes))
+def test_zeros(shape, dtype):
+    kwargs = {} if dtype is None else {'dtype': dtype}
+
+    a = zeros(shape, **kwargs)
+
+    if dtype is None:
+        # TODO: Should it actually match the fill_value?
+        # assert a.dtype in _floating_dtypes, "eye() should produce an array with the default floating point dtype"
+        pass
+    else:
+        assert a.dtype == dtype
+
+    assert a.shape == shape, "zeros() produced an array with incorrect shape"
+    assert all(equal(a, full((), 0, **kwargs))), "zeros() array did not equal 0"
+
+# TODO: implement zeros_like (requires hypothesis arrays support)
+def test_zeros_like():
+    pass
