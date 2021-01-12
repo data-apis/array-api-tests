@@ -14,37 +14,37 @@ here because
 2. There is no real way to test that anyway.
 """
 
-def arange(start, *, stop=None, step=1, dtype=None):
+def arange(start, *, stop=None, step=1, dtype=None, device=None):
     pass
 
-def empty(shape, *, dtype=None):
+def empty(shape, *, dtype=None, device=None):
     pass
 
-def empty_like(x, *, dtype=None):
+def empty_like(x, *, dtype=None, device=None):
     pass
 
-def eye(N, *, M=None, k=0, dtype=None):
+def eye(N, *, M=None, k=0, dtype=None, device=None):
     pass
 
-def full(shape, fill_value, *, dtype=None):
+def full(shape, fill_value, *, dtype=None, device=None):
     pass
 
-def full_like(x, fill_value, *, dtype=None):
+def full_like(x, fill_value, *, dtype=None, device=None):
     pass
 
-def linspace(start, stop, num, *, dtype=None, endpoint=True):
+def linspace(start, stop, num, *, dtype=None, device=None, endpoint=True):
     pass
 
-def ones(shape, *, dtype=None):
+def ones(shape, *, dtype=None, device=None):
     pass
 
-def ones_like(x, *, dtype=None):
+def ones_like(x, *, dtype=None, device=None):
     pass
 
-def zeros(shape, *, dtype=None):
+def zeros(shape, *, dtype=None, device=None):
     pass
 
-def zeros_like(x, *, dtype=None):
+def zeros_like(x, *, dtype=None, device=None):
     pass
 
 __all__ = ['arange', 'empty', 'empty_like', 'eye', 'full', 'full_like', 'linspace', 'ones', 'ones_like', 'zeros', 'zeros_like']
