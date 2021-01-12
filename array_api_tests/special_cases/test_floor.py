@@ -24,4 +24,4 @@ def test_floor_special_cases_one_arg_equal(arg1):
     """
     res = floor(arg1)
     mask = isintegral(arg1)
-    assert_exactly_equal(res[mask], arg1[mask])
+    assert_exactly_equal(res[mask], (arg1)[mask])

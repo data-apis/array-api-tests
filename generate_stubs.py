@@ -333,11 +333,11 @@ def get_assert(typ, result):
         _check_exactly_equal(typ, result)
         return "assert_iseven(res[mask])\n    assert_positive(subtract(one(arg1[mask].shape, arg1[mask].dtype), abs(subtract(arg1[mask], res[mask]))))"
     elif 'x_i' in result:
-        return f"assert_{typ}(res[mask], {result.replace('x_i', 'arg1')}[mask])"
+        return f"assert_{typ}(res[mask], ({result.replace('x_i', 'arg1')})[mask])"
     elif 'x1_i' in result:
-        return f"assert_{typ}(res[mask], {result.replace('x1_i', 'arg1')}[mask])"
+        return f"assert_{typ}(res[mask], ({result.replace('x1_i', 'arg1')})[mask])"
     elif 'x2_i' in result:
-        return f"assert_{typ}(res[mask], {result.replace('x2_i', 'arg2')}[mask])"
+        return f"assert_{typ}(res[mask], ({result.replace('x2_i', 'arg2')})[mask])"
 
     # TODO: Get use something better than arg1 here for the arg
     result = parse_value(result, "arg1")
@@ -346,7 +346,7 @@ def get_assert(typ, result):
         ast.parse(result)
     except SyntaxError:
         raise RuntimeError(f"Unexpected result value {result!r} for {typ} (bad syntax)")
-    return f"assert_{typ}(res[mask], {result}[mask])"
+    return f"assert_{typ}(res[mask], ({result})[mask])"
 
 ONE_ARG_TEMPLATE = """
 {decorator}

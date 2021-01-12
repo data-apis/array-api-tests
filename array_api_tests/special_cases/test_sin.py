@@ -24,7 +24,7 @@ def test_sin_special_cases_one_arg_equal_1(arg1):
     """
     res = sin(arg1)
     mask = exactly_equal(arg1, NaN(arg1.shape, arg1.dtype))
-    assert_exactly_equal(res[mask], NaN(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays)
@@ -37,7 +37,7 @@ def test_sin_special_cases_one_arg_equal_2(arg1):
     """
     res = sin(arg1)
     mask = exactly_equal(arg1, zero(arg1.shape, arg1.dtype))
-    assert_exactly_equal(res[mask], zero(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays)
@@ -50,7 +50,7 @@ def test_sin_special_cases_one_arg_equal_3(arg1):
     """
     res = sin(arg1)
     mask = exactly_equal(arg1, -zero(arg1.shape, arg1.dtype))
-    assert_exactly_equal(res[mask], -zero(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays)
@@ -63,4 +63,4 @@ def test_sin_special_cases_one_arg_either(arg1):
     """
     res = sin(arg1)
     mask = logical_or(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)))
-    assert_exactly_equal(res[mask], NaN(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])

@@ -27,7 +27,7 @@ def test_divide_special_cases_two_args_either(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_or(exactly_equal(arg1, NaN(arg1.shape, arg1.dtype)), exactly_equal(arg2, NaN(arg1.shape, arg1.dtype)))
-    assert_exactly_equal(res[mask], NaN(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -40,7 +40,7 @@ def test_divide_special_cases_two_args_either__either_1(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype))), logical_or(exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype))))
-    assert_exactly_equal(res[mask], NaN(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -53,7 +53,7 @@ def test_divide_special_cases_two_args_either__either_2(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(logical_or(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg1, -zero(arg1.shape, arg1.dtype))), logical_or(exactly_equal(arg2, zero(arg2.shape, arg2.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype))))
-    assert_exactly_equal(res[mask], NaN(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -66,7 +66,7 @@ def test_divide_special_cases_two_args_equal__greater_1(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), greater(arg2, zero(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], zero(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -79,7 +79,7 @@ def test_divide_special_cases_two_args_equal__greater_2(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -zero(arg1.shape, arg1.dtype)), greater(arg2, zero(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], -zero(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -92,7 +92,7 @@ def test_divide_special_cases_two_args_equal__less_1(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), less(arg2, zero(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], -zero(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -105,7 +105,7 @@ def test_divide_special_cases_two_args_equal__less_2(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -zero(arg1.shape, arg1.dtype)), less(arg2, zero(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], zero(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -118,7 +118,7 @@ def test_divide_special_cases_two_args_greater__equal_1(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(greater(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, zero(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], infinity(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -131,7 +131,7 @@ def test_divide_special_cases_two_args_greater__equal_2(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(greater(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], -infinity(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -144,7 +144,7 @@ def test_divide_special_cases_two_args_less__equal_1(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(less(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, zero(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], -infinity(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -157,7 +157,7 @@ def test_divide_special_cases_two_args_less__equal_2(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(less(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], infinity(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -170,7 +170,7 @@ def test_divide_special_cases_two_args_equal__equal_1(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), logical_and(isfinite(arg2), ispositive(arg2)))
-    assert_exactly_equal(res[mask], infinity(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -183,7 +183,7 @@ def test_divide_special_cases_two_args_equal__equal_2(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), logical_and(isfinite(arg2), isnegative(arg2)))
-    assert_exactly_equal(res[mask], -infinity(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -196,7 +196,7 @@ def test_divide_special_cases_two_args_equal__equal_3(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), logical_and(isfinite(arg2), ispositive(arg2)))
-    assert_exactly_equal(res[mask], -infinity(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -209,7 +209,7 @@ def test_divide_special_cases_two_args_equal__equal_4(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), logical_and(isfinite(arg2), isnegative(arg2)))
-    assert_exactly_equal(res[mask], infinity(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -222,7 +222,7 @@ def test_divide_special_cases_two_args_equal__equal_5(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(logical_and(isfinite(arg1), ispositive(arg1)), exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], zero(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -235,7 +235,7 @@ def test_divide_special_cases_two_args_equal__equal_6(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(logical_and(isfinite(arg1), ispositive(arg1)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], -zero(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -248,7 +248,7 @@ def test_divide_special_cases_two_args_equal__equal_7(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(logical_and(isfinite(arg1), isnegative(arg1)), exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], -zero(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -261,7 +261,7 @@ def test_divide_special_cases_two_args_equal__equal_8(arg1, arg2):
     """
     res = divide(arg1, arg2)
     mask = logical_and(logical_and(isfinite(arg1), isnegative(arg1)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], zero(arg1.shape, arg1.dtype)[mask])
+    assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
