@@ -2,7 +2,7 @@ import inspect
 
 import pytest
 
-from ._array_module import mod, mod_name, ones, float64
+from ._array_module import mod, mod_name, ones, eye, float64
 from .pytest_helpers import raises, doesnt_raise
 
 from . import function_stubs
@@ -73,10 +73,15 @@ def example_argument(arg, func_name):
     )
 
     if arg in known_args:
-        # This is the only special case. squeeze() requires an axis of size 1,
-        # but other functions such as cross() require axes of size >1
+        # Special cases:
+
+        # squeeze() requires an axis of size 1, but other functions such as
+        # cross() require axes of size >1
         if func_name == 'squeeze' and arg == 'axis':
             return 0
+        # ones() is not invertible
+        elif func_name == 'inv' and arg == 'x':
+            return eye(3)
         return known_args[arg]
     else:
         raise RuntimeError(f"Don't know how to test argument {arg}. Please update test_signatures.py")
