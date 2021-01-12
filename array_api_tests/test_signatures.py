@@ -21,9 +21,9 @@ def array_method(name):
 def function_category(name):
     return stub_module(name).split('_')[0]
 
-def example_argument(arg):
+def example_argument(arg, func_name):
     """
-    Get an example argument for the argument arg
+    Get an example argument for the argument arg for the function func_name
 
     The full tests for function behavior is in other files. We just need to
     have an example input for each argument name that should work so that we
@@ -37,14 +37,14 @@ def example_argument(arg):
     known_args = dict(
         M=1,
         N=1,
-        arrays=(ones((1, 1, 1)), ones((1, 1, 1))),
+        arrays=(ones((1, 3, 3)), ones((1, 3, 3))),
         # These cannot be the same as each other, which is why all our test
         # arrays have to have at least 3 dimensions.
         axis1=2,
         axis2=2,
         axis=1,
         axes=(2, 1, 0),
-        condition=ones((1, 1, 1), dtype=bool),
+        condition=ones((1, 3, 3), dtype=bool),
         correction=1.0,
         descending=True,
         dtype=float64,
@@ -59,7 +59,7 @@ def example_argument(arg):
         return_counts=True,
         return_index=True,
         return_inverse=True,
-        shape=(1, 1, 1),
+        shape=(1, 3, 3),
         shift=1,
         sorted=False,
         stable=False,
@@ -67,12 +67,16 @@ def example_argument(arg):
         step=2,
         stop=1,
         value=0,
-        x1=ones((1, 1, 1)),
-        x2=ones((1, 1, 1)),
-        x=ones((1, 1, 1)),
+        x1=ones((1, 3, 3)),
+        x2=ones((1, 3, 3)),
+        x=ones((1, 3, 3)),
     )
 
     if arg in known_args:
+        # This is the only special case. squeeze() requires an axis of size 1,
+        # but other functions such as cross() require axes of size >1
+        if func_name == 'squeeze' and arg == 'axis':
+            return 0
         return known_args[arg]
     else:
         raise RuntimeError(f"Don't know how to test argument {arg}. Please update test_signatures.py")
@@ -107,9 +111,9 @@ def test_function_positional_args(name):
     if argspec.defaults:
         raise RuntimeError(f"Unexpected non-keyword-only keyword argument for {name}. Please update test_signatures.py")
 
-    args = [example_argument(name) for name in args]
+    args = [example_argument(arg, name) for arg in args]
     if not args:
-        args = [example_argument('x')]
+        args = [example_argument('x', name)]
     else:
         # Duplicate the last positional argument for the n+1 test.
         args = args + [args[-1]]
@@ -142,10 +146,10 @@ def test_function_keyword_only_args(name):
     kwonlyargs = argspec.kwonlyargs
     kwonlydefaults = argspec.kwonlydefaults
 
-    args = [example_argument(name) for name in args]
+    args = [example_argument(arg, name) for arg in args]
 
     for arg in kwonlyargs:
-        value = example_argument(arg)
+        value = example_argument(arg, name)
         # The "only" part of keyword-only is tested by the positional test above.
         doesnt_raise(lambda: mod_func(*args, **{arg: value}),
                      f"{name}() should accept the keyword-only argument {arg!r}")
