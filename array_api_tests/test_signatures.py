@@ -19,7 +19,7 @@ def array_method(name):
     return stub_module(name) == 'array_object'
 
 def function_category(name):
-    return stub_module(name).split('_')[0]
+    return stub_module(name).rsplit('_', 1)[0].replace('_', ' ')
 
 def example_argument(arg, func_name):
     """
