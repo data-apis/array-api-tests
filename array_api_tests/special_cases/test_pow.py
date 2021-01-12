@@ -8,7 +8,7 @@ not modify it directly.
 """
 
 from ..array_helpers import (NaN, assert_exactly_equal, exactly_equal, greater, infinity, isfinite,
-                             isintegral, isodd, less, logical_and, logical_not, one, zero)
+                             isintegral, isodd, less, logical_and, logical_not, notequal, one, zero)
 from ..hypothesis_helpers import numeric_arrays
 from .._array_module import pow
 
@@ -37,7 +37,7 @@ def test_pow_special_cases_two_args_even_if_1(arg1, arg2):
 
     """
     res = pow(arg1, arg2)
-    mask = exactly_equal(arg1, zero(arg1.shape, arg1.dtype))
+    mask = exactly_equal(arg2, zero(arg2.shape, arg2.dtype))
     assert_exactly_equal(res[mask], (one(arg1.shape, arg1.dtype))[mask])
 
 
@@ -50,7 +50,7 @@ def test_pow_special_cases_two_args_even_if_2(arg1, arg2):
 
     """
     res = pow(arg1, arg2)
-    mask = exactly_equal(arg1, -zero(arg1.shape, arg1.dtype))
+    mask = exactly_equal(arg2, -zero(arg2.shape, arg2.dtype))
     assert_exactly_equal(res[mask], (one(arg1.shape, arg1.dtype))[mask])
 
 
@@ -63,7 +63,7 @@ def test_pow_special_cases_two_args_equal__notequal_1(arg1, arg2):
 
     """
     res = pow(arg1, arg2)
-    mask = logical_and(exactly_equal(arg1, NaN(arg1.shape, arg1.dtype)), logical_not(exactly_equal(arg2, zero(arg2.shape, arg2.dtype))))
+    mask = logical_and(exactly_equal(arg1, NaN(arg1.shape, arg1.dtype)), notequal(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
@@ -176,19 +176,6 @@ def test_pow_special_cases_two_args_equal__greater_2(arg1, arg2):
     """
     Special case test for `pow(x1, x2)`:
 
-        -   If `x1_i` is `-infinity` and `x2_i` is greater than `0`, the result is `-infinity`.
-
-    """
-    res = pow(arg1, arg2)
-    mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), greater(arg2, zero(arg2.shape, arg2.dtype)))
-    assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
-
-
-@given(numeric_arrays, numeric_arrays)
-def test_pow_special_cases_two_args_equal__greater_3(arg1, arg2):
-    """
-    Special case test for `pow(x1, x2)`:
-
         -   If `x1_i` is `+0` and `x2_i` is greater than `0`, the result is `+0`.
 
     """
@@ -221,6 +208,32 @@ def test_pow_special_cases_two_args_equal__less_2(arg1, arg2):
     res = pow(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), less(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
+
+
+@given(numeric_arrays, numeric_arrays)
+def test_pow_special_cases_two_args_equal__greater_equal_1(arg1, arg2):
+    """
+    Special case test for `pow(x1, x2)`:
+
+        -   If `x1_i` is `-infinity`, `x2_i` is greater than `0`, and `x2_i` is an odd integer value, the result is `-infinity`.
+
+    """
+    res = pow(arg1, arg2)
+    mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), logical_and(greater(arg2, zero(arg2.shape, arg2.dtype)), isodd(arg2)))
+    assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
+
+
+@given(numeric_arrays, numeric_arrays)
+def test_pow_special_cases_two_args_equal__greater_equal_2(arg1, arg2):
+    """
+    Special case test for `pow(x1, x2)`:
+
+        -   If `x1_i` is `-0`, `x2_i` is greater than `0`, and `x2_i` is an odd integer value, the result is `-0`.
+
+    """
+    res = pow(arg1, arg2)
+    mask = logical_and(exactly_equal(arg1, -zero(arg1.shape, arg1.dtype)), logical_and(greater(arg2, zero(arg2.shape, arg2.dtype)), isodd(arg2)))
+    assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
@@ -299,19 +312,6 @@ def test_pow_special_cases_two_args_equal__less_notequal_2(arg1, arg2):
     res = pow(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -zero(arg1.shape, arg1.dtype)), logical_and(less(arg2, zero(arg2.shape, arg2.dtype)), logical_not(isodd(arg2))))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
-
-
-@given(numeric_arrays, numeric_arrays)
-def test_pow_special_cases_two_args_equal__greater_equal(arg1, arg2):
-    """
-    Special case test for `pow(x1, x2)`:
-
-        -   If `x1_i` is `-0`, `x2_i` is greater than `0`, and `x2_i` is an odd integer value, the result is `-0`.
-
-    """
-    res = pow(arg1, arg2)
-    mask = logical_and(exactly_equal(arg1, -zero(arg1.shape, arg1.dtype)), logical_and(greater(arg2, zero(arg2.shape, arg2.dtype)), isodd(arg2)))
-    assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)

@@ -268,6 +268,8 @@ def _check_exactly_equal(typ, value):
 
 def get_mask(typ, arg, value):
     if typ.startswith("not"):
+        if value.startswith('zero('):
+            return f"notequal({arg}, {value})"
         return f"logical_not({get_mask(typ[len('not'):], arg, value)})"
     if typ.startswith("abs"):
         return get_mask(typ[len("abs"):], f"abs({arg})", value)
@@ -517,8 +519,8 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
             assertion = get_assert("exactly_equal", result)
         elif typ == "TWO_ARGS_EVEN_IF":
             value1, result, value2 = m.groups()
-            value1 = parse_value(value1, "arg1")
-            mask = get_mask("exactly_equal", "arg1", value1)
+            value1 = parse_value(value1, "arg2")
+            mask = get_mask("exactly_equal", "arg2", value1)
             assertion = get_assert("exactly_equal", result)
         else:
             raise ValueError(f"Unrecognized special value type {typ}")
