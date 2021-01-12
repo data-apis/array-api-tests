@@ -126,6 +126,24 @@ def exactly_equal(x, y):
 
     return equal(x, y)
 
+def notequal(x, y):
+    """
+    Same as not_equal(x, y) except it gives False when both values are nan.
+
+    Note: this function does NOT distinguish +0 and -0.
+
+    This function implicitly assumes x and y have the same shape and dtype.
+    """
+    if x.dtype in [float32, float64]:
+        xnan = isnan(x)
+        ynan = isnan(y)
+
+        both_nan = logical_and(xnan, ynan)
+        # NOT both nan AND (both nan OR x != y)
+        return logical_and(logical_not(both_nan), not_equal(x, y))
+
+    return not_equal(x, y)
+
 def assert_exactly_equal(x, y):
     """
     Test that the arrays x and y are exactly equal.
