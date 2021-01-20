@@ -17,7 +17,7 @@ from hypothesis import given
 @given(numeric_arrays)
 def test_sin_special_cases_one_arg_equal_1(arg1):
     """
-    Special case test for `sin(x)`:
+    Special case test for `sin(x, /)`:
 
         -   If `x_i` is `NaN`, the result is `NaN`.
 
@@ -30,7 +30,7 @@ def test_sin_special_cases_one_arg_equal_1(arg1):
 @given(numeric_arrays)
 def test_sin_special_cases_one_arg_equal_2(arg1):
     """
-    Special case test for `sin(x)`:
+    Special case test for `sin(x, /)`:
 
         -   If `x_i` is `+0`, the result is `+0`.
 
@@ -43,7 +43,7 @@ def test_sin_special_cases_one_arg_equal_2(arg1):
 @given(numeric_arrays)
 def test_sin_special_cases_one_arg_equal_3(arg1):
     """
-    Special case test for `sin(x)`:
+    Special case test for `sin(x, /)`:
 
         -   If `x_i` is `-0`, the result is `-0`.
 
@@ -56,7 +56,7 @@ def test_sin_special_cases_one_arg_equal_3(arg1):
 @given(numeric_arrays)
 def test_sin_special_cases_one_arg_either(arg1):
     """
-    Special case test for `sin(x)`:
+    Special case test for `sin(x, /)`:
 
         -   If `x_i` is either `+infinity` or `-infinity`, the result is `NaN`.
 

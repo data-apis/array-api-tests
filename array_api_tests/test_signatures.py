@@ -96,6 +96,11 @@ def test_has_names(name):
 
 @pytest.mark.parametrize('name', function_stubs.__all__)
 def test_function_positional_args(name):
+    # Note: We can't actually test that positional arguments are
+    # positional-only, as that would require knowing the argument name and
+    # checking that it can't be used as a keyword argument. But argument name
+    # inspection does not work for most array library functions that are not
+    # written in pure Python (e.g., it won't work for numpy ufuncs).
     if array_method(name):
         _mod = ones((1,))
     else:

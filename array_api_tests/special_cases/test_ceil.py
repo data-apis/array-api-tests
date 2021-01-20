@@ -17,7 +17,7 @@ from hypothesis import given
 @given(numeric_arrays)
 def test_ceil_special_cases_one_arg_equal(arg1):
     """
-    Special case test for `ceil(x)`:
+    Special case test for `ceil(x, /)`:
 
         -   If `x_i` is already integer-valued, the result is `x_i`.
 

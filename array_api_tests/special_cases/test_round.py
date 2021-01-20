@@ -18,7 +18,7 @@ from hypothesis import given
 @given(numeric_arrays)
 def test_round_special_cases_one_arg_equal(arg1):
     """
-    Special case test for `round(x)`:
+    Special case test for `round(x, /)`:
 
         -   If `x_i` is already integer-valued, the result is `x_i`.
 
@@ -31,7 +31,7 @@ def test_round_special_cases_one_arg_equal(arg1):
 @given(numeric_arrays)
 def test_round_special_cases_one_arg_two_integers_equally_close(arg1):
     """
-    Special case test for `round(x)`:
+    Special case test for `round(x, /)`:
 
         -   If two integers are equally close to `x_i`, the result is the even integer closest to `x_i`.
 

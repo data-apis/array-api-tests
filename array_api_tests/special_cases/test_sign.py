@@ -17,7 +17,7 @@ from hypothesis import given
 @given(numeric_arrays)
 def test_sign_special_cases_one_arg_less(arg1):
     """
-    Special case test for `sign(x)`:
+    Special case test for `sign(x, /)`:
 
         -   If `x_i` is less than `0`, the result is `-1`.
 
@@ -30,7 +30,7 @@ def test_sign_special_cases_one_arg_less(arg1):
 @given(numeric_arrays)
 def test_sign_special_cases_one_arg_either(arg1):
     """
-    Special case test for `sign(x)`:
+    Special case test for `sign(x, /)`:
 
         -   If `x_i` is either `-0` or `+0`, the result is `0`.
 
@@ -43,7 +43,7 @@ def test_sign_special_cases_one_arg_either(arg1):
 @given(numeric_arrays)
 def test_sign_special_cases_one_arg_greater(arg1):
     """
-    Special case test for `sign(x)`:
+    Special case test for `sign(x, /)`:
 
         -   If `x_i` is greater than `0`, the result is `+1`.
 

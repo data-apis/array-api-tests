@@ -20,7 +20,7 @@ from hypothesis import given
 @given(numeric_arrays, numeric_arrays)
 def test_multiply_special_cases_two_args_either(arg1, arg2):
     """
-    Special case test for `multiply(x1, x2)`:
+    Special case test for `multiply(x1, x2, /)`:
 
         -   If either `x1_i` or `x2_i` is `NaN`, the result is `NaN`.
 
@@ -33,7 +33,7 @@ def test_multiply_special_cases_two_args_either(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_multiply_special_cases_two_args_either__either_1(arg1, arg2):
     """
-    Special case test for `multiply(x1, x2)`:
+    Special case test for `multiply(x1, x2, /)`:
 
         -   If `x1_i` is either `+infinity` or `-infinity` and `x2_i` is either `+0` or `-0`, the result is `NaN`.
 
@@ -46,7 +46,7 @@ def test_multiply_special_cases_two_args_either__either_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_multiply_special_cases_two_args_either__either_2(arg1, arg2):
     """
-    Special case test for `multiply(x1, x2)`:
+    Special case test for `multiply(x1, x2, /)`:
 
         -   If `x1_i` is either `+0` or `-0` and `x2_i` is either `+infinity` or `-infinity`, the result is `NaN`.
 
@@ -59,7 +59,7 @@ def test_multiply_special_cases_two_args_either__either_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_multiply_special_cases_two_args_either__either_3(arg1, arg2):
     """
-    Special case test for `multiply(x1, x2)`:
+    Special case test for `multiply(x1, x2, /)`:
 
         -   If `x1_i` is either `+infinity` or `-infinity` and `x2_i` is either `+infinity` or `-infinity`, the result is a signed infinity with the mathematical sign determined by the rule already stated above.
 
@@ -72,7 +72,7 @@ def test_multiply_special_cases_two_args_either__either_3(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_multiply_special_cases_two_args_same_sign_except(arg1, arg2):
     """
-    Special case test for `multiply(x1, x2)`:
+    Special case test for `multiply(x1, x2, /)`:
 
         -   If `x1_i` and `x2_i` have the same mathematical sign, the result has a positive mathematical sign, unless the result is `NaN`. If the result is `NaN`, the "sign" of `NaN` is implementation-defined.
 
@@ -85,7 +85,7 @@ def test_multiply_special_cases_two_args_same_sign_except(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_multiply_special_cases_two_args_different_signs_except(arg1, arg2):
     """
-    Special case test for `multiply(x1, x2)`:
+    Special case test for `multiply(x1, x2, /)`:
 
         -   If `x1_i` and `x2_i` have different mathematical signs, the result has a negative mathematical sign, unless the result is `NaN`. If the result is `NaN`, the "sign" of `NaN` is implementation-defined.
 
@@ -98,7 +98,7 @@ def test_multiply_special_cases_two_args_different_signs_except(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_multiply_special_cases_two_args_either__equal(arg1, arg2):
     """
-    Special case test for `multiply(x1, x2)`:
+    Special case test for `multiply(x1, x2, /)`:
 
         -   If `x1_i` is either `+infinity` or `-infinity` and `x2_i` is a nonzero finite number, the result is a signed infinity with the mathematical sign determined by the rule already stated above.
 
@@ -111,7 +111,7 @@ def test_multiply_special_cases_two_args_either__equal(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_multiply_special_cases_two_args_equal__either(arg1, arg2):
     """
-    Special case test for `multiply(x1, x2)`:
+    Special case test for `multiply(x1, x2, /)`:
 
         -   If `x1_i` is a nonzero finite number and `x2_i` is either `+infinity` or `-infinity`, the result is a signed infinity with the mathematical sign determined by the rule already stated above.
 

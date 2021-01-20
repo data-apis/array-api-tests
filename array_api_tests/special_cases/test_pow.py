@@ -18,7 +18,7 @@ from hypothesis import given
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_notequal__equal(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is not equal to `1` and `x2_i` is `NaN`, the result is `NaN`.
 
@@ -31,7 +31,7 @@ def test_pow_special_cases_two_args_notequal__equal(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_even_if_1(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x2_i` is `+0`, the result is `1`, even if `x1_i` is `NaN`.
 
@@ -44,7 +44,7 @@ def test_pow_special_cases_two_args_even_if_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_even_if_2(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x2_i` is `-0`, the result is `1`, even if `x1_i` is `NaN`.
 
@@ -57,7 +57,7 @@ def test_pow_special_cases_two_args_even_if_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__notequal_1(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `NaN` and `x2_i` is not equal to `0`, the result is `NaN`.
 
@@ -70,7 +70,7 @@ def test_pow_special_cases_two_args_equal__notequal_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__notequal_2(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `1` and `x2_i` is not `NaN`, the result is `1`.
 
@@ -83,7 +83,7 @@ def test_pow_special_cases_two_args_equal__notequal_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_absgreater__equal_1(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `abs(x1_i)` is greater than `1` and `x2_i` is `+infinity`, the result is `+infinity`.
 
@@ -96,7 +96,7 @@ def test_pow_special_cases_two_args_absgreater__equal_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_absgreater__equal_2(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `abs(x1_i)` is greater than `1` and `x2_i` is `-infinity`, the result is `+0`.
 
@@ -109,7 +109,7 @@ def test_pow_special_cases_two_args_absgreater__equal_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_absequal__equal_1(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `abs(x1_i)` is `1` and `x2_i` is `+infinity`, the result is `1`.
 
@@ -122,7 +122,7 @@ def test_pow_special_cases_two_args_absequal__equal_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_absequal__equal_2(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `abs(x1_i)` is `1` and `x2_i` is `-infinity`, the result is `1`.
 
@@ -135,7 +135,7 @@ def test_pow_special_cases_two_args_absequal__equal_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_absless__equal_1(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `abs(x1_i)` is less than `1` and `x2_i` is `+infinity`, the result is `+0`.
 
@@ -148,7 +148,7 @@ def test_pow_special_cases_two_args_absless__equal_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_absless__equal_2(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `abs(x1_i)` is less than `1` and `x2_i` is `-infinity`, the result is `+infinity`.
 
@@ -161,7 +161,7 @@ def test_pow_special_cases_two_args_absless__equal_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__greater_1(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `+infinity` and `x2_i` is greater than `0`, the result is `+infinity`.
 
@@ -174,7 +174,7 @@ def test_pow_special_cases_two_args_equal__greater_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__greater_2(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `+0` and `x2_i` is greater than `0`, the result is `+0`.
 
@@ -187,7 +187,7 @@ def test_pow_special_cases_two_args_equal__greater_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__less_1(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `+infinity` and `x2_i` is less than `0`, the result is `+0`.
 
@@ -200,7 +200,7 @@ def test_pow_special_cases_two_args_equal__less_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__less_2(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `+0` and `x2_i` is less than `0`, the result is `+infinity`.
 
@@ -213,7 +213,7 @@ def test_pow_special_cases_two_args_equal__less_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__greater_equal_1(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `-infinity`, `x2_i` is greater than `0`, and `x2_i` is an odd integer value, the result is `-infinity`.
 
@@ -226,7 +226,7 @@ def test_pow_special_cases_two_args_equal__greater_equal_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__greater_equal_2(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `-0`, `x2_i` is greater than `0`, and `x2_i` is an odd integer value, the result is `-0`.
 
@@ -239,7 +239,7 @@ def test_pow_special_cases_two_args_equal__greater_equal_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__greater_notequal_1(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `-infinity`, `x2_i` is greater than `0`, and `x2_i` is not an odd integer value, the result is `+infinity`.
 
@@ -252,7 +252,7 @@ def test_pow_special_cases_two_args_equal__greater_notequal_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__greater_notequal_2(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `-0`, `x2_i` is greater than `0`, and `x2_i` is not an odd integer value, the result is `+0`.
 
@@ -265,7 +265,7 @@ def test_pow_special_cases_two_args_equal__greater_notequal_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__less_equal_1(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `-infinity`, `x2_i` is less than `0`, and `x2_i` is an odd integer value, the result is `-0`.
 
@@ -278,7 +278,7 @@ def test_pow_special_cases_two_args_equal__less_equal_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__less_equal_2(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `-0`, `x2_i` is less than `0`, and `x2_i` is an odd integer value, the result is `-infinity`.
 
@@ -291,7 +291,7 @@ def test_pow_special_cases_two_args_equal__less_equal_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__less_notequal_1(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `-infinity`, `x2_i` is less than `0`, and `x2_i` is not an odd integer value, the result is `+0`.
 
@@ -304,7 +304,7 @@ def test_pow_special_cases_two_args_equal__less_notequal_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_equal__less_notequal_2(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is `-0`, `x2_i` is less than `0`, and `x2_i` is not an odd integer value, the result is `+infinity`.
 
@@ -317,7 +317,7 @@ def test_pow_special_cases_two_args_equal__less_notequal_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_pow_special_cases_two_args_less_equal__equal_notequal(arg1, arg2):
     """
-    Special case test for `pow(x1, x2)`:
+    Special case test for `pow(x1, x2, /)`:
 
         -   If `x1_i` is less than `0`, `x1_i` is a finite number, `x2_i` is a finite number, and `x2_i` is not an integer value, the result is `NaN`.
 

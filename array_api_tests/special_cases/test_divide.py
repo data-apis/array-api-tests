@@ -20,7 +20,7 @@ from hypothesis import given
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_either(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If either `x1_i` or `x2_i` is `NaN`, the result is `NaN`.
 
@@ -33,7 +33,7 @@ def test_divide_special_cases_two_args_either(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_either__either_1(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is either `+infinity` or `-infinity` and `x2_i` is either `+infinity` or `-infinity`, the result is `NaN`.
 
@@ -46,7 +46,7 @@ def test_divide_special_cases_two_args_either__either_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_either__either_2(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is either `+0` or `-0` and `x2_i` is either `+0` or `-0`, the result is `NaN`.
 
@@ -59,7 +59,7 @@ def test_divide_special_cases_two_args_either__either_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__greater_1(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is `+0` and `x2_i` is greater than `0`, the result is `+0`.
 
@@ -72,7 +72,7 @@ def test_divide_special_cases_two_args_equal__greater_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__greater_2(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is `-0` and `x2_i` is greater than `0`, the result is `-0`.
 
@@ -85,7 +85,7 @@ def test_divide_special_cases_two_args_equal__greater_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__less_1(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is `+0` and `x2_i` is less than `0`, the result is `-0`.
 
@@ -98,7 +98,7 @@ def test_divide_special_cases_two_args_equal__less_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__less_2(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is `-0` and `x2_i` is less than `0`, the result is `+0`.
 
@@ -111,7 +111,7 @@ def test_divide_special_cases_two_args_equal__less_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_greater__equal_1(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is greater than `0` and `x2_i` is `+0`, the result is `+infinity`.
 
@@ -124,7 +124,7 @@ def test_divide_special_cases_two_args_greater__equal_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_greater__equal_2(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is greater than `0` and `x2_i` is `-0`, the result is `-infinity`.
 
@@ -137,7 +137,7 @@ def test_divide_special_cases_two_args_greater__equal_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_less__equal_1(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is less than `0` and `x2_i` is `+0`, the result is `-infinity`.
 
@@ -150,7 +150,7 @@ def test_divide_special_cases_two_args_less__equal_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_less__equal_2(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is less than `0` and `x2_i` is `-0`, the result is `+infinity`.
 
@@ -163,7 +163,7 @@ def test_divide_special_cases_two_args_less__equal_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__equal_1(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is `+infinity` and `x2_i` is a positive (i.e., greater than `0`) finite number, the result is `+infinity`.
 
@@ -176,7 +176,7 @@ def test_divide_special_cases_two_args_equal__equal_1(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__equal_2(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is `+infinity` and `x2_i` is a negative (i.e., less than `0`) finite number, the result is `-infinity`.
 
@@ -189,7 +189,7 @@ def test_divide_special_cases_two_args_equal__equal_2(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__equal_3(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is `-infinity` and `x2_i` is a positive (i.e., greater than `0`) finite number, the result is `-infinity`.
 
@@ -202,7 +202,7 @@ def test_divide_special_cases_two_args_equal__equal_3(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__equal_4(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is `-infinity` and `x2_i` is a negative (i.e., less than `0`) finite number, the result is `+infinity`.
 
@@ -215,7 +215,7 @@ def test_divide_special_cases_two_args_equal__equal_4(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__equal_5(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is a positive (i.e., greater than `0`) finite number and `x2_i` is `+infinity`, the result is `+0`.
 
@@ -228,7 +228,7 @@ def test_divide_special_cases_two_args_equal__equal_5(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__equal_6(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is a positive (i.e., greater than `0`) finite number and `x2_i` is `-infinity`, the result is `-0`.
 
@@ -241,7 +241,7 @@ def test_divide_special_cases_two_args_equal__equal_6(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__equal_7(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is a negative (i.e., less than `0`) finite number and `x2_i` is `+infinity`, the result is `-0`.
 
@@ -254,7 +254,7 @@ def test_divide_special_cases_two_args_equal__equal_7(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_equal__equal_8(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` is a negative (i.e., less than `0`) finite number and `x2_i` is `-infinity`, the result is `+0`.
 
@@ -267,7 +267,7 @@ def test_divide_special_cases_two_args_equal__equal_8(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_same_sign_both(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` and `x2_i` have the same mathematical sign and are both nonzero finite numbers, the result has a positive mathematical sign.
 
@@ -280,7 +280,7 @@ def test_divide_special_cases_two_args_same_sign_both(arg1, arg2):
 @given(numeric_arrays, numeric_arrays)
 def test_divide_special_cases_two_args_different_signs_both(arg1, arg2):
     """
-    Special case test for `divide(x1, x2)`:
+    Special case test for `divide(x1, x2, /)`:
 
         -   If `x1_i` and `x2_i` have different mathematical signs and are both nonzero finite numbers, the result has a negative mathematical sign.
 

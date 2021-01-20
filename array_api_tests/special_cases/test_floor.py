@@ -17,7 +17,7 @@ from hypothesis import given
 @given(numeric_arrays)
 def test_floor_special_cases_one_arg_equal(arg1):
     """
-    Special case test for `floor(x)`:
+    Special case test for `floor(x, /)`:
 
         -   If `x_i` is already integer-valued, the result is `x_i`.
 
