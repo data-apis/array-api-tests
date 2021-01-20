@@ -91,7 +91,10 @@ def example_argument(arg, func_name):
 def test_has_names(name):
     if array_method(name):
         arr = ones((1,))
-        assert hasattr(arr, name), f"The array object is missing the method {name}()"
+        if getattr(function_stubs.array_object, name) is None:
+            assert hasattr(arr, name), f"The array object is missing the attribute {name}"
+        else:
+            assert hasattr(arr, name), f"The array object is missing the method {name}()"
     else:
         assert hasattr(mod, name), f"{mod_name} is missing the {function_category(name)} function {name}()"
 
