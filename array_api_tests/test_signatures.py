@@ -10,7 +10,8 @@ from . import function_stubs
 
 def stub_module(name):
     submodules = [m for m in dir(function_stubs) if
-                  inspect.ismodule(getattr(function_stubs, m))]
+                  inspect.ismodule(getattr(function_stubs, m)) and not
+                  m.startswith('_')]
     for m in submodules:
         if name in getattr(function_stubs, m).__all__:
             return m
