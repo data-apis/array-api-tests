@@ -14,18 +14,18 @@ here because
 2. There is no real way to test that anyway.
 """
 
-from ._types import array
+from ._types import Tuple, array
 
-def argmax(x: array, *, axis: int = None, keepdims: bool = False):
+def argmax(x: array, *, axis: int = None, keepdims: bool = False) -> array:
     pass
 
-def argmin(x: array, *, axis: int = None, keepdims: bool = False):
+def argmin(x: array, *, axis: int = None, keepdims: bool = False) -> array:
     pass
 
-def nonzero(x: array):
+def nonzero(x: array) -> Tuple[array, ...]:
     pass
 
-def where(condition: array, x1: array, x2: array):
+def where(condition: array, x1: array, x2: array) -> array:
     pass
 
 __all__ = ['argmax', 'argmin', 'nonzero', 'where']

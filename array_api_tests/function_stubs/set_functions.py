@@ -14,9 +14,9 @@ here because
 2. There is no real way to test that anyway.
 """
 
-from ._types import array
+from ._types import Tuple, Union, array
 
-def unique(x: array, *, return_counts: bool = False, return_index: bool = False, return_inverse: bool = False, sorted: bool = True):
+def unique(x: array, *, return_counts: bool = False, return_index: bool = False, return_inverse: bool = False, sorted: bool = True) -> Union[array, Tuple[array, ...]]:
     pass
 
 __all__ = ['unique']

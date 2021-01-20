@@ -16,25 +16,25 @@ here because
 
 from ._types import Optional, Tuple, Union, array
 
-def max(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
+def max(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False) -> array:
     pass
 
-def mean(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
+def mean(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False) -> array:
     pass
 
-def min(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
+def min(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False) -> array:
     pass
 
-def prod(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
+def prod(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False) -> array:
     pass
 
-def std(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, correction: Union[int, float] = 0.0, keepdims: bool = False):
+def std(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, correction: Union[int, float] = 0.0, keepdims: bool = False) -> array:
     pass
 
-def sum(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
+def sum(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False) -> array:
     pass
 
-def var(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, correction: Union[int, float] = 0.0, keepdims: bool = False):
+def var(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, correction: Union[int, float] = 0.0, keepdims: bool = False) -> array:
     pass
 
 __all__ = ['max', 'mean', 'min', 'prod', 'std', 'sum', 'var']

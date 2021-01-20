@@ -17,70 +17,70 @@ here because
 from ._types import Literal, Optional, Tuple, Union, array
 from .constants import inf
 
-def trunc(x: array):
+def cholesky():
     pass
 
-def cross(x1: array, x2: array, *, axis: int = -1):
+def cross(x1: array, x2: array, *, axis: int = -1) -> array:
     pass
 
-def det(x: array):
+def det(x: array) -> array:
     pass
 
-def diagonal(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
+def diagonal(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0) -> array:
     pass
 
-def diagonal(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
+def dot():
     pass
 
-def diagonal(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
+def eig():
     pass
 
-def diagonal(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
+def eigvalsh():
     pass
 
-def diagonal(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
+def einsum():
     pass
 
-def inv(x: array):
+def inv(x: array) -> array:
     pass
 
-def inv(x: array):
+def lstsq():
     pass
 
-def inv(x: array):
+def matmul():
     pass
 
-def inv(x: array):
+def matrix_power():
     pass
 
-def inv(x: array):
+def matrix_rank():
     pass
 
-def norm(x: array, *, axis: Optional[Union[int, Tuple[int, int]]] = None, keepdims: bool = False, ord: Optional[int, float, Literal[inf, -inf, 'fro', 'nuc']] = None):
+def norm(x: array, *, axis: Optional[Union[int, Tuple[int, int]]] = None, keepdims: bool = False, ord: Optional[int, float, Literal[inf, -inf, 'fro', 'nuc']] = None) -> array:
     pass
 
-def outer(x1: array, x2: array):
+def outer(x1: array, x2: array) -> array:
     pass
 
-def outer(x1: array, x2: array):
+def pinv():
     pass
 
-def outer(x1: array, x2: array):
+def qr():
     pass
 
-def outer(x1: array, x2: array):
+def slogdet():
     pass
 
-def outer(x1: array, x2: array):
+def solve():
     pass
 
-def outer(x1: array, x2: array):
+def svd():
     pass
 
-def trace(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
+def trace(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0) -> array:
     pass
 
-def transpose(x: array, *, axes: Optional[Tuple[int, ...]] = None):
+def transpose(x: array, *, axes: Optional[Tuple[int, ...]] = None) -> array:
     pass
 
 __all__ = ['cholesky', 'cross', 'det', 'diagonal', 'dot', 'eig', 'eigvalsh', 'einsum', 'inv', 'lstsq', 'matmul', 'matrix_power', 'matrix_rank', 'norm', 'outer', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'trace', 'transpose']

@@ -150,6 +150,7 @@ def main():
             sig = sig.replace(', /', '')
             if func_name not in annotations:
                 print(f"Warning: No annotations found for {func_name}")
+                annotated_sig = sig
             else:
                 annotated_sig = add_annotation(sig, annotations[func_name])
             if not args.quiet:
@@ -607,7 +608,7 @@ def parse_special_cases(spec_text, verbose=False):
 
 PARAMETER_RE = regex.compile(r"- +\*\*(.*)\*\*: _(.*)_")
 def parse_annotations(spec_text, verbose=False):
-    annotations = defaultdict(list)
+    annotations = defaultdict(dict)
     in_block = False
     for line in spec_text.splitlines():
         m = HEADER_RE.match(line)
@@ -615,6 +616,9 @@ def parse_annotations(spec_text, verbose=False):
             name = m.group(1)
             continue
         if line == '#### Parameters':
+            in_block = True
+            continue
+        elif line == '#### Returns':
             in_block = True
             continue
         elif line.startswith('#'):
@@ -629,7 +633,7 @@ def parse_annotations(spec_text, verbose=False):
                 typ = clean_type(typ)
                 if verbose:
                     print(f"Matched parameter for {name}: {param}: {typ}")
-                annotations[name].append((param, typ))
+                annotations[name][param] =  typ
             else:
                 raise ValueError(f"Unrecognized special case string for '{name}':\n{line}")
 
@@ -647,7 +651,12 @@ def clean_type(typ):
     return typ
 
 def add_annotation(sig, annotation):
-    for param, typ in annotation:
+    if 'out' not in annotation:
+        raise RuntimeError(f"No return annotation for {sig}")
+    for param, typ in annotation.items():
+        if param == 'out':
+            sig = f"{sig} -> {typ}"
+            continue
         PARAM_DEFAULT = regex.compile(rf"([\( ]{param})=")
         sig2 = PARAM_DEFAULT.sub(rf'\1: {typ} = ', sig)
         if sig2 != sig:

@@ -16,10 +16,10 @@ here because
 
 from ._types import array
 
-def argsort(x: array, *, axis: int = -1, descending: bool = False, stable: bool = True):
+def argsort(x: array, *, axis: int = -1, descending: bool = False, stable: bool = True) -> array:
     pass
 
-def sort(x: array, *, axis: int = -1, descending: bool = False, stable: bool = True):
+def sort(x: array, *, axis: int = -1, descending: bool = False, stable: bool = True) -> array:
     pass
 
 __all__ = ['argsort', 'sort']

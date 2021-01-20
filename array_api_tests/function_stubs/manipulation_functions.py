@@ -16,25 +16,25 @@ here because
 
 from ._types import Optional, Tuple, Union, array
 
-def concat(arrays: Tuple[array], *, axis: Optional[int] = 0):
+def concat(arrays: Tuple[array], *, axis: Optional[int] = 0) -> array:
     pass
 
-def expand_dims(x: array, axis: int):
+def expand_dims(x: array, axis: int) -> array:
     pass
 
-def flip(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None):
+def flip(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None) -> array:
     pass
 
-def reshape(x: array, shape: Tuple[int, ...]):
+def reshape(x: array, shape: Tuple[int, ...]) -> array:
     pass
 
-def roll(x: array, shift: Union[int, Tuple[int, ...]], *, axis: Optional[Union[int, Tuple[int, ...]]] = None):
+def roll(x: array, shift: Union[int, Tuple[int, ...]], *, axis: Optional[Union[int, Tuple[int, ...]]] = None) -> array:
     pass
 
-def squeeze(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None):
+def squeeze(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None) -> array:
     pass
 
-def stack(arrays: Tuple[array], *, axis: Optional[int] = 0):
+def stack(arrays: Tuple[array], *, axis: Optional[int] = 0) -> array:
     pass
 
 __all__ = ['concat', 'expand_dims', 'flip', 'reshape', 'roll', 'squeeze', 'stack']
