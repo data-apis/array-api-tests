@@ -14,6 +14,8 @@ here because
 2. There is no real way to test that anyway.
 """
 
+from __future__ import annotations
+
 from ._types import Optional, Tuple, Union, array, device, dtype
 
 def arange(start: Union[int, float], *, stop: Optional[Union[int, float]] = None, step: Union[int, float] = 1, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:

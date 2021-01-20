@@ -14,6 +14,8 @@ here because
 2. There is no real way to test that anyway.
 """
 
+from __future__ import annotations
+
 from ._types import Optional, Tuple, Union, array
 
 def concat(arrays: Tuple[array], *, axis: Optional[int] = 0) -> array:

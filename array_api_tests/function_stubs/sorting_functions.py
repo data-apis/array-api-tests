@@ -14,6 +14,8 @@ here because
 2. There is no real way to test that anyway.
 """
 
+from __future__ import annotations
+
 from ._types import array
 
 def argsort(x: array, *, axis: int = -1, descending: bool = False, stable: bool = True) -> array:

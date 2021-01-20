@@ -14,6 +14,8 @@ here because
 2. There is no real way to test that anyway.
 """
 
+from __future__ import annotations
+
 from ._types import Tuple, array
 
 def argmax(x: array, *, axis: int = None, keepdims: bool = False) -> array:
