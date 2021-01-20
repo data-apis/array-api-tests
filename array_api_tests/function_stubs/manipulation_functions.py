@@ -14,25 +14,27 @@ here because
 2. There is no real way to test that anyway.
 """
 
-def concat(arrays, *, axis=0):
+from ._types import Optional, Tuple, Union, array
+
+def concat(arrays: Tuple[array], *, axis: Optional[int] = 0):
     pass
 
-def expand_dims(x, axis):
+def expand_dims(x: array, axis: int):
     pass
 
-def flip(x, *, axis=None):
+def flip(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None):
     pass
 
-def reshape(x, shape):
+def reshape(x: array, shape: Tuple[int, ...]):
     pass
 
-def roll(x, shift, *, axis=None):
+def roll(x: array, shift: Union[int, Tuple[int, ...]], *, axis: Optional[Union[int, Tuple[int, ...]]] = None):
     pass
 
-def squeeze(x, *, axis=None):
+def squeeze(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None):
     pass
 
-def stack(arrays, *, axis=0):
+def stack(arrays: Tuple[array], *, axis: Optional[int] = 0):
     pass
 
 __all__ = ['concat', 'expand_dims', 'flip', 'reshape', 'roll', 'squeeze', 'stack']

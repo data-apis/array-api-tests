@@ -14,37 +14,39 @@ here because
 2. There is no real way to test that anyway.
 """
 
-def arange(start, *, stop=None, step=1, dtype=None, device=None):
+from ._types import Optional, Tuple, Union, array, device, dtype
+
+def arange(start: Union[int, float], *, stop: Optional[Union[int, float]] = None, step: Union[int, float] = 1, dtype: Optional[dtype] = None, device: Optional[device] = None):
     pass
 
-def empty(shape, *, dtype=None, device=None):
+def empty(shape: Union[int, Tuple[int, ...]], *, dtype: Optional[dtype] = None, device: Optional[device] = None):
     pass
 
-def empty_like(x, *, dtype=None, device=None):
+def empty_like(x: array, *, dtype: Optional[dtype] = None, device: Optional[device] = None):
     pass
 
-def eye(N, *, M=None, k=0, dtype=None, device=None):
+def eye(N: int, *, M: Optional[int] = None, k: Optional[int] = 0, dtype: Optional[dtype] = None, device: Optional[device] = None):
     pass
 
-def full(shape, fill_value, *, dtype=None, device=None):
+def full(shape: Union[int, Tuple[int, ...]], fill_value: Union[int, float], *, dtype: Optional[dtype] = None, device: Optional[device] = None):
     pass
 
-def full_like(x, fill_value, *, dtype=None, device=None):
+def full_like(x: array, fill_value: Union[int, float], *, dtype: Optional[dtype] = None, device: Optional[device] = None):
     pass
 
-def linspace(start, stop, num, *, dtype=None, device=None, endpoint=True):
+def linspace(start: Union[int, float], stop: Union[int, float], num: int, *, dtype: Optional[dtype] = None, device: Optional[device] = None, endpoint: Optional[bool] = True):
     pass
 
-def ones(shape, *, dtype=None, device=None):
+def ones(shape: Union[int, Tuple[int, ...]], *, dtype: Optional[dtype] = None, device: Optional[device] = None):
     pass
 
-def ones_like(x, *, dtype=None, device=None):
+def ones_like(x: array, *, dtype: Optional[dtype] = None, device: Optional[device] = None):
     pass
 
-def zeros(shape, *, dtype=None, device=None):
+def zeros(shape: Union[int, Tuple[int, ...]], *, dtype: Optional[dtype] = None, device: Optional[device] = None):
     pass
 
-def zeros_like(x, *, dtype=None, device=None):
+def zeros_like(x: array, *, dtype: Optional[dtype] = None, device: Optional[device] = None):
     pass
 
 __all__ = ['arange', 'empty', 'empty_like', 'eye', 'full', 'full_like', 'linspace', 'ones', 'ones_like', 'zeros', 'zeros_like']

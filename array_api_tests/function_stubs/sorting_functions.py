@@ -14,10 +14,12 @@ here because
 2. There is no real way to test that anyway.
 """
 
-def argsort(x, *, axis=-1, descending=False, stable=True):
+from ._types import array
+
+def argsort(x: array, *, axis: int = -1, descending: bool = False, stable: bool = True):
     pass
 
-def sort(x, *, axis=-1, descending=False, stable=True):
+def sort(x: array, *, axis: int = -1, descending: bool = False, stable: bool = True):
     pass
 
 __all__ = ['argsort', 'sort']

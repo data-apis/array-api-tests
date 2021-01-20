@@ -14,16 +14,18 @@ here because
 2. There is no real way to test that anyway.
 """
 
-def argmax(x, *, axis=None, keepdims=False):
+from ._types import array
+
+def argmax(x: array, *, axis: int = None, keepdims: bool = False):
     pass
 
-def argmin(x, *, axis=None, keepdims=False):
+def argmin(x: array, *, axis: int = None, keepdims: bool = False):
     pass
 
-def nonzero(x):
+def nonzero(x: array):
     pass
 
-def where(condition, x1, x2):
+def where(condition: array, x1: array, x2: array):
     pass
 
 __all__ = ['argmax', 'argmin', 'nonzero', 'where']

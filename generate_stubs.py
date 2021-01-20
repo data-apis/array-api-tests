@@ -19,6 +19,7 @@ import regex
 from removestar.removestar import fix_code
 
 FUNCTION_HEADER_RE = regex.compile(r'\(function-(.*?)\)')
+HEADER_RE = regex.compile(r'\((?:function|method|constant|attribute)-(.*?)\)')
 FUNCTION_RE = regex.compile(r'\(function-.*\)=\n#+ ?(.*\(.*\))')
 METHOD_RE = regex.compile(r'\(method-.*\)=\n#+ ?(.*\(.*\))')
 CONSTANT_RE = regex.compile(r'\(constant-.*\)=\n#+ ?(.*)')
@@ -41,7 +42,11 @@ here because
 1. The /, syntax for positional-only arguments is Python 3.8+ only, and
 2. There is no real way to test that anyway.
 """
+
+from ._types import *
+from .constants import *
 '''
+# ^ Constants are used in some of the type annotations
 
 INIT_HEADER = '''\
 """
@@ -74,6 +79,23 @@ from hypothesis import given
 
 '''
 
+TYPES_HEADER = '''\
+"""
+This file defines the types for type annotations.
+
+The type variables should be replaced with the actual types for a given
+library, e.g., for NumPy TypeVar('array') would be replaced with ndarray.
+"""
+
+from typing import Literal, Optional, Tuple, Union, TypeVar
+
+array = TypeVar('array')
+device = TypeVar('device')
+dtype = TypeVar('dtype')
+
+__all__ = ['Literal', 'Optional', 'Tuple', 'Union', 'array', 'device', 'dtype']
+
+'''
 def main():
     parser = argparse.ArgumentParser(__doc__)
     parser.add_argument('array_api_repo', help="Path to clone of the array-api repository")
@@ -81,6 +103,11 @@ def main():
     write any files""", action='store_false', dest='write')
     parser.add_argument('--quiet', help="""Don't print any output to the terminal""", action='store_true', dest='quiet')
     args = parser.parse_args()
+
+    types_path = os.path.join('array_api_tests', 'function_stubs', '_types.py')
+    if args.write:
+        with open(types_path, 'w') as f:
+            f.write(TYPES_HEADER)
 
     spec_dir = os.path.join(args.array_api_repo, 'spec', 'API_specification')
     modules = {}
@@ -104,41 +131,51 @@ def main():
         modules[module_name] = []
         if not args.quiet:
             print(f"Writing {py_path}")
+
+        annotations = parse_annotations(text, verbose=not args.quiet)
+
         sigs = {}
-        with open(py_path, 'w') as f:
-            f.write(STUB_FILE_HEADER.format(filename=filename, title=title))
-            for sig in functions + methods:
-                ismethod = sig in methods
-                sig = sig.replace(r'\_', '_')
-                func_name = NAME_RE.match(sig).group(1)
-                doc = ""
-                if ismethod:
-                    doc = f'''
+        code = ""
+        code += STUB_FILE_HEADER.format(filename=filename, title=title)
+        for sig in functions + methods:
+            ismethod = sig in methods
+            sig = sig.replace(r'\_', '_')
+            func_name = NAME_RE.match(sig).group(1)
+            doc = ""
+            if ismethod:
+                doc = f'''
     """
     Note: {func_name} is a method of the array object.
     """'''
-                if not args.quiet:
-                    print(f"Writing stub for {sig}")
-                sig = sig.replace(', /', '')
-                f.write(f"""
-def {sig}:{doc}
+            sig = sig.replace(', /', '')
+            if func_name not in annotations:
+                print(f"Warning: No annotations found for {func_name}")
+            else:
+                annotated_sig = add_annotation(sig, annotations[func_name])
+            if not args.quiet:
+                print(f"Writing stub for {annotated_sig}")
+            code += f"""
+def {annotated_sig}:{doc}
     pass
-""")
-                modules[module_name].append(func_name)
-                sigs[func_name] = sig
-            for const in constants + attributes:
-                if not args.quiet:
-                    print(f"Writing stub for {const}")
-                isattr = const in attributes
-                if isattr:
-                    f.write(f"\n# Note: {const} is an attribute of the array object.")
-                f.write(f"\n{const} = None\n")
-                modules[module_name].append(const)
+"""
+            modules[module_name].append(func_name)
+            sigs[func_name] = sig
+        for const in constants + attributes:
+            if not args.quiet:
+                print(f"Writing stub for {const}")
+            isattr = const in attributes
+            if isattr:
+                code += f"\n# Note: {const} is an attribute of the array object."
+            code += f"\n{const} = None\n"
+            modules[module_name].append(const)
 
-            f.write('\n__all__ = [')
-            f.write(', '.join(f"'{i}'" for i in modules[module_name]))
-            f.write(']\n')
+        code += '\n__all__ = ['
+        code += ', '.join(f"'{i}'" for i in modules[module_name])
+        code += ']\n'
 
+        code = fix_code(code, file=py_path, verbose=False, quiet=False)
+        with open(py_path, 'w') as f:
+            f.write(code)
         if filename == 'elementwise_functions.md':
             special_cases = parse_special_cases(text, verbose=not args.quiet)
             for func in special_cases:
@@ -567,6 +604,62 @@ def parse_special_cases(spec_text, verbose=False):
                 raise ValueError(f"Unrecognized special case string for '{name}':\n{line}")
 
     return special_cases
+
+PARAMETER_RE = regex.compile(r"- +\*\*(.*)\*\*: _(.*)_")
+def parse_annotations(spec_text, verbose=False):
+    annotations = defaultdict(list)
+    in_block = False
+    for line in spec_text.splitlines():
+        m = HEADER_RE.match(line)
+        if m:
+            name = m.group(1)
+            continue
+        if line == '#### Parameters':
+            in_block = True
+            continue
+        elif line.startswith('#'):
+            in_block = False
+            continue
+        if in_block:
+            if not line.startswith('- '):
+                continue
+            m = PARAMETER_RE.match(line)
+            if m:
+                param, typ = m.groups()
+                typ = clean_type(typ)
+                if verbose:
+                    print(f"Matched parameter for {name}: {param}: {typ}")
+                annotations[name].append((param, typ))
+            else:
+                raise ValueError(f"Unrecognized special case string for '{name}':\n{line}")
+
+    return annotations
+
+def clean_type(typ):
+    # TODO: How to handle dtypes in annotations? For now, we just remove the
+    # one that exists (from where()).
+    typ = typ.replace('&lt;bool&gt;', '')
+    typ = typ.replace('&lt;', '')
+    typ = typ.replace('&gt;', '')
+    typ = typ.replace('\\', '')
+    typ = typ.replace(' ', '')
+    typ = typ.replace(',', ', ')
+    return typ
+
+def add_annotation(sig, annotation):
+    for param, typ in annotation:
+        PARAM_DEFAULT = regex.compile(rf"([\( ]{param})=")
+        sig2 = PARAM_DEFAULT.sub(rf'\1: {typ} = ', sig)
+        if sig2 != sig:
+            sig = sig2
+            continue
+        PARAM = regex.compile(rf"([\( ]{param})([,\)])")
+        sig2 = PARAM.sub(rf'\1: {typ}\2', sig)
+        if sig2 != sig:
+            sig = sig2
+            continue
+        raise RuntimeError(f"Parameter {param} not found in {sig}")
+    return sig
 
 if __name__ == '__main__':
     main()

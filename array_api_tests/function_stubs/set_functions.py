@@ -14,7 +14,9 @@ here because
 2. There is no real way to test that anyway.
 """
 
-def unique(x, *, return_counts=False, return_index=False, return_inverse=False, sorted=True):
+from ._types import array
+
+def unique(x: array, *, return_counts: bool = False, return_index: bool = False, return_inverse: bool = False, sorted: bool = True):
     pass
 
 __all__ = ['unique']

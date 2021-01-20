@@ -14,10 +14,12 @@ here because
 2. There is no real way to test that anyway.
 """
 
-def all(x, *, axis=None, keepdims=False):
+from ._types import Optional, Tuple, Union, array
+
+def all(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
     pass
 
-def any(x, *, axis=None, keepdims=False):
+def any(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
     pass
 
 __all__ = ['all', 'any']

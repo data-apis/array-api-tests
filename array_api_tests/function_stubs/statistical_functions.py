@@ -14,25 +14,27 @@ here because
 2. There is no real way to test that anyway.
 """
 
-def max(x, *, axis=None, keepdims=False):
+from ._types import Optional, Tuple, Union, array
+
+def max(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
     pass
 
-def mean(x, *, axis=None, keepdims=False):
+def mean(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
     pass
 
-def min(x, *, axis=None, keepdims=False):
+def min(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
     pass
 
-def prod(x, *, axis=None, keepdims=False):
+def prod(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
     pass
 
-def std(x, *, axis=None, correction=0.0, keepdims=False):
+def std(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, correction: Union[int, float] = 0.0, keepdims: bool = False):
     pass
 
-def sum(x, *, axis=None, keepdims=False):
+def sum(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False):
     pass
 
-def var(x, *, axis=None, correction=0.0, keepdims=False):
+def var(x: array, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, correction: Union[int, float] = 0.0, keepdims: bool = False):
     pass
 
 __all__ = ['max', 'mean', 'min', 'prod', 'std', 'sum', 'var']

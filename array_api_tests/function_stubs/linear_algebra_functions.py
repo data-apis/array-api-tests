@@ -14,70 +14,73 @@ here because
 2. There is no real way to test that anyway.
 """
 
-def cholesky():
+from ._types import Literal, Optional, Tuple, Union, array
+from .constants import inf
+
+def trunc(x: array):
     pass
 
-def cross(x1, x2, *, axis=-1):
+def cross(x1: array, x2: array, *, axis: int = -1):
     pass
 
-def det(x):
+def det(x: array):
     pass
 
-def diagonal(x, *, axis1=0, axis2=1, offset=0):
+def diagonal(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
     pass
 
-def dot():
+def diagonal(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
     pass
 
-def eig():
+def diagonal(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
     pass
 
-def eigvalsh():
+def diagonal(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
     pass
 
-def einsum():
+def diagonal(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
     pass
 
-def inv(x):
+def inv(x: array):
     pass
 
-def lstsq():
+def inv(x: array):
     pass
 
-def matmul():
+def inv(x: array):
     pass
 
-def matrix_power():
+def inv(x: array):
     pass
 
-def matrix_rank():
+def inv(x: array):
     pass
 
-def norm(x, *, axis=None, keepdims=False, ord=None):
+def norm(x: array, *, axis: Optional[Union[int, Tuple[int, int]]] = None, keepdims: bool = False, ord: Optional[int, float, Literal[inf, -inf, 'fro', 'nuc']] = None):
     pass
 
-def outer(x1, x2):
+def outer(x1: array, x2: array):
     pass
 
-def pinv():
+def outer(x1: array, x2: array):
     pass
 
-def qr():
+def outer(x1: array, x2: array):
     pass
 
-def slogdet():
+def outer(x1: array, x2: array):
     pass
 
-def solve():
+def outer(x1: array, x2: array):
     pass
 
-def svd():
+def outer(x1: array, x2: array):
     pass
 
-def trace(x, *, axis1=0, axis2=1, offset=0):
+def trace(x: array, *, axis1: int = 0, axis2: int = 1, offset: int = 0):
     pass
 
-def transpose(x, *, axes=None):
+def transpose(x: array, *, axes: Optional[Tuple[int, ...]] = None):
     pass
 
 __all__ = ['cholesky', 'cross', 'det', 'diagonal', 'dot', 'eig', 'eigvalsh', 'einsum', 'inv', 'lstsq', 'matmul', 'matrix_power', 'matrix_rank', 'norm', 'outer', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'trace', 'transpose']
