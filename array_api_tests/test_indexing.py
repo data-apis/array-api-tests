@@ -104,7 +104,7 @@ def test_multiaxis_indexing(shape, idx):
             if i >= 0:
                 i = slice(i, i + 1)
             else:
-                i = slice(size + i, size)
+                i = slice(size + i, size + i + 1)
         equiv_idx2.append(i)
     equiv_idx2 = tuple(equiv_idx2)
 
