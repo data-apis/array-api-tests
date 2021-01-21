@@ -52,7 +52,7 @@ def matrix_power():
 def matrix_rank():
     pass
 
-def norm(x: array, /, *, axis: Optional[Union[int, Tuple[int, int]]] = None, keepdims: bool = False, ord: Optional[int, float, Literal[inf, -inf, 'fro', 'nuc']] = None) -> array:
+def norm(x: array, /, *, axis: Optional[Union[int, Tuple[int, int]]] = None, keepdims: bool = False, ord: Optional[Union[int, float, Literal[inf, -inf, 'fro', 'nuc']]] = None) -> array:
     pass
 
 def outer(x1: array, x2: array, /) -> array:

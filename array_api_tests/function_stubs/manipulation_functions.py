@@ -30,7 +30,7 @@ def roll(x: array, shift: Union[int, Tuple[int, ...]], /, *, axis: Optional[Unio
 def squeeze(x: array, /, *, axis: Optional[Union[int, Tuple[int, ...]]] = None) -> array:
     pass
 
-def stack(arrays: Tuple[array], /, *, axis: Optional[int] = 0) -> array:
+def stack(arrays: Tuple[array], /, *, axis: int = 0) -> array:
     pass
 
 __all__ = ['concat', 'expand_dims', 'flip', 'reshape', 'roll', 'squeeze', 'stack']
