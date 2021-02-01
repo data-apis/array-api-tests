@@ -74,8 +74,12 @@ _numeric_dtypes = [
     *_floating_dtypes,
 ]
 
-_dtypes = [
+_boolean_dtypes = [
     'bool',
+]
+
+_dtypes = [
+    *_boolean_dtypes,
     *_numeric_dtypes
 ]
 
