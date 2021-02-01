@@ -4,7 +4,7 @@ from .array_helpers import (is_integer_dtype, dtype_ranges,
                             assert_exactly_equal, isintegral)
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  shapes, sizes, sqrt_sizes, shared_dtypes,
-                                 shared_scalars)
+                                 scalars)
 
 from hypothesis import assume, given
 from hypothesis.strategies import integers, floats, one_of, none, booleans
@@ -102,7 +102,7 @@ def test_eye(N, M, k, dtype):
             else:
                 assert a[i, j] == 0, "eye() did not produce a 0 off the diagonal"
 
-@given(shapes, shared_scalars(), one_of(none(), shared_dtypes))
+@given(shapes, scalars(shared_dtypes), one_of(none(), shared_dtypes))
 def test_full(shape, fill_value, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
 

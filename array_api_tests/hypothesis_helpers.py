@@ -80,11 +80,13 @@ nonbroadcastable_ones_array_two_args = hypotheses_tuples(ones_arrays, ones_array
 numeric_arrays = builds(full, just((1,)), floats())
 
 @composite
-def shared_scalars(draw):
+def scalars(draw, dtypes):
     """
-    Strategy to generate a scalar that matches the dtype from shared_dtypes
+    Strategy to generate a scalar that matches a dtype strategy
+
+    dtypes should be one of the shared_* dtypes strategies.
     """
-    dtype = draw(shared_dtypes)
+    dtype = draw(dtypes)
     if dtype in dtype_ranges:
         m, M = dtype_ranges[dtype]
         return draw(integers(m, M))
