@@ -32,6 +32,11 @@ dtypes = sampled_from(dtype_objects)
 
 shared_dtypes = shared(dtypes)
 
+def mutually_promotable_dtypes():
+    from .test_type_promotion import dtype_mapping, promotion_table
+    dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in promotion_table]
+    return sampled_from(dtype_pairs)
+
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
 
