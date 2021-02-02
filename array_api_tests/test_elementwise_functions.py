@@ -15,280 +15,43 @@ arrays of any shape, using masking patterns (similar to the tests in special_cas
 """
 
 from hypothesis import given
-from hypothesis.strategies import shared, composite, just
+from hypothesis.strategies import composite, just
 
-from .hypothesis_helpers import (integer_dtypes, floating_dtypes,
+from .hypothesis_helpers import (integer_dtype_objects,
+                                 floating_dtype_objects,
+                                 numeric_dtype_objects,
+                                 integer_or_boolean_dtype_objects,
+                                 boolean_dtype_objects, floating_dtypes,
                                  numeric_dtypes, integer_or_boolean_dtypes,
                                  boolean_dtypes, mutually_promotable_dtypes,
-                                 scalars)
+                                 array_scalars)
 
-x_integer_dtypes = shared(integer_dtypes, key='x')
-x_floating_dtypes = shared(floating_dtypes, key='x')
-x_numeric_dtypes = shared(numeric_dtypes, key='x')
-x_integer_or_boolean_dtypes = shared(integer_or_boolean_dtypes, key='x')
-x_boolean_dtypes = shared(boolean_dtypes, key='x')
+# integer_scalars = array_scalars(integer_dtypes)
+floating_scalars = array_scalars(floating_dtypes)
+numeric_scalars = array_scalars(numeric_dtypes)
+integer_or_boolean_scalars = array_scalars(integer_or_boolean_dtypes)
+boolean_scalars = array_scalars(boolean_dtypes)
 
-x_integer_scalars = scalars(x_integer_dtypes)
-x_floating_scalars = scalars(x_floating_dtypes)
-x_numeric_scalars = scalars(x_numeric_dtypes)
-x_integer_or_boolean_scalars = scalars(x_integer_or_boolean_dtypes)
-x_boolean_scalars = scalars(x_boolean_dtypes)
-
-x1_integer_dtypes = shared(integer_dtypes, key='x1')
-x1_floating_dtypes = shared(floating_dtypes, key='x1')
-x1_numeric_dtypes = shared(numeric_dtypes, key='x1')
-x1_integer_or_boolean_dtypes = shared(integer_or_boolean_dtypes, key='x1')
-x1_boolean_dtypes = shared(boolean_dtypes, key='x1')
-
-x1_integer_scalars = scalars(x1_integer_dtypes)
-x1_floating_scalars = scalars(x1_floating_dtypes)
-x1_numeric_scalars = scalars(x1_numeric_dtypes)
-x1_integer_or_boolean_scalars = scalars(x1_integer_or_boolean_dtypes)
-x1_boolean_scalars = scalars(x1_boolean_dtypes)
-
-x2_integer_dtypes = shared(integer_dtypes, key='x2')
-x2_floating_dtypes = shared(floating_dtypes, key='x2')
-x2_numeric_dtypes = shared(numeric_dtypes, key='x2')
-x2_integer_or_boolean_dtypes = shared(integer_or_boolean_dtypes, key='x2')
-x2_boolean_dtypes = shared(boolean_dtypes, key='x2')
-
-x2_integer_scalars = scalars(x2_integer_dtypes)
-x2_floating_scalars = scalars(x2_floating_dtypes)
-x2_numeric_scalars = scalars(x2_numeric_dtypes)
-x2_integer_or_boolean_scalars = scalars(x2_integer_or_boolean_dtypes)
-x2_boolean_scalars = scalars(x2_boolean_dtypes)
-
-any_dtypes = shared(mutually_promotable_dtypes())
+two_integer_dtypes = mutually_promotable_dtypes(integer_dtype_objects)
+two_floating_dtypes = mutually_promotable_dtypes(floating_dtype_objects)
+two_numeric_dtypes = mutually_promotable_dtypes(numeric_dtype_objects)
+two_integer_or_boolean_dtypes = mutually_promotable_dtypes(integer_or_boolean_dtype_objects)
+two_boolean_dtypes = mutually_promotable_dtypes(boolean_dtype_objects)
+two_any_dtypes = mutually_promotable_dtypes()
 
 @composite
-def two_scalars(draw, two_dtypes):
+def two_array_scalars(draw, dtype1, dtype2):
     # two_dtypes should be a strategy that returns two dtypes (like
     # mutually_promotable_dtypes())
-    dtype1, dtype2 = draw(two_dtypes)
-    return draw(scalars(just(dtype1))), draw(scalars(just(dtype2)))
+    return draw(array_scalars(just(dtype1))), draw(array_scalars(just(dtype2)))
 
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_abs(x, x_dtype):
-    pass
+def sanity_check(x1, x2):
+    from .test_type_promotion import promotion_table, dtype_mapping
+    t1 = [i for i in dtype_mapping if dtype_mapping[i] == x1.dtype][0]
+    t2 = [i for i in dtype_mapping if dtype_mapping[i] == x2.dtype][0]
 
-@given(x_floating_scalars, x_floating_dtypes)
-def test_acos(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_acosh(x, x_dtype):
-    pass
-
-@given(x1_numeric_scalars, x1_numeric_dtypes, x2_numeric_scalars, x2_numeric_dtypes)
-def test_add(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_asin(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_asinh(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_atan(x, x_dtype):
-    pass
-
-@given(x1_floating_scalars, x1_floating_dtypes, x2_floating_scalars, x2_floating_dtypes)
-def test_atan2(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_atanh(x, x_dtype):
-    pass
-
-@given(x1_integer_or_boolean_scalars, x1_integer_or_boolean_dtypes, x2_integer_or_boolean_scalars, x2_integer_or_boolean_dtypes)
-def test_bitwise_and(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x1_integer_scalars, x1_integer_dtypes, x2_integer_scalars, x2_integer_dtypes)
-def test_bitwise_left_shift(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x_integer_or_boolean_scalars, x_integer_or_boolean_dtypes)
-def test_bitwise_invert(x, x_dtype):
-    pass
-
-@given(x1_integer_or_boolean_scalars, x1_integer_or_boolean_dtypes, x2_integer_or_boolean_scalars, x2_integer_or_boolean_dtypes)
-def test_bitwise_or(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x1_integer_scalars, x1_integer_dtypes, x2_integer_scalars, x2_integer_dtypes)
-def test_bitwise_right_shift(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x1_integer_or_boolean_scalars, x1_integer_or_boolean_dtypes, x2_integer_or_boolean_scalars, x2_integer_or_boolean_dtypes)
-def test_bitwise_xor(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_ceil(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_cos(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_cosh(x, x_dtype):
-    pass
-
-@given(x1_floating_scalars, x1_floating_dtypes, x2_floating_scalars, x2_floating_dtypes)
-def test_divide(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(two_scalars(any_dtypes), any_dtypes)
-def test_equal(args, dtypes):
-    x1, x2 = args
-    x1_dtype, x2_dtype = dtypes
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_exp(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_expm1(x, x_dtype):
-    pass
-
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_floor(x, x_dtype):
-    pass
-
-@given(x1_numeric_scalars, x1_numeric_dtypes, x2_numeric_scalars, x2_numeric_dtypes)
-def test_floor_divide(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x1_numeric_scalars, x1_numeric_dtypes, x2_numeric_scalars, x2_numeric_dtypes)
-def test_greater(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x1_numeric_scalars, x1_numeric_dtypes, x2_numeric_scalars, x2_numeric_dtypes)
-def test_greater_equal(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_isfinite(x, x_dtype):
-    pass
-
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_isinf(x, x_dtype):
-    pass
-
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_isnan(x, x_dtype):
-    pass
-
-@given(x1_numeric_scalars, x1_numeric_dtypes, x2_numeric_scalars, x2_numeric_dtypes)
-def test_less(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x1_numeric_scalars, x1_numeric_dtypes, x2_numeric_scalars, x2_numeric_dtypes)
-def test_less_equal(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_log(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_log1p(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_log2(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_log10(x, x_dtype):
-    pass
-
-@given(x1_boolean_scalars, x1_boolean_dtypes, x2_boolean_scalars, x2_boolean_dtypes)
-def test_logical_and(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x_boolean_scalars, x_boolean_dtypes)
-def test_logical_not(x, x_dtype):
-    pass
-
-@given(x1_boolean_scalars, x1_boolean_dtypes, x2_boolean_scalars, x2_boolean_dtypes)
-def test_logical_or(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x1_boolean_scalars, x1_boolean_dtypes, x2_boolean_scalars, x2_boolean_dtypes)
-def test_logical_xor(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x1_numeric_scalars, x1_numeric_dtypes, x2_numeric_scalars, x2_numeric_dtypes)
-def test_multiply(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_negative(x, x_dtype):
-    pass
-
-@given(two_scalars(any_dtypes), any_dtypes)
-def test_not_equal(args, dtypes):
-    x1, x2 = args
-    x1_dtype, x2_dtype = dtypes
-
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_positive(x, x_dtype):
-    pass
-
-@given(x1_floating_scalars, x1_floating_dtypes, x2_floating_scalars, x2_floating_dtypes)
-def test_pow(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x1_numeric_scalars, x1_numeric_dtypes, x2_numeric_scalars, x2_numeric_dtypes)
-def test_remainder(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_round(x, x_dtype):
-    pass
-
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_sign(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_sin(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_sinh(x, x_dtype):
-    pass
-
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_square(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_sqrt(x, x_dtype):
-    pass
-
-@given(x1_numeric_scalars, x1_numeric_dtypes, x2_numeric_scalars, x2_numeric_dtypes)
-def test_subtract(x1, x1_dtype, x2, x2_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_tan(x, x_dtype):
-    pass
-
-@given(x_floating_scalars, x_floating_dtypes)
-def test_tanh(x, x_dtype):
-    pass
-
-@given(x_numeric_scalars, x_numeric_dtypes)
-def test_trunc(x, x_dtype):
-    pass
-
+    if (t1, t2) not in promotion_table:
+        raise RuntimeError("Error in test generation (probably a bug in the test suite")
 
 input_types = {
     'abs': 'numeric',
@@ -347,3 +110,245 @@ input_types = {
     'tanh': 'floating',
     'trunc': 'numeric',
 }
+
+@given(numeric_scalars)
+def test_abs(x):
+    pass
+
+@given(floating_scalars)
+def test_acos(x):
+    pass
+
+@given(floating_scalars)
+def test_acosh(x):
+    pass
+
+@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_add(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(floating_scalars)
+def test_asin(x):
+    pass
+
+@given(floating_scalars)
+def test_asinh(x):
+    pass
+
+@given(floating_scalars)
+def test_atan(x):
+    pass
+
+@given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_atan2(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(floating_scalars)
+def test_atanh(x):
+    pass
+
+@given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_bitwise_and(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_bitwise_left_shift(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(integer_or_boolean_scalars)
+def test_bitwise_invert(x):
+    pass
+
+@given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_bitwise_or(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_bitwise_right_shift(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_bitwise_xor(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(numeric_scalars)
+def test_ceil(x):
+    pass
+
+@given(floating_scalars)
+def test_cos(x):
+    pass
+
+@given(floating_scalars)
+def test_cosh(x):
+    pass
+
+@given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_divide(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(two_any_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_equal(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(floating_scalars)
+def test_exp(x):
+    pass
+
+@given(floating_scalars)
+def test_expm1(x):
+    pass
+
+@given(numeric_scalars)
+def test_floor(x):
+    pass
+
+@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_floor_divide(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_greater(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_greater_equal(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(numeric_scalars)
+def test_isfinite(x):
+    pass
+
+@given(numeric_scalars)
+def test_isinf(x):
+    pass
+
+@given(numeric_scalars)
+def test_isnan(x):
+    pass
+
+@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_less(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_less_equal(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(floating_scalars)
+def test_log(x):
+    pass
+
+@given(floating_scalars)
+def test_log1p(x):
+    pass
+
+@given(floating_scalars)
+def test_log2(x):
+    pass
+
+@given(floating_scalars)
+def test_log10(x):
+    pass
+
+@given(two_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_logical_and(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(boolean_scalars)
+def test_logical_not(x):
+    pass
+
+@given(two_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_logical_or(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(two_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_logical_xor(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_multiply(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(numeric_scalars)
+def test_negative(x):
+    pass
+
+@given(two_any_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_not_equal(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(numeric_scalars)
+def test_positive(x):
+    pass
+
+@given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_pow(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_remainder(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(numeric_scalars)
+def test_round(x):
+    pass
+
+@given(numeric_scalars)
+def test_sign(x):
+    pass
+
+@given(floating_scalars)
+def test_sin(x):
+    pass
+
+@given(floating_scalars)
+def test_sinh(x):
+    pass
+
+@given(numeric_scalars)
+def test_square(x):
+    pass
+
+@given(floating_scalars)
+def test_sqrt(x):
+    pass
+
+@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+def test_subtract(args):
+    x1, x2 = args
+    sanity_check(x1, x2)
+
+@given(floating_scalars)
+def test_tan(x):
+    pass
+
+@given(floating_scalars)
+def test_tanh(x):
+    pass
+
+@given(numeric_scalars)
+def test_trunc(x):
+    pass

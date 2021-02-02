@@ -21,21 +21,26 @@ integer_dtype_objects = [getattr(_array_module, t) for t in _integer_dtypes]
 floating_dtype_objects = [getattr(_array_module, t) for t in _floating_dtypes]
 numeric_dtype_objects = [getattr(_array_module, t) for t in _numeric_dtypes]
 boolean_dtype_objects = [getattr(_array_module, t) for t in _boolean_dtypes]
+integer_or_boolean_dtype_objects = integer_dtype_objects + boolean_dtype_objects
 dtype_objects = [getattr(_array_module, t) for t in _dtypes]
 
 integer_dtypes = sampled_from(integer_dtype_objects)
 floating_dtypes = sampled_from(floating_dtype_objects)
 numeric_dtypes = sampled_from(numeric_dtype_objects)
-integer_or_boolean_dtypes = sampled_from(integer_dtype_objects + boolean_dtype_objects)
+integer_or_boolean_dtypes = sampled_from(integer_or_boolean_dtype_objects)
 boolean_dtypes = sampled_from(boolean_dtype_objects)
 dtypes = sampled_from(dtype_objects)
 
 shared_dtypes = shared(dtypes)
 
-def mutually_promotable_dtypes():
+@composite
+def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
     from .test_type_promotion import dtype_mapping, promotion_table
-    dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in promotion_table]
-    return sampled_from(dtype_pairs)
+    dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in
+                   promotion_table]
+
+    filtered_dtype_pairs = [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
+    return draw(sampled_from(filtered_dtype_pairs))
 
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
@@ -103,6 +108,11 @@ def scalars(draw, dtypes):
         return draw(floats(width=32))
     else:
         raise ValueError(f"Unrecognized dtype {dtype}")
+
+@composite
+def array_scalars(draw, dtypes):
+    dtype = draw(dtypes)
+    return full((1,), draw(scalars(just(dtype))), dtype=dtype)
 
 @composite
 def integer_indices(draw, sizes):
