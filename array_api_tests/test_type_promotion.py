@@ -27,6 +27,7 @@ dtype_mapping = {
     'u8': uint64,
     'f4': float32,
     'f8': float64,
+    'b1': bool,
 }
 
 signed_integer_promotion_table = {
@@ -88,12 +89,17 @@ float_promotion_table = {
     ('f8', 'f8'): 'f8',
 }
 
+boolean_promotion_table = {
+    ('b1', 'b1'): 'b1',
+}
+
 promotion_table = {
     **signed_integer_promotion_table,
     **unsigned_integer_promotion_table,
     **mixed_signed_unsigned_promotion_table,
     **flipped_mixed_signed_unsigned_promotion_table,
     **float_promotion_table,
+    **boolean_promotion_table,
 }
 
 
