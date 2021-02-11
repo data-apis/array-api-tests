@@ -2,23 +2,23 @@ from ._array_module import (isnan, all, equal, not_equal, logical_and,
                             logical_or, isfinite, greater, less, zeros, ones,
                             full, bool, int8, int16, int32, int64, uint8,
                             uint16, uint32, uint64, float32, float64, nan,
-                            inf, pi, remainder, divide, isinf)
+                            inf, pi, remainder, divide, isinf, negative)
 
 # These are exported here so that they can be included in the special cases
 # tests from this file.
 from ._array_module import logical_not, subtract, floor, ceil, where
 
 __all__ = ['logical_and', 'logical_or', 'logical_not', 'less', 'greater',
-           'subtract', 'floor', 'ceil', 'where', 'isfinite', 'equal',
-           'not_equal', 'zero', 'one', 'NaN', 'infinity', 'π', 'isnegzero',
-           'non_zero', 'isposzero', 'exactly_equal', 'assert_exactly_equal',
-           'notequal', 'assert_finite', 'assert_non_zero', 'ispositive',
-           'assert_positive', 'isnegative', 'assert_negative', 'isintegral',
-           'assert_integral', 'isodd', 'iseven', "assert_iseven",
-           'assert_isinf', 'positive_mathematical_sign',
-           'assert_positive_mathematical_sign', 'negative_mathematical_sign',
-           'assert_negative_mathematical_sign', 'same_sign',
-           'assert_same_sign']
+           'subtract', 'negative', 'floor', 'ceil', 'where', 'isfinite',
+           'equal', 'not_equal', 'zero', 'one', 'NaN', 'infinity', 'π',
+           'isnegzero', 'non_zero', 'isposzero', 'exactly_equal',
+           'assert_exactly_equal', 'notequal', 'assert_finite',
+           'assert_non_zero', 'ispositive', 'assert_positive', 'isnegative',
+           'assert_negative', 'isintegral', 'assert_integral', 'isodd',
+           'iseven', "assert_iseven", 'assert_isinf',
+           'positive_mathematical_sign', 'assert_positive_mathematical_sign',
+           'negative_mathematical_sign', 'assert_negative_mathematical_sign',
+           'same_sign', 'assert_same_sign']
 
 def zero(shape, dtype):
     """
