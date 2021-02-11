@@ -25,6 +25,8 @@ from .hypothesis_helpers import (integer_dtype_objects,
                                  numeric_dtypes, integer_or_boolean_dtypes,
                                  boolean_dtypes, mutually_promotable_dtypes,
                                  array_scalars)
+from .array_helpers import (assert_exactly_equal, negative,
+                            negative_mathematical_sign, logical_not)
 
 from . import _array_module
 
@@ -112,9 +114,17 @@ input_types = {
     'tanh': 'floating',
     'trunc': 'numeric',
 }
+
 @given(numeric_scalars)
 def test_abs(x):
     a = _array_module.abs(x)
+    assert all(logical_not(negative_mathematical_sign(a))), "abs(x) did not have positive sign"
+    less_zero = negative_mathematical_sign(x)
+    negx = negative(x)
+    # abs(x) = -x for x < 0
+    assert_exactly_equal(a[less_zero], negx[less_zero])
+    # abs(x) = x for x >= 0
+    assert_exactly_equal(a[logical_not(less_zero)], x[logical_not(less_zero)])
 
 @given(floating_scalars)
 def test_acos(x):
