@@ -26,7 +26,8 @@ from .hypothesis_helpers import (integer_dtype_objects,
                                  boolean_dtypes, mutually_promotable_dtypes,
                                  array_scalars)
 from .array_helpers import (assert_exactly_equal, negative,
-                            negative_mathematical_sign, logical_not)
+                            negative_mathematical_sign, logical_not, inrange,
+                            π, one, zero, infinity)
 
 from . import _array_module
 
@@ -129,10 +130,24 @@ def test_abs(x):
 @given(floating_scalars)
 def test_acos(x):
     a = _array_module.acos(x)
+    ONE = one(x.shape, x.dtype)
+    # Here (and elsewhere), should technically be a.dtype, but this is the
+    # same as x.dtype, as tested by the type_promotion tests.
+    PI = π(x.shape, x.dtype)
+    ZERO = zero(x.shape, x.dtype)
+    domain = inrange(x, negative(ONE), ONE)
+    codomain = inrange(a, ZERO, PI)
+    assert_exactly_equal(domain, codomain)
 
 @given(floating_scalars)
 def test_acosh(x):
     a = _array_module.acosh(x)
+    ONE = one(x.shape, x.dtype)
+    INFINITY = infinity(a.shape, x.dtype)
+    ZERO = zero(x.shape, x.dtype)
+    domain = inrange(x, ONE, INFINITY)
+    codomain = inrange(a, ZERO, INFINITY)
+    assert_exactly_equal(domain, codomain)
 
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_add(args):
