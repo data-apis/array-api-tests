@@ -1,8 +1,9 @@
 from ._array_module import (isnan, all, equal, not_equal, logical_and,
-                            logical_or, isfinite, greater, less, zeros, ones,
-                            full, bool, int8, int16, int32, int64, uint8,
-                            uint16, uint32, uint64, float32, float64, nan,
-                            inf, pi, remainder, divide, isinf, negative)
+                            logical_or, isfinite, greater, less, less_equal,
+                            zeros, ones, full, bool, int8, int16, int32,
+                            int64, uint8, uint16, uint32, uint64, float32,
+                            float64, nan, inf, pi, remainder, divide, isinf,
+                            negative)
 
 # These are exported here so that they can be included in the special cases
 # tests from this file.
@@ -181,6 +182,12 @@ def isnegative(x):
 
 def assert_negative(x):
     assert all(isnegative(x)), "The input array is not negative"
+
+def inrange(x, a, b):
+    """
+    Returns a mask for values of x in the range [a, b] (inclusive)
+    """
+    return logical_and(less_equal(a, x), less_equal(x, b))
 
 def isintegral(x):
     """
