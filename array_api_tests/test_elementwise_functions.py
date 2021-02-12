@@ -26,8 +26,10 @@ from .hypothesis_helpers import (integer_dtype_objects,
                                  boolean_dtypes, mutually_promotable_dtypes,
                                  array_scalars)
 from .array_helpers import (assert_exactly_equal, negative,
-                            negative_mathematical_sign, logical_not, inrange,
-                            π, one, zero, infinity)
+                            positive_mathematical_sign,
+                            negative_mathematical_sign, logical_not,
+                            logical_or, logical_and, inrange, π, one, zero,
+                            infinity)
 
 from . import _array_module
 
@@ -135,18 +137,22 @@ def test_acos(x):
     # same as x.dtype, as tested by the type_promotion tests.
     PI = π(x.shape, x.dtype)
     ZERO = zero(x.shape, x.dtype)
-    domain = inrange(x, negative(ONE), ONE)
+    domain = inrange(x, -ONE, ONE)
     codomain = inrange(a, ZERO, PI)
+    # acos maps [-1, 1] to [0, pi]. Values outside this domain are mapped to
+    # nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
 @given(floating_scalars)
 def test_acosh(x):
     a = _array_module.acosh(x)
     ONE = one(x.shape, x.dtype)
-    INFINITY = infinity(a.shape, x.dtype)
+    INFINITY = infinity(x.shape, x.dtype)
     ZERO = zero(x.shape, x.dtype)
     domain = inrange(x, ONE, INFINITY)
     codomain = inrange(a, ZERO, INFINITY)
+    # acosh maps [-1, inf] to [0, inf]. Values outside this domain are mapped
+    # to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
@@ -154,24 +160,78 @@ def test_add(args):
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.add(x1, x2)
+    b = _array_module.add(x2, x1)
+    # add is commutative
+    assert_exactly_equal(a, b)
+    # TODO: Test that add is actually addition
 
 @given(floating_scalars)
 def test_asin(x):
     a = _array_module.asin(x)
+    ONE = one(x.shape, x.dtype)
+    PI = π(x.shape, x.dtype)
+    domain = inrange(x, -ONE, ONE)
+    codomain = inrange(a, -PI/2, PI/2)
+    # asin maps [-1, 1] to [-pi/2, pi/2]. Values outside this domain are
+    # mapped to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(floating_scalars)
 def test_asinh(x):
     a = _array_module.asinh(x)
+    INFINITY = infinity(x.shape, x.dtype)
+    domain = inrange(x, -INFINITY, INFINITY)
+    codomain = inrange(a, -INFINITY, INFINITY)
+    # asinh maps [-inf, inf] to [-inf, inf]. Values outside this domain are
+    # mapped to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(floating_scalars)
 def test_atan(x):
     a = _array_module.atan(x)
+    INFINITY = infinity(x.shape, x.dtype)
+    PI = π(x.shape, x.dtype)
+    domain = inrange(x, -INFINITY, INFINITY)
+    codomain = inrange(a, -PI/2, PI/2)
+    # atan maps [-inf, inf] to [-pi/2, pi/2]. Values outside this domain are
+    # mapped to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_atan2(args):
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.atan2(x1, x2)
+    INFINITY1 = infinity(x1.shape, x1.dtype)
+    INFINITY2 = infinity(x2.shape, x2.dtype)
+    PI = π(a.shape, a.dtype)
+    domainx1 = inrange(x1, -INFINITY1, INFINITY1)
+    domainx2 = inrange(x2, -INFINITY2, INFINITY2)
+    codomain = inrange(a, -PI, PI, 1e-5)
+    # atan2 maps [-inf, inf] x [-inf, inf] to [-pi, pi]. Values outside
+    # this domain are mapped to nan, which is already tested in the special
+    # cases.
+    assert_exactly_equal(logical_and(domainx1, domainx2), codomain)
+    # From the spec:
+    #
+    # The mathematical signs of `x1_i` and `x2_i` determine the quadrant of
+    # each element-wise result. The quadrant (i.e., branch) is chosen such
+    # that each element-wise result is the signed angle in radians between the
+    # ray ending at the origin and passing through the point `(1,0)` and the
+    # ray ending at the origin and passing through the point `(x2_i, x1_i)`.
+
+    # This is equivalent to atan2(x1, x2) has the same sign as x1 when x2 is
+    # finite.
+    posx1 = positive_mathematical_sign(x1)
+    negx1 = negative_mathematical_sign(x1)
+    posx2 = positive_mathematical_sign(x2)
+    negx2 = negative_mathematical_sign(x2)
+    posa = positive_mathematical_sign(a)
+    nega = negative_mathematical_sign(a)
+    assert_exactly_equal(logical_or(logical_and(posx1, posx2),
+                                    logical_and(posx1, negx2)), posa)
+    assert_exactly_equal(logical_or(logical_and(negx1, posx2),
+                                    logical_and(negx1, negx2)), nega)
 
 @given(floating_scalars)
 def test_atanh(x):
