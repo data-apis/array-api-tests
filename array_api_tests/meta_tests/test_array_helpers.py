@@ -1,8 +1,9 @@
 from ..array_helpers import exactly_equal, notequal, int_to_dtype
-from ..hypothesis_helpers import integer_dtypes, array_scalars
+from ..hypothesis_helpers import integer_dtypes
 from ..test_type_promotion import dtype_nbits, dtype_signed
 
-from hypothesis import given
+from hypothesis import given, assume
+from hypothesis.strategies import integers
 import numpy as np
 
 # TODO: These meta-tests currently only work with NumPy
@@ -21,9 +22,12 @@ def test_notequal():
     res = np.array([False, True, False, False, False, True, False, True])
     np.testing.assert_equal(notequal(a, b), res)
 
-@given(array_scalars(integer_dtypes))
-def test_int_to_dtype(x):
-    dtype = x.dtype
+@given(integers(), integer_dtypes)
+def test_int_to_dtype(x, dtype):
     n = dtype_nbits(dtype)
     signed = dtype_signed(dtype)
-    assert int_to_dtype(int(x[0]), n, signed) == x
+    try:
+        d = dtype(x)
+    except OverflowError:
+        assume(False)
+    assert int_to_dtype(x, n, signed) == dtype(x)

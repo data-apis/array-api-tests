@@ -308,10 +308,10 @@ def int_to_dtype(x, n, signed):
     """
     Convert the Python integer x into an n bit signed or unsigned number.
     """
-    mask = (1 << (n+1)) - 1
+    mask = (1 << n) - 1
     x &= mask
     if signed:
-        highest_bit = 1 << n
+        highest_bit = 1 << (n-1)
         if x & highest_bit:
             x = -((~x & mask) + 1)
     return x
