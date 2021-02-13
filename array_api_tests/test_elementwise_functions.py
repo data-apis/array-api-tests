@@ -30,7 +30,7 @@ from .array_helpers import (assert_exactly_equal, negative,
                             negative_mathematical_sign, logical_not,
                             logical_or, logical_and, inrange, π, one, zero,
                             infinity, full, isnegzero, isnegative, any as
-                            array_any, int_to_dtype)
+                            array_any, int_to_dtype, bool as bool_dtype)
 from .test_type_promotion import dtype_nbits, dtype_signed
 
 from . import _array_module
@@ -257,16 +257,19 @@ def test_bitwise_and(args):
         raise RuntimeError("Error: test_bitwise_and needs to be updated for nonscalar array inputs")
     x = int(x1[0])
     y = int(x2[0])
-    ans = int_to_dtype(x & y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
     res = int(a[0])
-    assert ans == res
+    if a.dtype == bool_dtype:
+        assert (x and y) == res
+    else:
+        ans = int_to_dtype(x & y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+        assert ans == res
 
 @given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_left_shift(args):
     x1, x2 = args
     sanity_check(x1, x2)
     negative_x2 = isnegative(x2)
-    if array_any(negative_x2):
+    if x1.dtype != bool_dtype and array_any(negative_x2):
         assume(False)
     a = _array_module.bitwise_left_shift(x1, x2)
     # Compare against the Python << operator.
@@ -287,24 +290,71 @@ def test_bitwise_left_shift(args):
 @given(integer_or_boolean_scalars)
 def test_bitwise_invert(x):
     a = _array_module.bitwise_invert(x)
+    # Compare against the Python ~ operator.
+    # TODO: Generalize this properly for inputs that are arrays.
+    if not (x.shape == (1,)):
+        raise RuntimeError("Error: test_bitwise_invert needs to be updated for nonscalar array inputs")
+    x = int(x[0])
+    res = int(a[0])
+    if a.dtype == bool_dtype:
+        assert (not x) == res
+    else:
+        ans = int_to_dtype(~x, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+        assert ans == res
 
 @given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_or(args):
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.bitwise_or(x1, x2)
+    # Compare against the Python | operator.
+    # TODO: Generalize this properly for inputs that are arrays.
+    if not (x1.shape == x2.shape == (1,)):
+        raise RuntimeError("Error: test_bitwise_or needs to be updated for nonscalar array inputs")
+    x = int(x1[0])
+    y = int(x2[0])
+    res = int(a[0])
+    if a.dtype == bool_dtype:
+        assert (x or y) == res
+    else:
+        ans = int_to_dtype(x | y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+        assert ans == res
 
 @given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_right_shift(args):
     x1, x2 = args
     sanity_check(x1, x2)
+    negative_x2 = isnegative(x2)
+    if x1.dtype != bool_dtype and array_any(negative_x2):
+        assume(False)
     a = _array_module.bitwise_right_shift(x1, x2)
+    # Compare against the Python >> operator.
+    # TODO: Generalize this properly for inputs that are arrays.
+    if not (x1.shape == x2.shape == (1,)):
+        raise RuntimeError("Error: test_bitwise_right_shift needs to be updated for nonscalar array inputs")
+    x = int(x1[0])
+    y = int(x2[0])
+    ans = int_to_dtype(x >> y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+    res = int(a[0])
+    assert ans == res
 
 @given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_xor(args):
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.bitwise_xor(x1, x2)
+    # Compare against the Python ^ operator.
+    # TODO: Generalize this properly for inputs that are arrays.
+    if not (x1.shape == x2.shape == (1,)):
+        raise RuntimeError("Error: test_bitwise_xor needs to be updated for nonscalar array inputs")
+    x = int(x1[0])
+    y = int(x2[0])
+    res = int(a[0])
+    if a.dtype == bool_dtype:
+        assert (x ^ y) == res
+    else:
+        ans = int_to_dtype(x ^ y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+        assert ans == res
 
 @given(numeric_scalars)
 def test_ceil(x):
