@@ -303,3 +303,15 @@ dtype_ranges = {
     uint32: [0, +4_294_967_295],
     uint64: [0, +18_446_744_073_709_551_615],
 }
+
+def int_to_dtype(x, n, signed):
+    """
+    Convert the Python integer x into an n bit signed or unsigned number.
+    """
+    mask = (1 << (n+1)) - 1
+    x &= mask
+    if signed:
+        highest_bit = 1 << n
+        if x & highest_bit:
+            x = -((~x & mask) + 1)
+    return x
