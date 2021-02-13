@@ -30,4 +30,4 @@ def test_int_to_dtype(x, dtype):
         d = dtype(x)
     except OverflowError:
         assume(False)
-    assert int_to_dtype(x, n, signed) == dtype(x)
+    assert int_to_dtype(x, n, signed) == d
