@@ -37,7 +37,8 @@ shared_dtypes = shared(dtypes)
 def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
     from .test_type_promotion import dtype_mapping, promotion_table
     dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in
-                   promotion_table]
+                   # sorting gives the best shrinking
+                   sorted(promotion_table)]
 
     filtered_dtype_pairs = [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
     return draw(sampled_from(filtered_dtype_pairs))
