@@ -14,7 +14,7 @@ arrays of any shape, using masking patterns (similar to the tests in special_cas
 
 """
 
-from hypothesis import given
+from hypothesis import given, assume
 from hypothesis.strategies import composite, just
 
 from .hypothesis_helpers import (integer_dtype_objects,
@@ -29,7 +29,9 @@ from .array_helpers import (assert_exactly_equal, negative,
                             positive_mathematical_sign,
                             negative_mathematical_sign, logical_not,
                             logical_or, logical_and, inrange, π, one, zero,
-                            infinity)
+                            infinity, full, isnegzero, isnegative, any as
+                            array_any, int_to_dtype)
+from .test_type_promotion import dtype_nbits, dtype_signed
 
 from . import _array_module
 
@@ -236,18 +238,51 @@ def test_atan2(args):
 @given(floating_scalars)
 def test_atanh(x):
     a = _array_module.atanh(x)
+    ONE = one(x.shape, x.dtype)
+    INFINITY = infinity(x.shape, x.dtype)
+    domain = inrange(x, -ONE, ONE)
+    codomain = inrange(a, -INFINITY, INFINITY)
+    # atanh maps [-1, 1] to [-inf, inf]. Values outside this domain are
+    # mapped to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_and(args):
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.bitwise_and(x1, x2)
+    # Compare against the Python & operator.
+    # TODO: Generalize this properly for inputs that are arrays.
+    if not (x1.shape == x2.shape == (1,)):
+        raise RuntimeError("Error: test_bitwise_and needs to be updated for nonscalar array inputs")
+    x = int(x1[0])
+    y = int(x2[0])
+    ans = int_to_dtype(x & y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+    res = int(a[0])
+    assert ans == res
 
 @given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_left_shift(args):
     x1, x2 = args
     sanity_check(x1, x2)
+    negative_x2 = isnegative(x2)
+    if array_any(negative_x2):
+        assume(False)
     a = _array_module.bitwise_left_shift(x1, x2)
+    # Compare against the Python << operator.
+    # TODO: Generalize this properly for inputs that are arrays.
+    if not (x1.shape == x2.shape == (1,)):
+        raise RuntimeError("Error: test_bitwise_left_shift needs to be updated for nonscalar array inputs")
+    x = int(x1[0])
+    y = int(x2[0])
+    if y >= dtype_nbits(a.dtype):
+        # Avoid shifting very large y in Python ints
+        ans = 0
+    else:
+        ans = x << y
+    ans = int_to_dtype(ans, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+    res = int(a[0])
+    assert ans == res
 
 @given(integer_or_boolean_scalars)
 def test_bitwise_invert(x):

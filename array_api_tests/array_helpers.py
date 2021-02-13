@@ -1,4 +1,4 @@
-from ._array_module import (isnan, all, equal, not_equal, logical_and,
+from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
                             logical_or, isfinite, greater, less, less_equal,
                             zeros, ones, full, bool, int8, int16, int32,
                             int64, uint8, uint16, uint32, uint64, float32,
@@ -9,10 +9,10 @@ from ._array_module import (isnan, all, equal, not_equal, logical_and,
 # tests from this file.
 from ._array_module import logical_not, subtract, floor, ceil, where
 
-__all__ = ['logical_and', 'logical_or', 'logical_not', 'less', 'greater',
-           'subtract', 'negative', 'floor', 'ceil', 'where', 'isfinite',
-           'equal', 'not_equal', 'zero', 'one', 'NaN', 'infinity', 'π',
-           'isnegzero', 'non_zero', 'isposzero', 'exactly_equal',
+__all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
+           'greater', 'subtract', 'negative', 'floor', 'ceil', 'where',
+           'isfinite', 'equal', 'not_equal', 'zero', 'one', 'NaN', 'infinity',
+           'π', 'isnegzero', 'non_zero', 'isposzero', 'exactly_equal',
            'assert_exactly_equal', 'notequal', 'assert_finite',
            'assert_non_zero', 'ispositive', 'assert_positive', 'isnegative',
            'assert_negative', 'isintegral', 'assert_integral', 'isodd',
