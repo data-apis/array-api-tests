@@ -30,6 +30,37 @@ dtype_mapping = {
     'b1': bool,
 }
 
+def dtype_nbits(dtype):
+    if dtype == int8:
+        return 8
+    elif dtype == int16:
+        return 16
+    elif dtype == int32:
+        return 32
+    elif dtype == int64:
+        return 64
+    elif dtype == uint8:
+        return 8
+    elif dtype == uint16:
+        return 16
+    elif dtype == uint32:
+        return 32
+    elif dtype == uint64:
+        return 64
+    elif dtype == float32:
+        return 32
+    elif dtype == float64:
+        return 64
+    else:
+        raise ValueError(f"dtype_nbits is not defined for {dtype}")
+
+def dtype_signed(dtype):
+    if dtype in [int8, int16, int32, int64]:
+        return True
+    elif dtype in [uint8, uint16, uint32, uint64]:
+        return False
+    raise ValueError("dtype_signed is only defined for integer dtypes")
+
 signed_integer_promotion_table = {
     ('i1', 'i1'): 'i1',
     ('i1', 'i2'): 'i2',
