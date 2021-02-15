@@ -13,7 +13,7 @@ from .array_helpers import assert_exactly_equal
 
 from .function_stubs import elementwise_functions
 from ._array_module import (ones, int8, int16, int32, int64, uint8,
-                            uint16, uint32, uint64, float32, float64)
+                            uint16, uint32, uint64, float32, float64, bool as bool_dtype)
 from . import _array_module
 
 dtype_mapping = {
@@ -27,7 +27,7 @@ dtype_mapping = {
     'u8': uint64,
     'f4': float32,
     'f8': float64,
-    'b1': bool,
+    'b': bool_dtype,
 }
 
 def dtype_nbits(dtype):
@@ -121,7 +121,7 @@ float_promotion_table = {
 }
 
 boolean_promotion_table = {
-    ('b1', 'b1'): 'b1',
+    ('b', 'b'): 'b',
 }
 
 promotion_table = {
