@@ -13,7 +13,8 @@ from .array_helpers import assert_exactly_equal
 
 from .function_stubs import elementwise_functions
 from ._array_module import (ones, int8, int16, int32, int64, uint8,
-                            uint16, uint32, uint64, float32, float64, bool as bool_dtype)
+                            uint16, uint32, uint64, float32, float64, bool as
+                            bool_dtype)
 from . import _array_module
 
 dtype_mapping = {
@@ -133,6 +134,19 @@ promotion_table = {
     **boolean_promotion_table,
 }
 
+input_types = {
+    'any': sorted(set(promotion_table.values())),
+    'boolean': sorted(set(boolean_promotion_table.values())),
+    'floating': sorted(set(float_promotion_table.values())),
+    'integer': sorted(set({**signed_integer_promotion_table,
+                           **unsigned_integer_promotion_table}.values())),
+    'integer_or_boolean': sorted(set({**signed_integer_promotion_table,
+                                      **unsigned_integer_promotion_table,
+                                      **boolean_promotion_table}.values())),
+    'numeric': sorted(set({**float_promotion_table,
+                           **signed_integer_promotion_table,
+                           **unsigned_integer_promotion_table}.values())),
+}
 
 binary_operators = {
     '__add__': '+',
@@ -179,16 +193,146 @@ dtypes_to_scalar = {
 scalar_to_dtype = {s: [d for d, _s in dtypes_to_scalar.items() if _s == s] for
                    s in dtypes_to_scalar.values()}
 
+
+elementwise_function_input_types = {
+    'abs': 'numeric',
+    'acos': 'floating',
+    'acosh': 'floating',
+    'add': 'numeric',
+    'asin': 'floating',
+    'asinh': 'floating',
+    'atan': 'floating',
+    'atan2': 'floating',
+    'atanh': 'floating',
+    'bitwise_and': 'integer_or_boolean',
+    'bitwise_invert': 'integer_or_boolean',
+    'bitwise_left_shift': 'integer',
+    'bitwise_or': 'integer_or_boolean',
+    'bitwise_right_shift': 'integer',
+    'bitwise_xor': 'integer_or_boolean',
+    'ceil': 'numeric',
+    'cos': 'floating',
+    'cosh': 'floating',
+    'divide': 'floating',
+    'equal': 'any',
+    'exp': 'floating',
+    'expm1': 'floating',
+    'floor': 'numeric',
+    'floor_divide': 'numeric',
+    'greater': 'numeric',
+    'greater_equal': 'numeric',
+    'isfinite': 'numeric',
+    'isinf': 'numeric',
+    'isnan': 'numeric',
+    'less': 'numeric',
+    'less_equal': 'numeric',
+    'log': 'floating',
+    'log10': 'floating',
+    'log1p': 'floating',
+    'log2': 'floating',
+    'logical_and': 'boolean',
+    'logical_not': 'boolean',
+    'logical_or': 'boolean',
+    'logical_xor': 'boolean',
+    'multiply': 'numeric',
+    'negative': 'numeric',
+    'not_equal': 'any',
+    'positive': 'numeric',
+    'pow': 'floating',
+    'remainder': 'numeric',
+    'round': 'numeric',
+    'sign': 'numeric',
+    'sin': 'floating',
+    'sinh': 'floating',
+    'sqrt': 'floating',
+    'square': 'numeric',
+    'subtract': 'numeric',
+    'tan': 'floating',
+    'tanh': 'floating',
+    'trunc': 'numeric',
+}
+
+elementwise_function_output_types = {
+    'abs': 'same',
+    'acos': 'promoted',
+    'acosh': 'promoted',
+    'add': 'promoted',
+    'asin': 'promoted',
+    'asinh': 'promoted',
+    'atan': 'promoted',
+    'atan2': 'promoted',
+    'atanh': 'promoted',
+    'bitwise_and': 'promoted',
+    'bitwise_invert': 'same',
+    'bitwise_left_shift': 'same_x1',
+    'bitwise_or': 'promoted',
+    'bitwise_right_shift': 'same_x1',
+    'bitwise_xor': 'promoted',
+    'ceil': 'same',
+    'cos': 'promoted',
+    'cosh': 'promoted',
+    'divide': 'promoted',
+    'equal': 'bool',
+    'exp': 'promoted',
+    'expm1': 'promoted',
+    'floor': 'same',
+    'floor_divide': 'promoted',
+    'greater': 'bool',
+    'greater_equal': 'bool',
+    'isfinite': 'bool',
+    'isinf': 'bool',
+    'isnan': 'bool',
+    'less': 'bool',
+    'less_equal': 'bool',
+    'log': 'promoted',
+    'log10': 'promoted',
+    'log1p': 'promoted',
+    'log2': 'promoted',
+    'logical_and': 'bool',
+    'logical_not': 'bool',
+    'logical_or': 'bool',
+    'logical_xor': 'bool',
+    'multiply': 'promoted',
+    'negative': 'promoted',
+    'not_equal': 'bool',
+    'positive': 'same',
+    'pow': 'promoted',
+    'remainder': 'promoted',
+    'round': 'same',
+    'sign': 'same',
+    'sin': 'promoted',
+    'sinh': 'promoted',
+    'sqrt': 'promoted',
+    'square': 'promoted',
+    'subtract': 'promoted',
+    'tan': 'promoted',
+    'tanh': 'promoted',
+    'trunc': 'same',
+}
+
+elementwise_function_two_arg_func_names = [func_name for func_name in
+                                           elementwise_functions.__all__ if
+                                           nargs(func_name) > 1 and
+                                           elementwise_function_output_types[func_name]
+                                           == 'promoted']
+elementwise_function_two_arg_parametrize_inputs = [(func_name, dtypes)
+               for func_name in elementwise_function_two_arg_func_names
+               for dtypes in promotion_table.items() if all(d in
+                                                            input_types[elementwise_function_input_types[func_name]]
+                                                            for d in dtypes[0])
+               ]
+
+elementwise_function_two_arg_parametrize_ids = ['-'.join((n, d1, d2)) for n, ((d1, d2), _)
+                                            in elementwise_function_two_arg_parametrize_inputs]
+
 # TODO: Extend this to all functions (not just elementwise), and handle
 # functions that take more than 2 args
-@pytest.mark.parametrize('func_name', [i for i in
-                                       elementwise_functions.__all__ if
-                                       nargs(i) > 1])
-@pytest.mark.parametrize('dtypes', promotion_table.items())
+@pytest.mark.parametrize('func_name,dtypes',
+                         elementwise_function_two_arg_parametrize_inputs, ids=elementwise_function_two_arg_parametrize_ids)
 # The spec explicitly requires type promotion to work for shape 0
 @example(shape=(0,))
 @given(shape=shapes)
-def test_promotion(func_name, shape, dtypes):
+def test_elementwise_function_two_arg_type_promotion(func_name, shape, dtypes):
     assert nargs(func_name) == 2
     func = getattr(_array_module, func_name)
 
