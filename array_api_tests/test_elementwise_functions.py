@@ -31,7 +31,6 @@ from .array_helpers import (assert_exactly_equal, negative,
                             logical_or, logical_and, inrange, π, one, zero,
                             infinity, full, isnegzero, isnegative, any as
                             array_any, int_to_dtype, bool as bool_dtype)
-from .test_type_promotion import dtype_nbits, dtype_signed
 
 from . import _array_module
 
@@ -61,64 +60,6 @@ def sanity_check(x1, x2):
 
     if (t1, t2) not in promotion_table:
         raise RuntimeError("Error in test generation (probably a bug in the test suite")
-
-input_types = {
-    'abs': 'numeric',
-    'acos': 'floating',
-    'acosh': 'floating',
-    'add': 'numeric',
-    'asin': 'floating',
-    'asinh': 'floating',
-    'atan': 'floating',
-    'atan2': 'floating',
-    'atanh': 'floating',
-    'bitwise_and': 'integer_or_boolean',
-    'bitwise_invert': 'integer_or_boolean',
-    'bitwise_left_shift': 'integer',
-    'bitwise_or': 'integer_or_boolean',
-    'bitwise_right_shift': 'integer',
-    'bitwise_xor': 'integer_or_boolean',
-    'ceil': 'numeric',
-    'cos': 'floating',
-    'cosh': 'floating',
-    'divide': 'floating',
-    'equal': 'any',
-    'exp': 'floating',
-    'expm1': 'floating',
-    'floor': 'numeric',
-    'floor_divide': 'numeric',
-    'greater': 'numeric',
-    'greater_equal': 'numeric',
-    'isfinite': 'numeric',
-    'isinf': 'numeric',
-    'isnan': 'numeric',
-    'less': 'numeric',
-    'less_equal': 'numeric',
-    'log': 'floating',
-    'log10': 'floating',
-    'log1p': 'floating',
-    'log2': 'floating',
-    'logical_and': 'boolean',
-    'logical_not': 'boolean',
-    'logical_or': 'boolean',
-    'logical_xor': 'boolean',
-    'multiply': 'numeric',
-    'negative': 'numeric',
-    'not_equal': 'any',
-    'positive': 'numeric',
-    'pow': 'floating',
-    'remainder': 'numeric',
-    'round': 'numeric',
-    'sign': 'numeric',
-    'sin': 'floating',
-    'sinh': 'floating',
-    'sqrt': 'floating',
-    'square': 'numeric',
-    'subtract': 'numeric',
-    'tan': 'floating',
-    'tanh': 'floating',
-    'trunc': 'numeric',
-}
 
 @given(numeric_scalars)
 def test_abs(x):
@@ -248,6 +189,7 @@ def test_atanh(x):
 
 @given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_and(args):
+    from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.bitwise_and(x1, x2)
@@ -266,6 +208,7 @@ def test_bitwise_and(args):
 
 @given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_left_shift(args):
+    from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
     negative_x2 = isnegative(x2)
@@ -289,6 +232,7 @@ def test_bitwise_left_shift(args):
 
 @given(integer_or_boolean_scalars)
 def test_bitwise_invert(x):
+    from .test_type_promotion import dtype_nbits, dtype_signed
     a = _array_module.bitwise_invert(x)
     # Compare against the Python ~ operator.
     # TODO: Generalize this properly for inputs that are arrays.
@@ -304,6 +248,7 @@ def test_bitwise_invert(x):
 
 @given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_or(args):
+    from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.bitwise_or(x1, x2)
@@ -322,6 +267,7 @@ def test_bitwise_or(args):
 
 @given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_right_shift(args):
+    from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
     negative_x2 = isnegative(x2)
@@ -340,6 +286,7 @@ def test_bitwise_right_shift(args):
 
 @given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_xor(args):
+    from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.bitwise_xor(x1, x2)
