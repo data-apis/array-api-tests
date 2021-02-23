@@ -640,9 +640,6 @@ def parse_annotations(spec_text, verbose=False):
     return annotations
 
 def clean_type(typ):
-    # TODO: How to handle dtypes in annotations? For now, we just remove the
-    # one that exists (from where()).
-    typ = typ.replace('&lt;bool&gt;', '')
     typ = typ.replace('&lt;', '')
     typ = typ.replace('&gt;', '')
     typ = typ.replace('\\', '')
