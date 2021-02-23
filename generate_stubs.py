@@ -635,7 +635,7 @@ def parse_annotations(spec_text, verbose=False):
                     print(f"Matched parameter for {name}: {param}: {typ}")
                 annotations[name][param] = typ
             else:
-                raise ValueError(f"Unrecognized special case string for '{name}':\n{line}")
+                raise ValueError(f"Unrecognized annotation for '{name}':\n{line}")
 
     return annotations
 
