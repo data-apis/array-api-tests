@@ -150,7 +150,8 @@ def test_atan2(args):
     PI = π(a.shape, a.dtype)
     domainx1 = inrange(x1, -INFINITY1, INFINITY1)
     domainx2 = inrange(x2, -INFINITY2, INFINITY2)
-    codomain = inrange(a, -PI, PI, 1e-5)
+    # codomain = inrange(a, -PI, PI, 1e-5)
+    codomain = inrange(a, -PI, PI)
     # atan2 maps [-inf, inf] x [-inf, inf] to [-pi, pi]. Values outside
     # this domain are mapped to nan, which is already tested in the special
     # cases.
