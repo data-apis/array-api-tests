@@ -661,7 +661,7 @@ def add_annotation(sig, annotation):
         if sig2 != sig:
             sig = sig2
             continue
-        PARAM = regex.compile(rf"([\( ]{param})([,\)])")
+        PARAM = regex.compile(rf"([\( ]\*?{param})([,\)])")
         sig2 = PARAM.sub(rf'\1: {typ}\2', sig)
         if sig2 != sig:
             sig = sig2
