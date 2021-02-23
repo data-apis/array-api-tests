@@ -352,6 +352,40 @@ def test_elementwise_function_two_arg_type_promotion(func_name, shape, dtypes):
 
     assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape})"
 
+
+elementwise_function_one_arg_func_names = [func_name for func_name in
+                                           elementwise_functions.__all__ if
+                                           nargs(func_name) == 1]
+for func_name in elementwise_function_one_arg_func_names:
+    assert elementwise_function_output_types[func_name] in ['promoted', 'same'], func_name
+elementwise_function_one_arg_parametrize_inputs = [(func_name, dtypes)
+               for func_name in elementwise_function_one_arg_func_names
+               for dtypes in input_types[elementwise_function_input_types[func_name]]]
+elementwise_function_one_arg_parametrize_ids = ['-'.join((n, d)) for n, d
+                                            in elementwise_function_two_arg_parametrize_inputs]
+
+# TODO: Extend this to all functions (not just elementwise), and handle
+# functions that take more than 2 args
+@pytest.mark.parametrize('func_name,dtype_name',
+                         elementwise_function_one_arg_parametrize_inputs, ids=elementwise_function_one_arg_parametrize_ids)
+# The spec explicitly requires type promotion to work for shape 0
+@example(shape=(0,))
+@given(shape=shapes)
+def test_elementwise_function_one_arg_type_promotion(func_name, shape, dtype_name):
+    assert nargs(func_name) == 2
+    func = getattr(_array_module, func_name)
+
+    dtype = dtype_mapping[dtype_name]
+
+    for i in [func, dtype]:
+        if isinstance(i, _array_module._UndefinedStub):
+            func._raise()
+
+    x = ones(shape, dtype=dtype)
+    res = func(x)
+
+    assert res.dtype == dtype, f"{func_name}({dtype}) returned to {res.dtype}, should have promoted to {dtype} (shape={shape})"
+
 @pytest.mark.parametrize('binary_op', sorted(set(binary_operators.values()) - {'@'}))
 @pytest.mark.parametrize('scalar_type,dtype', [(s, d) for s in scalar_to_dtype
                                                for d in scalar_to_dtype[s]])
