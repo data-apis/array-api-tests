@@ -15,6 +15,9 @@ from ._types import Optional, Tuple, Union, array, device, dtype
 def arange(start: Union[int, float], /, *, stop: Optional[Union[int, float]] = None, step: Union[int, float] = 1, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
     pass
 
+def asarray(obj: Union[float, NestedSequence[bool|int|float], SupportsDLPack, SupportsBufferProtocol], /, *, dtype: Optional[dtype] = None, device: Optional[device] = None, copy: Optional[bool] = None) -> array:
+    pass
+
 def empty(shape: Union[int, Tuple[int, ...]], /, *, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
     pass
 
@@ -22,6 +25,9 @@ def empty_like(x: array, /, *, dtype: Optional[dtype] = None, device: Optional[d
     pass
 
 def eye(N: int, /, *, M: Optional[int] = None, k: Optional[int] = 0, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
+    pass
+
+def from_dlpack(x: object, /) -> array:
     pass
 
 def full(shape: Union[int, Tuple[int, ...]], fill_value: Union[int, float], /, *, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
@@ -45,4 +51,4 @@ def zeros(shape: Union[int, Tuple[int, ...]], /, *, dtype: Optional[dtype] = Non
 def zeros_like(x: array, /, *, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
     pass
 
-__all__ = ['arange', 'empty', 'empty_like', 'eye', 'full', 'full_like', 'linspace', 'ones', 'ones_like', 'zeros', 'zeros_like']
+__all__ = ['arange', 'asarray', 'empty', 'empty_like', 'eye', 'from_dlpack', 'full', 'full_like', 'linspace', 'ones', 'ones_like', 'zeros', 'zeros_like']

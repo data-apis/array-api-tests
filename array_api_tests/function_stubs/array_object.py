@@ -10,7 +10,7 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/array_
 
 from __future__ import annotations
 
-from ._types import array
+from ._types import Optional, Tuple, Union, array
 
 def __abs__(x: array, /) -> array:
     """
@@ -30,9 +30,33 @@ def __and__(x1: array, x2: array, /) -> array:
     """
     pass
 
+def __bool__(x: array, /) -> bool:
+    """
+    Note: __bool__ is a method of the array object.
+    """
+    pass
+
+def __dlpack__(*, stream: Optional[int] = None) -> PyCapsule:
+    """
+    Note: __dlpack__ is a method of the array object.
+    """
+    pass
+
+def __dlpack_device__() -> Tuple[enum.IntEnum, int]:
+    """
+    Note: __dlpack_device__ is a method of the array object.
+    """
+    pass
+
 def __eq__(x1: array, x2: array, /) -> array:
     """
     Note: __eq__ is a method of the array object.
+    """
+    pass
+
+def __float__(x: array, /) -> float:
+    """
+    Note: __float__ is a method of the array object.
     """
     pass
 
@@ -48,7 +72,7 @@ def __ge__(x1: array, x2: array, /) -> array:
     """
     pass
 
-def __getitem__(x, key, /):
+def __getitem__(x: array, key: Union[int, slice, Tuple[Union[int, slice], ...], array], /) -> array:
     """
     Note: __getitem__ is a method of the array object.
     """
@@ -57,6 +81,12 @@ def __getitem__(x, key, /):
 def __gt__(x1: array, x2: array, /) -> array:
     """
     Note: __gt__ is a method of the array object.
+    """
+    pass
+
+def __int__(x: array, /) -> int:
+    """
+    Note: __int__ is a method of the array object.
     """
     pass
 
@@ -186,4 +216,4 @@ size = None
 # Note: T is an attribute of the array object.
 T = None
 
-__all__ = ['__abs__', '__add__', '__and__', '__eq__', '__floordiv__', '__ge__', '__getitem__', '__gt__', '__invert__', '__le__', '__len__', '__lshift__', '__lt__', '__matmul__', '__mod__', '__mul__', '__ne__', '__neg__', '__or__', '__pos__', '__pow__', '__rshift__', '__setitem__', '__sub__', '__truediv__', '__xor__', 'dtype', 'device', 'ndim', 'shape', 'size', 'T']
+__all__ = ['__abs__', '__add__', '__and__', '__bool__', '__dlpack__', '__dlpack_device__', '__eq__', '__float__', '__floordiv__', '__ge__', '__getitem__', '__gt__', '__int__', '__invert__', '__le__', '__len__', '__lshift__', '__lt__', '__matmul__', '__mod__', '__mul__', '__ne__', '__neg__', '__or__', '__pos__', '__pow__', '__rshift__', '__setitem__', '__sub__', '__truediv__', '__xor__', 'dtype', 'device', 'ndim', 'shape', 'size', 'T']

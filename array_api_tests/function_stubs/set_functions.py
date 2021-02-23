@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from ._types import Tuple, Union, array
 
-def unique(x: array, /, *, return_counts: bool = False, return_index: bool = False, return_inverse: bool = False, sorted: bool = True) -> Union[array, Tuple[array, ...]]:
+def unique(x: array, /, *, return_counts: bool = False, return_index: bool = False, return_inverse: bool = False) -> Union[array, Tuple[array, ...]]:
     pass
 
 __all__ = ['unique']
