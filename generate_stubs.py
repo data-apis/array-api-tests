@@ -605,6 +605,7 @@ PARAMETER_RE = regex.compile(r"- +\*\*(.*)\*\*: _(.*)_")
 def parse_annotations(spec_text, verbose=False):
     annotations = defaultdict(dict)
     in_block = False
+    is_returns = False
     for line in spec_text.splitlines():
         m = HEADER_RE.match(line)
         if m:
@@ -615,6 +616,7 @@ def parse_annotations(spec_text, verbose=False):
             continue
         elif line == '#### Returns':
             in_block = True
+            is_returns = True
             continue
         elif line.startswith('#'):
             in_block = False
@@ -625,10 +627,13 @@ def parse_annotations(spec_text, verbose=False):
             m = PARAMETER_RE.match(line)
             if m:
                 param, typ = m.groups()
+                if is_returns:
+                    param = 'returns'
+                    is_returns = False
                 typ = clean_type(typ)
                 if verbose:
                     print(f"Matched parameter for {name}: {param}: {typ}")
-                annotations[name][param] =  typ
+                annotations[name][param] = typ
             else:
                 raise ValueError(f"Unrecognized special case string for '{name}':\n{line}")
 
@@ -646,10 +651,12 @@ def clean_type(typ):
     return typ
 
 def add_annotation(sig, annotation):
-    if 'out' not in annotation:
+    if 'returns' not in annotation:
         raise RuntimeError(f"No return annotation for {sig}")
+    if 'out' in annotation:
+        raise RuntimeError(f"Error parsing annotations for {sig}")
     for param, typ in annotation.items():
-        if param == 'out':
+        if param == 'returns':
             sig = f"{sig} -> {typ}"
             continue
         PARAM_DEFAULT = regex.compile(rf"([\( ]{param})=")
