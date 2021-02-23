@@ -12,10 +12,10 @@ from __future__ import annotations
 
 from ._types import Union, array, dtype
 
-def finfo(type: Union[dtype&gt, array], /) -> ffinfo:
+def finfo(type: Union[dtype, array], /) -> finfo:
     pass
 
-def iinfo(type: Union[dtype&gt, array], /) -> iinfo:
+def iinfo(type: Union[dtype, array], /) -> iinfo:
     pass
 
 def result_type(*arrays_and_dtypes: Sequence[Union[array, dtype]]) -> dtype:
