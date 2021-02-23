@@ -10,7 +10,8 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/array_
 
 from __future__ import annotations
 
-from ._types import Optional, Tuple, Union, array
+from enum import IntEnum
+from ._types import Optional, PyCapsule, Tuple, Union, array
 
 def __abs__(x: array, /) -> array:
     """
@@ -42,7 +43,7 @@ def __dlpack__(*, stream: Optional[int] = None) -> PyCapsule:
     """
     pass
 
-def __dlpack_device__() -> Tuple[enum.IntEnum, int]:
+def __dlpack_device__() -> Tuple[IntEnum, int]:
     """
     Note: __dlpack_device__ is a method of the array object.
     """

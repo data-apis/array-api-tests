@@ -39,8 +39,10 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/{filen
 
 from __future__ import annotations
 
+from enum import *
 from ._types import *
 from .constants import *
+from collections.abc import *
 '''
 # ^ Constants are used in some of the type annotations
 
@@ -88,8 +90,11 @@ from typing import Literal, Optional, Tuple, Union, TypeVar
 array = TypeVar('array')
 device = TypeVar('device')
 dtype = TypeVar('dtype')
-
-__all__ = ['Literal', 'Optional', 'Tuple', 'Union', 'array', 'device', 'dtype']
+SupportsDLPack = TypeVar('SupportsDLPack')
+SupportsBufferProtocol = TypeVar('SupportsBufferProtocol')
+PyCapsule = TypeVar('PyCapsule')
+__all__ = ['Literal', 'Optional', 'Tuple', 'Union', 'array', 'device',
+'dtype', 'SupportsDLPack', 'SupportsBufferProtocol', 'PyCapsule']
 
 '''
 def main():
@@ -645,6 +650,7 @@ def clean_type(typ):
     typ = typ.replace('\\', '')
     typ = typ.replace(' ', '')
     typ = typ.replace(',', ', ')
+    typ = typ.replace('enum.', '')
     return typ
 
 def add_annotation(sig, annotation):

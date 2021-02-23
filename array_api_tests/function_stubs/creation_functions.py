@@ -10,7 +10,7 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/creati
 
 from __future__ import annotations
 
-from ._types import Optional, Tuple, Union, array, device, dtype
+from ._types import Optional, SupportsBufferProtocol, SupportsDLPack, Tuple, Union, array, device, dtype
 
 def arange(start: Union[int, float], /, *, stop: Optional[Union[int, float]] = None, step: Union[int, float] = 1, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
     pass

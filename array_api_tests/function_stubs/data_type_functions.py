@@ -11,6 +11,7 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/data_t
 from __future__ import annotations
 
 from ._types import Union, array, dtype
+from collections.abc import Sequence
 
 def finfo(type: Union[dtype, array], /) -> finfo:
     pass

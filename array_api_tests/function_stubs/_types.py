@@ -10,6 +10,9 @@ from typing import Literal, Optional, Tuple, Union, TypeVar
 array = TypeVar('array')
 device = TypeVar('device')
 dtype = TypeVar('dtype')
-
-__all__ = ['Literal', 'Optional', 'Tuple', 'Union', 'array', 'device', 'dtype']
+SupportsDLPack = TypeVar('SupportsDLPack')
+SupportsBufferProtocol = TypeVar('SupportsBufferProtocol')
+PyCapsule = TypeVar('PyCapsule')
+__all__ = ['Literal', 'Optional', 'Tuple', 'Union', 'array', 'device',
+'dtype', 'SupportsDLPack', 'SupportsBufferProtocol', 'PyCapsule']
 
