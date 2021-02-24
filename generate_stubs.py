@@ -13,6 +13,7 @@ import argparse
 import os
 import sys
 import ast
+import itertools
 from collections import defaultdict
 
 import regex
@@ -24,6 +25,9 @@ FUNCTION_RE = regex.compile(r'\(function-.*\)=\n#+ ?(.*\(.*\))')
 METHOD_RE = regex.compile(r'\(method-.*\)=\n#+ ?(.*\(.*\))')
 CONSTANT_RE = regex.compile(r'\(constant-.*\)=\n#+ ?(.*)')
 ATTRIBUTE_RE = regex.compile(r'\(attribute-.*\)=\n#+ ?(.*)')
+IN_PLACE_OPERATOR_RE = regex.compile(r'- `.*`. May be implemented via `__i(.*)__`.')
+REFLECTED_OPERATOR_RE = regex.compile(r'- `__r(.*)__`')
+
 NAME_RE = regex.compile(r'(.*)\(.*\)')
 
 STUB_FILE_HEADER = '''\
@@ -136,10 +140,16 @@ def main():
 
         annotations = parse_annotations(text, verbose=not args.quiet)
 
+        if filename == 'array_object.md':
+            in_place_operators = IN_PLACE_OPERATOR_RE.findall(text)
+            reflected_operators = REFLECTED_OPERATOR_RE.findall(text)
+            if sorted(in_place_operators) != sorted(reflected_operators):
+                raise RuntimeError(f"Unexpected in-place or reflected operator(s): {set(in_place_operators).symmetric_difference(set(reflected_operators))}")
+
         sigs = {}
         code = ""
         code += STUB_FILE_HEADER.format(filename=filename, title=title)
-        for sig in functions + methods:
+        for sig in itertools.chain(functions, methods):
             ismethod = sig in methods
             sig = sig.replace(r'\_', '_')
             func_name = NAME_RE.match(sig).group(1)
@@ -162,6 +172,19 @@ def {annotated_sig}:{doc}
 """
             modules[module_name].append(func_name)
             sigs[func_name] = sig
+
+            if (filename == 'array_object.md' and func_name.startswith('__')
+                and (op := func_name[2:-2]) in in_place_operators):
+                normal_op = func_name
+                iop = f'__i{op}__'
+                rop = f'__r{op}__'
+                for func_name in [iop, rop]:
+                    methods.append(sigs[normal_op].replace(normal_op, func_name))
+                    annotation = annotations[normal_op].copy()
+                    for k, v in annotation.items():
+                        annotation[k] = v.replace(normal_op, func_name)
+                    annotations[func_name] = annotation
+
         for const in constants + attributes:
             if not args.quiet:
                 print(f"Writing stub for {const}")
