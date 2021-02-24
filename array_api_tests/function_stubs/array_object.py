@@ -37,13 +37,13 @@ def __bool__(x: array, /) -> bool:
     """
     pass
 
-def __dlpack__(*, stream: Optional[int] = None) -> PyCapsule:
+def __dlpack__(x: array, /, *, stream: Optional[int] = None) -> PyCapsule:
     """
     Note: __dlpack__ is a method of the array object.
     """
     pass
 
-def __dlpack_device__() -> Tuple[IntEnum, int]:
+def __dlpack_device__(x: array, /) -> Tuple[IntEnum, int]:
     """
     Note: __dlpack_device__ is a method of the array object.
     """
