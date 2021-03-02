@@ -150,17 +150,24 @@ def multiaxis_indices(draw, shapes):
     # Generate tuples no longer than the shape, with indices corresponding to
     # each dimension.
     shape = draw(shapes)
-    guard = draw(tuples(just(object()), max_size=len(shape)))
+    n_entries = draw(integers(0, len(shape)))
     # from hypothesis import note
-    # note(f"multiaxis_indices guard: {guard}")
+    # note(f"multiaxis_indices n_entries: {n_entries}")
 
-    for size, _ in zip(shape, guard):
-        res.append(draw(one_of(
+    k = 0
+    for i in range(n_entries):
+        size = shape[k]
+        idx = draw(one_of(
             integer_indices(just(size)),
             slices(just(size)),
-            just(...))))
+            just(...)))
+        if idx == ... and k >= 0:
+            # If there is an ellipsis, index from the end of the shape
+            k = k - n_entries
+        k += 1
+        res.append(idx)
     # Sometimes add more entries than necessary to test this.
-    if len(guard) == len(shape) and ... not in res:
+    if n_entries == len(shape) and ... not in res:
         # note("Adding extra")
         extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
         res += extra
