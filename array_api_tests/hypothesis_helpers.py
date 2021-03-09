@@ -126,10 +126,13 @@ def integer_indices(draw, sizes):
 def slices(draw, sizes):
     size = draw(sizes)
     # The spec does not specify out of bounds behavior.
-    start = draw(one_of(integers(-size, max(0, size-1)), none()))
-    stop = draw(one_of(integers(-size, size)), none())
     max_step_size = draw(integers(1, max(1, size)))
     step = draw(one_of(integers(-max_step_size, -1), integers(1, max_step_size), none()))
+    start = draw(one_of(integers(-size, max(0, size-1)), none()))
+    if step is None or step > 0:
+        stop = draw(one_of(integers(-size, size)), none())
+    else:
+        stop = draw(one_of(integers(-size - 1, size - 1)), none())
     s = slice(start, stop, step)
     l = list(range(size))
     sliced_list = l[s]

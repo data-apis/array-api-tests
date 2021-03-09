@@ -39,8 +39,10 @@ def test_slicing(size, s):
     if s.start is not None:
         assert -size <= s.start <= max(0, size - 1), "Sanity check failed. This indicates a bug in the test suite"
     if s.stop is not None:
-        assert -size <= s.stop <= size, "Sanity check failed. This indicates a bug in the test suite"
-
+        if s.step is None or s.step > 0:
+            assert -size <= s.stop <= size, "Sanity check failed. This indicates a bug in the test suite"
+        else:
+            assert -size - 1 <= s.stop <= size - 1, "Sanity check failed. This indicates a bug in the test suite"
     a = arange(size)
     l = list(range(size))
     sliced_list = l[s]
