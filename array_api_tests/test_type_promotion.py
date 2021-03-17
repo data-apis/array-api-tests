@@ -356,8 +356,7 @@ def test_elementwise_function_two_arg_type_promotion(func_name, shape, dtypes):
 elementwise_function_one_arg_func_names = [func_name for func_name in
                                            elementwise_functions.__all__ if
                                            nargs(func_name) == 1]
-for func_name in elementwise_function_one_arg_func_names:
-    assert elementwise_function_output_types[func_name] in ['promoted', 'same'], func_name
+
 elementwise_function_one_arg_parametrize_inputs = [(func_name, dtypes)
                for func_name in elementwise_function_one_arg_func_names
                for dtypes in input_types[elementwise_function_input_types[func_name]]]
