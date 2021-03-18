@@ -213,7 +213,7 @@ def test_bitwise_left_shift(args):
     x1, x2 = args
     sanity_check(x1, x2)
     negative_x2 = isnegative(x2)
-    if x1.dtype != bool_dtype and array_any(negative_x2):
+    if array_any(negative_x2):
         assume(False)
     a = _array_module.bitwise_left_shift(x1, x2)
     # Compare against the Python << operator.
@@ -272,7 +272,7 @@ def test_bitwise_right_shift(args):
     x1, x2 = args
     sanity_check(x1, x2)
     negative_x2 = isnegative(x2)
-    if x1.dtype != bool_dtype and array_any(negative_x2):
+    if array_any(negative_x2):
         assume(False)
     a = _array_module.bitwise_right_shift(x1, x2)
     # Compare against the Python >> operator.
