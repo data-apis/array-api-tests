@@ -406,7 +406,7 @@ elementwise_function_one_arg_parametrize_inputs = [(func_name, dtypes)
                for func_name in elementwise_function_one_arg_func_names
                for dtypes in input_types[elementwise_function_input_types[func_name]]]
 elementwise_function_one_arg_parametrize_ids = ['-'.join((n, d)) for n, d
-                                            in elementwise_function_two_arg_parametrize_inputs]
+                                            in elementwise_function_one_arg_parametrize_inputs]
 
 # TODO: Extend this to all functions (not just elementwise), and handle
 # functions that take more than 2 args
