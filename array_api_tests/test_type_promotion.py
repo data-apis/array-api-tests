@@ -312,27 +312,45 @@ elementwise_function_output_types = {
 
 elementwise_function_two_arg_func_names = [func_name for func_name in
                                            elementwise_functions.__all__ if
-                                           nargs(func_name) > 1 and
-                                           elementwise_function_output_types[func_name]
-                                           == 'promoted']
-elementwise_function_two_arg_parametrize_inputs = [(func_name, dtypes)
-               for func_name in elementwise_function_two_arg_func_names
+                                           nargs(func_name) > 1]
+
+elementwise_function_two_arg_func_names_promoted = [func_name for func_name in
+                                                    elementwise_function_two_arg_func_names
+                                                    if
+                                                    elementwise_function_output_types[func_name]
+                                                    == 'promoted']
+elementwise_function_two_arg_func_names_same_x1 = [func_name for func_name in
+                                                    elementwise_function_two_arg_func_names
+                                                    if
+                                                    elementwise_function_output_types[func_name]
+                                                    == 'same_x1']
+
+elementwise_function_two_arg_promoted_parametrize_inputs = [(func_name, dtypes)
+               for func_name in elementwise_function_two_arg_func_names_promoted
+               for dtypes in promotion_table.items() if all(d in
+                                                            input_types[elementwise_function_input_types[func_name]]
+                                                            for d in dtypes[0])
+               ]
+elementwise_function_two_arg_same_x1_parametrize_inputs = [(func_name, dtypes)
+               for func_name in elementwise_function_two_arg_func_names_same_x1
                for dtypes in promotion_table.items() if all(d in
                                                             input_types[elementwise_function_input_types[func_name]]
                                                             for d in dtypes[0])
                ]
 
-elementwise_function_two_arg_parametrize_ids = ['-'.join((n, d1, d2)) for n, ((d1, d2), _)
-                                            in elementwise_function_two_arg_parametrize_inputs]
+elementwise_function_two_arg_promoted_parametrize_ids = ['-'.join((n, d1, d2)) for n, ((d1, d2), _)
+                                            in elementwise_function_two_arg_promoted_parametrize_inputs]
+elementwise_function_two_arg_same_x1_parametrize_ids = ['-'.join((n, d1, d2)) for n, ((d1, d2), _)
+                                            in elementwise_function_two_arg_same_x1_parametrize_inputs]
 
 # TODO: Extend this to all functions (not just elementwise), and handle
 # functions that take more than 2 args
 @pytest.mark.parametrize('func_name,dtypes',
-                         elementwise_function_two_arg_parametrize_inputs, ids=elementwise_function_two_arg_parametrize_ids)
+                         elementwise_function_two_arg_promoted_parametrize_inputs, ids=elementwise_function_two_arg_promoted_parametrize_ids)
 # The spec explicitly requires type promotion to work for shape 0
 @example(shape=(0,))
 @given(shape=shapes)
-def test_elementwise_function_two_arg_type_promotion(func_name, shape, dtypes):
+def test_elementwise_function_two_arg_promoted_type_promotion(func_name, shape, dtypes):
     assert nargs(func_name) == 2
     func = getattr(_array_module, func_name)
 
@@ -341,6 +359,31 @@ def test_elementwise_function_two_arg_type_promotion(func_name, shape, dtypes):
     dtype1 = dtype_mapping[type1]
     dtype2 = dtype_mapping[type2]
     res_dtype = dtype_mapping[res_type]
+
+    for i in [func, dtype1, dtype2, res_dtype]:
+        if isinstance(i, _array_module._UndefinedStub):
+            func._raise()
+
+    a1 = ones(shape, dtype=dtype1)
+    a2 = ones(shape, dtype=dtype2)
+    res = func(a1, a2)
+
+    assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape})"
+
+@pytest.mark.parametrize('func_name,dtypes',
+                         elementwise_function_two_arg_same_x1_parametrize_inputs, ids=elementwise_function_two_arg_same_x1_parametrize_ids)
+# The spec explicitly requires type promotion to work for shape 0
+@example(shape=(0,))
+@given(shape=shapes)
+def test_elementwise_function_two_arg_same_x1_type_promotion(func_name, shape, dtypes):
+    assert nargs(func_name) == 2
+    func = getattr(_array_module, func_name)
+
+
+    (type1, type2), res_type = dtypes
+    dtype1 = dtype_mapping[type1]
+    dtype2 = dtype_mapping[type2]
+    res_dtype = dtype1
 
     for i in [func, dtype1, dtype2, res_dtype]:
         if isinstance(i, _array_module._UndefinedStub):
