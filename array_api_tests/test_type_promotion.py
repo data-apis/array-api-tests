@@ -416,7 +416,7 @@ elementwise_function_one_arg_parametrize_ids = ['-'.join((n, d)) for n, d
 @example(shape=(0,))
 @given(shape=shapes)
 def test_elementwise_function_one_arg_type_promotion(func_name, shape, dtype_name):
-    assert nargs(func_name) == 2
+    assert nargs(func_name) == 1
     func = getattr(_array_module, func_name)
 
     dtype = dtype_mapping[dtype_name]
