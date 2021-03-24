@@ -1,6 +1,6 @@
 # Array API Standard Test Suite
 
-This is the test suite for the PyData Array APIs standard.
+This is the test suite for the Python array API standard.
 
 **NOTE: This test suite is still a work in progress.**
 
