@@ -669,8 +669,7 @@ def parse_annotations(spec_text, verbose=False):
     return annotations
 
 def clean_type(typ):
-    typ = typ.replace('&lt;', '')
-    typ = typ.replace('&gt;', '')
+    typ = regex.sub(r'&lt;(.*?)&gt;', lambda m: m.group(1).replace(' ', '_'), typ)
     typ = typ.replace('\\', '')
     typ = typ.replace(' ', '')
     typ = typ.replace(',', ', ')
