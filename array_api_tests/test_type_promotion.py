@@ -513,6 +513,22 @@ def test_operator_scalar_promotion(binary_op_name, dtype_name, scalar_type, shap
     expected = eval(scalar_array_expected, get_locals())
     assert_exactly_equal(res, expected)
 
+    # Test in-place operators
+    if binary_op in ['==', '!=', '<', '>', '<=', '>=']:
+        return
+    array_scalar = f'a {binary_op}= s'
+    array_scalar_expected = f'a {binary_op}= scalar_as_array'
+    a = ones(shape, dtype=dtype)
+    res_locals = get_locals()
+    exec(array_scalar, get_locals())
+    res = res_locals['a']
+    a = ones(shape, dtype=dtype)
+    expected_locals = get_locals()
+    exec(array_scalar_expected, get_locals())
+    expected = expected_locals['a']
+    assert_exactly_equal(res, expected)
+
+
 if __name__ == '__main__':
     for (i, j), p in promotion_table.items():
         print(f"({i}, {j}) -> {p}")
