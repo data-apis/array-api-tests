@@ -5,11 +5,11 @@ https://data-apis.github.io/array-api/latest/API_specification/type_promotion.ht
 import pytest
 
 from hypothesis import given, example
-from hypothesis.strategies import from_type, data
+from hypothesis.strategies import from_type, data, integers
 
 from .hypothesis_helpers import shapes
 from .pytest_helpers import nargs
-from .array_helpers import assert_exactly_equal
+from .array_helpers import assert_exactly_equal, dtype_ranges
 
 from .function_stubs import elementwise_functions
 from ._array_module import (ones, int8, int16, int32, int64, uint8,
@@ -176,23 +176,61 @@ unary_operators = {
     '__pos__': '+',
 }
 
-dtypes_to_scalar = {
-    _array_module.bool: bool,
-    _array_module.int8: int,
-    _array_module.int16: int,
-    _array_module.int32: int,
-    _array_module.int64: int,
-    _array_module.uint8: int,
-    _array_module.uint16: int,
-    _array_module.uint32: int,
-    _array_module.uint64: int,
-    _array_module.float32: float,
-    _array_module.float64: float,
+
+operators_to_functions = {
+    '__add__': 'add',
+    '__and__': 'logical_and',
+    '__eq__': 'equal',
+    '__floordiv__': 'floor_divide',
+    '__ge__': 'greater_equal',
+    '__gt__': 'greater',
+    '__le__': 'less_equal',
+    '__lshift__': 'bitwise_left_shift',
+    '__lt__': 'less',
+    '__matmul__': 'matmul',
+    '__mod__': 'remainder',
+    '__mul__': 'multiply',
+    '__ne__': 'not_equal',
+    '__or__': 'logical_or',
+    '__pow__': 'pow',
+    '__rshift__': 'bitwise_right_shift',
+    '__sub__': 'subtract',
+    '__truediv__': 'divide',
+    '__xor__': 'logical_xor',
+    '__invert__': 'bitwise_invert',
+    '__neg__': 'negative',
+    '__pos__': 'positive',
 }
 
-scalar_to_dtype = {s: [d for d, _s in dtypes_to_scalar.items() if _s == s] for
-                   s in dtypes_to_scalar.values()}
 
+dtype_mapping = {
+    'i1': int8,
+    'i2': int16,
+    'i4': int32,
+    'i8': int64,
+    'u1': uint8,
+    'u2': uint16,
+    'u4': uint32,
+    'u8': uint64,
+    'f4': float32,
+    'f8': float64,
+    'b': bool_dtype,
+}
+
+dtypes_to_scalars = {
+    'b': [bool],
+    'i1': [int],
+    'i2': [int],
+    'i4': [int],
+    'i8': [int],
+    # Note: unsigned int dtypes only correspond to positive integers
+    'u1': [int],
+    'u2': [int],
+    'u4': [int],
+    'u8': [int],
+    'f4': [int, float],
+    'f8': [int, float],
+}
 
 elementwise_function_input_types = {
     'abs': 'numeric',
@@ -430,18 +468,26 @@ def test_elementwise_function_one_arg_type_promotion(func_name, shape, dtype_nam
 
     assert res.dtype == dtype, f"{func_name}({dtype}) returned to {res.dtype}, should have promoted to {dtype} (shape={shape})"
 
-@pytest.mark.parametrize('binary_op', sorted(set(binary_operators.values()) - {'@'}))
-@pytest.mark.parametrize('scalar_type,dtype', [(s, d) for s in scalar_to_dtype
-                                               for d in scalar_to_dtype[s]])
+scalar_promotion_parametrize_inputs = [(binary_op_name, dtype_name, scalar_type)
+                                       for binary_op_name in sorted(set(binary_operators) - {'__matmul__'})
+                                       for dtype_name in input_types[elementwise_function_input_types[operators_to_functions[binary_op_name]]]
+                                       for scalar_type in dtypes_to_scalars[dtype_name]]
+
+@pytest.mark.parametrize('binary_op_name,dtype_name,scalar_type', scalar_promotion_parametrize_inputs)
 @given(shape=shapes, scalars=data())
-def test_operator_scalar_promotion(binary_op, scalar_type, dtype, shape, scalars):
+def test_operator_scalar_promotion(binary_op_name, dtype_name, scalar_type, shape, scalars):
     """
     See https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html#mixing-arrays-with-python-scalars
     """
+    binary_op = binary_operators[binary_op_name]
     if binary_op == '@':
         pytest.skip("matmul (@) is not supported for scalars")
+    dtype = dtype_mapping[dtype_name]
     a = ones(shape, dtype=dtype)
-    s = scalars.draw(from_type(scalar_type))
+    if dtype_name in input_types['integer']:
+        s = scalars.draw(integers(*dtype_ranges[dtype]))
+    else:
+        s = scalars.draw(from_type(scalar_type))
     scalar_as_array = _array_module.full((), s, dtype=dtype)
     get_locals = lambda: dict(a=a, s=s, scalar_as_array=scalar_as_array)
 
