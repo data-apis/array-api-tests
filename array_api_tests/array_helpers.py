@@ -153,9 +153,9 @@ def assert_exactly_equal(x, y):
     equal.
 
     """
-    assert x.shape == y.shape, "The input arrays do not have the same shapes"
+    assert x.shape == y.shape, f"The input arrays do not have the same shapes ({x.shape} != {y.shape})"
 
-    assert x.dtype == y.dtype, "The input arrays do not have the same dtype"
+    assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype})"
 
     assert all(exactly_equal(x, y)), "The input arrays have different values"
 
