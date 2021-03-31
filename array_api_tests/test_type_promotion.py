@@ -488,7 +488,7 @@ def test_operator_scalar_promotion(binary_op_name, dtype_name, scalar_type, shap
         s = scalars.draw(integers(*dtype_ranges[dtype]))
     else:
         s = scalars.draw(from_type(scalar_type))
-    scalar_as_array = _array_module.full((), s, dtype=dtype)
+    scalar_as_array = _array_module.asarray(s, dtype=dtype)
     get_locals = lambda: dict(a=a, s=s, scalar_as_array=scalar_as_array)
 
     # As per the spec:
