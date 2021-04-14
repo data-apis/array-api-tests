@@ -31,6 +31,8 @@ dtype_mapping = {
     'b': bool_dtype,
 }
 
+reverse_dtype_mapping = {v: k for k, v in dtype_mapping.items()}
+
 def dtype_nbits(dtype):
     if dtype == int8:
         return 8
