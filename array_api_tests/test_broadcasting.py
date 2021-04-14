@@ -6,11 +6,13 @@ from functools import reduce
 
 import pytest
 
-from hypothesis import given
+from hypothesis import given, assume
 
 from .hypothesis_helpers import nonbroadcastable_ones_array_two_args
 from .pytest_helpers import raises, doesnt_raise, nargs
 
+from .test_type_promotion import (elementwise_function_input_types,
+                                  input_types, reverse_dtype_mapping)
 from .function_stubs import elementwise_functions
 from . import _array_module
 
@@ -111,7 +113,13 @@ def test_broadcast_shapes_explicit_spec():
                                        nargs(i) > 1])
 @given(args=nonbroadcastable_ones_array_two_args)
 def test_broadcasting_hypothesis(func_name, args):
+    # Internal consistency checks
     assert nargs(func_name) == 2
+    assert len(args) == 2
+    assert args[0].dtype == args[1].dtype
+
+    if reverse_dtype_mapping[args[0].dtype] not in input_types[elementwise_function_input_types[func_name]]:
+        assume(False)
     func = getattr(_array_module, func_name)
 
     if isinstance(func, _array_module._UndefinedStub):
