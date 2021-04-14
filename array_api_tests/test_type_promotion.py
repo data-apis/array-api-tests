@@ -7,7 +7,7 @@ import pytest
 from hypothesis import given, example
 from hypothesis.strategies import from_type, data, integers, just
 
-from .hypothesis_helpers import shapes, scalars
+from .hypothesis_helpers import shapes, two_mutually_broadcastable_shapes, scalars
 from .pytest_helpers import nargs
 from .array_helpers import assert_exactly_equal, dtype_ranges
 
@@ -391,9 +391,9 @@ elementwise_function_two_arg_same_x1_parametrize_ids = ['-'.join((n, d1, d2)) fo
 # Unfortunately, data(), isn't compatible with @example, so this is commented
 # out for now.
 # @example(shape=(0,))
-@given(shape=shapes, fillvalues=data())
+@given(two_shapes=two_mutually_broadcastable_shapes, fillvalues=data())
 def test_elementwise_function_two_arg_promoted_type_promotion(func_name,
-                                                              shape, dtypes,
+                                                              two_shapes, dtypes,
                                                               fillvalues):
     assert nargs(func_name) == 2
     func = getattr(_array_module, func_name)
@@ -409,11 +409,12 @@ def test_elementwise_function_two_arg_promoted_type_promotion(func_name,
         if isinstance(i, _array_module._UndefinedStub):
             func._raise()
 
-    a1 = full(shape, fillvalue1, dtype=dtype1)
-    a2 = full(shape, fillvalue2, dtype=dtype2)
+    shape1, shape2 = two_shapes
+    a1 = full(shape1, fillvalue1, dtype=dtype1)
+    a2 = full(shape2, fillvalue2, dtype=dtype2)
     res = func(a1, a2)
 
-    assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape})"
+    assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shapes={shape1, shape2})"
 
 @pytest.mark.parametrize('func_name,dtypes',
                          elementwise_function_two_arg_same_x1_parametrize_inputs, ids=elementwise_function_two_arg_same_x1_parametrize_ids)
@@ -421,8 +422,8 @@ def test_elementwise_function_two_arg_promoted_type_promotion(func_name,
 # Unfortunately, data(), isn't compatible with @example, so this is commented
 # out for now.
 # @example(shape=(0,))
-@given(shape=shapes, fillvalues=data())
-def test_elementwise_function_two_arg_same_x1_type_promotion(func_name, shape,
+@given(two_shapes=two_mutually_broadcastable_shapes, fillvalues=data())
+def test_elementwise_function_two_arg_same_x1_type_promotion(func_name, two_shapes,
                                                              dtypes, fillvalues):
     assert nargs(func_name) == 2
     func = getattr(_array_module, func_name)
@@ -443,11 +444,12 @@ def test_elementwise_function_two_arg_same_x1_type_promotion(func_name, shape,
         if isinstance(i, _array_module._UndefinedStub):
             func._raise()
 
-    a1 = full(shape, fillvalue1, dtype=dtype1)
-    a2 = full(shape, fillvalue2, dtype=dtype2)
+    shape1, shape2 = two_shapes
+    a1 = full(shape1, fillvalue1, dtype=dtype1)
+    a2 = full(shape2, fillvalue2, dtype=dtype2)
     res = func(a1, a2)
 
-    assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape})"
+    assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
 
 
 elementwise_function_one_arg_func_names = [func_name for func_name in
