@@ -202,21 +202,6 @@ operators_to_functions = {
     '__pos__': 'positive',
 }
 
-
-dtype_mapping = {
-    'i1': int8,
-    'i2': int16,
-    'i4': int32,
-    'i8': int64,
-    'u1': uint8,
-    'u2': uint16,
-    'u4': uint32,
-    'u8': uint64,
-    'f4': float32,
-    'f8': float64,
-    'b': bool_dtype,
-}
-
 dtypes_to_scalars = {
     'b': [bool],
     'i1': [int],
