@@ -5,14 +5,14 @@ https://data-apis.github.io/array-api/latest/API_specification/type_promotion.ht
 import pytest
 
 from hypothesis import given, example
-from hypothesis.strategies import from_type, data, integers
+from hypothesis.strategies import from_type, data, integers, just
 
-from .hypothesis_helpers import shapes
+from .hypothesis_helpers import shapes, scalars
 from .pytest_helpers import nargs
 from .array_helpers import assert_exactly_equal, dtype_ranges
 
 from .function_stubs import elementwise_functions
-from ._array_module import (ones, int8, int16, int32, int64, uint8,
+from ._array_module import (full, int8, int16, int32, int64, uint8,
                             uint16, uint32, uint64, float32, float64, bool as
                             bool_dtype)
 from . import _array_module
@@ -388,24 +388,29 @@ elementwise_function_two_arg_same_x1_parametrize_ids = ['-'.join((n, d1, d2)) fo
 @pytest.mark.parametrize('func_name,dtypes',
                          elementwise_function_two_arg_promoted_parametrize_inputs, ids=elementwise_function_two_arg_promoted_parametrize_ids)
 # The spec explicitly requires type promotion to work for shape 0
-@example(shape=(0,))
-@given(shape=shapes)
-def test_elementwise_function_two_arg_promoted_type_promotion(func_name, shape, dtypes):
+# Unfortunately, data(), isn't compatible with @example, so this is commented
+# out for now.
+# @example(shape=(0,))
+@given(shape=shapes, fillvalues=data())
+def test_elementwise_function_two_arg_promoted_type_promotion(func_name,
+                                                              shape, dtypes,
+                                                              fillvalues):
     assert nargs(func_name) == 2
     func = getattr(_array_module, func_name)
-
 
     (type1, type2), res_type = dtypes
     dtype1 = dtype_mapping[type1]
     dtype2 = dtype_mapping[type2]
     res_dtype = dtype_mapping[res_type]
+    fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
+    fillvalue2 = fillvalues.draw(scalars(just(dtype2)))
 
     for i in [func, dtype1, dtype2, res_dtype]:
         if isinstance(i, _array_module._UndefinedStub):
             func._raise()
 
-    a1 = ones(shape, dtype=dtype1)
-    a2 = ones(shape, dtype=dtype2)
+    a1 = full(shape, fillvalue1, dtype=dtype1)
+    a2 = full(shape, fillvalue2, dtype=dtype2)
     res = func(a1, a2)
 
     assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape})"
@@ -413,9 +418,12 @@ def test_elementwise_function_two_arg_promoted_type_promotion(func_name, shape, 
 @pytest.mark.parametrize('func_name,dtypes',
                          elementwise_function_two_arg_same_x1_parametrize_inputs, ids=elementwise_function_two_arg_same_x1_parametrize_ids)
 # The spec explicitly requires type promotion to work for shape 0
-@example(shape=(0,))
-@given(shape=shapes)
-def test_elementwise_function_two_arg_same_x1_type_promotion(func_name, shape, dtypes):
+# Unfortunately, data(), isn't compatible with @example, so this is commented
+# out for now.
+# @example(shape=(0,))
+@given(shape=shapes, fillvalues=data())
+def test_elementwise_function_two_arg_same_x1_type_promotion(func_name, shape,
+                                                             dtypes, fillvalues):
     assert nargs(func_name) == 2
     func = getattr(_array_module, func_name)
 
@@ -424,13 +432,19 @@ def test_elementwise_function_two_arg_same_x1_type_promotion(func_name, shape, d
     dtype1 = dtype_mapping[type1]
     dtype2 = dtype_mapping[type2]
     res_dtype = dtype1
+    fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
+    if func_name in ['bitwise_left_shift', 'bitwise_right_shift']:
+        fillvalue2 = fillvalues.draw(scalars(just(dtype2)).filter(lambda x: x
+                                                                  > 0))
+    else:
+        fillvalue2 = fillvalues.draw(scalars(just(dtype2)))
 
     for i in [func, dtype1, dtype2, res_dtype]:
         if isinstance(i, _array_module._UndefinedStub):
             func._raise()
 
-    a1 = ones(shape, dtype=dtype1)
-    a2 = ones(shape, dtype=dtype2)
+    a1 = full(shape, fillvalue1, dtype=dtype1)
+    a2 = full(shape, fillvalue2, dtype=dtype2)
     res = func(a1, a2)
 
     assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape})"
@@ -456,19 +470,23 @@ elementwise_function_one_arg_promoted_parametrize_ids = ['-'.join((n, d)) for n,
 @pytest.mark.parametrize('func_name,dtype_name',
                          elementwise_function_one_arg_promoted_parametrize_inputs, ids=elementwise_function_one_arg_promoted_parametrize_ids)
 # The spec explicitly requires type promotion to work for shape 0
-@example(shape=(0,))
-@given(shape=shapes)
-def test_elementwise_function_one_arg_type_promotion(func_name, shape, dtype_name):
+# Unfortunately, data(), isn't compatible with @example, so this is commented
+# out for now.
+# @example(shape=(0,))
+@given(shape=shapes, fillvalues=data())
+def test_elementwise_function_one_arg_type_promotion(func_name, shape,
+                                                     dtype_name, fillvalues):
     assert nargs(func_name) == 1
     func = getattr(_array_module, func_name)
 
     dtype = dtype_mapping[dtype_name]
+    fillvalue = fillvalues.draw(scalars(just(dtype)))
 
     for i in [func, dtype]:
         if isinstance(i, _array_module._UndefinedStub):
             func._raise()
 
-    x = ones(shape, dtype=dtype)
+    x = full(shape, fillvalue, dtype=dtype)
     res = func(x)
 
     assert res.dtype == dtype, f"{func_name}({dtype}) returned to {res.dtype}, should have promoted to {dtype} (shape={shape})"
@@ -479,8 +497,9 @@ scalar_promotion_parametrize_inputs = [(binary_op_name, dtype_name, scalar_type)
                                        for scalar_type in dtypes_to_scalars[dtype_name]]
 
 @pytest.mark.parametrize('binary_op_name,dtype_name,scalar_type', scalar_promotion_parametrize_inputs)
-@given(shape=shapes, scalars=data())
-def test_operator_scalar_promotion(binary_op_name, dtype_name, scalar_type, shape, scalars):
+@given(shape=shapes, python_scalars=data(), fillvalues=data())
+def test_operator_scalar_promotion(binary_op_name, dtype_name, scalar_type,
+                                   shape, python_scalars, fillvalues):
     """
     See https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html#mixing-arrays-with-python-scalars
     """
@@ -488,13 +507,16 @@ def test_operator_scalar_promotion(binary_op_name, dtype_name, scalar_type, shap
     if binary_op == '@':
         pytest.skip("matmul (@) is not supported for scalars")
     dtype = dtype_mapping[dtype_name]
-    a = ones(shape, dtype=dtype)
+
     if dtype_name in input_types['integer']:
-        s = scalars.draw(integers(*dtype_ranges[dtype]))
+        s = python_scalars.draw(integers(*dtype_ranges[dtype]))
     else:
-        s = scalars.draw(from_type(scalar_type))
+        s = python_scalars.draw(from_type(scalar_type))
     scalar_as_array = _array_module.asarray(s, dtype=dtype)
     get_locals = lambda: dict(a=a, s=s, scalar_as_array=scalar_as_array)
+
+    fillvalue = fillvalues.draw(scalars(just(dtype)))
+    a = full(shape, fillvalue, dtype=dtype)
 
     # As per the spec:
 
@@ -523,11 +545,11 @@ def test_operator_scalar_promotion(binary_op_name, dtype_name, scalar_type, shap
         return
     array_scalar = f'a {binary_op}= s'
     array_scalar_expected = f'a {binary_op}= scalar_as_array'
-    a = ones(shape, dtype=dtype)
+    a = full(shape, fillvalue, dtype=dtype)
     res_locals = get_locals()
     exec(array_scalar, get_locals())
     res = res_locals['a']
-    a = ones(shape, dtype=dtype)
+    a = full(shape, fillvalue, dtype=dtype)
     expected_locals = get_locals()
     exec(array_scalar_expected, get_locals())
     expected = expected_locals['a']
