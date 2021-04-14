@@ -6,6 +6,7 @@ from hypothesis.strategies import (lists, integers, builds, sampled_from,
                                    shared, tuples as hypotheses_tuples,
                                    floats, just, composite, one_of, none,
                                    booleans)
+from hypothesis.extra.numpy import mutually_broadcastable_shapes
 from hypothesis import assume
 
 from .pytest_helpers import nargs
@@ -76,9 +77,12 @@ shapes = tuples(integers(0, 10)).filter(lambda shape: prod(shape) < MAX_ARRAY_SI
 
 # Use this to avoid memory errors with NumPy.
 # See https://github.com/numpy/numpy/issues/15753
-
 shapes = tuples(integers(0, 10)).filter(
              lambda shape: prod([i for i in shape if i]) < MAX_ARRAY_SIZE)
+
+two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(num_shapes=2)\
+    .map(lambda S: S.input_shapes)\
+    .filter(lambda S: all(prod([i for i in shape if i]) < MAX_ARRAY_SIZE for shape in S))
 
 sizes = integers(0, MAX_ARRAY_SIZE)
 sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
