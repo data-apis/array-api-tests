@@ -84,6 +84,20 @@ two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(num_shapes=2)\
     .map(lambda S: S.input_shapes)\
     .filter(lambda S: all(prod([i for i in shape if i]) < MAX_ARRAY_SIZE for shape in S))
 
+@composite
+def two_broadcastable_shapes(draw, shapes=shapes):
+    """
+    This will produce two shapes (shape1, shape2) such that shape2 can be
+    broadcast to shape1.
+
+    """
+    from .test_broadcasting import broadcast_shapes
+
+    shape1, shape2 = draw(two_mutually_broadcastable_shapes)
+    if broadcast_shapes(shape1, shape2) != shape1:
+        assume(False)
+    return (shape1, shape2)
+
 sizes = integers(0, MAX_ARRAY_SIZE)
 sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
 

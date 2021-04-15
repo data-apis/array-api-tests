@@ -8,7 +8,7 @@ from hypothesis import given, example
 from hypothesis.strategies import from_type, data, integers, just
 
 from .hypothesis_helpers import (shapes, two_mutually_broadcastable_shapes,
-                                 scalars)
+                                 two_broadcastable_shapes, scalars)
 from .pytest_helpers import nargs
 from .array_helpers import assert_exactly_equal, dtype_ranges
 
@@ -482,6 +482,153 @@ def test_elementwise_function_one_arg_type_promotion(func_name, shape,
     res = func(x)
 
     assert res.dtype == dtype, f"{func_name}({dtype}) returned to {res.dtype}, should have promoted to {dtype} (shape={shape})"
+
+binary_operators_promoted = [binary_op_name for binary_op_name in sorted(set(binary_operators) - {'__matmul__'})
+                             if elementwise_function_output_types[operators_to_functions[binary_op_name]] == 'promoted']
+operator_two_arg_promoted_parametrize_inputs = [(binary_op_name, dtypes)
+                                       for binary_op_name in binary_operators_promoted
+                                       for dtypes in promotion_table.items()
+                                       if all(d in input_types[elementwise_function_input_types[operators_to_functions[binary_op_name]]] for d in dtypes[0])
+                                       ]
+operator_two_arg_promoted_parametrize_ids = ['-'.join((n, d1, d2)) for n, ((d1, d2), _)
+                                            in operator_two_arg_promoted_parametrize_inputs]
+
+@pytest.mark.parametrize('binary_op_name,dtypes',
+                         operator_two_arg_promoted_parametrize_inputs,
+                         ids=operator_two_arg_promoted_parametrize_ids)
+@given(two_shapes=two_mutually_broadcastable_shapes, fillvalues=data())
+def test_operator_two_arg_promoted_promotion(binary_op_name, dtypes, two_shapes,
+                                    fillvalues):
+    binary_op = binary_operators[binary_op_name]
+
+    (type1, type2), res_type = dtypes
+    dtype1 = dtype_mapping[type1]
+    dtype2 = dtype_mapping[type2]
+    res_dtype = dtype_mapping[res_type]
+    fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
+    fillvalue2 = fillvalues.draw(scalars(just(dtype2)))
+
+    for i in [dtype1, dtype2, res_dtype]:
+        if isinstance(i, _array_module._UndefinedStub):
+            i._raise()
+
+    shape1, shape2 = two_shapes
+    a1 = full(shape1, fillvalue1, dtype=dtype1)
+    a2 = full(shape2, fillvalue2, dtype=dtype2)
+
+    get_locals = lambda: dict(a1=a1, a2=a2)
+    expression = f'a1 {binary_op} a2'
+    res = eval(expression, get_locals())
+
+    assert res.dtype == res_dtype, f"{dtype1} {binary_op} {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
+
+@pytest.mark.parametrize('binary_op_name,dtypes',
+                         operator_two_arg_promoted_parametrize_inputs,
+                         ids=operator_two_arg_promoted_parametrize_ids)
+@given(two_shapes=two_broadcastable_shapes(), fillvalues=data())
+def test_operator_inplace_two_arg_promoted_promotion(binary_op_name, dtypes, two_shapes,
+                                    fillvalues):
+    binary_op = binary_operators[binary_op_name]
+
+    (type1, type2), res_type = dtypes
+    dtype1 = dtype_mapping[type1]
+    dtype2 = dtype_mapping[type2]
+    res_dtype = dtype_mapping[res_type]
+    fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
+    fillvalue2 = fillvalues.draw(scalars(just(dtype2)))
+
+    for i in [dtype1, dtype2, res_dtype]:
+        if isinstance(i, _array_module._UndefinedStub):
+            i._raise()
+
+    shape1, shape2 = two_shapes
+    a1 = full(shape1, fillvalue1, dtype=dtype1)
+    a2 = full(shape2, fillvalue2, dtype=dtype2)
+
+    get_locals = lambda: dict(a1=a1, a2=a2)
+
+    res_locals = get_locals()
+    expression = f'a1 {binary_op}= a2'
+    exec(expression, res_locals)
+    res = res_locals['a1']
+
+    assert res.dtype == res_dtype, f"{dtype1} {binary_op}= {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
+
+binary_operators_same_x1 = [binary_op_name for binary_op_name in sorted(set(binary_operators) - {'__matmul__'})
+                            if elementwise_function_output_types[operators_to_functions[binary_op_name]] == 'same_x1']
+
+operator_two_arg_same_x1_parametrize_inputs = [(binary_op_name, dtypes)
+                                       for binary_op_name in binary_operators_same_x1
+                                       for dtypes in promotion_table.items()
+                                       if all(d in input_types[elementwise_function_input_types[operators_to_functions[binary_op_name]]] for d in dtypes[0])
+                                       ]
+operator_two_arg_same_x1_parametrize_ids = ['-'.join((n, d1, d2)) for n, ((d1, d2), _)
+                                            in operator_two_arg_same_x1_parametrize_inputs]
+
+@pytest.mark.parametrize('binary_op_name,dtypes',
+                         operator_two_arg_same_x1_parametrize_inputs,
+                         ids=operator_two_arg_same_x1_parametrize_ids)
+@given(two_shapes=two_mutually_broadcastable_shapes, fillvalues=data())
+def test_operator_two_arg_same_x1_promotion(binary_op_name, dtypes, two_shapes,
+                                    fillvalues):
+    binary_op = binary_operators[binary_op_name]
+
+    (type1, type2), res_type = dtypes
+    dtype1 = dtype_mapping[type1]
+    dtype2 = dtype_mapping[type2]
+    res_dtype = dtype1
+    fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
+    # Sanity check
+    assert binary_op in ['<<', '>>']
+    fillvalue2 = fillvalues.draw(scalars(just(dtype2)).filter(lambda x: x > 0))
+
+    for i in [dtype1, dtype2, res_dtype]:
+        if isinstance(i, _array_module._UndefinedStub):
+            i._raise()
+
+    shape1, shape2 = two_shapes
+    a1 = full(shape1, fillvalue1, dtype=dtype1)
+    a2 = full(shape2, fillvalue2, dtype=dtype2)
+
+    get_locals = lambda: dict(a1=a1, a2=a2)
+    expression = f'a1 {binary_op} a2'
+    res = eval(expression, get_locals())
+
+    assert res.dtype == res_dtype, f"{dtype1} {binary_op} {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
+
+@pytest.mark.parametrize('binary_op_name,dtypes',
+                         operator_two_arg_same_x1_parametrize_inputs,
+                         ids=operator_two_arg_same_x1_parametrize_ids)
+@given(two_shapes=two_mutually_broadcastable_shapes, fillvalues=data())
+def test_operator_inplace_two_arg_same_x1_promotion(binary_op_name, dtypes, two_shapes,
+                                    fillvalues):
+    binary_op = binary_operators[binary_op_name]
+
+    (type1, type2), res_type = dtypes
+    dtype1 = dtype_mapping[type1]
+    dtype2 = dtype_mapping[type2]
+    res_dtype = dtype1
+    fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
+    # Sanity check
+    assert binary_op in ['<<', '>>']
+    fillvalue2 = fillvalues.draw(scalars(just(dtype2)).filter(lambda x: x > 0))
+
+    for i in [dtype1, dtype2, res_dtype]:
+        if isinstance(i, _array_module._UndefinedStub):
+            i._raise()
+
+    shape1, shape2 = two_shapes
+    a1 = full(shape1, fillvalue1, dtype=dtype1)
+    a2 = full(shape2, fillvalue2, dtype=dtype2)
+
+    get_locals = lambda: dict(a1=a1, a2=a2)
+
+    res_locals = get_locals()
+    expression = f'a1 {binary_op}= a2'
+    exec(expression, res_locals)
+    res = res_locals['a1']
+
+    assert res.dtype == res_dtype, f"{dtype1} {binary_op}= {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
 
 scalar_promotion_parametrize_inputs = [(binary_op_name, dtype_name, scalar_type)
                                        for binary_op_name in sorted(set(binary_operators) - {'__matmul__'})
