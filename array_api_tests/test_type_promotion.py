@@ -7,7 +7,8 @@ import pytest
 from hypothesis import given, example
 from hypothesis.strategies import from_type, data, integers, just
 
-from .hypothesis_helpers import shapes, two_mutually_broadcastable_shapes, scalars
+from .hypothesis_helpers import (shapes, two_mutually_broadcastable_shapes,
+                                 scalars)
 from .pytest_helpers import nargs
 from .array_helpers import assert_exactly_equal, dtype_ranges
 
@@ -373,7 +374,8 @@ elementwise_function_two_arg_same_x1_parametrize_ids = ['-'.join((n, d1, d2)) fo
 # TODO: Extend this to all functions (not just elementwise), and handle
 # functions that take more than 2 args
 @pytest.mark.parametrize('func_name,dtypes',
-                         elementwise_function_two_arg_promoted_parametrize_inputs, ids=elementwise_function_two_arg_promoted_parametrize_ids)
+                         elementwise_function_two_arg_promoted_parametrize_inputs,
+                         ids=elementwise_function_two_arg_promoted_parametrize_ids)
 # The spec explicitly requires type promotion to work for shape 0
 # Unfortunately, data(), isn't compatible with @example, so this is commented
 # out for now.
@@ -404,7 +406,8 @@ def test_elementwise_function_two_arg_promoted_type_promotion(func_name,
     assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shapes={shape1, shape2})"
 
 @pytest.mark.parametrize('func_name,dtypes',
-                         elementwise_function_two_arg_same_x1_parametrize_inputs, ids=elementwise_function_two_arg_same_x1_parametrize_ids)
+                         elementwise_function_two_arg_same_x1_parametrize_inputs,
+                         ids=elementwise_function_two_arg_same_x1_parametrize_ids)
 # The spec explicitly requires type promotion to work for shape 0
 # Unfortunately, data(), isn't compatible with @example, so this is commented
 # out for now.
@@ -422,8 +425,7 @@ def test_elementwise_function_two_arg_same_x1_type_promotion(func_name, two_shap
     res_dtype = dtype1
     fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
     if func_name in ['bitwise_left_shift', 'bitwise_right_shift']:
-        fillvalue2 = fillvalues.draw(scalars(just(dtype2)).filter(lambda x: x
-                                                                  > 0))
+        fillvalue2 = fillvalues.draw(scalars(just(dtype2)).filter(lambda x: x > 0))
     else:
         fillvalue2 = fillvalues.draw(scalars(just(dtype2)))
 
@@ -457,7 +459,8 @@ elementwise_function_one_arg_promoted_parametrize_ids = ['-'.join((n, d)) for n,
 # TODO: Extend this to all functions (not just elementwise), and handle
 # functions that take more than 2 args
 @pytest.mark.parametrize('func_name,dtype_name',
-                         elementwise_function_one_arg_promoted_parametrize_inputs, ids=elementwise_function_one_arg_promoted_parametrize_ids)
+                         elementwise_function_one_arg_promoted_parametrize_inputs,
+                         ids=elementwise_function_one_arg_promoted_parametrize_ids)
 # The spec explicitly requires type promotion to work for shape 0
 # Unfortunately, data(), isn't compatible with @example, so this is commented
 # out for now.
@@ -485,7 +488,9 @@ scalar_promotion_parametrize_inputs = [(binary_op_name, dtype_name, scalar_type)
                                        for dtype_name in input_types[elementwise_function_input_types[operators_to_functions[binary_op_name]]]
                                        for scalar_type in dtypes_to_scalars[dtype_name]]
 
-@pytest.mark.parametrize('binary_op_name,dtype_name,scalar_type', scalar_promotion_parametrize_inputs)
+
+@pytest.mark.parametrize('binary_op_name,dtype_name,scalar_type',
+                         scalar_promotion_parametrize_inputs)
 @given(shape=shapes, python_scalars=data(), fillvalues=data())
 def test_operator_scalar_promotion(binary_op_name, dtype_name, scalar_type,
                                    shape, python_scalars, fillvalues):
