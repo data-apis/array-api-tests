@@ -396,7 +396,7 @@ def test_elementwise_function_two_arg_promoted_type_promotion(func_name,
 
     for i in [func, dtype1, dtype2, res_dtype]:
         if isinstance(i, _array_module._UndefinedStub):
-            func._raise()
+            i._raise()
 
     shape1, shape2 = two_shapes
     a1 = full(shape1, fillvalue1, dtype=dtype1)
@@ -431,7 +431,7 @@ def test_elementwise_function_two_arg_same_x1_type_promotion(func_name, two_shap
 
     for i in [func, dtype1, dtype2, res_dtype]:
         if isinstance(i, _array_module._UndefinedStub):
-            func._raise()
+            i._raise()
 
     shape1, shape2 = two_shapes
     a1 = full(shape1, fillvalue1, dtype=dtype1)
@@ -476,7 +476,7 @@ def test_elementwise_function_one_arg_type_promotion(func_name, shape,
 
     for i in [func, dtype]:
         if isinstance(i, _array_module._UndefinedStub):
-            func._raise()
+            i._raise()
 
     x = full(shape, fillvalue, dtype=dtype)
     res = func(x)
