@@ -13,19 +13,19 @@ from __future__ import annotations
 from enum import IntEnum
 from ._types import Optional, PyCapsule, Tuple, Union, array
 
-def __abs__(x: array, /) -> array:
+def __abs__(self: array, /) -> array:
     """
     Note: __abs__ is a method of the array object.
     """
     pass
 
-def __add__(x1: array, x2: array, /) -> array:
+def __add__(self: array, other: array, /) -> array:
     """
     Note: __add__ is a method of the array object.
     """
     pass
 
-def __and__(x1: array, x2: array, /) -> array:
+def __and__(self: array, other: array, /) -> array:
     """
     Note: __and__ is a method of the array object.
     """
@@ -37,325 +37,325 @@ def __array_namespace__(self: array, /, *, api_version: Optional[str] = None) ->
     """
     pass
 
-def __bool__(x: array, /) -> bool:
+def __bool__(self: array, /) -> bool:
     """
     Note: __bool__ is a method of the array object.
     """
     pass
 
-def __dlpack__(x: array, /, *, stream: Optional[int] = None) -> PyCapsule:
+def __dlpack__(self: array, /, *, stream: Optional[int] = None) -> PyCapsule:
     """
     Note: __dlpack__ is a method of the array object.
     """
     pass
 
-def __dlpack_device__(x: array, /) -> Tuple[IntEnum, int]:
+def __dlpack_device__(self: array, /) -> Tuple[IntEnum, int]:
     """
     Note: __dlpack_device__ is a method of the array object.
     """
     pass
 
-def __eq__(x1: array, x2: array, /) -> array:
+def __eq__(self: array, other: array, /) -> array:
     """
     Note: __eq__ is a method of the array object.
     """
     pass
 
-def __float__(x: array, /) -> float:
+def __float__(self: array, /) -> float:
     """
     Note: __float__ is a method of the array object.
     """
     pass
 
-def __floordiv__(x1: array, x2: array, /) -> array:
+def __floordiv__(self: array, other: array, /) -> array:
     """
     Note: __floordiv__ is a method of the array object.
     """
     pass
 
-def __ge__(x1: array, x2: array, /) -> array:
+def __ge__(self: array, other: array, /) -> array:
     """
     Note: __ge__ is a method of the array object.
     """
     pass
 
-def __getitem__(x: array, key: Union[int, slice, ellipsis, Tuple[Union[int, slice, ellipsis], ...], array], /) -> array:
+def __getitem__(self: array, key: Union[int, slice, ellipsis, Tuple[Union[int, slice, ellipsis], ...], array], /) -> array:
     """
     Note: __getitem__ is a method of the array object.
     """
     pass
 
-def __gt__(x1: array, x2: array, /) -> array:
+def __gt__(self: array, other: array, /) -> array:
     """
     Note: __gt__ is a method of the array object.
     """
     pass
 
-def __int__(x: array, /) -> int:
+def __int__(self: array, /) -> int:
     """
     Note: __int__ is a method of the array object.
     """
     pass
 
-def __invert__(x: array, /) -> array:
+def __invert__(self: array, /) -> array:
     """
     Note: __invert__ is a method of the array object.
     """
     pass
 
-def __le__(x1: array, x2: array, /) -> array:
+def __le__(self: array, other: array, /) -> array:
     """
     Note: __le__ is a method of the array object.
     """
     pass
 
-def __len__(x, /):
+def __len__(self, /):
     """
     Note: __len__ is a method of the array object.
     """
     pass
 
-def __lshift__(x1: array, x2: array, /) -> array:
+def __lshift__(self: array, other: array, /) -> array:
     """
     Note: __lshift__ is a method of the array object.
     """
     pass
 
-def __lt__(x1: array, x2: array, /) -> array:
+def __lt__(self: array, other: array, /) -> array:
     """
     Note: __lt__ is a method of the array object.
     """
     pass
 
-def __matmul__(x1: array, x2: array, /) -> array:
+def __matmul__(self: array, other: array, /) -> array:
     """
     Note: __matmul__ is a method of the array object.
     """
     pass
 
-def __mod__(x1: array, x2: array, /) -> array:
+def __mod__(self: array, other: array, /) -> array:
     """
     Note: __mod__ is a method of the array object.
     """
     pass
 
-def __mul__(x1: array, x2: array, /) -> array:
+def __mul__(self: array, other: array, /) -> array:
     """
     Note: __mul__ is a method of the array object.
     """
     pass
 
-def __ne__(x1: array, x2: array, /) -> array:
+def __ne__(self: array, other: array, /) -> array:
     """
     Note: __ne__ is a method of the array object.
     """
     pass
 
-def __neg__(x: array, /) -> array:
+def __neg__(self: array, /) -> array:
     """
     Note: __neg__ is a method of the array object.
     """
     pass
 
-def __or__(x1: array, x2: array, /) -> array:
+def __or__(self: array, other: array, /) -> array:
     """
     Note: __or__ is a method of the array object.
     """
     pass
 
-def __pos__(x: array, /) -> array:
+def __pos__(self: array, /) -> array:
     """
     Note: __pos__ is a method of the array object.
     """
     pass
 
-def __pow__(x1: array, x2: array, /) -> array:
+def __pow__(self: array, other: array, /) -> array:
     """
     Note: __pow__ is a method of the array object.
     """
     pass
 
-def __rshift__(x1: array, x2: array, /) -> array:
+def __rshift__(self: array, other: array, /) -> array:
     """
     Note: __rshift__ is a method of the array object.
     """
     pass
 
-def __setitem__(x, key, value, /):
+def __setitem__(self, key, value, /):
     """
     Note: __setitem__ is a method of the array object.
     """
     pass
 
-def __sub__(x1: array, x2: array, /) -> array:
+def __sub__(self: array, other: array, /) -> array:
     """
     Note: __sub__ is a method of the array object.
     """
     pass
 
-def __truediv__(x1: array, x2: array, /) -> array:
+def __truediv__(self: array, other: array, /) -> array:
     """
     Note: __truediv__ is a method of the array object.
     """
     pass
 
-def __xor__(x1: array, x2: array, /) -> array:
+def __xor__(self: array, other: array, /) -> array:
     """
     Note: __xor__ is a method of the array object.
     """
     pass
 
-def __iadd__(x1: array, x2: array, /) -> array:
+def __iadd__(self: array, other: array, /) -> array:
     """
     Note: __iadd__ is a method of the array object.
     """
     pass
 
-def __radd__(x1: array, x2: array, /) -> array:
+def __radd__(self: array, other: array, /) -> array:
     """
     Note: __radd__ is a method of the array object.
     """
     pass
 
-def __iand__(x1: array, x2: array, /) -> array:
+def __iand__(self: array, other: array, /) -> array:
     """
     Note: __iand__ is a method of the array object.
     """
     pass
 
-def __rand__(x1: array, x2: array, /) -> array:
+def __rand__(self: array, other: array, /) -> array:
     """
     Note: __rand__ is a method of the array object.
     """
     pass
 
-def __ifloordiv__(x1: array, x2: array, /) -> array:
+def __ifloordiv__(self: array, other: array, /) -> array:
     """
     Note: __ifloordiv__ is a method of the array object.
     """
     pass
 
-def __rfloordiv__(x1: array, x2: array, /) -> array:
+def __rfloordiv__(self: array, other: array, /) -> array:
     """
     Note: __rfloordiv__ is a method of the array object.
     """
     pass
 
-def __ilshift__(x1: array, x2: array, /) -> array:
+def __ilshift__(self: array, other: array, /) -> array:
     """
     Note: __ilshift__ is a method of the array object.
     """
     pass
 
-def __rlshift__(x1: array, x2: array, /) -> array:
+def __rlshift__(self: array, other: array, /) -> array:
     """
     Note: __rlshift__ is a method of the array object.
     """
     pass
 
-def __imatmul__(x1: array, x2: array, /) -> array:
+def __imatmul__(self: array, other: array, /) -> array:
     """
     Note: __imatmul__ is a method of the array object.
     """
     pass
 
-def __rmatmul__(x1: array, x2: array, /) -> array:
+def __rmatmul__(self: array, other: array, /) -> array:
     """
     Note: __rmatmul__ is a method of the array object.
     """
     pass
 
-def __imod__(x1: array, x2: array, /) -> array:
+def __imod__(self: array, other: array, /) -> array:
     """
     Note: __imod__ is a method of the array object.
     """
     pass
 
-def __rmod__(x1: array, x2: array, /) -> array:
+def __rmod__(self: array, other: array, /) -> array:
     """
     Note: __rmod__ is a method of the array object.
     """
     pass
 
-def __imul__(x1: array, x2: array, /) -> array:
+def __imul__(self: array, other: array, /) -> array:
     """
     Note: __imul__ is a method of the array object.
     """
     pass
 
-def __rmul__(x1: array, x2: array, /) -> array:
+def __rmul__(self: array, other: array, /) -> array:
     """
     Note: __rmul__ is a method of the array object.
     """
     pass
 
-def __ior__(x1: array, x2: array, /) -> array:
+def __ior__(self: array, other: array, /) -> array:
     """
     Note: __ior__ is a method of the array object.
     """
     pass
 
-def __ror__(x1: array, x2: array, /) -> array:
+def __ror__(self: array, other: array, /) -> array:
     """
     Note: __ror__ is a method of the array object.
     """
     pass
 
-def __ipow__(x1: array, x2: array, /) -> array:
+def __ipow__(self: array, other: array, /) -> array:
     """
     Note: __ipow__ is a method of the array object.
     """
     pass
 
-def __rpow__(x1: array, x2: array, /) -> array:
+def __rpow__(self: array, other: array, /) -> array:
     """
     Note: __rpow__ is a method of the array object.
     """
     pass
 
-def __irshift__(x1: array, x2: array, /) -> array:
+def __irshift__(self: array, other: array, /) -> array:
     """
     Note: __irshift__ is a method of the array object.
     """
     pass
 
-def __rrshift__(x1: array, x2: array, /) -> array:
+def __rrshift__(self: array, other: array, /) -> array:
     """
     Note: __rrshift__ is a method of the array object.
     """
     pass
 
-def __isub__(x1: array, x2: array, /) -> array:
+def __isub__(self: array, other: array, /) -> array:
     """
     Note: __isub__ is a method of the array object.
     """
     pass
 
-def __rsub__(x1: array, x2: array, /) -> array:
+def __rsub__(self: array, other: array, /) -> array:
     """
     Note: __rsub__ is a method of the array object.
     """
     pass
 
-def __itruediv__(x1: array, x2: array, /) -> array:
+def __itruediv__(self: array, other: array, /) -> array:
     """
     Note: __itruediv__ is a method of the array object.
     """
     pass
 
-def __rtruediv__(x1: array, x2: array, /) -> array:
+def __rtruediv__(self: array, other: array, /) -> array:
     """
     Note: __rtruediv__ is a method of the array object.
     """
     pass
 
-def __ixor__(x1: array, x2: array, /) -> array:
+def __ixor__(self: array, other: array, /) -> array:
     """
     Note: __ixor__ is a method of the array object.
     """
     pass
 
-def __rxor__(x1: array, x2: array, /) -> array:
+def __rxor__(self: array, other: array, /) -> array:
     """
     Note: __rxor__ is a method of the array object.
     """

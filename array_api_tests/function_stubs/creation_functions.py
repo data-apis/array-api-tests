@@ -11,6 +11,7 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/creati
 from __future__ import annotations
 
 from ._types import Optional, SupportsBufferProtocol, SupportsDLPack, Tuple, Union, array, device, dtype
+from collections.abc import Sequence
 
 def arange(start: Union[int, float], /, *, stop: Optional[Union[int, float]] = None, step: Union[int, float] = 1, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
     pass
@@ -39,6 +40,9 @@ def full_like(x: array, fill_value: Union[int, float], /, *, dtype: Optional[dty
 def linspace(start: Union[int, float], stop: Union[int, float], num: int, /, *, dtype: Optional[dtype] = None, device: Optional[device] = None, endpoint: bool = True) -> array:
     pass
 
+def meshgrid(*arrays: Sequence[array], indexing: str = 'xy') -> List[array, ...]:
+    pass
+
 def ones(shape: Union[int, Tuple[int, ...]], /, *, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
     pass
 
@@ -51,4 +55,4 @@ def zeros(shape: Union[int, Tuple[int, ...]], /, *, dtype: Optional[dtype] = Non
 def zeros_like(x: array, /, *, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
     pass
 
-__all__ = ['arange', 'asarray', 'empty', 'empty_like', 'eye', 'from_dlpack', 'full', 'full_like', 'linspace', 'ones', 'ones_like', 'zeros', 'zeros_like']
+__all__ = ['arange', 'asarray', 'empty', 'empty_like', 'eye', 'from_dlpack', 'full', 'full_like', 'linspace', 'meshgrid', 'ones', 'ones_like', 'zeros', 'zeros_like']
