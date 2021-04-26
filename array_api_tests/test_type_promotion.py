@@ -601,10 +601,15 @@ def test_operator_two_arg_same_x1_promotion(binary_op_name, dtypes, two_shapes,
 
     assert res.dtype == res_dtype, f"{dtype1} {binary_op} {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
 
+operator_inplace_two_arg_same_x1_parametrize_inputs = [(binary_op, dtypes) for binary_op, dtypes in operator_two_arg_same_x1_parametrize_inputs
+                                                        if dtypes[0][0] == dtypes[1]]
+operator_inplace_two_arg_same_x1_parametrize_ids = ['-'.join((n[:2] + 'i' + n[2:], d1, d2)) for n, ((d1, d2), _)
+                                            in operator_inplace_two_arg_same_x1_parametrize_inputs]
+
 @pytest.mark.parametrize('binary_op_name,dtypes',
-                         operator_two_arg_same_x1_parametrize_inputs,
-                         ids=operator_two_arg_same_x1_parametrize_ids)
-@given(two_shapes=two_mutually_broadcastable_shapes, fillvalues=data())
+                         operator_inplace_two_arg_same_x1_parametrize_inputs,
+                         ids=operator_inplace_two_arg_same_x1_parametrize_ids)
+@given(two_shapes=two_broadcastable_shapes(), fillvalues=data())
 def test_operator_inplace_two_arg_same_x1_promotion(binary_op_name, dtypes, two_shapes,
                                     fillvalues):
     binary_op = binary_operators[binary_op_name]
