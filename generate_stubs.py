@@ -198,6 +198,8 @@ def {annotated_sig}:{doc}
         code += ', '.join(f"'{i}'" for i in modules[module_name])
         code += ']\n'
 
+        with open(py_path, 'w') as f:
+            f.write(code)
         code = fix_code(code, file=py_path, verbose=False, quiet=False)
         with open(py_path, 'w') as f:
             f.write(code)
