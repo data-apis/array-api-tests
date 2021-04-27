@@ -6,15 +6,17 @@ from functools import reduce
 
 import pytest
 
-from hypothesis import given, assume
+from hypothesis import given
+from hypothesis.strategies import data, sampled_from
 
-from .hypothesis_helpers import nonbroadcastable_ones_array_two_args
+from .hypothesis_helpers import shapes
 from .pytest_helpers import raises, doesnt_raise, nargs
 
 from .test_type_promotion import (elementwise_function_input_types,
-                                  input_types, reverse_dtype_mapping)
+                                  input_types, dtype_mapping)
 from .function_stubs import elementwise_functions
 from . import _array_module
+from ._array_module import ones
 
 # The spec does not specify what exception is raised on broadcast errors. We
 # use a custom exception to distinguish it from potential bugs in
@@ -111,27 +113,24 @@ def test_broadcast_shapes_explicit_spec():
 @pytest.mark.parametrize('func_name', [i for i in
                                        elementwise_functions.__all__ if
                                        nargs(i) > 1])
-@given(args=nonbroadcastable_ones_array_two_args)
-def test_broadcasting_hypothesis(func_name, args):
+@given(shape1=shapes, shape2=shapes, dtype=data())
+def test_broadcasting_hypothesis(func_name, shape1, shape2, dtype):
     # Internal consistency checks
     assert nargs(func_name) == 2
-    assert len(args) == 2
-    assert args[0].dtype == args[1].dtype
 
-    if reverse_dtype_mapping[args[0].dtype] not in input_types[elementwise_function_input_types[func_name]]:
-        assume(False)
+    dtype = dtype_mapping[dtype.draw(sampled_from(input_types[elementwise_function_input_types[func_name]]))]
     func = getattr(_array_module, func_name)
 
     if isinstance(func, _array_module._UndefinedStub):
         func._raise()
 
-    shapes = [i.shape for i in args]
+    args = [ones(shape1, dtype=dtype), ones(shape2, dtype=dtype)]
     try:
-        broadcast_shape = reduce(broadcast_shapes, shapes)
+        broadcast_shape = broadcast_shapes(shape1, shape2)
     except BroadcastError:
         raises(Exception, lambda: func(*args),
-               f"{func_name} should raise an exception from not being able to broadcast inputs with shapes {shapes}")
+               f"{func_name} should raise an exception from not being able to broadcast inputs with shapes {(shape1, shape2)}")
     else:
         result = doesnt_raise(lambda: func(*args),
-            f"{func_name} raised an unexpected exception from broadcastable inputs with shapes {shapes}")
+            f"{func_name} raised an unexpected exception from broadcastable inputs with shapes {(shape1, shape2)}")
         assert result.shape == broadcast_shape, "broadcast shapes incorrect"
