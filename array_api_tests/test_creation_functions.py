@@ -7,7 +7,7 @@ from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  scalars)
 
 from hypothesis import assume, given
-from hypothesis.strategies import integers, floats, one_of, none, booleans
+from hypothesis.strategies import integers, floats, one_of, none, booleans, just
 
 int_range = integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
 float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE,
@@ -81,24 +81,31 @@ def test_empty(shape, dtype):
 def test_empty_like():
     pass
 
-@given(sqrt_sizes, one_of(none(), sqrt_sizes), one_of(none(), integers()), numeric_dtypes)
-def test_eye(N, M, k, dtype):
-    kwargs = {k: v for k, v in {'M': M, 'k': k, 'dtype': dtype}.items() if v
+# TODO: Use this method for all optional arguments
+optional_marker = object()
+
+@given(sqrt_sizes, one_of(just(optional_marker), none(), sqrt_sizes), one_of(none(), integers()), numeric_dtypes)
+def test_eye(n_rows, n_cols, k, dtype):
+    kwargs = {k: v for k, v in {'k': k, 'dtype': dtype}.items() if v
               is not None}
-    a = eye(N, **kwargs)
+    if n_cols is optional_marker:
+        a = eye(n_rows, **kwargs)
+        n_cols = None
+    else:
+        a = eye(n_rows, n_cols, **kwargs)
     if dtype is None:
         assert a.dtype in _floating_dtypes, "eye() should produce an array with the default floating point dtype"
     else:
         assert a.dtype == dtype, "eye() did not produce the correct dtype"
 
-    if M is None:
-        M = N
-    assert a.shape == (N, M), "eye() produced an array with incorrect shape"
+    if n_cols is None:
+        n_cols = n_rows
+    assert a.shape == (n_rows, n_cols), "eye() produced an array with incorrect shape"
 
     if k is None:
         k = 0
-    for i in range(N):
-        for j in range(M):
+    for i in range(n_rows):
+        for j in range(n_cols):
             if j - i == k:
                 assert a[i, j] == 1, "eye() did not produce a 1 on the diagonal"
             else:
