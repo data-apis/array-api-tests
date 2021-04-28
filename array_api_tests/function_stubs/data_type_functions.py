@@ -13,10 +13,10 @@ from __future__ import annotations
 from ._types import List, Tuple, Union, array, dtype
 from collections.abc import Sequence
 
-def broadcast_arrays(*args: Sequence[array]) -> List[array]:
+def broadcast_arrays(*arrays: Sequence[array]) -> List[array]:
     pass
 
-def broadcast_to(x: array, shape: Tuple[int, ...], /) -> array:
+def broadcast_to(x: array, /, shape: Tuple[int, ...]) -> array:
     pass
 
 def can_cast(from_: Union[dtype, array], to: dtype, /) -> bool:
