@@ -10,10 +10,12 @@ from hypothesis import assume, given
 from hypothesis.strategies import integers, floats, one_of, none, booleans
 
 int_range = integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
-float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE, allow_nan=False)
+float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE,
+                     allow_nan=False)
 @given(one_of(int_range, float_range),
        one_of(none(), int_range, float_range),
-       one_of(none(), int_range, float_range).filter(lambda x: x != 0),
+       one_of(none(), int_range, float_range).filter(lambda x: x != 0
+                                                     and abs(x) > 0.01 if isinstance(x, float) else True),
        one_of(none(), numeric_dtypes))
 def test_arange(start, stop, step, dtype):
     if dtype in dtype_ranges:
