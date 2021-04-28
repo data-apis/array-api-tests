@@ -1,7 +1,7 @@
-from ._array_module import (asarray, arange, ceil, empty, _floating_dtypes, eye, full,
+from ._array_module import (asarray, arange, ceil, empty, eye, full,
 equal, all, linspace, ones, zeros, isnan)
 from .array_helpers import (is_integer_dtype, dtype_ranges,
-                            assert_exactly_equal, isintegral)
+                            assert_exactly_equal, isintegral, is_float_dtype)
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  shapes, sizes, sqrt_sizes, shared_dtypes,
                                  scalars)
@@ -15,7 +15,7 @@ float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE,
 @given(one_of(int_range, float_range),
        one_of(none(), int_range, float_range),
        one_of(none(), int_range, float_range).filter(lambda x: x != 0
-                                                     and abs(x) > 0.01 if isinstance(x, float) else True),
+                                                     and (abs(x) > 0.01 if isinstance(x, float) else True)),
        one_of(none(), numeric_dtypes))
 def test_arange(start, stop, step, dtype):
     if dtype in dtype_ranges:
@@ -68,7 +68,7 @@ def test_arange(start, stop, step, dtype):
 def test_empty(shape, dtype):
     if dtype is None:
         a = empty(shape)
-        assert a.dtype in _floating_dtypes, "empty() should produce an array with the default floating point dtype"
+        assert is_float_dtype(a.dtype), "empty() should produce an array with the default floating point dtype"
     else:
         a = empty(shape, dtype=dtype)
         assert a.dtype == dtype
@@ -94,7 +94,7 @@ def test_eye(n_rows, n_cols, k, dtype):
     else:
         a = eye(n_rows, n_cols, **kwargs)
     if dtype is None:
-        assert a.dtype in _floating_dtypes, "eye() should produce an array with the default floating point dtype"
+        assert is_float_dtype(a.dtype), "eye() should produce an array with the default floating point dtype"
     else:
         assert a.dtype == dtype, "eye() did not produce the correct dtype"
 
@@ -125,10 +125,10 @@ def test_full(shape, fill_value, dtype):
         assert a.dtype == dtype
 
     assert a.shape == shape, "full() produced an array with incorrect shape"
-    if isnan(fill_value):
+    if is_float_dtype(dtype) and isnan(asarray(fill_value)):
         assert all(isnan(a)), "full() array did not equal the fill value"
     else:
-        assert all(equal(a, fill_value)), "full() array did not equal the fill value"
+        assert all(equal(a, asarray(fill_value))), "full() array did not equal the fill value"
 
 # TODO: implement full_like (requires hypothesis arrays support)
 def test_full_like():
@@ -147,7 +147,7 @@ def test_linspace(start, stop, num, dtype, endpoint):
             assume(False)
     # Skip on int start or stop that cannot be exactly represented as a float,
     # since we do not have good approx_equal helpers yet.
-    if (dtype is None or dtype in _floating_dtypes
+    if (is_float_dtype(dtype)
         and ((isinstance(start, int) and not isintegral(start))
              or (isinstance(stop, int) and not isintegral(stop)))):
         assume(False)
@@ -157,7 +157,7 @@ def test_linspace(start, stop, num, dtype, endpoint):
     a = linspace(start, stop, num, **kwargs)
 
     if dtype is None:
-        assert a.dtype in _floating_dtypes, "linspace() should produce an array with the default floating point dtype"
+        assert is_float_dtype(a.dtype), "linspace() should produce an array with the default floating point dtype"
     else:
         assert a.dtype == dtype, "linspace() did not produce the correct dtype"
 

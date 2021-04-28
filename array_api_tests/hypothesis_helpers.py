@@ -10,20 +10,15 @@ from hypothesis.extra.numpy import mutually_broadcastable_shapes
 from hypothesis import assume
 
 from .pytest_helpers import nargs
-from .array_helpers import dtype_ranges
-from ._array_module import (_integer_dtypes, _floating_dtypes,
-                            _numeric_dtypes, _boolean_dtypes, _dtypes, ones,
-                            full, float32, float64, bool as bool_dtype)
+from .array_helpers import (dtype_ranges, integer_dtype_objects,
+                            floating_dtype_objects, numeric_dtype_objects,
+                            boolean_dtype_objects,
+                            integer_or_boolean_dtype_objects, dtype_objects)
+from ._array_module import (ones, full, float32, float64, bool as bool_dtype)
 from . import _array_module
 
 from .function_stubs import elementwise_functions
 
-integer_dtype_objects = [getattr(_array_module, t) for t in _integer_dtypes]
-floating_dtype_objects = [getattr(_array_module, t) for t in _floating_dtypes]
-numeric_dtype_objects = [getattr(_array_module, t) for t in _numeric_dtypes]
-boolean_dtype_objects = [getattr(_array_module, t) for t in _boolean_dtypes]
-integer_or_boolean_dtype_objects = integer_dtype_objects + boolean_dtype_objects
-dtype_objects = [getattr(_array_module, t) for t in _dtypes]
 
 integer_dtypes = sampled_from(integer_dtype_objects)
 floating_dtypes = sampled_from(floating_dtype_objects)

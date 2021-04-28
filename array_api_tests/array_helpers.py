@@ -3,7 +3,9 @@ from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
                             zeros, ones, full, bool, int8, int16, int32,
                             int64, uint8, uint16, uint32, uint64, float32,
                             float64, nan, inf, pi, remainder, divide, isinf,
-                            negative)
+                            negative, _integer_dtypes, _floating_dtypes,
+                            _numeric_dtypes, _boolean_dtypes, _dtypes, )
+from . import _array_module
 
 # These are exported here so that they can be included in the special cases
 # tests from this file.
@@ -285,10 +287,23 @@ def same_sign(x, y):
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
 
+
+integer_dtype_objects = [getattr(_array_module, t) for t in _integer_dtypes]
+floating_dtype_objects = [getattr(_array_module, t) for t in _floating_dtypes]
+numeric_dtype_objects = [getattr(_array_module, t) for t in _numeric_dtypes]
+boolean_dtype_objects = [getattr(_array_module, t) for t in _boolean_dtypes]
+integer_or_boolean_dtype_objects = integer_dtype_objects + boolean_dtype_objects
+dtype_objects = [getattr(_array_module, t) for t in _dtypes]
+
 def is_integer_dtype(dtype):
+    if dtype is None:
+        return False
     return dtype in [int8, int16, int32, int16, uint8, uint16, uint32, uint64]
 
 def is_float_dtype(dtype):
+    if dtype is None:
+        # numpy.dtype('float64') == True gives True
+        return False
     # TODO: Return True even for floating point dtypes that aren't part of the
     # spec, like np.float16
     return dtype in [float32, float64]
