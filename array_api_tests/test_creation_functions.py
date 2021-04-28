@@ -1,4 +1,4 @@
-from ._array_module import (arange, ceil, empty, _floating_dtypes, eye, full,
+from ._array_module import (asarray, arange, ceil, empty, _floating_dtypes, eye, full,
 equal, all, linspace, ones, zeros, isnan)
 from .array_helpers import (is_integer_dtype, dtype_ranges,
                             assert_exactly_equal, isintegral)
@@ -62,7 +62,7 @@ def test_arange(start, stop, step, dtype):
             and step is not None
             and (step > 0 and stop >= start
                  or step < 0 and stop <= start)):
-            assert a.size == ceil((stop-start)/step), "arange() produced an array of the incorrect size"
+            assert a.size == ceil(asarray((stop-start)/step)), "arange() produced an array of the incorrect size"
 
 @given(one_of(shapes, sizes), one_of(none(), dtypes))
 def test_empty(shape, dtype):
