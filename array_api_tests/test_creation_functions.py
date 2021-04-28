@@ -125,7 +125,7 @@ def test_full(shape, fill_value, dtype):
         assert a.dtype == dtype
 
     assert a.shape == shape, "full() produced an array with incorrect shape"
-    if is_float_dtype(dtype) and isnan(asarray(fill_value)):
+    if is_float_dtype(a.dtype) and isnan(asarray(fill_value)):
         assert all(isnan(a)), "full() array did not equal the fill value"
     else:
         assert all(equal(a, asarray(fill_value))), "full() array did not equal the fill value"
