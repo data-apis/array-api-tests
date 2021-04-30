@@ -398,7 +398,7 @@ def test_log2(x):
 def test_log10(x):
     a = _array_module.log10(x)
 
-@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
+@given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_logaddexp(args):
     x1, x2 = args
     sanity_check(x1, x2)
