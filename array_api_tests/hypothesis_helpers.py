@@ -104,7 +104,7 @@ nonbroadcastable_ones_array_two_args = hypotheses_tuples(ones_arrays, ones_array
 numeric_arrays = builds(full, just((1,)), floats())
 
 @composite
-def scalars(draw, dtypes):
+def scalars(draw, dtypes, finite=False):
     """
     Strategy to generate a scalar that matches a dtype strategy
 
@@ -117,8 +117,12 @@ def scalars(draw, dtypes):
     elif dtype == bool_dtype:
         return draw(booleans())
     elif dtype == float64:
+        if finite:
+            return draw(floats(allow_nan=False, allow_infinity=False))
         return draw(floats())
     elif dtype == float32:
+        if finite:
+            return draw(floats(width=32, allow_nan=False, allow_infinity=False))
         return draw(floats(width=32))
     else:
         raise ValueError(f"Unrecognized dtype {dtype}")
