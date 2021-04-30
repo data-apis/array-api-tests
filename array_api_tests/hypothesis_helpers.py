@@ -130,7 +130,7 @@ def scalars(draw, dtypes, finite=False):
 @composite
 def array_scalars(draw, dtypes):
     dtype = draw(dtypes)
-    return full((1,), draw(scalars(just(dtype))), dtype=dtype)
+    return full((), draw(scalars(just(dtype))), dtype=dtype)
 
 @composite
 def integer_indices(draw, sizes):
