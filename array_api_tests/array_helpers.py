@@ -190,10 +190,8 @@ def inrange(x, a, b, epsilon=0):
     Returns a mask for values of x in the range [a-epsilon, a+epsilon], inclusive
 
     """
-    A = full(x.shape, a, dtype=x.dtype)
-    B = full(x.shape, b, dtype=x.dtype)
     eps = full(x.shape, epsilon, dtype=x.dtype)
-    return logical_and(less_equal(A-eps, x), less_equal(x, B+eps))
+    return logical_and(less_equal(a-eps, x), less_equal(x, b+eps))
 
 def isintegral(x):
     """
