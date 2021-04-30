@@ -142,9 +142,9 @@ def test_full_like():
 def test_linspace(start, stop, num, dtype, endpoint):
     # Skip on int start or stop that cannot be exactly represented as a float,
     # since we do not have good approx_equal helpers yet.
-    if (is_float_dtype(dtype)
-        and ((isinstance(start, int) and not isintegral(start))
-             or (isinstance(stop, int) and not isintegral(stop)))):
+    if ((dtype is None or is_float_dtype(dtype))
+        and ((isinstance(start, int) and not isintegral(asarray(start, dtype=dtype)))
+             or (isinstance(stop, int) and not isintegral(asarray(stop, dtype=dtype))))):
         assume(False)
 
     kwargs = {k: v for k, v in {'dtype': dtype, 'endpoint': endpoint}.items()
