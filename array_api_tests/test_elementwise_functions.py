@@ -9,7 +9,7 @@ test that. Tests for the special cases are generated and tested separately in
 special_cases/
 
 Note: Due to current limitations in Hypothesis, the tests below only test
-arrays of shape (1,). In the future, the tests should be updated to test
+arrays of shape (). In the future, the tests should be updated to test
 arrays of any shape, using masking patterns (similar to the tests in special_cases/
 
 """
@@ -196,11 +196,11 @@ def test_bitwise_and(args):
     a = _array_module.bitwise_and(x1, x2)
     # Compare against the Python & operator.
     # TODO: Generalize this properly for inputs that are arrays.
-    if not (x1.shape == x2.shape == (1,)):
+    if not (x1.shape == x2.shape == ()):
         raise RuntimeError("Error: test_bitwise_and needs to be updated for nonscalar array inputs")
-    x = int(x1[0])
-    y = int(x2[0])
-    res = int(a[0])
+    x = int(x1)
+    y = int(x2)
+    res = int(a)
     if a.dtype == bool_dtype:
         assert (x and y) == res
     else:
@@ -218,17 +218,17 @@ def test_bitwise_left_shift(args):
     a = _array_module.bitwise_left_shift(x1, x2)
     # Compare against the Python << operator.
     # TODO: Generalize this properly for inputs that are arrays.
-    if not (x1.shape == x2.shape == (1,)):
+    if not (x1.shape == x2.shape == ()):
         raise RuntimeError("Error: test_bitwise_left_shift needs to be updated for nonscalar array inputs")
-    x = int(x1[0])
-    y = int(x2[0])
+    x = int(x1)
+    y = int(x2)
     if y >= dtype_nbits(a.dtype):
         # Avoid shifting very large y in Python ints
         ans = 0
     else:
         ans = x << y
     ans = int_to_dtype(ans, dtype_nbits(a.dtype), dtype_signed(a.dtype))
-    res = int(a[0])
+    res = int(a)
     assert ans == res
 
 @given(integer_or_boolean_scalars)
@@ -237,10 +237,10 @@ def test_bitwise_invert(x):
     a = _array_module.bitwise_invert(x)
     # Compare against the Python ~ operator.
     # TODO: Generalize this properly for inputs that are arrays.
-    if not (x.shape == (1,)):
+    if not (x.shape == ()):
         raise RuntimeError("Error: test_bitwise_invert needs to be updated for nonscalar array inputs")
-    x = int(x[0])
-    res = int(a[0])
+    x = int(x)
+    res = int(a)
     if a.dtype == bool_dtype:
         assert (not x) == res
     else:
@@ -255,11 +255,11 @@ def test_bitwise_or(args):
     a = _array_module.bitwise_or(x1, x2)
     # Compare against the Python | operator.
     # TODO: Generalize this properly for inputs that are arrays.
-    if not (x1.shape == x2.shape == (1,)):
+    if not (x1.shape == x2.shape == ()):
         raise RuntimeError("Error: test_bitwise_or needs to be updated for nonscalar array inputs")
-    x = int(x1[0])
-    y = int(x2[0])
-    res = int(a[0])
+    x = int(x1)
+    y = int(x2)
+    res = int(a)
     if a.dtype == bool_dtype:
         assert (x or y) == res
     else:
@@ -277,12 +277,12 @@ def test_bitwise_right_shift(args):
     a = _array_module.bitwise_right_shift(x1, x2)
     # Compare against the Python >> operator.
     # TODO: Generalize this properly for inputs that are arrays.
-    if not (x1.shape == x2.shape == (1,)):
+    if not (x1.shape == x2.shape == ()):
         raise RuntimeError("Error: test_bitwise_right_shift needs to be updated for nonscalar array inputs")
-    x = int(x1[0])
-    y = int(x2[0])
+    x = int(x1)
+    y = int(x2)
     ans = int_to_dtype(x >> y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
-    res = int(a[0])
+    res = int(a)
     assert ans == res
 
 @given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
@@ -293,11 +293,11 @@ def test_bitwise_xor(args):
     a = _array_module.bitwise_xor(x1, x2)
     # Compare against the Python ^ operator.
     # TODO: Generalize this properly for inputs that are arrays.
-    if not (x1.shape == x2.shape == (1,)):
+    if not (x1.shape == x2.shape == ()):
         raise RuntimeError("Error: test_bitwise_xor needs to be updated for nonscalar array inputs")
-    x = int(x1[0])
-    y = int(x2[0])
-    res = int(a[0])
+    x = int(x1)
+    y = int(x2)
+    res = int(a)
     if a.dtype == bool_dtype:
         assert (x ^ y) == res
     else:
