@@ -248,7 +248,8 @@ def positive_mathematical_sign(x):
     nans, as signed nans are not required by the spec.
 
     """
-    return logical_or(greater(x, 0), isposzero(x))
+    z = zero(x.shape, x.dtype)
+    return logical_or(greater(x, z), isposzero(x))
 
 def assert_positive_mathematical_sign(x):
     assert all(positive_mathematical_sign(x)), "The input arrays do not have a positive mathematical sign"
@@ -262,9 +263,10 @@ def negative_mathematical_sign(x):
     nans, as signed nans are not required by the spec.
 
     """
+    z = zero(x.shape, x.dtype)
     if x.dtype in [float32, float64]:
-        return logical_or(less(x, 0), isnegzero(x))
-    return less(x, 0)
+        return logical_or(less(x, z), isnegzero(x))
+    return less(x, z)
 
 def assert_negative_mathematical_sign(x):
     assert all(negative_mathematical_sign(x)), "The input arrays do not have a negative mathematical sign"
