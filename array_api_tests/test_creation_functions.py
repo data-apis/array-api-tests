@@ -134,17 +134,12 @@ def test_full(shape, fill_value, dtype):
 def test_full_like():
     pass
 
-@given(one_of(integers(), floats(allow_nan=False, allow_infinity=False)),
-       one_of(integers(), floats(allow_nan=False, allow_infinity=False)),
+@given(scalars(shared_dtypes, finite=True),
+       scalars(shared_dtypes, finite=True),
        sizes,
-       one_of(none(), dtypes),
+       one_of(none(), shared_dtypes),
        one_of(none(), booleans()),)
 def test_linspace(start, stop, num, dtype, endpoint):
-    if dtype in dtype_ranges:
-        m, M = dtype_ranges[dtype]
-        if (isinstance(start, int) and not (m <= start <= M)
-            or isinstance(stop, int) and not (m <= stop <= M)):
-            assume(False)
     # Skip on int start or stop that cannot be exactly represented as a float,
     # since we do not have good approx_equal helpers yet.
     if (is_float_dtype(dtype)
