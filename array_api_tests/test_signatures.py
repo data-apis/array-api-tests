@@ -2,8 +2,9 @@ import inspect
 
 import pytest
 
-from ._array_module import mod, mod_name, ones, eye, float64
+from ._array_module import mod, mod_name, ones, eye, float64, bool, int64
 from .pytest_helpers import raises, doesnt_raise
+from .test_type_promotion import elementwise_function_input_types, operators_to_functions
 
 from . import function_stubs
 
@@ -22,7 +23,7 @@ def array_method(name):
 def function_category(name):
     return stub_module(name).rsplit('_', 1)[0].replace('_', ' ')
 
-def example_argument(arg, func_name):
+def example_argument(arg, func_name, dtype):
     """
     Get an example argument for the argument arg for the function func_name
 
@@ -38,7 +39,7 @@ def example_argument(arg, func_name):
     known_args = dict(
         M=1,
         N=1,
-        arrays=(ones((1, 3, 3)), ones((1, 3, 3))),
+        arrays=(ones((1, 3, 3), dtype=dtype), ones((1, 3, 3), dtype=dtype)),
         # These cannot be the same as each other, which is why all our test
         # arrays have to have at least 3 dimensions.
         axis1=2,
@@ -57,9 +58,11 @@ def example_argument(arg, func_name):
         num=2,
         offset=1,
         ord=1,
+        other=ones((1, 3, 3), dtype=dtype),
         return_counts=True,
         return_index=True,
         return_inverse=True,
+        self=ones((1, 3, 3), dtype=dtype),
         shape=(1, 3, 3),
         shift=1,
         sorted=False,
@@ -68,9 +71,9 @@ def example_argument(arg, func_name):
         step=2,
         stop=1,
         value=0,
-        x1=ones((1, 3, 3)),
-        x2=ones((1, 3, 3)),
-        x=ones((1, 3, 3)),
+        x1=ones((1, 3, 3), dtype=dtype),
+        x2=ones((1, 3, 3), dtype=dtype),
+        x=ones((1, 3, 3), dtype=dtype),
     )
 
     if arg in known_args:
@@ -105,8 +108,26 @@ def test_function_positional_args(name):
     # checking that it can't be used as a keyword argument. But argument name
     # inspection does not work for most array library functions that are not
     # written in pure Python (e.g., it won't work for numpy ufuncs).
+
+    dtype = None
+    if name.startswith('__i') or name.startswith('__r') and name != '__rshift__':
+        n = operators_to_functions[name[:2] + name[3:]]
+    else:
+        n = operators_to_functions.get(name, name)
+    if 'boolean' in elementwise_function_input_types.get(n, 'floating'):
+        dtype = bool
+    elif 'integer' in elementwise_function_input_types.get(n, 'floating'):
+        dtype = int64
+
     if array_method(name):
-        _mod = ones((1,))
+        if name == '__bool__':
+            _mod = ones((), dtype=bool)
+        elif name == '__int__':
+            _mod = ones((), dtype=int64)
+        elif name == '__float__':
+            _mod = ones((), dtype=float64)
+        else:
+            _mod = example_argument('self', name, dtype)
     else:
         _mod = mod
 
@@ -126,9 +147,9 @@ def test_function_positional_args(name):
         # The actual default values are checked in the specific tests
         nargs.extend([len(args) - i for i in range(1, len(argspec.defaults) + 1)])
 
-    args = [example_argument(arg, name) for arg in args]
+    args = [example_argument(arg, name, dtype) for arg in args]
     if not args:
-        args = [example_argument('x', name)]
+        args = [example_argument('x', name, dtype)]
     else:
         # Duplicate the last positional argument for the n+1 test.
         args = args + [args[-1]]
@@ -160,11 +181,12 @@ def test_function_keyword_only_args(name):
         args = args[1:]
     kwonlyargs = argspec.kwonlyargs
     kwonlydefaults = argspec.kwonlydefaults
+    dtype = None
 
-    args = [example_argument(arg, name) for arg in args]
+    args = [example_argument(arg, name, dtype) for arg in args]
 
     for arg in kwonlyargs:
-        value = example_argument(arg, name)
+        value = example_argument(arg, name, dtype)
         # The "only" part of keyword-only is tested by the positional test above.
         doesnt_raise(lambda: mod_func(*args, **{arg: value}),
                      f"{name}() should accept the keyword-only argument {arg!r}")
