@@ -121,9 +121,10 @@ def test_function_positional_args(name):
     args = argspec.args
     if name.startswith('__'):
         args = args[1:]
-    nargs = len(args)
+    nargs = [len(args)]
     if argspec.defaults:
-        raise RuntimeError(f"Unexpected non-keyword-only keyword argument for {name}. Please update test_signatures.py")
+        # The actual default values are checked in the specific tests
+        nargs.extend([len(args) - i for i in range(1, len(argspec.defaults) + 1)])
 
     args = [example_argument(arg, name) for arg in args]
     if not args:
@@ -132,8 +133,8 @@ def test_function_positional_args(name):
         # Duplicate the last positional argument for the n+1 test.
         args = args + [args[-1]]
 
-    for n in range(nargs+2):
-        if n == nargs:
+    for n in range(nargs[0]+2):
+        if n in nargs:
             doesnt_raise(lambda: mod_func(*args[:n]))
         else:
             # NumPy ufuncs raise ValueError instead of TypeError
