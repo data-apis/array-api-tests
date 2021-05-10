@@ -159,6 +159,9 @@ def test_function_positional_args(name):
     required_kwargs = {arg: example_argument(arg, name, dtype) for arg in argspec.kwonlyargs if arg not in kwonlydefaults}
 
     for n in range(nargs[0]+2):
+        if name == 'result_type' and n == 0:
+            # This case is not encoded in the signature, but isn't allowed.
+            continue
         if n in nargs:
             doesnt_raise(lambda: mod_func(*args[:n], **required_kwargs))
         elif argspec.varargs:
