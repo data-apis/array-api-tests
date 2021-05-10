@@ -110,7 +110,8 @@ def test_function_positional_args(name):
     # written in pure Python (e.g., it won't work for numpy ufuncs).
 
     dtype = None
-    if name.startswith('__i') or name.startswith('__r') and name != '__rshift__':
+    if (name.startswith('__i') and name not in ['__int__', '__invert__']
+        or name.startswith('__r') and name != '__rshift__'):
         n = operators_to_functions[name[:2] + name[3:]]
     else:
         n = operators_to_functions.get(name, name)
