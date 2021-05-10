@@ -37,8 +37,6 @@ def example_argument(arg, func_name, dtype):
     # (it can have the same behavior as the default, just not literally the
     # same value).
     known_args = dict(
-        M=1,
-        N=1,
         arrays=(ones((1, 3, 3), dtype=dtype), ones((1, 3, 3), dtype=dtype)),
         # These cannot be the same as each other, which is why all our test
         # arrays have to have at least 3 dimensions.
@@ -47,17 +45,25 @@ def example_argument(arg, func_name, dtype):
         axis=1,
         axes=(2, 1, 0),
         condition=ones((1, 3, 3), dtype=bool),
+        copy=True,
         correction=1.0,
         descending=True,
+        # TODO: Update this to be non-default
+        device=None,
         dtype=float64,
         endpoint=False,
         fill_value=1.0,
+        from_=int64,
         k=1,
         keepdims=True,
         key=0,
+        indexing='ij',
+        n_cols=1,
+        n_rows=1,
         num=2,
         offset=1,
         ord=1,
+        obj = [[[1, 1, 1], [1, 1, 1], [1, 1, 1]]],
         other=ones((1, 3, 3), dtype=dtype),
         return_counts=True,
         return_index=True,
@@ -70,6 +76,8 @@ def example_argument(arg, func_name, dtype):
         start=0,
         step=2,
         stop=1,
+        to=float64,
+        type=float64,
         value=0,
         x1=ones((1, 3, 3), dtype=dtype),
         x2=ones((1, 3, 3), dtype=dtype),
@@ -86,6 +94,9 @@ def example_argument(arg, func_name, dtype):
         # ones() is not invertible
         elif func_name == 'inv' and arg == 'x':
             return eye(3)
+        # finfo requires a float dtype and iinfo requires an int dtype
+        elif func_name == 'iinfo' and arg == 'type':
+            return int64
         return known_args[arg]
     else:
         raise RuntimeError(f"Don't know how to test argument {arg}. Please update test_signatures.py")
