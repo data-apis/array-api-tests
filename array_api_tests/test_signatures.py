@@ -155,9 +155,12 @@ def test_function_positional_args(name):
         # Duplicate the last positional argument for the n+1 test.
         args = args + [args[-1]]
 
+    kwonlydefaults = argspec.kwonlydefaults or {}
+    required_kwargs = {arg: example_argument(arg, name, dtype) for arg in argspec.kwonlyargs if arg not in kwonlydefaults}
+
     for n in range(nargs[0]+2):
         if n in nargs:
-            doesnt_raise(lambda: mod_func(*args[:n]))
+            doesnt_raise(lambda: mod_func(*args[:n], **required_kwargs))
         elif argspec.varargs:
             pass
         else:
@@ -183,7 +186,7 @@ def test_function_keyword_only_args(name):
     if name.startswith('__'):
         args = args[1:]
     kwonlyargs = argspec.kwonlyargs
-    kwonlydefaults = argspec.kwonlydefaults
+    kwonlydefaults = argspec.kwonlydefaults or {}
     dtype = None
 
     args = [example_argument(arg, name, dtype) for arg in args]
