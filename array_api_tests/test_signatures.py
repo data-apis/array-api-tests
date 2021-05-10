@@ -158,6 +158,8 @@ def test_function_positional_args(name):
     for n in range(nargs[0]+2):
         if n in nargs:
             doesnt_raise(lambda: mod_func(*args[:n]))
+        elif argspec.varargs:
+            pass
         else:
             # NumPy ufuncs raise ValueError instead of TypeError
             raises((TypeError, ValueError), lambda: mod_func(*args[:n]), f"{name}() should not accept {n} positional arguments")
