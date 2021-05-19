@@ -64,7 +64,7 @@ def sanity_check(x1, x2):
 @given(numeric_scalars)
 def test_abs(x):
     a = _array_module.abs(x)
-    assert all(logical_not(negative_mathematical_sign(a))), "abs(x) did not have positive sign"
+    assert _array_module.all(logical_not(negative_mathematical_sign(a))), "abs(x) did not have positive sign"
     less_zero = negative_mathematical_sign(x)
     negx = negative(x)
     # abs(x) = -x for x < 0
