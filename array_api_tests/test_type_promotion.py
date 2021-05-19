@@ -148,7 +148,9 @@ input_types = {
                                       **boolean_promotion_table}.values())),
     'numeric': sorted(set({**float_promotion_table,
                            **signed_integer_promotion_table,
-                           **unsigned_integer_promotion_table}.values())),
+                           **unsigned_integer_promotion_table,
+                           **mixed_signed_unsigned_promotion_table,
+                           **flipped_mixed_signed_unsigned_promotion_table}.values())),
 }
 
 binary_operators = {
