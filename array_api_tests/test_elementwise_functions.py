@@ -29,8 +29,9 @@ from .array_helpers import (assert_exactly_equal, negative,
                             positive_mathematical_sign,
                             negative_mathematical_sign, logical_not,
                             logical_or, logical_and, inrange, π, one, zero,
-                            infinity, full, isnegzero, isnegative, any as
-                            array_any, int_to_dtype, bool as bool_dtype)
+                            infinity, full, isnegzero, isnegative, all as
+                            array_all, any as array_any, int_to_dtype, bool as
+                            bool_dtype)
 
 from . import _array_module
 
@@ -64,7 +65,7 @@ def sanity_check(x1, x2):
 @given(numeric_scalars)
 def test_abs(x):
     a = _array_module.abs(x)
-    assert all(logical_not(negative_mathematical_sign(a))), "abs(x) did not have positive sign"
+    assert array_all(logical_not(negative_mathematical_sign(a))), "abs(x) did not have positive sign"
     less_zero = negative_mathematical_sign(x)
     negx = negative(x)
     # abs(x) = -x for x < 0
