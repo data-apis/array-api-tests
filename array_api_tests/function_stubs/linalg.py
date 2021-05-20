@@ -10,77 +10,79 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/linear
 
 from __future__ import annotations
 
+from ._types import Literal, Optional, Tuple, Union, array
+from .constants import inf
 
-def cholesky(x, /, *, upper=False):
+def cholesky(x: array, /, *, upper: bool = False) -> array:
     pass
 
-def cross(x1, x2, /, *, axis=-1):
+def cross(x1: array, x2: array, /, *, axis: int = -1) -> array:
     pass
 
-def det(x, /):
+def det(x: array, /) -> array:
     pass
 
-def diagonal(x, /, *, axis1=0, axis2=1, offset=0):
+def diagonal(x: array, /, *, axis1: int = 0, axis2: int = 1, offset: int = 0) -> array:
     pass
 
 def eig():
     pass
 
-def eigh(x, /, *, upper=False):
+def eigh(x: array, /, *, upper: bool = False) -> Tuple[array]:
     pass
 
 def eigvals():
     pass
 
-def eigvalsh(x, /, *, upper=False):
+def eigvalsh(x: array, /, *, upper: bool = False) -> array:
     pass
 
 def einsum():
     pass
 
-def inv(x, /):
+def inv(x: array, /) -> array:
     pass
 
-def lstsq(x1, x2, /, *, rtol=None):
+def lstsq(x1: array, x2: array, /, *, rtol: Optional[Union[float, array]] = None) -> Tuple[array, array, array, array]:
     pass
 
 def matmul(x1, x2, /):
     pass
 
-def matrix_power(x, n, /):
+def matrix_power(x: array, n: int, /) -> array:
     pass
 
-def matrix_rank(x, /, *, rtol=None):
+def matrix_rank(x: array, /, *, rtol: Optional[Union[float, array]] = None) -> array:
     pass
 
-def norm(x, /, *, axis=None, keepdims=False, ord=None):
+def norm(x: array, /, *, axis: Optional[Union[int, Tuple[int, int]]] = None, keepdims: bool = False, ord: Optional[Union[int, float, Literal[inf, -inf, 'fro', 'nuc']]] = None) -> array:
     pass
 
-def outer(x1, x2, /):
+def outer(x1: array, x2: array, /) -> array:
     pass
 
-def pinv(x, /, *, rtol=None):
+def pinv(x: array, /, *, rtol: Optional[Union[float, array]] = None) -> array:
     pass
 
-def qr(x, /, *, mode='reduced'):
+def qr(x: array, /, *, mode: str = 'reduced') -> Tuple[array, array]:
     pass
 
-def slogdet(x, /):
+def slogdet(x: array, /) -> Tuple[array, array]:
     pass
 
-def solve(x1, x2, /):
+def solve(x1: array, x2: array, /) -> array:
     pass
 
-def svd(x, /, *, full_matrices=True):
+def svd(x: array, /, *, full_matrices: bool = True) -> Union[array, Tuple[array, ...]]:
     pass
 
 def tensordot(x1, x2, /, *, axes=2):
     pass
 
-def svdvals(x, /):
+def svdvals(x: array, /) -> Union[array, Tuple[array, ...]]:
     pass
 
-def trace(x, /, *, axis1=0, axis2=1, offset=0):
+def trace(x: array, /, *, axis1: int = 0, axis2: int = 1, offset: int = 0) -> array:
     pass
 
 def transpose(x, /, *, axes=None):

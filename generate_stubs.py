@@ -20,7 +20,7 @@ import regex
 from removestar.removestar import fix_code
 
 FUNCTION_HEADER_RE = regex.compile(r'\(function-(.*?)\)')
-HEADER_RE = regex.compile(r'\((?:function|method|constant|attribute)-(.*?)\)')
+HEADER_RE = regex.compile(r'\((?:function-linalg|function|method|constant|attribute)-(.*?)\)')
 FUNCTION_RE = regex.compile(r'\(function-.*\)=\n#+ ?(.*\(.*\))')
 METHOD_RE = regex.compile(r'\(method-.*\)=\n#+ ?(.*\(.*\))')
 CONSTANT_RE = regex.compile(r'\(constant-.*\)=\n#+ ?(.*)')
