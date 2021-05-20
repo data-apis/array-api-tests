@@ -6,7 +6,7 @@ from functools import reduce
 
 import pytest
 
-from hypothesis import given
+from hypothesis import given, assume
 from hypothesis.strategies import data, sampled_from
 
 from .hypothesis_helpers import shapes
@@ -16,7 +16,7 @@ from .test_type_promotion import (elementwise_function_input_types,
                                   input_types, dtype_mapping)
 from .function_stubs import elementwise_functions
 from . import _array_module
-from ._array_module import ones
+from ._array_module import ones, _UndefinedStub
 
 # The spec does not specify what exception is raised on broadcast errors. We
 # use a custom exception to distinguish it from potential bugs in
@@ -119,6 +119,11 @@ def test_broadcasting_hypothesis(func_name, shape1, shape2, dtype):
     assert nargs(func_name) == 2
 
     dtype = dtype_mapping[dtype.draw(sampled_from(input_types[elementwise_function_input_types[func_name]]))]
+    if isinstance(dtype, _UndefinedStub):
+        # Don't fail this test just because a dtype isn't implemented. If no
+        # compatible dtype is implemented, the test will fail with a
+        # hypothesis health check error.
+        assume(False)
     func = getattr(_array_module, func_name)
 
     if isinstance(func, _array_module._UndefinedStub):
