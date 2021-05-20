@@ -27,7 +27,7 @@ def reshape(x: array, /, shape: Tuple[int, ...]) -> array:
 def roll(x: array, /, shift: Union[int, Tuple[int, ...]], *, axis: Optional[Union[int, Tuple[int, ...]]] = None) -> array:
     pass
 
-def squeeze(x: array, /, *, axis: Optional[Union[int, Tuple[int, ...]]] = None) -> array:
+def squeeze(x: array, /, axis: Union[int, Tuple[int, ...]]) -> array:
     pass
 
 def stack(arrays: Tuple[array, ...], /, *, axis: int = 0) -> array:
