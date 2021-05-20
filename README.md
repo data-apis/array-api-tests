@@ -12,11 +12,11 @@ specification that are not yet tested here.
 
 To run the tests, first install the testing dependencies
 
-    pip install pytest hypothesis
+    pip install pytest hypothesis numpy
 
 or
 
-    conda install pytest hypothesis
+    conda install pytest hypothesis numpy
 
 as well as the array libraries that you want to test. To run the tests, you
 need to set the array library that is to be tested. There are two ways to do
