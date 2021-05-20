@@ -116,10 +116,14 @@ def main():
             f.write(TYPES_HEADER)
 
     spec_dir = os.path.join(args.array_api_repo, 'spec', 'API_specification')
+    extensions_dir = os.path.join(args.array_api_repo, 'spec', 'extensions')
+    files = sorted([os.path.join(spec_dir, f) for f in os.listdir(spec_dir)]
+                   + [os.path.join(extensions_dir, f) for f in os.listdir(extensions_dir)])
     modules = {}
-    for filename in sorted(os.listdir(spec_dir)):
-        with open(os.path.join(spec_dir, filename)) as f:
-                  text = f.read()
+    for file in files:
+        filename = os.path.basename(file)
+        with open(file) as f:
+            text = f.read()
         functions = FUNCTION_RE.findall(text)
         methods = METHOD_RE.findall(text)
         constants = CONSTANT_RE.findall(text)
@@ -130,9 +134,18 @@ def main():
             print(f"Found signatures in {filename}")
         if not args.write:
             continue
-        py_file = filename.replace('.md', '.py')
-        py_path = os.path.join('array_api_tests', 'function_stubs', py_file)
+
         title = filename.replace('.md', '').replace('_', ' ')
+        if 'extensions' in file:
+            if filename == 'index.md':
+                continue
+            elif filename != 'linear_algebra_functions.md':
+                raise RuntimeError(f"Don't know how to handle extension file {filename}")
+            py_file = 'linalg.py'
+            title += " (Extension)"
+        else:
+            py_file = filename.replace('.md', '.py')
+        py_path = os.path.join('array_api_tests', 'function_stubs', py_file)
         module_name = py_file.replace('.py', '')
         modules[module_name] = []
         if not args.quiet:
@@ -153,6 +166,11 @@ def main():
             ismethod = sig in methods
             sig = sig.replace(r'\_', '_')
             func_name = NAME_RE.match(sig).group(1)
+            if '.' in func_name:
+                mod, func_name = func_name.split('.', 2)
+                if mod != 'linalg':
+                    raise RuntimeError(f"Unexpected namespace prefix {mod!r}")
+                sig = sig.replace(mod + '.', '')
             doc = ""
             if ismethod:
                 doc = f'''
@@ -236,6 +254,9 @@ def {annotated_sig}:{doc}
         with open(init_path, 'w') as f:
             f.write(INIT_HEADER)
             for module_name in modules:
+                if module_name == 'linalg':
+                    f.write(f'\nfrom . import {module_name}\n')
+                    continue
                 f.write(f"\nfrom .{module_name} import ")
                 f.write(', '.join(modules[module_name]))
                 f.write('\n\n')
