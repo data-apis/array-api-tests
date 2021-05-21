@@ -27,6 +27,7 @@ CONSTANT_RE = regex.compile(r'\(constant-.*\)=\n#+ ?(.*)')
 ATTRIBUTE_RE = regex.compile(r'\(attribute-.*\)=\n#+ ?(.*)')
 IN_PLACE_OPERATOR_RE = regex.compile(r'- `.*`. May be implemented via `__i(.*)__`.')
 REFLECTED_OPERATOR_RE = regex.compile(r'- `__r(.*)__`')
+ALIAS_RE = regex.compile(r'Alias for {ref}`function-(.*)`.')
 
 NAME_RE = regex.compile(r'(.*)\(.*\)')
 
@@ -120,6 +121,7 @@ def main():
     files = sorted([os.path.join(spec_dir, f) for f in os.listdir(spec_dir)]
                    + [os.path.join(extensions_dir, f) for f in os.listdir(extensions_dir)])
     modules = {}
+    all_annotations = {}
     for file in files:
         filename = os.path.basename(file)
         with open(file) as f:
@@ -151,7 +153,8 @@ def main():
         if not args.quiet:
             print(f"Writing {py_path}")
 
-        annotations = parse_annotations(text, verbose=not args.quiet)
+        annotations = parse_annotations(text, all_annotations, verbose=not args.quiet)
+        all_annotations.update(annotations)
 
         if filename == 'array_object.md':
             in_place_operators = IN_PLACE_OPERATOR_RE.findall(text)
@@ -654,7 +657,7 @@ def parse_special_cases(spec_text, verbose=False):
     return special_cases
 
 PARAMETER_RE = regex.compile(r"- +\*\*(.*)\*\*: _(.*)_")
-def parse_annotations(spec_text, verbose=False):
+def parse_annotations(spec_text, all_annotations, verbose=False):
     annotations = defaultdict(dict)
     in_block = False
     is_returns = False
@@ -662,6 +665,14 @@ def parse_annotations(spec_text, verbose=False):
         m = HEADER_RE.match(line)
         if m:
             name = m.group(1)
+            continue
+        m = ALIAS_RE.match(line)
+        if m:
+            alias_name = m.group(1)
+            if alias_name not in all_annotations:
+                print(f"Warning: No annotations for aliased function {name}")
+            else:
+                annotations[name] = all_annotations[m.group(1)]
             continue
         if line == '#### Parameters':
             in_block = True

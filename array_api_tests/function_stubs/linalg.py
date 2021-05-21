@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from ._types import Literal, Optional, Tuple, Union, array
 from .constants import inf
+from collections.abc import Sequence
 
 def cholesky(x: array, /, *, upper: bool = False) -> array:
     pass
@@ -46,7 +47,7 @@ def inv(x: array, /) -> array:
 def lstsq(x1: array, x2: array, /, *, rtol: Optional[Union[float, array]] = None) -> Tuple[array, array, array, array]:
     pass
 
-def matmul(x1, x2, /):
+def matmul(x1: array, x2: array, /) -> array:
     pass
 
 def matrix_power(x: array, n: int, /) -> array:
@@ -76,7 +77,7 @@ def solve(x1: array, x2: array, /) -> array:
 def svd(x: array, /, *, full_matrices: bool = True) -> Union[array, Tuple[array, ...]]:
     pass
 
-def tensordot(x1, x2, /, *, axes=2):
+def tensordot(x1: array, x2: array, /, *, axes: Union[int, Tuple[Sequence[int], Sequence[int]]] = 2) -> array:
     pass
 
 def svdvals(x: array, /) -> Union[array, Tuple[array, ...]]:
@@ -85,10 +86,10 @@ def svdvals(x: array, /) -> Union[array, Tuple[array, ...]]:
 def trace(x: array, /, *, axis1: int = 0, axis2: int = 1, offset: int = 0) -> array:
     pass
 
-def transpose(x, /, *, axes=None):
+def transpose(x: array, /, *, axes: Optional[Tuple[int, ...]] = None) -> array:
     pass
 
-def vecdot(x1, x2, /, *, axis=None):
+def vecdot(x1: array, x2: array, /, *, axis: Optional[int] = None) -> array:
     pass
 
 __all__ = ['cholesky', 'cross', 'det', 'diagonal', 'eig', 'eigh', 'eigvals', 'eigvalsh', 'einsum', 'inv', 'lstsq', 'matmul', 'matrix_power', 'matrix_rank', 'norm', 'outer', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'tensordot', 'svdvals', 'trace', 'transpose', 'vecdot']
