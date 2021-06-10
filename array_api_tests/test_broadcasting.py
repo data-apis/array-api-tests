@@ -9,7 +9,7 @@ import pytest
 from hypothesis import given, assume
 from hypothesis.strategies import data, sampled_from
 
-from .hypothesis_helpers import shapes
+from .hypothesis_helpers import shapes, FILTER_UNDEFINED_DTYPES
 from .pytest_helpers import raises, doesnt_raise, nargs
 
 from .test_type_promotion import (elementwise_function_input_types,
@@ -119,10 +119,7 @@ def test_broadcasting_hypothesis(func_name, shape1, shape2, dtype):
     assert nargs(func_name) == 2
 
     dtype = dtype_mapping[dtype.draw(sampled_from(input_types[elementwise_function_input_types[func_name]]))]
-    if isinstance(dtype, _UndefinedStub):
-        # Don't fail this test just because a dtype isn't implemented. If no
-        # compatible dtype is implemented, the test will fail with a
-        # hypothesis health check error.
+    if FILTER_UNDEFINED_DTYPES and isinstance(dtype, _UndefinedStub):
         assume(False)
     func = getattr(_array_module, func_name)
 

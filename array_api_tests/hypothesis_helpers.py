@@ -14,11 +14,18 @@ from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             floating_dtype_objects, numeric_dtype_objects,
                             boolean_dtype_objects,
                             integer_or_boolean_dtype_objects, dtype_objects)
-from ._array_module import (ones, full, float32, float64, bool as bool_dtype)
+from ._array_module import (ones, full, float32, float64, bool as bool_dtype, _UndefinedStub)
 from . import _array_module
 
 from .function_stubs import elementwise_functions
 
+
+# Set this to True to not fail tests just because a dtype isn't implemented.
+# If no compatible dtype is implemented for a given test, the test will fail
+# with a hypothesis health check error. Note that this functionality will not
+# work for floating point dtypes are those are assumed to be defined in other
+# places in the tests.
+FILTER_UNDEFINED_DTYPES = True
 
 integer_dtypes = sampled_from(integer_dtype_objects)
 floating_dtypes = sampled_from(floating_dtype_objects)
@@ -26,6 +33,15 @@ numeric_dtypes = sampled_from(numeric_dtype_objects)
 integer_or_boolean_dtypes = sampled_from(integer_or_boolean_dtype_objects)
 boolean_dtypes = sampled_from(boolean_dtype_objects)
 dtypes = sampled_from(dtype_objects)
+
+if FILTER_UNDEFINED_DTYPES:
+    integer_dtypes = integer_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
+    floating_dtypes = floating_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
+    numeric_dtypes = numeric_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
+    integer_or_boolean_dtypes = integer_or_boolean_dtypes.filter(lambda x: not
+                                                                 isinstance(x, _UndefinedStub))
+    boolean_dtypes = boolean_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
+    dtypes = dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
 
 shared_dtypes = shared(dtypes)
 
@@ -36,7 +52,12 @@ def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
                    # sorting gives the best shrinking
                    sorted(promotion_table)]
 
-    filtered_dtype_pairs = [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
+    filtered_dtype_pairs = [(i, j) for i, j in dtype_pairs if i in
+                            dtype_objects and j in dtype_objects]
+    if FILTER_UNDEFINED_DTYPES:
+        filtered_dtype_pairs = [(i, j) for i, j in filtered_dtype_pairs
+                                if not isinstance(i, _UndefinedStub)
+                                and not isinstance(j, _UndefinedStub)]
     return draw(sampled_from(filtered_dtype_pairs))
 
 # shared() allows us to draw either the function or the function name and they
