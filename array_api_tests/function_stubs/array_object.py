@@ -43,7 +43,7 @@ def __bool__(self: array, /) -> bool:
     """
     pass
 
-def __dlpack__(self: array, /, *, stream: Optional[int] = None) -> PyCapsule:
+def __dlpack__(self: array, /, *, stream: Optional[Union[int, Any]] = None) -> PyCapsule:
     """
     Note: __dlpack__ is a method of the array object.
     """
