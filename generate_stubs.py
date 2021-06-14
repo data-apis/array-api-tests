@@ -90,7 +90,7 @@ The type variables should be replaced with the actual types for a given
 library, e.g., for NumPy TypeVar('array') would be replaced with ndarray.
 """
 
-from typing import List, Literal, Optional, Tuple, Union, TypeVar
+from typing import Any, List, Literal, Optional, Tuple, Union, TypeVar
 
 array = TypeVar('array')
 device = TypeVar('device')
