@@ -14,6 +14,6 @@ SupportsDLPack = TypeVar('SupportsDLPack')
 SupportsBufferProtocol = TypeVar('SupportsBufferProtocol')
 PyCapsule = TypeVar('PyCapsule')
 
-__all__ = ['List', 'Literal', 'Optional', 'Tuple', 'Union', 'array', 'device',
+__all__ = ['Any', 'List', 'Literal', 'Optional', 'Tuple', 'Union', 'array', 'device',
 'dtype', 'SupportsDLPack', 'SupportsBufferProtocol', 'PyCapsule']
 
