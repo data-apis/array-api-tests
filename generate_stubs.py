@@ -206,17 +206,17 @@ def {annotated_sig}:{doc}
                         annotation[k] = v.replace(normal_op, func_name)
                     annotations[func_name] = annotation
 
-        for const in constants + attributes:
+        for const in constants:
             if not args.quiet:
                 print(f"Writing stub for {const}")
-            isattr = const in attributes
-            if isattr:
-                annotation = annotations[const]['return']
-                code += f"\n# Note: {const} is an attribute of the array object."
-                code += f"\n{const}: {annotation} = None\n"
-            else:
-                code += f"\n{const} = None\n"
+            code += f"\n{const} = None\n"
             modules[module_name].append(const)
+
+        for attr in attributes:
+            annotation = annotations[attr]['return']
+            code += f"\n# Note: {attr} is an attribute of the array object."
+            code += f"\n{attr}: {annotation} = None\n"
+            modules[module_name].append(attr)
 
         code += '\n__all__ = ['
         code += ', '.join(f"'{i}'" for i in modules[module_name])
