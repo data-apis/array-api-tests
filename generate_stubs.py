@@ -211,8 +211,11 @@ def {annotated_sig}:{doc}
                 print(f"Writing stub for {const}")
             isattr = const in attributes
             if isattr:
+                annotation = annotations[const]['return']
                 code += f"\n# Note: {const} is an attribute of the array object."
-            code += f"\n{const} = None\n"
+                code += f"\n{const}: {annotation} = None\n"
+            else:
+                code += f"\n{const} = None\n"
             modules[module_name].append(const)
 
         code += '\n__all__ = ['
@@ -691,7 +694,7 @@ def parse_annotations(spec_text, all_annotations, verbose=False):
             if m:
                 param, typ = m.groups()
                 if is_returns:
-                    param = 'returns'
+                    param = 'return'
                     is_returns = False
                 typ = clean_type(typ)
                 if verbose:
@@ -711,12 +714,12 @@ def clean_type(typ):
     return typ
 
 def add_annotation(sig, annotation):
-    if 'returns' not in annotation:
+    if 'return' not in annotation:
         raise RuntimeError(f"No return annotation for {sig}")
     if 'out' in annotation:
         raise RuntimeError(f"Error parsing annotations for {sig}")
     for param, typ in annotation.items():
-        if param == 'returns':
+        if param == 'return':
             sig = f"{sig} -> {typ}"
             continue
         PARAM_DEFAULT = regex.compile(rf"([\( ]{param})=")
