@@ -154,11 +154,22 @@ def array_scalars(draw, dtypes):
     return full((), draw(scalars(just(dtype))), dtype=dtype)
 
 @composite
-def integer_indices(draw, sizes):
+def python_integer_indices(draw, sizes):
     size = draw(sizes)
     if size == 0:
         assume(False)
     return draw(integers(-size, size - 1))
+
+@composite
+def integer_indices(draw, sizes):
+    # Return either a Python integer or a 0-D array with some integer dtype
+    idx = draw(python_integer_indices(sizes))
+    dtype = draw(integer_dtypes)
+    m, M = dtype_ranges[dtype]
+    if m <= idx <= M:
+        return draw(one_of(just(idx),
+                           just(full((), idx, dtype=dtype))))
+    return idx
 
 @composite
 def slices(draw, sizes):
@@ -202,13 +213,16 @@ def multiaxis_indices(draw, shapes):
             integer_indices(just(size)),
             slices(just(size)),
             just(...)))
-        if idx == ... and k >= 0:
+        if idx is ... and k >= 0:
             # If there is an ellipsis, index from the end of the shape
             k = k - n_entries
         k += 1
         res.append(idx)
     # Sometimes add more entries than necessary to test this.
-    if n_entries == len(shape) and ... not in res:
+
+    # Avoid using 'in', which might do == on an array.
+    res_has_ellipsis = any(i is ... for i in res)
+    if n_entries == len(shape) and not res_has_ellipsis:
         # note("Adding extra")
         extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
         res += extra

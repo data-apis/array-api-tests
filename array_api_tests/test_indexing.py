@@ -17,14 +17,16 @@ from ._array_module import arange, reshape
 @given(shared(sizes, key='array_sizes'), integer_indices(shared(sizes, key='array_sizes')))
 def test_integer_indexing(size, idx):
     # Test that indices on single dimensional arrays give the same result as
-    # Python lists.
+    # Python lists. idx may be a Python integer or a 0-D array with integer dtype.
 
     # Sanity check that the strategies are working properly
-    assert -size <= idx <= max(0, size - 1), "Sanity check failed. This indicates a bug in the test suite"
+    assert -size <= int(idx) <= max(0, size - 1), "Sanity check failed. This indicates a bug in the test suite"
 
     a = arange(size)
     l = list(range(size))
-    sliced_list = l[idx]
+    # TODO: We can remove int() here if we add __index__ to the spec. See
+    # https://github.com/data-apis/array-api/issues/231.
+    sliced_list = l[int(idx)]
     sliced_array = a[idx]
 
     assert sliced_array.shape == (), "Integer indices should reduce the dimension by 1"
@@ -64,7 +66,7 @@ def test_multiaxis_indexing(shape, idx):
     size = prod(shape)
     a = reshape(arange(size), shape)
 
-    n_ellipses = idx.count(...)
+    n_ellipses = len([i for i in idx if i is ...])
     if n_ellipses > 1:
         raises(IndexError, lambda: a[idx],
                "Indices with more than one ellipsis should raise IndexError")
@@ -77,7 +79,18 @@ def test_multiaxis_indexing(shape, idx):
     sliced_array = a[idx]
     equiv_idx = idx
     if n_ellipses or len(idx) < len(shape):
-        ellipsis_i = idx.index(...) if n_ellipses else len(idx)
+        # Would be
+        #
+        # ellipsis_i = idx.index(...) if n_ellipses else len(idx)
+        #
+        # except we have to be careful to not use == to compare array elements
+        # of idx.
+        ellipsis_i = len(idx)
+        for i in range(len(idx)):
+            if idx[i] is ...:
+                ellipsis_i = i
+                break
+
         equiv_idx = (idx[:ellipsis_i]
                      + (slice(None, None, None),)*(len(shape) - len(idx) + n_ellipses)
                      + idx[ellipsis_i + 1:])
