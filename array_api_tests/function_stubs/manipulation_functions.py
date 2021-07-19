@@ -10,9 +10,9 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/manipu
 
 from __future__ import annotations
 
-from ._types import Optional, Tuple, Union, array
+from ._types import List, Optional, Tuple, Union, array
 
-def concat(arrays: Tuple[array, ...], /, *, axis: Optional[int] = 0) -> array:
+def concat(arrays: Union[Tuple[array, ...], List[array]], /, *, axis: Optional[int] = 0) -> array:
     pass
 
 def expand_dims(x: array, /, *, axis: int) -> array:
@@ -30,7 +30,7 @@ def roll(x: array, /, shift: Union[int, Tuple[int, ...]], *, axis: Optional[Unio
 def squeeze(x: array, /, axis: Union[int, Tuple[int, ...]]) -> array:
     pass
 
-def stack(arrays: Tuple[array, ...], /, *, axis: int = 0) -> array:
+def stack(arrays: Union[Tuple[array, ...], List[array]], /, *, axis: int = 0) -> array:
     pass
 
 __all__ = ['concat', 'expand_dims', 'flip', 'reshape', 'roll', 'squeeze', 'stack']
