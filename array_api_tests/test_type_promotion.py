@@ -4,7 +4,7 @@ https://data-apis.github.io/array-api/latest/API_specification/type_promotion.ht
 
 import pytest
 
-from hypothesis import given, example
+from hypothesis import given
 from hypothesis.strategies import from_type, data, integers, just
 
 from .hypothesis_helpers import (shapes, two_mutually_broadcastable_shapes,
