@@ -405,6 +405,46 @@ def test_elementwise_function_two_arg_promoted_type_promotion(func_name,
 elementwise_function_one_arg_func_names = [func_name for func_name in
                                            elementwise_functions.__all__ if
                                            nargs(func_name) == 1]
+
+elementwise_function_one_arg_func_names_bool = [func_name for func_name in
+                                                    elementwise_function_one_arg_func_names
+                                                    if
+                                                    elementwise_function_output_types[func_name]
+                                                    == 'bool']
+
+elementwise_function_one_arg_bool_parametrize_inputs = [(func_name, dtypes)
+               for func_name in elementwise_function_one_arg_func_names_bool
+               for dtypes in input_types[elementwise_function_input_types[func_name]]]
+elementwise_function_one_arg_bool_parametrize_ids = ['-'.join((n, d)) for n, d
+                                            in elementwise_function_one_arg_bool_parametrize_inputs]
+
+# TODO: Extend this to all functions (not just elementwise), and handle
+# functions that take more than 2 args
+@pytest.mark.parametrize('func_name,dtype_name',
+                         elementwise_function_one_arg_bool_parametrize_inputs,
+                         ids=elementwise_function_one_arg_bool_parametrize_ids)
+# The spec explicitly requires type promotion to work for shape 0
+# Unfortunately, data(), isn't compatible with @example, so this is commented
+# out for now.
+# @example(shape=(0,))
+@given(shape=shapes, fillvalues=data())
+def test_elementwise_function_one_arg_bool(func_name, shape,
+                                                     dtype_name, fillvalues):
+    assert nargs(func_name) == 1
+    func = getattr(_array_module, func_name)
+
+    dtype = dtype_mapping[dtype_name]
+    fillvalue = fillvalues.draw(scalars(just(dtype)))
+
+    for i in [func, dtype]:
+        if isinstance(i, _array_module._UndefinedStub):
+            i._raise()
+
+    x = full(shape, fillvalue, dtype=dtype)
+    res = func(x)
+
+    assert res.dtype == bool_dtype, f"{func_name}({dtype}) returned to {res.dtype}, should have promoted to bool (shape={shape})"
+
 elementwise_function_one_arg_func_names_promoted = [func_name for func_name in
                                                     elementwise_function_one_arg_func_names
                                                     if
