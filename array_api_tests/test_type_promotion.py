@@ -113,6 +113,9 @@ mixed_signed_unsigned_promotion_table = {
     ('i4', 'u1'): 'i4',
     ('i4', 'u2'): 'i4',
     ('i4', 'u4'): 'i8',
+    ('i8', 'u1'): 'i8',
+    ('i8', 'u2'): 'i8',
+    ('i8', 'u4'): 'i8',
 }
 
 flipped_mixed_signed_unsigned_promotion_table = {(u, i): p for (i, u), p in mixed_signed_unsigned_promotion_table.items()}
