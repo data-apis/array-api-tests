@@ -347,6 +347,65 @@ elementwise_function_two_arg_func_names = [func_name for func_name in
                                            elementwise_functions.__all__ if
                                            nargs(func_name) > 1]
 
+elementwise_function_two_arg_func_names_bool = [func_name for func_name in
+                                                    elementwise_function_two_arg_func_names
+                                                    if
+                                                    elementwise_function_output_types[func_name]
+                                                    == 'bool']
+
+elementwise_function_two_arg_bool_parametrize_inputs = [(func_name, dtypes)
+               for func_name in elementwise_function_two_arg_func_names_bool
+               for dtypes in promotion_table.keys() if all(d in
+                                                            input_types[elementwise_function_input_types[func_name]]
+                                                            for d in dtypes)
+               ]
+
+elementwise_function_two_arg_bool_parametrize_ids = ['-'.join((n, d1, d2)) for n, (d1, d2)
+                                            in elementwise_function_two_arg_bool_parametrize_inputs]
+
+# TODO: These functions should still do type promotion internally, but
+# we do not test this here (it will be tested in the corresponding tests in
+# test_elementwise_functions.py). This can affect the resulting values if not
+# done correctly. For example, greater_equal(array(1.0, dtype=float32),
+# array(1.00000001, dtype=float64)) will be wrong if the float64 array is
+# downcast to float32. See for instance
+# https://github.com/numpy/numpy/issues/10322.
+@pytest.mark.parametrize('func_name,dtypes',
+                         elementwise_function_two_arg_bool_parametrize_inputs,
+                         ids=elementwise_function_two_arg_bool_parametrize_ids)
+# The spec explicitly requires type promotion to work for shape 0
+# Unfortunately, data(), isn't compatible with @example, so this is commented
+# out for now.
+# @example(shape=(0,))
+@given(two_shapes=two_mutually_broadcastable_shapes, fillvalues=data())
+def test_elementwise_function_two_arg_bool_type_promotion(func_name,
+                                                              two_shapes, dtypes,
+                                                              fillvalues):
+    assert nargs(func_name) == 2
+    func = getattr(_array_module, func_name)
+
+    type1, type2 = dtypes
+    dtype1 = dtype_mapping[type1]
+    dtype2 = dtype_mapping[type2]
+
+    fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
+    if func_name in ['bitwise_left_shift', 'bitwise_right_shift']:
+        fillvalue2 = fillvalues.draw(scalars(just(dtype2)).filter(lambda x: x > 0))
+    else:
+        fillvalue2 = fillvalues.draw(scalars(just(dtype2)))
+
+
+    for i in [func, dtype1, dtype2]:
+        if isinstance(i, _array_module._UndefinedStub):
+            i._raise()
+
+    shape1, shape2 = two_shapes
+    a1 = full(shape1, fillvalue1, dtype=dtype1)
+    a2 = full(shape2, fillvalue2, dtype=dtype2)
+    res = func(a1, a2)
+
+    assert res.dtype == bool_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to bool (shapes={shape1, shape2})"
+
 elementwise_function_two_arg_func_names_promoted = [func_name for func_name in
                                                     elementwise_function_two_arg_func_names
                                                     if
@@ -400,7 +459,6 @@ def test_elementwise_function_two_arg_promoted_type_promotion(func_name,
     res = func(a1, a2)
 
     assert res.dtype == res_dtype, f"{func_name}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shapes={shape1, shape2})"
-
 
 elementwise_function_one_arg_func_names = [func_name for func_name in
                                            elementwise_functions.__all__ if
