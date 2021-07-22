@@ -14,6 +14,8 @@ from .hypothesis_helpers import (slices, sizes, integer_indices, shapes, prod,
 from .pytest_helpers import raises
 from ._array_module import arange, reshape
 
+# TODO: Add tests for __setitem__
+
 @given(shared(sizes, key='array_sizes'), integer_indices(shared(sizes, key='array_sizes')))
 def test_integer_indexing(size, idx):
     # Test that indices on single dimensional arrays give the same result as
