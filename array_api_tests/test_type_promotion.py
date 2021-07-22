@@ -177,6 +177,7 @@ binary_operators = {
 }
 
 unary_operators = {
+    '__abs__': 'abs()',
     '__invert__': '~',
     '__neg__': '-',
     '__pos__': '+',
@@ -184,6 +185,7 @@ unary_operators = {
 
 
 operators_to_functions = {
+    '__abs__': 'abs',
     '__add__': 'add',
     '__and__': 'logical_and',
     '__eq__': 'equal',
