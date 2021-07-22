@@ -444,6 +444,48 @@ def test_elementwise_function_one_arg_type_promotion(func_name, shape,
 
     assert res.dtype == dtype, f"{func_name}({dtype}) returned to {res.dtype}, should have promoted to {dtype} (shape={shape})"
 
+unary_operators_promoted = [unary_op_name for unary_op_name in sorted(unary_operators)
+                             if elementwise_function_output_types[operators_to_functions[unary_op_name]] == 'promoted']
+operator_one_arg_promoted_parametrize_inputs = [(unary_op_name, dtypes)
+                                       for unary_op_name in unary_operators_promoted
+                                       for dtypes in input_types[elementwise_function_input_types[operators_to_functions[unary_op_name]]]
+                                       ]
+operator_one_arg_promoted_parametrize_ids = ['-'.join((n, d)) for n, d
+                                            in operator_one_arg_promoted_parametrize_inputs]
+
+
+# TODO: Extend this to all functions (not just elementwise), and handle
+# functions that take more than 2 args
+@pytest.mark.parametrize('unary_op_name,dtype_name',
+                         operator_one_arg_promoted_parametrize_inputs,
+                         ids=operator_one_arg_promoted_parametrize_ids)
+# The spec explicitly requires type promotion to work for shape 0
+# Unfortunately, data(), isn't compatible with @example, so this is commented
+# out for now.
+# @example(shape=(0,))
+@given(shape=shapes, fillvalues=data())
+def test_operator_one_arg_type_promotion(unary_op_name, shape, dtype_name, fillvalues):
+    unary_op = unary_operators[unary_op_name]
+
+    dtype = dtype_mapping[dtype_name]
+    fillvalue = fillvalues.draw(scalars(just(dtype)))
+
+    if isinstance(dtype, _array_module._UndefinedStub):
+        dtype._raise()
+
+    a = full(shape, fillvalue, dtype=dtype)
+
+    get_locals = lambda: dict(a=a)
+
+    if unary_op_name == '__abs__':
+        # This is the built-in abs(), not the array module's abs()
+        expression = 'abs(a)'
+    else:
+        expression = f'{unary_op} a'
+    res = eval(expression, get_locals())
+
+    assert res.dtype == dtype, f"{unary_op}({dtype}) returned to {res.dtype}, should have promoted to {dtype} (shape={shape})"
+
 binary_operators_promoted = [binary_op_name for binary_op_name in sorted(set(binary_operators) - {'__matmul__'})
                              if elementwise_function_output_types[operators_to_functions[binary_op_name]] == 'promoted']
 operator_two_arg_promoted_parametrize_inputs = [(binary_op_name, dtypes)
