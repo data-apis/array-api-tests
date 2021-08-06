@@ -1,4 +1,4 @@
-from ._array_module import (e, inf, nan, pi, equal, isnan, abs, full, float32,
+from ._array_module import (e, inf, nan, pi, equal, isnan, abs, full,
                             float64, less, isinf, greater, all)
 from .array_helpers import one
 
@@ -23,17 +23,12 @@ def test_inf():
     INF = full((1,), inf, dtype=float64)
     zero = full((1,), 0.0, dtype=float64)
 
-    assert all(isinf(inf)), "inf is not infinity"
     assert all(isinf(INF)), "inf is not infinity"
-    assert all(greater(inf, zero)), "inf is not positive"
     assert all(greater(INF, zero)), "inf is not positive"
 
 def test_nan():
     # Check that nan acts as a scalar
     NAN = full((1,), nan, dtype=float64)
 
-    assert all(isnan(nan)), "nan is not Not a Number"
     assert all(isnan(NAN)), "nan is not Not a Number"
-
-    assert not all(equal(nan, nan)), "nan should be unequal to itself"
     assert not all(equal(NAN, NAN)), "nan should be unequal to itself"
