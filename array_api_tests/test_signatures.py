@@ -37,6 +37,7 @@ def example_argument(arg, func_name, dtype):
     # (it can have the same behavior as the default, just not literally the
     # same value).
     known_args = dict(
+        api_version='2021.1',
         arrays=(ones((1, 3, 3), dtype=dtype), ones((1, 3, 3), dtype=dtype)),
         # These cannot be the same as each other, which is why all our test
         # arrays have to have at least 3 dimensions.
@@ -97,6 +98,13 @@ def example_argument(arg, func_name, dtype):
         # finfo requires a float dtype and iinfo requires an int dtype
         elif func_name == 'iinfo' and arg == 'type':
             return int64
+        # tensordot args must be contractible with each other
+        elif func_name == 'tensordot' and arg == 'x2':
+            return ones((3, 3, 1), dtype=dtype)
+        # tensordot "axes" is either a number representing the number of
+        # contractible axes or a 2-tuple or axes
+        elif func_name == 'tensordot' and arg == 'axes':
+            return 1
         return known_args[arg]
     else:
         raise RuntimeError(f"Don't know how to test argument {arg}. Please update test_signatures.py")
@@ -151,15 +159,15 @@ def test_function_positional_args(name):
         pytest.skip(f"{name} is not a function, skipping.")
     mod_func = getattr(_mod, name)
     argspec = inspect.getfullargspec(stub_func)
-    args = argspec.args
+    func_args = argspec.args
     if name.startswith('__'):
-        args = args[1:]
-    nargs = [len(args)]
+        func_args = func_args[1:]
+    nargs = [len(func_args)]
     if argspec.defaults:
         # The actual default values are checked in the specific tests
-        nargs.extend([len(args) - i for i in range(1, len(argspec.defaults) + 1)])
+        nargs.extend([len(func_args) - i for i in range(1, len(argspec.defaults) + 1)])
 
-    args = [example_argument(arg, name, dtype) for arg in args]
+    args = [example_argument(arg, name, dtype) for arg in func_args]
     if not args:
         args = [example_argument('x', name, dtype)]
     else:
