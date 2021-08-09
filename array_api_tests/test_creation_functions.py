@@ -1,7 +1,8 @@
 from ._array_module import (asarray, arange, ceil, empty, eye, full,
 equal, all, linspace, ones, zeros, isnan)
 from .array_helpers import (is_integer_dtype, dtype_ranges,
-                            assert_exactly_equal, isintegral, is_float_dtype)
+                            assert_exactly_equal, isintegral, is_float_dtype,
+                            is_integer_dtype)
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  shapes, sizes, sqrt_sizes, shared_dtypes,
                                  scalars)
@@ -128,7 +129,7 @@ def test_full(shape, fill_value, dtype):
     if is_float_dtype(a.dtype) and isnan(asarray(fill_value)):
         assert all(isnan(a)), "full() array did not equal the fill value"
     else:
-        assert all(equal(a, asarray(fill_value))), "full() array did not equal the fill value"
+        assert all(equal(a, asarray(fill_value, **kwargs))), "full() array did not equal the fill value"
 
 # TODO: implement full_like (requires hypothesis arrays support)
 def test_full_like():
@@ -180,6 +181,12 @@ def test_linspace(start, stop, num, dtype, endpoint):
 @given(shapes, one_of(none(), dtypes))
 def test_ones(shape, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
+    if dtype is None or is_float_dtype(dtype):
+        ONE = 1.0
+    elif is_integer_dtype(dtype):
+        ONE = 1
+    else:
+        ONE = True
 
     a = ones(shape, **kwargs)
 
@@ -191,17 +198,21 @@ def test_ones(shape, dtype):
         assert a.dtype == dtype
 
     assert a.shape == shape, "ones() produced an array with incorrect shape"
-    assert all(equal(a, full((), 1, **kwargs))), "ones() array did not equal 1"
+    assert all(equal(a, full((), ONE, **kwargs))), "ones() array did not equal 1"
 
 # TODO: implement ones_like (requires hypothesis arrays support)
 def test_ones_like():
     pass
 
-
-
 @given(shapes, one_of(none(), dtypes))
 def test_zeros(shape, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
+    if dtype is None or is_float_dtype(dtype):
+        ZERO = 0.0
+    elif is_integer_dtype(dtype):
+        ZERO = 0
+    else:
+        ZERO = False
 
     a = zeros(shape, **kwargs)
 
@@ -213,7 +224,7 @@ def test_zeros(shape, dtype):
         assert a.dtype == dtype
 
     assert a.shape == shape, "zeros() produced an array with incorrect shape"
-    assert all(equal(a, full((), 0, **kwargs))), "zeros() array did not equal 0"
+    assert all(equal(a, full((), ZERO, **kwargs))), "zeros() array did not equal 0"
 
 # TODO: implement zeros_like (requires hypothesis arrays support)
 def test_zeros_like():
