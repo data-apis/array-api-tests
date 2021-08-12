@@ -90,7 +90,8 @@ The type variables should be replaced with the actual types for a given
 library, e.g., for NumPy TypeVar('array') would be replaced with ndarray.
 """
 
-from typing import Any, List, Literal, Optional, Tuple, Union, TypeVar
+from dataclasses import dataclass
+from typing import Any, List, Literal, Optional, Sequence, Tuple, TypeVar, Union
 
 array = TypeVar('array')
 device = TypeVar('device')
@@ -283,6 +284,7 @@ def {annotated_sig}:{doc}
             for module_name in modules:
                 if module_name == 'linalg':
                     f.write(f'\nfrom . import {module_name}\n')
+                    f.write(f"\n__all__ += ['linalg']\n")
                     continue
                 f.write(f"\nfrom .{module_name} import ")
                 f.write(', '.join(modules[module_name]))
