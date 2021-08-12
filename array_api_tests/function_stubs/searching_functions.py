@@ -10,12 +10,12 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/search
 
 from __future__ import annotations
 
-from ._types import Tuple, array
+from ._types import Optional, Tuple, array
 
-def argmax(x: array, /, *, axis: int = None, keepdims: bool = False) -> array:
+def argmax(x: array, /, *, axis: Optional[int] = None, keepdims: bool = False) -> array:
     pass
 
-def argmin(x: array, /, *, axis: int = None, keepdims: bool = False) -> array:
+def argmin(x: array, /, *, axis: Optional[int] = None, keepdims: bool = False) -> array:
     pass
 
 def nonzero(x: array, /) -> Tuple[array, ...]:

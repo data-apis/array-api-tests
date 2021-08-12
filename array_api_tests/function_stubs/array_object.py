@@ -181,7 +181,7 @@ def __rshift__(self: array, other: Union[int, array], /) -> array:
     """
     pass
 
-def __setitem__(self, key, value, /):
+def __setitem__(self: array, key: Union[int, slice, ellipsis, Tuple[Union[int, slice, ellipsis], ...], array], value: Union[int, float, bool, array], /) -> None:
     """
     Note: __setitem__ is a method of the array object.
     """
