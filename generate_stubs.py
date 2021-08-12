@@ -284,7 +284,7 @@ def {annotated_sig}:{doc}
             for module_name in modules:
                 if module_name == 'linalg':
                     f.write(f'\nfrom . import {module_name}\n')
-                    f.write(f"\n__all__ += ['linalg']\n")
+                    f.write("\n__all__ += ['linalg']\n")
                     continue
                 f.write(f"\nfrom .{module_name} import ")
                 f.write(', '.join(modules[module_name]))

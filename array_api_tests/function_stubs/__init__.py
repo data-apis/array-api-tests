@@ -58,3 +58,5 @@ from .utility_functions import all, any
 __all__ += ['all', 'any']
 
 from . import linalg
+
+__all__ += ['linalg']

@@ -2,8 +2,6 @@
 https://github.com/data-apis/array-api/blob/master/spec/API_specification/broadcasting.md
 """
 
-from functools import reduce
-
 import pytest
 
 from hypothesis import given, assume

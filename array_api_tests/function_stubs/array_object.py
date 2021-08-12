@@ -11,7 +11,7 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/array_
 from __future__ import annotations
 
 from enum import IntEnum
-from ._types import Any, Optional, PyCapsule, Tuple, Union, array
+from ._types import Any, Optional, PyCapsule, Tuple, Union, array, ellipsis
 
 def __abs__(self: array, /) -> array:
     """
