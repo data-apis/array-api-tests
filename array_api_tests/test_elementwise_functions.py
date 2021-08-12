@@ -29,9 +29,8 @@ from .array_helpers import (assert_exactly_equal, negative,
                             positive_mathematical_sign,
                             negative_mathematical_sign, logical_not,
                             logical_or, logical_and, inrange, π, one, zero,
-                            infinity, full, isnegzero, isnegative, all as
-                            array_all, any as array_any, int_to_dtype, bool as
-                            bool_dtype)
+                            infinity, isnegative, all as array_all, any as
+                            array_any, int_to_dtype, bool as bool_dtype)
 
 from . import _array_module
 
