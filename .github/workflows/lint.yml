@@ -23,4 +23,3 @@ jobs:
     - name: Lint with pyfalkes
       run: |
         pyflakes .
-=
