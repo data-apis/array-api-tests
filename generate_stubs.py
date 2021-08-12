@@ -696,6 +696,10 @@ def parse_annotations(spec_text, all_annotations, verbose=False):
                 if is_returns:
                     param = 'return'
                     is_returns = False
+                if name == '__setitem__':
+                    # setitem returns None so it doesn't have a Returns
+                    # section in the spec
+                    annotations[name]['return'] = 'None'
                 typ = clean_type(typ)
                 if verbose:
                     print(f"Matched parameter for {name}: {param}: {typ}")
