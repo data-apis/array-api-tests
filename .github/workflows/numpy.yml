@@ -31,6 +31,8 @@ jobs:
             "array_api_tests/test_creation_functions.py::test_linspace",
             # einsum is not yet completed in the spec
             "array_api_tests/test_signatures.py::test_has_names[einsum]",
+            # The linalg extension is not yet implemented in NumPy
+            "array_api_tests/test_signatures.py::test_has_names[linalg]",
             # dlpack support is not yet implemented in NumPy. https://github.com/numpy/numpy/pull/19083
             "array_api_tests/test_signatures.py::test_function_positional_args[__dlpack__]",
             "array_api_tests/test_signatures.py::test_function_positional_args[__dlpack_device__]",
