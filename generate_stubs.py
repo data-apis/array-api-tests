@@ -130,7 +130,7 @@ def main():
     parser.add_argument('array_api_repo', help="Path to clone of the array-api repository")
     parser.add_argument('--no-write', help="""Print what it would do but don't
     write any files""", action='store_false', dest='write')
-    parser.add_argument('--quiet', help="""Don't print any output to the terminal""", action='store_true', dest='quiet')
+    parser.add_argument('-v', '--verbose', help="""Print verbose output to the terminal""", action='store_true')
     args = parser.parse_args()
 
     types_path = os.path.join('array_api_tests', 'function_stubs', '_types.py')
@@ -154,7 +154,7 @@ def main():
         attributes = ATTRIBUTE_RE.findall(text)
         if not (functions or methods or constants or attributes):
             continue
-        if not args.quiet:
+        if args.verbose:
             print(f"Found signatures in {filename}")
         if not args.write:
             continue
@@ -172,10 +172,10 @@ def main():
         py_path = os.path.join('array_api_tests', 'function_stubs', py_file)
         module_name = py_file.replace('.py', '')
         modules[module_name] = []
-        if not args.quiet:
+        if args.verbose:
             print(f"Writing {py_path}")
 
-        annotations = parse_annotations(text, all_annotations, verbose=not args.quiet)
+        annotations = parse_annotations(text, all_annotations, verbose=args.verbose)
         all_annotations.update(annotations)
 
         if filename == 'array_object.md':
@@ -207,7 +207,7 @@ def main():
                 annotated_sig = sig
             else:
                 annotated_sig = add_annotation(sig, annotations[func_name])
-            if not args.quiet:
+            if args.verbose:
                 print(f"Writing stub for {annotated_sig}")
             code += f"""
 def {annotated_sig}:{doc}
@@ -229,7 +229,7 @@ def {annotated_sig}:{doc}
                     annotations[func_name] = annotation
 
         for const in constants:
-            if not args.quiet:
+            if args.verbose:
                 print(f"Writing stub for {const}")
             code += f"\n{const} = None\n"
             modules[module_name].append(const)
@@ -250,7 +250,7 @@ def {annotated_sig}:{doc}
         with open(py_path, 'w') as f:
             f.write(code)
         if filename == 'elementwise_functions.md':
-            special_cases = parse_special_cases(text, verbose=not args.quiet)
+            special_cases = parse_special_cases(text, verbose=args.verbose)
             for func in special_cases:
                 py_path = os.path.join('array_api_tests', 'special_cases', f'test_{func}.py')
                 tests = []
