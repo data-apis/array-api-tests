@@ -10,7 +10,7 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/data_t
 
 from __future__ import annotations
 
-from ._types import List, Tuple, Union, array, dtype
+from ._types import List, Tuple, Union, array, dtype, finfo_object, iinfo_object
 from collections.abc import Sequence
 
 def broadcast_arrays(*arrays: Sequence[array]) -> List[array]:

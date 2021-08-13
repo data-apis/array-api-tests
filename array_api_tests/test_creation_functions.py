@@ -1,8 +1,7 @@
 from ._array_module import (asarray, arange, ceil, empty, eye, full,
 equal, all, linspace, ones, zeros, isnan)
 from .array_helpers import (is_integer_dtype, dtype_ranges,
-                            assert_exactly_equal, isintegral, is_float_dtype,
-                            is_integer_dtype)
+                            assert_exactly_equal, isintegral, is_float_dtype)
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  shapes, sizes, sqrt_sizes, shared_dtypes,
                                  scalars)

@@ -90,7 +90,8 @@ The type variables should be replaced with the actual types for a given
 library, e.g., for NumPy TypeVar('array') would be replaced with ndarray.
 """
 
-from typing import Any, List, Literal, Optional, Tuple, Union, TypeVar
+from dataclasses import dataclass
+from typing import Any, List, Literal, Optional, Sequence, Tuple, TypeVar, Union
 
 array = TypeVar('array')
 device = TypeVar('device')
@@ -98,9 +99,30 @@ dtype = TypeVar('dtype')
 SupportsDLPack = TypeVar('SupportsDLPack')
 SupportsBufferProtocol = TypeVar('SupportsBufferProtocol')
 PyCapsule = TypeVar('PyCapsule')
+# ellipsis cannot actually be imported from anywhere, so include a dummy here
+# to keep pyflakes happy. https://github.com/python/typeshed/issues/3556
+ellipsis = TypeVar('ellipsis')
 
-__all__ = ['Any', 'List', 'Literal', 'Optional', 'Tuple', 'Union', 'array', 'device',
-'dtype', 'SupportsDLPack', 'SupportsBufferProtocol', 'PyCapsule']
+@dataclass
+class finfo_object:
+    bits: int
+    eps: float
+    max: float
+    min: float
+    smallest_normal: float
+
+@dataclass
+class iinfo_object:
+    bits: int
+    max: int
+    min: int
+
+# This should really be recursive, but that isn't supported yet.
+NestedSequence = Sequence[Sequence[Any]]
+
+__all__ = ['Any', 'List', 'Literal', 'NestedSequence', 'Optional',
+'PyCapsule', 'SupportsBufferProtocol', 'SupportsDLPack', 'Tuple', 'Union',
+'array', 'device', 'dtype', 'ellipsis', 'finfo_object', 'iinfo_object']
 
 '''
 def main():
@@ -262,6 +284,7 @@ def {annotated_sig}:{doc}
             for module_name in modules:
                 if module_name == 'linalg':
                     f.write(f'\nfrom . import {module_name}\n')
+                    f.write("\n__all__ += ['linalg']\n")
                     continue
                 f.write(f"\nfrom .{module_name} import ")
                 f.write(', '.join(modules[module_name]))
@@ -294,7 +317,7 @@ SPECIAL_CASE_REGEXS = dict(
     TWO_ARGS_EQUAL__LESS_NOTEQUAL = regex.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is less than {_value}, and `x2_i` is not {_value}, the result is {_value}\.$'),
     TWO_ARGS_EQUAL__GREATER_EQUAL = regex.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is greater than {_value}, and `x2_i` is {_value}, the result is {_value}\.$'),
     TWO_ARGS_EQUAL__GREATER_NOTEQUAL = regex.compile(rf'^- +If `x1_i` is {_value}, `x2_i` is greater than {_value}, and `x2_i` is not {_value}, the result is {_value}\.$'),
-    TWO_ARGS_NOTEQUAL__EQUAL = regex.compile(rf'^- +If `x1_i` is not equal to {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
+    TWO_ARGS_NOTEQUAL__EQUAL = regex.compile(rf'^- +If `x1_i` is not (?:equal to )?{_value} and `x2_i` is {_value}, the result is {_value}\.$'),
     TWO_ARGS_ABSEQUAL__EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
     TWO_ARGS_ABSGREATER__EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is greater than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
     TWO_ARGS_ABSLESS__EQUAL = regex.compile(rf'^- +If `abs\(x1_i\)` is less than {_value} and `x2_i` is {_value}, the result is {_value}\.$'),
@@ -696,6 +719,10 @@ def parse_annotations(spec_text, all_annotations, verbose=False):
                 if is_returns:
                     param = 'return'
                     is_returns = False
+                if name == '__setitem__':
+                    # setitem returns None so it doesn't have a Returns
+                    # section in the spec
+                    annotations[name]['return'] = 'None'
                 typ = clean_type(typ)
                 if verbose:
                     print(f"Matched parameter for {name}: {param}: {typ}")
