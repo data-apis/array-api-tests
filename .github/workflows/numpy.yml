@@ -23,4 +23,25 @@ jobs:
         python -m pip install -r requirements.txt
     - name: Run the test suite
       run: |
-        ARRAY_API_TESTS_MODULE=numpy.array_api pytest
+        # Mark some known issues as XFAIL
+        cat << EOF >> conftest.py
+
+        names_to_be_xfailed = (
+            # https://github.com/numpy/numpy/issues/18881
+            "array_api_tests/test_creation_functions.py::test_linspace",
+            # einsum is not yet completed in the spec
+            "array_api_tests/test_signatures.py::test_has_names[einsum]",
+            # dlpack support is not yet implemented in NumPy. https://github.com/numpy/numpy/pull/19083
+            "array_api_tests/test_signatures.py::test_function_positional_args[__dlpack__]",
+            "array_api_tests/test_signatures.py::test_function_positional_args[__dlpack_device__]",
+            "array_api_tests/test_signatures.py::test_function_positional_args[from_dlpack]",
+            "array_api_tests/test_signatures.py::test_function_keyword_only_args[__dlpack__]",
+        )
+
+        def pytest_collection_modifyitems(config, items):
+            for item in items:
+                if item.nodeid in names_to_be_xfailed:
+                    item.add_marker("xfail")
+        EOF
+
+        ARRAY_API_TESTS_MODULE=numpy.array_api pytest -rxX
