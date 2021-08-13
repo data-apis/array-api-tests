@@ -126,7 +126,7 @@ __all__ = ['Any', 'List', 'Literal', 'NestedSequence', 'Optional',
 
 '''
 def main():
-    parser = argparse.ArgumentParser(__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('array_api_repo', help="Path to clone of the array-api repository")
     parser.add_argument('--no-write', help="""Print what it would do but don't
     write any files""", action='store_false', dest='write')
