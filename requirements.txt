@@ -2,4 +2,4 @@ pytest
 hypothesis
 regex
 removestar
-hypothesis-array-api==0.1.1
+hypothesis-array-api==0.1.2
