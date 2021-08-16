@@ -6,7 +6,7 @@ from hypothesis.strategies import (lists, integers, builds, sampled_from,
                                    shared, tuples as hypotheses_tuples,
                                    floats, just, composite, one_of, none,
                                    booleans)
-from hypothesis.extra.numpy import mutually_broadcastable_shapes
+from hypothesis_array import mutually_broadcastable_shapes, get_strategies_namespace
 from hypothesis import assume
 
 from .pytest_helpers import nargs
@@ -16,8 +16,12 @@ from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             integer_or_boolean_dtype_objects, dtype_objects)
 from ._array_module import (ones, full, float32, float64, bool as bool_dtype, _UndefinedStub)
 from . import _array_module
+from ._array_module import mod as xp
 
 from .function_stubs import elementwise_functions
+
+
+xps = get_strategies_namespace(xp)
 
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
@@ -89,11 +93,11 @@ def tuples(elements, *, min_size=0, max_size=None, unique_by=None, unique=False)
     return lists(elements, min_size=min_size, max_size=max_size,
                  unique_by=unique_by, unique=unique).map(tuple)
 
-shapes = tuples(integers(0, 10)).filter(lambda shape: prod(shape) < MAX_ARRAY_SIZE)
+shapes = xps.array_shapes(min_side=0).filter(lambda shape: prod(shape) < MAX_ARRAY_SIZE)
 
 # Use this to avoid memory errors with NumPy.
 # See https://github.com/numpy/numpy/issues/15753
-shapes = tuples(integers(0, 10)).filter(
+shapes = xps.array_shapes(min_side=0).filter(
              lambda shape: prod([i for i in shape if i]) < MAX_ARRAY_SIZE)
 
 two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(num_shapes=2)\
@@ -121,8 +125,17 @@ ones_arrays = builds(ones, shapes, dtype=shared_dtypes)
 
 nonbroadcastable_ones_array_two_args = hypotheses_tuples(ones_arrays, ones_arrays)
 
-# TODO: Generate general arrays here, rather than just scalars.
-numeric_arrays = builds(full, just((1,)), floats())
+floating_arrays = xps.arrays(dtype=xps.floating_dtypes(), shape=xps.array_shapes())
+
+@composite
+def broadcastable_floating_array_pairs(draw):
+    dtype = draw(xps.floating_dtypes())
+    broadcastable_shapes = draw(xps.mutually_broadcastable_shapes(2, min_dims=1))
+    shape1, shape2 = broadcastable_shapes.input_shapes
+    assume(len(shape1) >= len(shape2))
+    array1 = draw(xps.arrays(dtype=dtype, shape=shape1))
+    array2 = draw(xps.arrays(dtype=dtype, shape=shape2))
+    return array1, array2
 
 @composite
 def scalars(draw, dtypes, finite=False):
@@ -227,3 +240,5 @@ def multiaxis_indices(draw, shapes):
         extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
         res += extra
     return tuple(res)
+
+

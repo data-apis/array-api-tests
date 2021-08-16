@@ -8,13 +8,13 @@ not modify it directly.
 """
 
 from ..array_helpers import assert_exactly_equal, exactly_equal, greater, less, logical_or, one, zero
-from ..hypothesis_helpers import numeric_arrays
+from ..hypothesis_helpers import floating_arrays, broadcastable_floating_array_pairs
 from .._array_module import sign
 
 from hypothesis import given
 
 
-@given(numeric_arrays)
+@given(floating_arrays)
 def test_sign_special_cases_one_arg_less(arg1):
     """
     Special case test for `sign(x, /)`:
@@ -27,7 +27,7 @@ def test_sign_special_cases_one_arg_less(arg1):
     assert_exactly_equal(res[mask], (-one(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays)
+@given(floating_arrays)
 def test_sign_special_cases_one_arg_either(arg1):
     """
     Special case test for `sign(x, /)`:
@@ -40,7 +40,7 @@ def test_sign_special_cases_one_arg_either(arg1):
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays)
+@given(floating_arrays)
 def test_sign_special_cases_one_arg_greater(arg1):
     """
     Special case test for `sign(x, /)`:

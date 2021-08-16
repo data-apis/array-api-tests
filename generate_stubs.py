@@ -75,7 +75,7 @@ not modify it directly.
 """
 
 from ..array_helpers import *
-from ..hypothesis_helpers import numeric_arrays
+from ..hypothesis_helpers import floating_arrays, broadcastable_floating_array_pairs
 from .._array_module import {func}
 
 from hypothesis import given
@@ -475,8 +475,9 @@ def test_{func}_special_cases_{test_name_extra}(arg1):
 
 TWO_ARGS_TEMPLATE = """
 {decorator}
-def test_{func}_special_cases_{test_name_extra}(arg1, arg2):
+def test_{func}_special_cases_{test_name_extra}(pair):
     {doc}
+    arg1, arg2 = pair
     res = {func}(arg1, arg2)
     mask = {mask}
     {assertion}
@@ -495,7 +496,7 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
 
     """'''
     if typ.startswith("ONE_ARG"):
-        decorator = "@given(numeric_arrays)"
+        decorator = "@given(floating_arrays)"
         if typ == "ONE_ARG_EQUAL":
             value1, result = m.groups()
             value1 = parse_value(value1, 'arg1')
@@ -534,7 +535,7 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
         )
 
     elif typ.startswith("TWO_ARGS"):
-        decorator = "@given(numeric_arrays, numeric_arrays)"
+        decorator = "@given(broadcastable_floating_array_pairs())"
         if typ in [
                 "TWO_ARGS_EQUAL__EQUAL",
                 "TWO_ARGS_GREATER__EQUAL",

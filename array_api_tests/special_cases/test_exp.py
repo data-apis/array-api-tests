@@ -8,13 +8,13 @@ not modify it directly.
 """
 
 from ..array_helpers import NaN, assert_exactly_equal, exactly_equal, infinity, one, zero
-from ..hypothesis_helpers import numeric_arrays
+from ..hypothesis_helpers import floating_arrays, broadcastable_floating_array_pairs
 from .._array_module import exp
 
 from hypothesis import given
 
 
-@given(numeric_arrays)
+@given(floating_arrays)
 def test_exp_special_cases_one_arg_equal_1(arg1):
     """
     Special case test for `exp(x, /)`:
@@ -27,7 +27,7 @@ def test_exp_special_cases_one_arg_equal_1(arg1):
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays)
+@given(floating_arrays)
 def test_exp_special_cases_one_arg_equal_2(arg1):
     """
     Special case test for `exp(x, /)`:
@@ -40,7 +40,7 @@ def test_exp_special_cases_one_arg_equal_2(arg1):
     assert_exactly_equal(res[mask], (one(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays)
+@given(floating_arrays)
 def test_exp_special_cases_one_arg_equal_3(arg1):
     """
     Special case test for `exp(x, /)`:
@@ -53,7 +53,7 @@ def test_exp_special_cases_one_arg_equal_3(arg1):
     assert_exactly_equal(res[mask], (one(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays)
+@given(floating_arrays)
 def test_exp_special_cases_one_arg_equal_4(arg1):
     """
     Special case test for `exp(x, /)`:
@@ -66,7 +66,7 @@ def test_exp_special_cases_one_arg_equal_4(arg1):
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays)
+@given(floating_arrays)
 def test_exp_special_cases_one_arg_equal_5(arg1):
     """
     Special case test for `exp(x, /)`:

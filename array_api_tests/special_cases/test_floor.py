@@ -8,13 +8,13 @@ not modify it directly.
 """
 
 from ..array_helpers import assert_exactly_equal, isintegral
-from ..hypothesis_helpers import numeric_arrays
+from ..hypothesis_helpers import floating_arrays, broadcastable_floating_array_pairs
 from .._array_module import floor
 
 from hypothesis import given
 
 
-@given(numeric_arrays)
+@given(floating_arrays)
 def test_floor_special_cases_one_arg_equal(arg1):
     """
     Special case test for `floor(x, /)`:

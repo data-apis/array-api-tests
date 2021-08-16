@@ -9,13 +9,13 @@ not modify it directly.
 
 from ..array_helpers import (assert_exactly_equal, assert_iseven, assert_positive, ceil, equal,
                              floor, isintegral, logical_and, not_equal, one, subtract)
-from ..hypothesis_helpers import numeric_arrays
+from ..hypothesis_helpers import floating_arrays, broadcastable_floating_array_pairs
 from .._array_module import round
 
 from hypothesis import given
 
 
-@given(numeric_arrays)
+@given(floating_arrays)
 def test_round_special_cases_one_arg_equal(arg1):
     """
     Special case test for `round(x, /)`:
@@ -28,7 +28,7 @@ def test_round_special_cases_one_arg_equal(arg1):
     assert_exactly_equal(res[mask], (arg1)[mask])
 
 
-@given(numeric_arrays)
+@given(floating_arrays)
 def test_round_special_cases_one_arg_two_integers_equally_close(arg1):
     """
     Special case test for `round(x, /)`:

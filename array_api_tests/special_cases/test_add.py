@@ -9,215 +9,231 @@ not modify it directly.
 
 from ..array_helpers import (NaN, assert_exactly_equal, exactly_equal, infinity, isfinite,
                              logical_and, logical_or, non_zero, zero)
-from ..hypothesis_helpers import numeric_arrays
+from ..hypothesis_helpers import floating_arrays, broadcastable_floating_array_pairs
 from .._array_module import add
 
 from hypothesis import given
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_either(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_either(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If either `x1_i` or `x2_i` is `NaN`, the result is `NaN`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_or(exactly_equal(arg1, NaN(arg1.shape, arg1.dtype)), exactly_equal(arg2, NaN(arg1.shape, arg1.dtype)))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_1(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_1(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is `+infinity` and `x2_i` is `-infinity`, the result is `NaN`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_2(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_2(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is `-infinity` and `x2_i` is `+infinity`, the result is `NaN`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_3(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_3(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is `+infinity` and `x2_i` is `+infinity`, the result is `+infinity`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_4(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_4(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is `-infinity` and `x2_i` is `-infinity`, the result is `-infinity`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_5(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_5(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is `+infinity` and `x2_i` is a finite number, the result is `+infinity`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), isfinite(arg2))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_6(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_6(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is `-infinity` and `x2_i` is a finite number, the result is `-infinity`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), isfinite(arg2))
     assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_7(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_7(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is a finite number and `x2_i` is `+infinity`, the result is `+infinity`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(isfinite(arg1), exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_8(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_8(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is a finite number and `x2_i` is `-infinity`, the result is `-infinity`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(isfinite(arg1), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_9(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_9(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is `-0` and `x2_i` is `-0`, the result is `-0`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_10(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_10(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is `-0` and `x2_i` is `+0`, the result is `+0`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, -zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_11(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_11(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is `+0` and `x2_i` is `-0`, the result is `+0`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_12(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_12(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is `+0` and `x2_i` is `+0`, the result is `+0`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__equal_13(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__equal_13(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is a nonzero finite number and `x2_i` is `-x1_i`, the result is `+0`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(logical_and(isfinite(arg1), non_zero(arg1)), exactly_equal(arg2, -arg1))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_either__equal(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_either__equal(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is either `+0` or `-0` and `x2_i` is a nonzero finite number, the result is `x2_i`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(logical_or(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg1, -zero(arg1.shape, arg1.dtype))), logical_and(isfinite(arg2), non_zero(arg2)))
     assert_exactly_equal(res[mask], (arg2)[mask])
 
 
-@given(numeric_arrays, numeric_arrays)
-def test_add_special_cases_two_args_equal__either(arg1, arg2):
+@given(broadcastable_floating_array_pairs())
+def test_add_special_cases_two_args_equal__either(pair):
     """
     Special case test for `add(x1, x2, /)`:
 
         -   If `x1_i` is a nonzero finite number and `x2_i` is either `+0` or `-0`, the result is `x1_i`.
 
     """
+    arg1, arg2 = pair
     res = add(arg1, arg2)
     mask = logical_and(logical_and(isfinite(arg1), non_zero(arg1)), logical_or(exactly_equal(arg2, zero(arg2.shape, arg2.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype))))
     assert_exactly_equal(res[mask], (arg1)[mask])
