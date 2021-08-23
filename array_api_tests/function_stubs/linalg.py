@@ -23,7 +23,7 @@ def cross(x1: array, x2: array, /, *, axis: int = -1) -> array:
 def det(x: array, /) -> array:
     pass
 
-def diagonal(x: array, /, *, axis1: int = 0, axis2: int = 1, offset: int = 0) -> array:
+def diagonal(x: array, /, *, offset: int = 0) -> array:
     pass
 
 def eig():
@@ -83,7 +83,7 @@ def svdvals(x: array, /) -> Union[array, Tuple[array, ...]]:
 def tensordot(x1: array, x2: array, /, *, axes: Union[int, Tuple[Sequence[int], Sequence[int]]] = 2) -> array:
     pass
 
-def trace(x: array, /, *, axis1: int = 0, axis2: int = 1, offset: int = 0) -> array:
+def trace(x: array, /, *, offset: int = 0) -> array:
     pass
 
 def transpose(x: array, /, *, axes: Optional[Tuple[int, ...]] = None) -> array:
