@@ -26,4 +26,8 @@ jobs:
         git clone https://github.com/data-apis/array-api.git
         cd array-api-tests
         ./generate_stubs.py ../array-api
-        [[ -z $(git status --porcelain) ]]
+        if [[ -n $(git status -s) ]]; then
+            echo -e "\033[0;31mgenerate_stubs.py changed some files\033[0m";
+            git status;
+            false;
+        fi
