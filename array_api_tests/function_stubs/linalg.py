@@ -91,4 +91,4 @@ def vecdot(x1: array, x2: array, /, *, axis: Optional[int] = None) -> array:
 def vector_norm(x, /, *, axis=None, keepdims=False, ord=2):
     pass
 
-__all__ = ['cholesky', 'cross', 'det', 'diagonal', 'eig', 'eigh', 'eigvals', 'eigvalsh', 'einsum', 'inv', 'matmul', 'matrix_norm(x, /, *, axis=', 'matrix_power', 'matrix_rank', 'outer', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'svdvals', 'tensordot', 'trace', 'transpose', 'vecdot', 'vector_norm']
+__all__ = ['cholesky', 'cross', 'det', 'diagonal', 'eig', 'eigh', 'eigvals', 'eigvalsh', 'einsum', 'inv', 'matmul', 'matrix_norm', 'matrix_power', 'matrix_rank', 'outer', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'svdvals', 'tensordot', 'trace', 'transpose', 'vecdot', 'vector_norm']

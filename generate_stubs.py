@@ -29,7 +29,7 @@ IN_PLACE_OPERATOR_RE = regex.compile(r'- `.*`. May be implemented via `__i(.*)__
 REFLECTED_OPERATOR_RE = regex.compile(r'- `__r(.*)__`')
 ALIAS_RE = regex.compile(r'Alias for {ref}`function-(.*)`.')
 
-NAME_RE = regex.compile(r'(.*)\(.*\)')
+NAME_RE = regex.compile(r'(.*?)\(.*\)')
 
 STUB_FILE_HEADER = '''\
 """
