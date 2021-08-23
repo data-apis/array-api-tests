@@ -26,4 +26,4 @@ jobs:
         git clone https://github.com/data-apis/array-api.git
         cd array-api-tests
         ./generate_stubs.py ../array-api
-        [[ -z $(git status -s) ]]
+        [[ -z $(git status --porcelain) ]]
