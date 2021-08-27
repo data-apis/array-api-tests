@@ -30,7 +30,9 @@ from .array_helpers import (assert_exactly_equal, negative,
                             negative_mathematical_sign, logical_not,
                             logical_or, logical_and, inrange, π, one, zero,
                             infinity, isnegative, all as array_all, any as
-                            array_any, int_to_dtype, bool as bool_dtype)
+                            array_any, int_to_dtype, bool as bool_dtype,
+                            assert_integral, less_equal, equal, isintegral,
+                            isfinite)
 
 from . import _array_module
 
@@ -306,8 +308,12 @@ def test_bitwise_xor(args):
 
 @given(numeric_scalars)
 def test_ceil(x):
-    # a = _array_module.ceil(x)
-    pass
+    a = _array_module.ceil(x)
+    finite = isfinite(x)
+    assert_integral(a[finite])
+    assert array_all(less_equal(x[finite], a[finite]))
+    integers = isintegral(x)
+    assert array_all(equal(a[integers], x[integers]))
 
 @given(floating_scalars)
 def test_cos(x):
