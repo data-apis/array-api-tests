@@ -342,7 +342,12 @@ def test_cosh(x):
 def test_divide(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.divide(x1, x2)
+    _array_module.divide(x1, x2)
+    # There isn't much we can test here. The spec doesn't require any behavior
+    # beyond the special cases, and indeed, there aren't many mathematical
+    # properties of division that strictly hold for floating-point numbers. We
+    # could test that this does implement IEEE 754 division, but we don't yet
+    # have those sorts in general for this module.
 
 @given(two_any_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_equal(args):
