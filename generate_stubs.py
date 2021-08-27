@@ -156,8 +156,6 @@ def main():
             continue
         if args.verbose:
             print(f"Found signatures in {filename}")
-        if not args.write:
-            continue
 
         title = filename.replace('.md', '').replace('_', ' ')
         if 'extensions' in file:
@@ -244,11 +242,13 @@ def {annotated_sig}:{doc}
         code += ', '.join(f"'{i}'" for i in modules[module_name])
         code += ']\n'
 
-        with open(py_path, 'w') as f:
-            f.write(code)
+        if args.write:
+            with open(py_path, 'w') as f:
+                f.write(code)
         code = fix_code(code, file=py_path, verbose=False, quiet=False)
-        with open(py_path, 'w') as f:
-            f.write(code)
+        if args.write:
+            with open(py_path, 'w') as f:
+                f.write(code)
         if filename == 'elementwise_functions.md':
             special_cases = parse_special_cases(text, verbose=args.verbose)
             for func in special_cases:
