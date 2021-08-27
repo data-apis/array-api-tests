@@ -186,13 +186,15 @@ def isnegative(x):
 def assert_negative(x):
     assert all(isnegative(x)), "The input array is not negative"
 
-def inrange(x, a, b, epsilon=0):
+def inrange(x, a, b, epsilon=0, open=False):
     """
     Returns a mask for values of x in the range [a-epsilon, a+epsilon], inclusive
 
+    If open=True, the range is (a-epsilon, a+epsilon) (i.e., not inclusive).
     """
     eps = full(x.shape, epsilon, dtype=x.dtype)
-    return logical_and(less_equal(a-eps, x), less_equal(x, b+eps))
+    l = less if open else less_equal
+    return logical_and(l(a-eps, x), l(x, b+eps))
 
 def isintegral(x):
     """
