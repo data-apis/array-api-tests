@@ -308,6 +308,7 @@ def test_bitwise_xor(args):
 
 @given(numeric_scalars)
 def test_ceil(x):
+    # This test is almost identical to test_floor()
     a = _array_module.ceil(x)
     finite = isfinite(x)
     assert_integral(a[finite])
@@ -350,8 +351,14 @@ def test_expm1(x):
 
 @given(numeric_scalars)
 def test_floor(x):
-    # a = _array_module.floor(x)
-    pass
+    # This test is almost identical to test_ceil
+    a = _array_module.floor(x)
+    finite = isfinite(x)
+    assert_integral(a[finite])
+    assert array_all(less_equal(a[finite], x[finite]))
+    assert array_all(less_equal(x[finite] - a[finite], one(x[finite].shape, x.dtype)))
+    integers = isintegral(x)
+    assert array_all(equal(a[integers], x[integers]))
 
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_floor_divide(args):
