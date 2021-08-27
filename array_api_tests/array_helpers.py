@@ -196,7 +196,7 @@ def inrange(x, a, b, epsilon=0):
 
 def isintegral(x):
     """
-    Returns a mask the shape of x where the values are integral
+    Returns a mask on x where the values are integral
 
     x is integral if its dtype is an integer dtype, or if it is a floating
     point value that can be exactly represented as an integer.
