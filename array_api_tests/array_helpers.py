@@ -12,16 +12,17 @@ from . import _array_module
 from ._array_module import logical_not, subtract, floor, ceil, where
 
 __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
-           'greater', 'subtract', 'negative', 'floor', 'ceil', 'where',
-           'isfinite', 'equal', 'not_equal', 'zero', 'one', 'NaN', 'infinity',
-           'π', 'isnegzero', 'non_zero', 'isposzero', 'exactly_equal',
-           'assert_exactly_equal', 'notequal', 'assert_finite',
-           'assert_non_zero', 'ispositive', 'assert_positive', 'isnegative',
-           'assert_negative', 'isintegral', 'assert_integral', 'isodd',
-           'iseven', "assert_iseven", 'assert_isinf',
-           'positive_mathematical_sign', 'assert_positive_mathematical_sign',
-           'negative_mathematical_sign', 'assert_negative_mathematical_sign',
-           'same_sign', 'assert_same_sign']
+           'less_equal', 'greater', 'subtract', 'negative', 'floor', 'ceil',
+           'where', 'isfinite', 'equal', 'not_equal', 'zero', 'one', 'NaN',
+           'infinity', 'π', 'isnegzero', 'non_zero', 'isposzero',
+           'exactly_equal', 'assert_exactly_equal', 'notequal',
+           'assert_finite', 'assert_non_zero', 'ispositive',
+           'assert_positive', 'isnegative', 'assert_negative', 'isintegral',
+           'assert_integral', 'isodd', 'iseven', "assert_iseven",
+           'assert_isinf', 'positive_mathematical_sign',
+           'assert_positive_mathematical_sign', 'negative_mathematical_sign',
+           'assert_negative_mathematical_sign', 'same_sign',
+           'assert_same_sign']
 
 def zero(shape, dtype):
     """
