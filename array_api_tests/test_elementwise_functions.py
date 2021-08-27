@@ -31,7 +31,7 @@ from .array_helpers import (assert_exactly_equal, negative,
                             logical_or, logical_and, inrange, π, one, zero,
                             infinity, isnegative, all as array_all, any as
                             array_any, int_to_dtype, bool as bool_dtype,
-                            assert_integral, less_equal, equal, isintegral,
+                            assert_integral, less_equal, isintegral,
                             isfinite)
 
 from . import _array_module
