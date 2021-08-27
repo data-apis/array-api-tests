@@ -312,6 +312,7 @@ def test_ceil(x):
     finite = isfinite(x)
     assert_integral(a[finite])
     assert array_all(less_equal(x[finite], a[finite]))
+    assert array_all(less_equal(a[finite] - x[finite], one(x[finite].shape, x.dtype)))
     integers = isintegral(x)
     assert array_all(equal(a[integers], x[integers]))
 
