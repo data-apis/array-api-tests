@@ -315,7 +315,7 @@ def test_ceil(x):
     assert array_all(less_equal(x[finite], a[finite]))
     assert array_all(less_equal(a[finite] - x[finite], one(x[finite].shape, x.dtype)))
     integers = isintegral(x)
-    assert array_all(equal(a[integers], x[integers]))
+    assert_exactly_equal(a[integers], x[integers])
 
 @given(floating_scalars)
 def test_cos(x):
@@ -369,7 +369,7 @@ def test_floor(x):
     assert array_all(less_equal(a[finite], x[finite]))
     assert array_all(less_equal(x[finite] - a[finite], one(x[finite].shape, x.dtype)))
     integers = isintegral(x)
-    assert array_all(equal(a[integers], x[integers]))
+    assert_exactly_equal(a[integers], x[integers])
 
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_floor_divide(args):
