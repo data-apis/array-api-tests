@@ -319,13 +319,24 @@ def test_ceil(x):
 
 @given(floating_scalars)
 def test_cos(x):
-    # a = _array_module.cos(x)
-    pass
+    a = _array_module.cos(x)
+    ONE = one(x.shape, x.dtype)
+    INFINITY = infinity(x.shape, x.dtype)
+    domain = inrange(x, -INFINITY, INFINITY, open=True)
+    codomain = inrange(a, -ONE, ONE)
+    # cos maps (-inf, inf) to [-1, 1]. Values outside this domain are mapped
+    # to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(floating_scalars)
 def test_cosh(x):
-    # a = _array_module.cosh(x)
-    pass
+    a = _array_module.cosh(x)
+    INFINITY = infinity(x.shape, x.dtype)
+    domain = inrange(x, -INFINITY, INFINITY)
+    codomain = inrange(a, -INFINITY, INFINITY)
+    # cosh maps [-inf, inf] to [-inf, inf]. Values outside this domain are
+    # mapped to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_divide(args):
