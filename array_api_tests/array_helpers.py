@@ -1,3 +1,5 @@
+import itertools
+
 from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
                             logical_or, isfinite, greater, less, less_equal,
                             zeros, ones, full, bool, int8, int16, int32,
@@ -22,7 +24,7 @@ __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'assert_isinf', 'positive_mathematical_sign',
            'assert_positive_mathematical_sign', 'negative_mathematical_sign',
            'assert_negative_mathematical_sign', 'same_sign',
-           'assert_same_sign']
+           'assert_same_sign', 'ndindex', 'promote_dtypes']
 
 def zero(shape, dtype):
     """
@@ -333,3 +335,32 @@ def int_to_dtype(x, n, signed):
         if x & highest_bit:
             x = -((~x & mask) + 1)
     return x
+
+def ndindex(shape):
+    """
+    Iterator of n-D indices to an array
+
+    Yields tuples of integers to index every element of an array of shape
+    `shape`. Same as np.ndindex().
+
+    """
+    return itertools.product(*[range(i) for i in shape])
+
+def promote_dtypes(dtype1, dtype2):
+    """
+    Special case of result_type() which uses the exact type promotion table
+    from the spec.
+    """
+    from .test_type_promotion import dtype_mapping, promotion_table
+
+    # Equivalent to this, but some libraries may not work properly with using
+    # dtype objects as dict keys
+    #
+    # d1, d2 = reverse_dtype_mapping[dtype1], reverse_dtype_mapping[dtype2]
+
+    d1 = [i for i in dtype_mapping if dtype_mapping[i] == dtype1][0]
+    d2 = [i for i in dtype_mapping if dtype_mapping[i] == dtype2][0]
+
+    if (d1, d2) not in promotion_table:
+        raise ValueError(f"{d1} and {d2} are not type promotable according to the spec (this may indicate a bug in the test suite).")
+    return dtype_mapping[promotion_table[d1, d2]]
