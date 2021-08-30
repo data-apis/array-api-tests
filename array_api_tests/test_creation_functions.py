@@ -160,7 +160,7 @@ def test_linspace(start, stop, num, dtype, endpoint):
 
     if endpoint in [None, True]:
         if num > 1:
-            assert all(equal(a[-1], full((), stop, dtype=dtype))), "linspace() produced an array that does not include the endpoint"
+            assert all(equal(a[-1], full((), stop, dtype=a.dtype))), "linspace() produced an array that does not include the endpoint"
     else:
         # linspace(..., num, endpoint=False) is the same as the first num
         # elements of linspace(..., num+1, endpoint=True)
@@ -169,7 +169,7 @@ def test_linspace(start, stop, num, dtype, endpoint):
 
     if num > 0:
         # We need to cast start to dtype
-        assert all(equal(a[0], full((), start, dtype=dtype))), "linspace() produced an array that does not start with the start"
+        assert all(equal(a[0], full((), start, dtype=a.dtype))), "linspace() produced an array that does not start with the start"
 
         # TODO: This requires an assert_approx_equal function
 
