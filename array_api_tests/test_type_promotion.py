@@ -363,8 +363,8 @@ elementwise_function_two_arg_bool_parametrize_inputs = [(func_name, dtypes)
 elementwise_function_two_arg_bool_parametrize_ids = ['-'.join((n, d1, d2)) for n, (d1, d2)
                                             in elementwise_function_two_arg_bool_parametrize_inputs]
 
-# TODO: These functions should still do type promotion internally, but
-# we do not test this here (it will be tested in the corresponding tests in
+# TODO: These functions should still do type promotion internally, but we do
+# not test this here (it is tested in the corresponding tests in
 # test_elementwise_functions.py). This can affect the resulting values if not
 # done correctly. For example, greater_equal(array(1.0, dtype=float32),
 # array(1.00000001, dtype=float64)) will be wrong if the float64 array is

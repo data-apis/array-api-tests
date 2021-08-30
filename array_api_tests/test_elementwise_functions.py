@@ -32,7 +32,13 @@ from .array_helpers import (assert_exactly_equal, negative,
                             infinity, isnegative, all as array_all, any as
                             array_any, int_to_dtype, bool as bool_dtype,
                             assert_integral, less_equal, isintegral,
-                            isfinite)
+                            isfinite, ndindex, promote_dtypes,
+                            is_integer_dtype, is_float_dtype)
+# We might as well use this implementation rather than requiring
+# mod.broadcast_shapes(). See test_equal() and others.
+from .test_broadcasting import broadcast_shapes
+
+from .test_type_promotion import promotion_table, dtype_mapping
 
 from . import _array_module
 
@@ -56,11 +62,9 @@ def two_array_scalars(draw, dtype1, dtype2):
     return draw(array_scalars(just(dtype1))), draw(array_scalars(just(dtype2)))
 
 def sanity_check(x1, x2):
-    from .test_type_promotion import promotion_table, dtype_mapping
-    t1 = [i for i in dtype_mapping if dtype_mapping[i] == x1.dtype][0]
-    t2 = [i for i in dtype_mapping if dtype_mapping[i] == x2.dtype][0]
-
-    if (t1, t2) not in promotion_table:
+    try:
+        promote_dtypes(x1.dtype, x2.dtype)
+    except ValueError:
         raise RuntimeError("Error in test generation (probably a bug in the test suite")
 
 @given(numeric_scalars)
@@ -353,7 +357,49 @@ def test_divide(args):
 def test_equal(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.equal(x1, x2)
+    a = _array_module.equal(x1, x2)
+    # NOTE: assert_exactly_equal() itself uses equal(), so we must be careful
+    # not to use it here. Otherwise, the test would be circular and
+    # meaningless. Instead, we implement this by iterating every element of
+    # the arrays and comparing them. The logic here is also used for the tests
+    # for the other elementwise functions that accept any input dtype but
+    # always return bool (greater(), greater_equal(), less(), less_equal(),
+    # and not_equal()).
+
+    # First we broadcast the arrays so that they can be indexed uniformly.
+    # TODO: it should be possible to skip this step if we instead generate
+    # indices to x1 and x2 that correspond to the broadcasted shapes. This
+    # would avoid the dependence in this test on broadcast_to().
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    _x1 = _array_module.broadcast_to(x1, shape)
+    _x2 = _array_module.broadcast_to(x2, shape)
+
+    # Second, manually promote the dtypes. This is important. If the internal
+    # type promotion in equal() is wrong, it will not be directly visible in
+    # the output type, but it can lead to wrong answers. For example,
+    # equal(array(1.0, dtype=float32), array(1.00000001, dtype=float64)) will
+    # be wrong if the float64 is downcast to float32. See the comment on
+    # test_elementwise_function_two_arg_bool_type_promotion() in
+    # test_type_promotion.py. The type promotion for equal() is not tested in
+    # that file because doing so requires doing the consistency check we do
+    # here.
+    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
+    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+
+    if is_integer_dtype(promoted_dtype):
+        scalar_func = int
+    elif is_float_dtype(promoted_dtype):
+        scalar_func = float
+    else:
+        scalar_func = bool
+    for idx in ndindex(shape):
+        # Sanity check
+        aidx = a[idx]
+        x1idx = _x1[idx]
+        x2idx = _x2[idx]
+        assert aidx.shape == x1idx.shape == x2idx.shape
+        assert bool(aidx) == (scalar_func(x1idx) == scalar_func(x2idx))
 
 @given(floating_scalars)
 def test_exp(x):
