@@ -301,7 +301,7 @@ dtype_objects = [getattr(_array_module, t) for t in _dtypes]
 def is_integer_dtype(dtype):
     if dtype is None:
         return False
-    return dtype in [int8, int16, int32, int16, uint8, uint16, uint32, uint64]
+    return dtype in [int8, int16, int32, int64, uint8, uint16, uint32, uint64]
 
 def is_float_dtype(dtype):
     if dtype is None:
