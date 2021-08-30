@@ -38,8 +38,6 @@ from .array_helpers import (assert_exactly_equal, negative,
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
 
-from .test_type_promotion import promotion_table, dtype_mapping
-
 from . import _array_module
 
 # integer_scalars = array_scalars(integer_dtypes)
