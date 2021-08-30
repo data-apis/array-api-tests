@@ -378,11 +378,12 @@ def test_equal(args):
     # type promotion in equal() is wrong, it will not be directly visible in
     # the output type, but it can lead to wrong answers. For example,
     # equal(array(1.0, dtype=float32), array(1.00000001, dtype=float64)) will
-    # be wrong if the float64 is downcast to float32. See the comment on
+    # be wrong if the float64 is downcast to float32. # be wrong if the
+    # float64 is downcast to float32. See the comment on
     # test_elementwise_function_two_arg_bool_type_promotion() in
-    # test_type_promotion.py. The type promotion for equal() is not tested in
-    # that file because doing so requires doing the consistency check we do
-    # here.
+    # test_type_promotion.py. The type promotion for equal() is not *really*
+    # tested in that file, because doing so requires doing the consistency
+    # check we do here rather than just checking the result dtype.
     promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
     _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
     _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
@@ -394,10 +395,10 @@ def test_equal(args):
     else:
         scalar_func = bool
     for idx in ndindex(shape):
-        # Sanity check
         aidx = a[idx]
         x1idx = _x1[idx]
         x2idx = _x2[idx]
+        # Sanity check
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) == scalar_func(x2idx))
 
@@ -432,13 +433,61 @@ def test_floor_divide(args):
 def test_greater(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.greater(x1, x2)
+    a = _array_module.greater(x1, x2)
+
+    # See the comments in test_equal() for a description of how this test
+    # works.
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    _x1 = _array_module.broadcast_to(x1, shape)
+    _x2 = _array_module.broadcast_to(x2, shape)
+
+    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
+    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+
+    if is_integer_dtype(promoted_dtype):
+        scalar_func = int
+    elif is_float_dtype(promoted_dtype):
+        scalar_func = float
+    else:
+        scalar_func = bool
+    for idx in ndindex(shape):
+        aidx = a[idx]
+        x1idx = _x1[idx]
+        x2idx = _x2[idx]
+        # Sanity check
+        assert aidx.shape == x1idx.shape == x2idx.shape
+        assert bool(aidx) == (scalar_func(x1idx) > scalar_func(x2idx))
 
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_greater_equal(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.greater_equal(x1, x2)
+    a = _array_module.greater_equal(x1, x2)
+
+    # See the comments in test_equal() for a description of how this test
+    # works.
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    _x1 = _array_module.broadcast_to(x1, shape)
+    _x2 = _array_module.broadcast_to(x2, shape)
+
+    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
+    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+
+    if is_integer_dtype(promoted_dtype):
+        scalar_func = int
+    elif is_float_dtype(promoted_dtype):
+        scalar_func = float
+    else:
+        scalar_func = bool
+    for idx in ndindex(shape):
+        aidx = a[idx]
+        x1idx = _x1[idx]
+        x2idx = _x2[idx]
+        # Sanity check
+        assert aidx.shape == x1idx.shape == x2idx.shape
+        assert bool(aidx) == (scalar_func(x1idx) >= scalar_func(x2idx))
 
 @given(numeric_scalars)
 def test_isfinite(x):
@@ -459,13 +508,61 @@ def test_isnan(x):
 def test_less(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.less(x1, x2)
+    a = _array_module.less(x1, x2)
+
+    # See the comments in test_equal() for a description of how this test
+    # works.
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    _x1 = _array_module.broadcast_to(x1, shape)
+    _x2 = _array_module.broadcast_to(x2, shape)
+
+    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
+    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+
+    if is_integer_dtype(promoted_dtype):
+        scalar_func = int
+    elif is_float_dtype(promoted_dtype):
+        scalar_func = float
+    else:
+        scalar_func = bool
+    for idx in ndindex(shape):
+        aidx = a[idx]
+        x1idx = _x1[idx]
+        x2idx = _x2[idx]
+        # Sanity check
+        assert aidx.shape == x1idx.shape == x2idx.shape
+        assert bool(aidx) == (scalar_func(x1idx) < scalar_func(x2idx))
 
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_less_equal(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.less_equal(x1, x2)
+    a = _array_module.less_equal(x1, x2)
+
+    # See the comments in test_equal() for a description of how this test
+    # works.
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    _x1 = _array_module.broadcast_to(x1, shape)
+    _x2 = _array_module.broadcast_to(x2, shape)
+
+    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
+    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+
+    if is_integer_dtype(promoted_dtype):
+        scalar_func = int
+    elif is_float_dtype(promoted_dtype):
+        scalar_func = float
+    else:
+        scalar_func = bool
+    for idx in ndindex(shape):
+        aidx = a[idx]
+        x1idx = _x1[idx]
+        x2idx = _x2[idx]
+        # Sanity check
+        assert aidx.shape == x1idx.shape == x2idx.shape
+        assert bool(aidx) == (scalar_func(x1idx) <= scalar_func(x2idx))
 
 @given(floating_scalars)
 def test_log(x):
@@ -531,7 +628,31 @@ def test_negative(x):
 def test_not_equal(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.not_equal(x1, x2)
+    a = _array_module.not_equal(x1, x2)
+
+    # See the comments in test_equal() for a description of how this test
+    # works.
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    _x1 = _array_module.broadcast_to(x1, shape)
+    _x2 = _array_module.broadcast_to(x2, shape)
+
+    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
+    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+
+    if is_integer_dtype(promoted_dtype):
+        scalar_func = int
+    elif is_float_dtype(promoted_dtype):
+        scalar_func = float
+    else:
+        scalar_func = bool
+    for idx in ndindex(shape):
+        aidx = a[idx]
+        x1idx = _x1[idx]
+        x2idx = _x2[idx]
+        # Sanity check
+        assert aidx.shape == x1idx.shape == x2idx.shape
+        assert bool(aidx) == (scalar_func(x1idx) != scalar_func(x2idx))
 
 @given(numeric_scalars)
 def test_positive(x):
