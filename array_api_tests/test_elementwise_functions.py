@@ -402,13 +402,25 @@ def test_equal(args):
 
 @given(floating_scalars)
 def test_exp(x):
-    # a = _array_module.exp(x)
-    pass
+    a = _array_module.exp(x)
+    INFINITY = infinity(x.shape, x.dtype)
+    ZERO = zero(x.shape, x.dtype)
+    domain = inrange(x, -INFINITY, INFINITY)
+    codomain = inrange(a, ZERO, INFINITY)
+    # exp maps [-inf, inf] to [0, inf]. Values outside this domain are
+    # mapped to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(floating_scalars)
 def test_expm1(x):
-    # a = _array_module.expm1(x)
-    pass
+    a = _array_module.expm1(x)
+    INFINITY = infinity(x.shape, x.dtype)
+    NEGONE = -one(x.shape, x.dtype)
+    domain = inrange(x, -INFINITY, INFINITY)
+    codomain = inrange(a, NEGONE, INFINITY)
+    # expm1 maps [-inf, inf] to [1, inf]. Values outside this domain are
+    # mapped to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(numeric_scalars)
 def test_floor(x):
