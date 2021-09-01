@@ -27,11 +27,11 @@ __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'assert_negative_mathematical_sign', 'same_sign',
            'assert_same_sign', 'ndindex', 'promote_dtypes', 'float64',
            'asarray', 'is_integer_dtype', 'is_float_dtype', 'dtype_ranges',
-           'full']
+           'full', 'true', 'false']
 
 def zero(shape, dtype):
     """
-    Returns a scalar 0 of the given dtype.
+    Returns a full 0 array of the given dtype.
 
     This should be used in place of the literal "0" in the test suite, as the
     spec does not require any behavior with Python literals (and in
@@ -45,7 +45,7 @@ def zero(shape, dtype):
 
 def one(shape, dtype):
     """
-    Returns a scalar 1 of the given dtype.
+    Returns a full 1 array of the given dtype.
 
     This should be used in place of the literal "1" in the test suite, as the
     spec does not require any behavior with Python literals (and in
@@ -58,7 +58,7 @@ def one(shape, dtype):
 
 def NaN(shape, dtype):
     """
-    Returns a scalar nan of the given dtype.
+    Returns a full nan array of the given dtype.
 
     Note that this is only defined for floating point dtypes.
     """
@@ -68,7 +68,7 @@ def NaN(shape, dtype):
 
 def infinity(shape, dtype):
     """
-    Returns a scalar positive infinity of the given dtype.
+    Returns a full positive infinity array of the given dtype.
 
     Note that this is only defined for floating point dtypes.
 
@@ -81,7 +81,7 @@ def infinity(shape, dtype):
 
 def π(shape, dtype):
     """
-    Returns a scalar π.
+    Returns a full π array of the given dtype.
 
     Note that this function is only defined for floating point dtype.
 
@@ -91,6 +91,18 @@ def π(shape, dtype):
     if dtype not in [float32, float64]:
         raise RuntimeError(f"Unexpected dtype {dtype} in π().")
     return full(shape, pi, dtype=dtype)
+
+def true(shape):
+    """
+    Returns a full True array with dtype=bool.
+    """
+    return full(shape, True, dtype=bool)
+
+def false(shape):
+    """
+    Returns a full False array with dtype=bool.
+    """
+    return full(shape, False, dtype=bool)
 
 def isnegzero(x):
     """
