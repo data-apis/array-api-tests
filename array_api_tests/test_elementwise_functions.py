@@ -33,7 +33,8 @@ from .array_helpers import (assert_exactly_equal, negative,
                             array_any, int_to_dtype, bool as bool_dtype,
                             assert_integral, less_equal, isintegral, isfinite,
                             ndindex, promote_dtypes, is_integer_dtype,
-                            is_float_dtype, not_equal, float64, asarray)
+                            is_float_dtype, not_equal, float64, asarray,
+                            dtype_ranges, full)
 # We might as well use this implementation rather than requiring
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
@@ -67,6 +68,12 @@ def sanity_check(x1, x2):
 
 @given(numeric_scalars)
 def test_abs(x):
+    if is_integer_dtype(x.dtype):
+        minval = dtype_ranges[x.dtype][0]
+        if minval < 0:
+            # abs of the smallest representable negative integer is not defined
+            mask = not_equal(x, full(x.shape, minval, dtype=x.dtype))
+            x = x[mask]
     a = _array_module.abs(x)
     assert array_all(logical_not(negative_mathematical_sign(a))), "abs(x) did not have positive sign"
     less_zero = negative_mathematical_sign(x)
