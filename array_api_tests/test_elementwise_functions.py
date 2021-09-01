@@ -634,23 +634,47 @@ def test_less_equal(args):
 
 @given(floating_scalars)
 def test_log(x):
-    # a = _array_module.log(x)
-    pass
+    a = _array_module.log(x)
+    INFINITY = infinity(x.shape, x.dtype)
+    ZERO = zero(x.shape, x.dtype)
+    domain = inrange(x, ZERO, INFINITY)
+    codomain = inrange(a, -INFINITY, INFINITY)
+    # log maps [0, inf] to [-inf, inf]. Values outside this domain are
+    # mapped to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(floating_scalars)
 def test_log1p(x):
-    # a = _array_module.log1p(x)
-    pass
+    a = _array_module.log1p(x)
+    INFINITY = infinity(x.shape, x.dtype)
+    NEGONE = -one(x.shape, x.dtype)
+    codomain = inrange(x, NEGONE, INFINITY)
+    domain = inrange(a, -INFINITY, INFINITY)
+    # log1p maps [1, inf] to [-inf, inf]. Values outside this domain are
+    # mapped to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(floating_scalars)
 def test_log2(x):
-    # a = _array_module.log2(x)
-    pass
+    a = _array_module.log2(x)
+    INFINITY = infinity(x.shape, x.dtype)
+    ZERO = zero(x.shape, x.dtype)
+    domain = inrange(x, ZERO, INFINITY)
+    codomain = inrange(a, -INFINITY, INFINITY)
+    # log2 maps [0, inf] to [-inf, inf]. Values outside this domain are
+    # mapped to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(floating_scalars)
 def test_log10(x):
-    # a = _array_module.log10(x)
-    pass
+    a = _array_module.log10(x)
+    INFINITY = infinity(x.shape, x.dtype)
+    ZERO = zero(x.shape, x.dtype)
+    domain = inrange(x, ZERO, INFINITY)
+    codomain = inrange(a, -INFINITY, INFINITY)
+    # log10 maps [0, inf] to [-inf, inf]. Values outside this domain are
+    # mapped to nan, which is already tested in the special cases.
+    assert_exactly_equal(domain, codomain)
 
 @given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_logaddexp(args):
