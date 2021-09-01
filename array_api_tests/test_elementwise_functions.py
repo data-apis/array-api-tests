@@ -17,6 +17,8 @@ arrays of any shape, using masking patterns (similar to the tests in special_cas
 from hypothesis import given, assume
 from hypothesis.strategies import composite, just
 
+import math
+
 from .hypothesis_helpers import (integer_dtype_objects,
                                  floating_dtype_objects,
                                  numeric_dtype_objects,
@@ -34,7 +36,7 @@ from .array_helpers import (assert_exactly_equal, negative,
                             assert_integral, less_equal, isintegral, isfinite,
                             ndindex, promote_dtypes, is_integer_dtype,
                             is_float_dtype, not_equal, float64, asarray,
-                            dtype_ranges, full)
+                            dtype_ranges, full, true, false)
 # We might as well use this implementation rather than requiring
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
@@ -526,18 +528,49 @@ def test_greater_equal(args):
 
 @given(numeric_scalars)
 def test_isfinite(x):
-    # a = _array_module.isfinite(x)
-    pass
+    a = _array_module.isfinite(x)
+    TRUE = true(x.shape)
+    if is_integer_dtype(x.dtype):
+        assert_exactly_equal(a, TRUE)
+    # Test that isfinite, isinf, and isnan are self-consistent.
+    inf = logical_or(_array_module.isinf(x), _array_module.isnan(x))
+    assert_exactly_equal(a, logical_not(inf))
+
+    # Test the exact value by comparing to the math version
+    if is_float_dtype(x.dtype):
+        for idx in ndindex(x.shape):
+            s = float(x[idx])
+            assert bool(a[idx]) == math.isfinite(s)
 
 @given(numeric_scalars)
 def test_isinf(x):
-    # a = _array_module.isinf(x)
-    pass
+    a = _array_module.isinf(x)
+    FALSE = false(x.shape)
+    if is_integer_dtype(x.dtype):
+        assert_exactly_equal(a, FALSE)
+    finite_or_nan = logical_or(_array_module.isfinite(x), _array_module.isnan(x))
+    assert_exactly_equal(a, logical_not(finite_or_nan))
+
+    # Test the exact value by comparing to the math version
+    if is_float_dtype(x.dtype):
+        for idx in ndindex(x.shape):
+            s = float(x[idx])
+            assert bool(a[idx]) == math.isinf(s)
 
 @given(numeric_scalars)
 def test_isnan(x):
-    # a = _array_module.isnan(x)
-    pass
+    a = _array_module.isnan(x)
+    FALSE = false(x.shape)
+    if is_integer_dtype(x.dtype):
+        assert_exactly_equal(a, FALSE)
+    finite_or_inf = logical_or(_array_module.isfinite(x), _array_module.isinf(x))
+    assert_exactly_equal(a, logical_not(finite_or_inf))
+
+    # Test the exact value by comparing to the math version
+    if is_float_dtype(x.dtype):
+        for idx in ndindex(x.shape):
+            s = float(x[idx])
+            assert bool(a[idx]) == math.isnan(s)
 
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_less(args):
