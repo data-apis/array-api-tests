@@ -680,30 +680,59 @@ def test_log10(x):
 def test_logaddexp(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.logaddexp(x1, x2)
+    _array_module.logaddexp(x1, x2)
+    # The spec doesn't require any behavior for this function. We could test
+    # that this is indeed an approximation of log(exp(x1) + exp(x2)), but we
+    # don't have tests for this sort of thing for any functions yet.
 
 @given(two_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_logical_and(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.logical_and(x1, x2)
+    a = _array_module.logical_and(x1, x2)
+
+    # See the comments in test_equal
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    _x1 = _array_module.broadcast_to(x1, shape)
+    _x2 = _array_module.broadcast_to(x2, shape)
+
+    for idx in ndindex(shape):
+        assert a[idx] == (bool(_x1[idx]) and bool(_x2[idx]))
 
 @given(boolean_scalars)
 def test_logical_not(x):
-    # a = _array_module.logical_not(x)
-    pass
+    a = _array_module.logical_not(x)
+
+    for idx in ndindex(x.shape):
+        assert a[idx] == (not bool(x[idx]))
 
 @given(two_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_logical_or(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.logical_or(x1, x2)
+    a = _array_module.logical_or(x1, x2)
+
+    # See the comments in test_equal
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    _x1 = _array_module.broadcast_to(x1, shape)
+    _x2 = _array_module.broadcast_to(x2, shape)
+
+    for idx in ndindex(shape):
+        assert a[idx] == (bool(_x1[idx]) or bool(_x2[idx]))
 
 @given(two_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_logical_xor(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.logical_xor(x1, x2)
+    a = _array_module.logical_xor(x1, x2)
+
+    # See the comments in test_equal
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    _x1 = _array_module.broadcast_to(x1, shape)
+    _x2 = _array_module.broadcast_to(x2, shape)
+
+    for idx in ndindex(shape):
+        assert a[idx] == (bool(_x1[idx]) ^ bool(_x2[idx]))
 
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_multiply(args):
