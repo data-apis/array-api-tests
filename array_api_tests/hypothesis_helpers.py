@@ -48,9 +48,17 @@ shared_dtypes = shared(dtypes)
 @composite
 def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
     from .test_type_promotion import dtype_mapping, promotion_table
+    # sort for shrinking (sampled_from shrinks to the earlier elements in the
+    # list). Give pairs of the same dtypes first, then smaller dtypes,
+    # preferring float, then int, then unsigned int. Note, this might not
+    # always result in examples shrinking to these pairs because strategies
+    # that draw from dtypes might not draw the same example from different
+    # pairs (XXX: Can we redesign the strategies so that they can prefer
+    # shrinking dtypes over values?)
+    sorted_table = sorted(promotion_table)
+    sorted_table = sorted(sorted_table, key=lambda ij: -1 if ij[0] == ij[1] else sorted_table.index(ij))
     dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in
-                   # sorting gives the best shrinking
-                   sorted(promotion_table)]
+                   sorted_table]
 
     filtered_dtype_pairs = [(i, j) for i, j in dtype_pairs if i in
                             dtype_objects and j in dtype_objects]
