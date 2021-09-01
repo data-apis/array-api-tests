@@ -31,9 +31,9 @@ from .array_helpers import (assert_exactly_equal, negative,
                             logical_or, logical_and, inrange, π, one, zero,
                             infinity, isnegative, all as array_all, any as
                             array_any, int_to_dtype, bool as bool_dtype,
-                            assert_integral, less_equal, isintegral,
-                            isfinite, ndindex, promote_dtypes,
-                            is_integer_dtype, is_float_dtype)
+                            assert_integral, less_equal, isintegral, isfinite,
+                            ndindex, promote_dtypes, is_integer_dtype,
+                            is_float_dtype, not_equal, float64, asarray)
 # We might as well use this implementation rather than requiring
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
@@ -437,7 +437,25 @@ def test_floor(x):
 def test_floor_divide(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.floor_divide(x1, x2)
+    if is_integer_dtype(x1.dtype):
+        # The spec does not specify the behavior for division by 0 for integer
+        # dtypes. A library may choose to raise an exception in this case, so
+        # we avoid passing it in entirely.
+        nonzero = not_equal(x2, zero(x2.shape, x2.dtype))
+        div = _array_module.divide(
+            asarray(x1[nonzero], dtype=float64),
+            asarray(x2[nonzero], dtype=float64))
+        a = _array_module.floor_divide(x1[nonzero], x2[nonzero])
+    else:
+        div = _array_module.divide(x1, x2)
+        a = _array_module.floor_divide(x1, x2)
+
+    # TODO: The spec doesn't clearly specify the behavior of floor_divide on
+    # infinities. See https://github.com/data-apis/array-api/issues/199.
+    finite = isfinite(div)
+    assert_integral(a[finite])
+
+    # TODO: Test the exact output for floor_divide.
 
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_greater(args):

@@ -6,7 +6,8 @@ from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
                             int64, uint8, uint16, uint32, uint64, float32,
                             float64, nan, inf, pi, remainder, divide, isinf,
                             negative, _integer_dtypes, _floating_dtypes,
-                            _numeric_dtypes, _boolean_dtypes, _dtypes, )
+                            _numeric_dtypes, _boolean_dtypes, _dtypes,
+                            asarray)
 from . import _array_module
 
 # These are exported here so that they can be included in the special cases
@@ -24,7 +25,8 @@ __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'assert_isinf', 'positive_mathematical_sign',
            'assert_positive_mathematical_sign', 'negative_mathematical_sign',
            'assert_negative_mathematical_sign', 'same_sign',
-           'assert_same_sign', 'ndindex', 'promote_dtypes']
+           'assert_same_sign', 'ndindex', 'promote_dtypes', 'float64',
+           'asarray']
 
 def zero(shape, dtype):
     """
