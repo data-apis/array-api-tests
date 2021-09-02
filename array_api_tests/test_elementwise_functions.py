@@ -116,6 +116,7 @@ def test_add(args):
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.add(x1, x2)
+
     b = _array_module.add(x2, x1)
     # add is commutative
     assert_exactly_equal(a, b)
@@ -738,7 +739,11 @@ def test_logical_xor(args):
 def test_multiply(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.multiply(x1, x2)
+    a = _array_module.multiply(x1, x2)
+
+    b = _array_module.multiply(x2, x1)
+    # multiply is commutative
+    assert_exactly_equal(a, b)
 
 @given(numeric_scalars)
 def test_negative(x):
