@@ -28,6 +28,6 @@ jobs:
         ./generate_stubs.py ../array-api
         if [[ -n $(git status -s) ]]; then
             echo -e "\033[0;31mgenerate_stubs.py changed some files\033[0m";
-            git status;
+            git diff;
             false;
         fi
