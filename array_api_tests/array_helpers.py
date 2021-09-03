@@ -27,7 +27,7 @@ __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'assert_negative_mathematical_sign', 'same_sign',
            'assert_same_sign', 'ndindex', 'promote_dtypes', 'float64',
            'asarray', 'is_integer_dtype', 'is_float_dtype', 'dtype_ranges',
-           'full', 'true', 'false']
+           'full', 'true', 'false', 'isnan']
 
 def zero(shape, dtype):
     """
