@@ -37,7 +37,7 @@ from .array_helpers import (assert_exactly_equal, negative,
                             ndindex, promote_dtypes, is_integer_dtype,
                             is_float_dtype, not_equal, float64, asarray,
                             dtype_ranges, full, true, false, assert_same_sign,
-                            isnan)
+                            isnan, equal, less)
 # We might as well use this implementation rather than requiring
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
@@ -827,8 +827,26 @@ def test_remainder(args):
 
 @given(numeric_scalars)
 def test_round(x):
-    # a = _array_module.round(x)
-    pass
+    a = _array_module.round(x)
+
+    # Test that the result is integral
+    finite = isfinite(x)
+    assert_integral(a[finite])
+
+    # round(x) should be the nearest integer to x. The case where there is a
+    # tie (round to even) is already handled by the special cases tests.
+
+    # This is the same strategy used in the mask in the
+    # test_round_special_cases_one_arg_two_integers_equally_close special
+    # cases test.
+    floor = _array_module.floor(x)
+    ceil = _array_module.ceil(x)
+    over = _array_module.subtract(x, floor)
+    under = _array_module.subtract(ceil, x)
+    round_down = less(over, under)
+    round_up = less(under, over)
+    assert_exactly_equal(a[round_down], floor[round_down])
+    assert_exactly_equal(a[round_up], ceil[round_up])
 
 @given(numeric_scalars)
 def test_sign(x):
