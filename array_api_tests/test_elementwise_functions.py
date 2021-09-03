@@ -36,7 +36,8 @@ from .array_helpers import (assert_exactly_equal, negative,
                             assert_integral, less_equal, isintegral, isfinite,
                             ndindex, promote_dtypes, is_integer_dtype,
                             is_float_dtype, not_equal, float64, asarray,
-                            dtype_ranges, full, true, false)
+                            dtype_ranges, full, true, false, assert_same_sign,
+                            isnan)
 # We might as well use this implementation rather than requiring
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
@@ -798,20 +799,31 @@ def test_not_equal(args):
 
 @given(numeric_scalars)
 def test_positive(x):
-    # a = _array_module.positive(x)
-    pass
+    a = _array_module.positive(x)
+    # Positive does nothing
+    assert_exactly_equal(a, x)
 
 @given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_pow(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.pow(x1, x2)
+    _array_module.pow(x1, x2)
+    # There isn't much we can test here. The spec doesn't require any behavior
+    # beyond the special cases, and indeed, there aren't many mathematical
+    # properties of exponentiation that strictly hold for floating-point
+    # numbers. We could test that this does implement IEEE 754 pow, but we
+    # don't yet have those sorts in general for this module.
 
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_remainder(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.remainder(x1, x2)
+    a = _array_module.remainder(x1, x2)
+
+    # a and x2 should have the same sign.
+    # assert_same_sign returns False for nans
+    not_nan = logical_not(logical_or(isnan(a), isnan(x2)))
+    assert_same_sign(a[not_nan], x2[not_nan])
 
 @given(numeric_scalars)
 def test_round(x):
