@@ -106,20 +106,24 @@ def false(shape):
 
 def isnegzero(x):
     """
-    Returns a mask where x is -0.
+    Returns a mask where x is -0. Is all False if x has integer dtype.
     """
     # TODO: If copysign or signbit are added to the spec, use those instead.
     shape = x.shape
     dtype = x.dtype
+    if is_integer_dtype(dtype):
+        return false(shape)
     return equal(divide(one(shape, dtype), x), -infinity(shape, dtype))
 
 def isposzero(x):
     """
-    Returns a mask where x is +0 (but not -0).
+    Returns a mask where x is +0 (but not -0). Is all True if x has integer dtype.
     """
     # TODO: If copysign or signbit are added to the spec, use those instead.
     shape = x.shape
     dtype = x.dtype
+    if is_integer_dtype(dtype):
+        return true(shape)
     return equal(divide(one(shape, dtype), x), infinity(shape, dtype))
 
 def exactly_equal(x, y):
@@ -306,7 +310,6 @@ def same_sign(x, y):
 
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
-
 
 integer_dtype_objects = [getattr(_array_module, t) for t in _integer_dtypes]
 floating_dtype_objects = [getattr(_array_module, t) for t in _floating_dtypes]
