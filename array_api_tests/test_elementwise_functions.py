@@ -747,8 +747,24 @@ def test_multiply(args):
 
 @given(numeric_scalars)
 def test_negative(x):
-    # a = _array_module.negative(x)
-    pass
+    a = _array_module.negative(x)
+
+    # Negation is an involution
+    b = _array_module.negative(a)
+    assert_exactly_equal(x, b)
+
+    mask = isfinite(x)
+    if is_integer_dtype(x.dtype):
+        minval = dtype_ranges[x.dtype][0]
+        if minval < 0:
+            # negative of the smallest representable negative integer is not defined
+            mask = not_equal(x, full(x.shape, minval, dtype=x.dtype))
+            x = x[mask]
+
+    # Additive inverse
+    y = _array_module.add(x[mask], a[mask])
+    ZERO = zero(x[mask].shape, x.dtype)
+    assert_exactly_equal(y, ZERO)
 
 @given(two_any_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_not_equal(args):
