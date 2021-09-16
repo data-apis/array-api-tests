@@ -1,13 +1,13 @@
-from ._array_module import (asarray, arange, ceil, empty, eye, full,
-equal, all, linspace, ones, zeros, isnan)
+from ._array_module import (asarray, arange, ceil, empty, eye, full, full_like,
+                            equal, all, linspace, ones, zeros, isnan)
 from .array_helpers import (is_integer_dtype, dtype_ranges,
                             assert_exactly_equal, isintegral, is_float_dtype)
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  shapes, sizes, sqrt_sizes, shared_dtypes,
-                                 scalars)
+                                 scalars, xps)
 
 from hypothesis import assume, given
-from hypothesis.strategies import integers, floats, one_of, none, booleans, just
+from hypothesis.strategies import integers, floats, one_of, none, booleans, just, shared
 
 int_range = integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
 float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE,
@@ -131,8 +131,32 @@ def test_full(shape, fill_value, dtype):
         assert all(equal(a, asarray(fill_value, **kwargs))), "full() array did not equal the fill value"
 
 # TODO: implement full_like (requires hypothesis arrays support)
-def test_full_like():
-    pass
+@given(
+    a=xps.arrays(
+        dtype=shared(xps.scalar_dtypes(), key='dtypes'),
+        shape=xps.array_shapes(),
+    ),
+    fill_value=shared(xps.scalar_dtypes(), key='dtypes').flatmap(xps.from_dtype),
+    kwargs=one_of(
+        just({}),
+        shared(xps.scalar_dtypes(), key='dtypes').map(lambda d: {'dtype': d}),
+    ),
+)
+def test_full_like(a, fill_value, kwargs):
+    a_like = full_like(a, fill_value, **kwargs)
+
+    if kwargs is None:
+        pass # TODO: Should it actually match the fill_value?
+    else:
+        assert a_like.dtype == a.dtype
+
+    assert a_like.shape == a.shape, "full_like() produced an array with incorrect shape"
+
+    if is_float_dtype(a_like.dtype) and isnan(asarray(fill_value)):
+        assert all(isnan(a_like)), "full_like() array did not equal the fill value"
+    else:
+        assert all(equal(a_like, asarray(fill_value, dtype=a.dtype))), "full_like() array did not equal the fill value"
+
 
 @given(scalars(shared_dtypes, finite=True),
        scalars(shared_dtypes, finite=True),

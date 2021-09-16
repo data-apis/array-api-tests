@@ -6,6 +6,7 @@ from hypothesis.strategies import (lists, integers, builds, sampled_from,
                                    shared, floats, just, composite, one_of,
                                    none, booleans)
 from hypothesis.extra.numpy import mutually_broadcastable_shapes
+from hypothesis.extra.array_api import make_strategies_namespace
 from hypothesis import assume
 
 from .pytest_helpers import nargs
@@ -15,8 +16,12 @@ from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             integer_or_boolean_dtype_objects, dtype_objects)
 from ._array_module import full, float32, float64, bool as bool_dtype, _UndefinedStub
 from . import _array_module
+from ._array_module import mod as xp
 
 from .function_stubs import elementwise_functions
+
+
+xps = make_strategies_namespace(xp)
 
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
