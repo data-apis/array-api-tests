@@ -690,15 +690,15 @@ def parse_annotations(spec_text, all_annotations, verbose=False):
     for line in spec_text.splitlines():
         m = HEADER_RE.match(line)
         if m:
-            name = m.group(1)
+            name = m.group(1).replace('-', '_')
             continue
         m = ALIAS_RE.match(line)
         if m:
-            alias_name = m.group(1)
+            alias_name = m.group(1).replace('-', '_')
             if alias_name not in all_annotations:
                 print(f"Warning: No annotations for aliased function {name}")
             else:
-                annotations[name] = all_annotations[m.group(1)]
+                annotations[name] = all_annotations[alias_name]
             continue
         if line == '#### Parameters':
             in_block = True

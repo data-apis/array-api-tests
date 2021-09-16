@@ -19,7 +19,7 @@ def einsum():
 def matmul(x1: array, x2: array, /) -> array:
     pass
 
-def matrix_transpose(x, /):
+def matrix_transpose(x: array, /) -> array:
     pass
 
 def tensordot(x1: array, x2: array, /, *, axes: Union[int, Tuple[Sequence[int], Sequence[int]]] = 2) -> array:

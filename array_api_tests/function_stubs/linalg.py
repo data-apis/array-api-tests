@@ -11,6 +11,7 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/linear
 from __future__ import annotations
 
 from ._types import Literal, Optional, Tuple, Union, array
+from .constants import inf
 from collections.abc import Sequence
 
 def cholesky(x: array, /, *, upper: bool = False) -> array:
@@ -46,7 +47,7 @@ def inv(x: array, /) -> array:
 def matmul(x1: array, x2: array, /) -> array:
     pass
 
-def matrix_norm(x, /, *, axis=(-2, -1), keepdims=False, ord='fro'):
+def matrix_norm(x: array, /, *, axis: Tuple[int, int] = (-2, -1), keepdims: bool = False, ord: Optional[Union[int, float, Literal[inf, -inf, 'fro', 'nuc']]] = 'fro') -> array:
     pass
 
 def matrix_power(x: array, n: int, /) -> array:
@@ -55,7 +56,7 @@ def matrix_power(x: array, n: int, /) -> array:
 def matrix_rank(x: array, /, *, rtol: Optional[Union[float, array]] = None) -> array:
     pass
 
-def matrix_transpose(x, /):
+def matrix_transpose(x: array, /) -> array:
     pass
 
 def outer(x1: array, x2: array, /) -> array:
@@ -88,7 +89,7 @@ def trace(x: array, /, *, offset: int = 0) -> array:
 def vecdot(x1: array, x2: array, /, *, axis: Optional[int] = None) -> array:
     pass
 
-def vector_norm(x, /, *, axis=None, keepdims=False, ord=2):
+def vector_norm(x: array, /, *, axis: Optional[Union[int, Tuple[int, int]]] = None, keepdims: bool = False, ord: Optional[Union[int, float, Literal[inf, -inf]]] = 2) -> array:
     pass
 
 __all__ = ['cholesky', 'cross', 'det', 'diagonal', 'eig', 'eigh', 'eigvals', 'eigvalsh', 'einsum', 'inv', 'matmul', 'matrix_norm', 'matrix_power', 'matrix_rank', 'matrix_transpose', 'outer', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'svdvals', 'tensordot', 'trace', 'vecdot', 'vector_norm']
