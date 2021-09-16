@@ -55,6 +55,9 @@ def matrix_power(x: array, n: int, /) -> array:
 def matrix_rank(x: array, /, *, rtol: Optional[Union[float, array]] = None) -> array:
     pass
 
+def matrix_transpose(x, /):
+    pass
+
 def outer(x1: array, x2: array, /) -> array:
     pass
 
@@ -82,13 +85,10 @@ def tensordot(x1: array, x2: array, /, *, axes: Union[int, Tuple[Sequence[int], 
 def trace(x: array, /, *, offset: int = 0) -> array:
     pass
 
-def transpose(x: array, /, *, axes: Optional[Tuple[int, ...]] = None) -> array:
-    pass
-
 def vecdot(x1: array, x2: array, /, *, axis: Optional[int] = None) -> array:
     pass
 
 def vector_norm(x, /, *, axis=None, keepdims=False, ord=2):
     pass
 
-__all__ = ['cholesky', 'cross', 'det', 'diagonal', 'eig', 'eigh', 'eigvals', 'eigvalsh', 'einsum', 'inv', 'matmul', 'matrix_norm', 'matrix_power', 'matrix_rank', 'outer', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'svdvals', 'tensordot', 'trace', 'transpose', 'vecdot', 'vector_norm']
+__all__ = ['cholesky', 'cross', 'det', 'diagonal', 'eig', 'eigh', 'eigvals', 'eigvalsh', 'einsum', 'inv', 'matmul', 'matrix_norm', 'matrix_power', 'matrix_rank', 'matrix_transpose', 'outer', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'svdvals', 'tensordot', 'trace', 'vecdot', 'vector_norm']

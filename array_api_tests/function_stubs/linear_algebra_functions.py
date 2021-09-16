@@ -19,13 +19,13 @@ def einsum():
 def matmul(x1: array, x2: array, /) -> array:
     pass
 
-def tensordot(x1: array, x2: array, /, *, axes: Union[int, Tuple[Sequence[int], Sequence[int]]] = 2) -> array:
+def matrix_transpose(x, /):
     pass
 
-def transpose(x: array, /, *, axes: Optional[Tuple[int, ...]] = None) -> array:
+def tensordot(x1: array, x2: array, /, *, axes: Union[int, Tuple[Sequence[int], Sequence[int]]] = 2) -> array:
     pass
 
 def vecdot(x1: array, x2: array, /, *, axis: Optional[int] = None) -> array:
     pass
 
-__all__ = ['einsum', 'matmul', 'tensordot', 'transpose', 'vecdot']
+__all__ = ['einsum', 'matmul', 'matrix_transpose', 'tensordot', 'vecdot']
