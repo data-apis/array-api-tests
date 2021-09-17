@@ -8,7 +8,7 @@ from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  scalars, xps)
 
 from hypothesis import assume, given
-from hypothesis.strategies import integers, floats, one_of, none, booleans, just, shared
+from hypothesis.strategies import integers, floats, one_of, none, booleans, just
 
 int_range = integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
 float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE,
