@@ -130,7 +130,6 @@ def test_full(shape, fill_value, dtype):
     else:
         assert all(equal(a, asarray(fill_value, **kwargs))), "full() array did not equal the fill value"
 
-# TODO: implement full_like (requires hypothesis arrays support)
 @given(
     a=xps.arrays(
         dtype=shared(xps.scalar_dtypes(), key='dtypes'),
