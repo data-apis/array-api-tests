@@ -81,18 +81,17 @@ def test_empty(shape, dtype):
 
 @given(
     a=xps.arrays(
-        dtype=shared(xps.scalar_dtypes(), key='dtypes'),
+        dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    kwargs=one_of(
-        just({}),
-        shared(xps.scalar_dtypes(), key='dtypes').map(lambda d: {'dtype': d}),
-    ),
+    dtype=one_of(none(), shared_dtypes),
 )
-def test_empty_like(a, kwargs):
+def test_empty_like(a, dtype):
+    kwargs = {} if dtype is None else {'dtype': dtype}
+
     a_like = empty_like(a, **kwargs)
 
-    if kwargs is None:
+    if dtype is None:
         # TODO: Should it actually match a.dtype?
         # assert is_float_dtype(a_like.dtype), "empty_like() should produce an array with the default floating point dtype"
         pass
@@ -153,26 +152,24 @@ def test_full(shape, fill_value, dtype):
 
 @given(
     a=xps.arrays(
-        dtype=shared(xps.scalar_dtypes(), key='dtypes'),
+        dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    fill_value=shared(xps.scalar_dtypes(), key='dtypes').flatmap(xps.from_dtype),
-    kwargs=one_of(
-        just({}),
-        shared(xps.scalar_dtypes(), key='dtypes').map(lambda d: {'dtype': d}),
-    ),
+    fill_value=shared_dtypes.flatmap(xps.from_dtype),
+    dtype=one_of(none(), shared_dtypes),
 )
-def test_full_like(a, fill_value, kwargs):
+def test_full_like(a, fill_value, dtype):
+    kwargs = {} if dtype is None else {'dtype': dtype}
+
     a_like = full_like(a, fill_value, **kwargs)
 
-    if kwargs is None:
+    if dtype is None:
         # TODO: Should it actually match a.dtype?
         pass
     else:
         assert a_like.dtype == a.dtype
 
     assert a_like.shape == a.shape, "full_like() produced an array with incorrect shape"
-
     if is_float_dtype(a_like.dtype) and isnan(asarray(fill_value)):
         assert all(isnan(a_like)), "full_like() array did not equal the fill value"
     else:
@@ -247,15 +244,13 @@ def test_ones(shape, dtype):
 
 @given(
     a=xps.arrays(
-        dtype=shared(xps.scalar_dtypes(), key='dtypes'),
+        dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    kwargs=one_of(
-        just({}),
-        shared(xps.scalar_dtypes(), key='dtypes').map(lambda d: {'dtype': d}),
-    ),
+    dtype=one_of(none(), shared_dtypes),
 )
-def test_ones_like(a, kwargs):
+def test_ones_like(a, dtype):
+    kwargs = {} if dtype is None else {'dtype': dtype}
     if kwargs is None or is_float_dtype(a.dtype):
         ONE = 1.0
     elif is_integer_dtype(a.dtype):
@@ -300,16 +295,14 @@ def test_zeros(shape, dtype):
 
 @given(
     a=xps.arrays(
-        dtype=shared(xps.scalar_dtypes(), key='dtypes'),
+        dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    kwargs=one_of(
-        just({}),
-        shared(xps.scalar_dtypes(), key='dtypes').map(lambda d: {'dtype': d}),
-    ),
+    dtype=one_of(none(), shared_dtypes),
 )
-def test_zeros_like(a, kwargs):
-    if kwargs is None or is_float_dtype(a.dtype):
+def test_zeros_like(a, dtype):
+    kwargs = {} if dtype is None else {'dtype': dtype}
+    if dtype is None or is_float_dtype(a.dtype):
         ZERO = 0.0
     elif is_integer_dtype(a.dtype):
         ZERO = 0
