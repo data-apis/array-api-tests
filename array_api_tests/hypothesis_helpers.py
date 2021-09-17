@@ -130,7 +130,10 @@ sizes = integers(0, MAX_ARRAY_SIZE)
 sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
 
 # TODO: Generate general arrays here, rather than just scalars.
-numeric_arrays = builds(full, just((1,)), floats())
+numeric_arrays = xps.arrays(
+    dtype=shared(xps.floating_dtypes(), key='dtypes'),
+    shape=shared(xps.array_shapes(), key='shapes'),
+)
 
 @composite
 def scalars(draw, dtypes, finite=False):
