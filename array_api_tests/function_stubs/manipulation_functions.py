@@ -21,6 +21,9 @@ def expand_dims(x: array, /, *, axis: int) -> array:
 def flip(x: array, /, *, axis: Optional[Union[int, Tuple[int, ...]]] = None) -> array:
     pass
 
+def permute_dims(x: array, /, axes: Tuple[int, ...]) -> array:
+    pass
+
 def reshape(x: array, /, shape: Tuple[int, ...]) -> array:
     pass
 
@@ -33,4 +36,4 @@ def squeeze(x: array, /, axis: Union[int, Tuple[int, ...]]) -> array:
 def stack(arrays: Union[Tuple[array, ...], List[array]], /, *, axis: int = 0) -> array:
     pass
 
-__all__ = ['concat', 'expand_dims', 'flip', 'reshape', 'roll', 'squeeze', 'stack']
+__all__ = ['concat', 'expand_dims', 'flip', 'permute_dims', 'reshape', 'roll', 'squeeze', 'stack']

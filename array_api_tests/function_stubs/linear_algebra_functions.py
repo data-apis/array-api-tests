@@ -13,9 +13,6 @@ from __future__ import annotations
 from ._types import Optional, Tuple, Union, array
 from collections.abc import Sequence
 
-def einsum():
-    pass
-
 def matmul(x1: array, x2: array, /) -> array:
     pass
 
@@ -28,4 +25,4 @@ def tensordot(x1: array, x2: array, /, *, axes: Union[int, Tuple[Sequence[int], 
 def vecdot(x1: array, x2: array, /, *, axis: Optional[int] = None) -> array:
     pass
 
-__all__ = ['einsum', 'matmul', 'matrix_transpose', 'tensordot', 'vecdot']
+__all__ = ['matmul', 'matrix_transpose', 'tensordot', 'vecdot']
