@@ -25,7 +25,7 @@ from .hypothesis_helpers import (integer_dtype_objects,
                                  integer_or_boolean_dtype_objects,
                                  boolean_dtype_objects, floating_dtypes,
                                  numeric_dtypes, integer_or_boolean_dtypes,
-                                 boolean_dtypes, mutually_promotable_dtypes,
+                                 boolean_dtypes, mutually_promotable_dtype_pairs,
                                  array_scalars, xps)
 from .array_helpers import (assert_exactly_equal, negative,
                             positive_mathematical_sign,
@@ -50,17 +50,17 @@ numeric_scalars = array_scalars(numeric_dtypes)
 integer_or_boolean_scalars = array_scalars(integer_or_boolean_dtypes)
 boolean_scalars = array_scalars(boolean_dtypes)
 
-two_integer_dtypes = mutually_promotable_dtypes(integer_dtype_objects)
-two_floating_dtypes = mutually_promotable_dtypes(floating_dtype_objects)
-two_numeric_dtypes = mutually_promotable_dtypes(numeric_dtype_objects)
-two_integer_or_boolean_dtypes = mutually_promotable_dtypes(integer_or_boolean_dtype_objects)
-two_boolean_dtypes = mutually_promotable_dtypes(boolean_dtype_objects)
-two_any_dtypes = mutually_promotable_dtypes()
+two_integer_dtypes = mutually_promotable_dtype_pairs(integer_dtype_objects)
+two_floating_dtypes = mutually_promotable_dtype_pairs(floating_dtype_objects)
+two_numeric_dtypes = mutually_promotable_dtype_pairs(numeric_dtype_objects)
+two_integer_or_boolean_dtypes = mutually_promotable_dtype_pairs(integer_or_boolean_dtype_objects)
+two_boolean_dtypes = mutually_promotable_dtype_pairs(boolean_dtype_objects)
+two_any_dtypes = mutually_promotable_dtype_pairs()
 
 @composite
 def two_array_scalars(draw, dtype1, dtype2):
     # two_dtypes should be a strategy that returns two dtypes (like
-    # mutually_promotable_dtypes())
+    # mutually_promotable_dtype_pairs())
     return draw(array_scalars(just(dtype1))), draw(array_scalars(just(dtype2)))
 
 def sanity_check(x1, x2):

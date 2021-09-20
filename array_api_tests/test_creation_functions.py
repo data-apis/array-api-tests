@@ -3,7 +3,7 @@ from ._array_module import (asarray, arange, ceil, empty, empty_like, eye, full,
                             zeros, zeros_like, isnan)
 from .array_helpers import (is_integer_dtype, dtype_ranges,
                             assert_exactly_equal, isintegral, is_float_dtype)
-from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
+from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE, promotable_dtypes,
                                  shapes, sizes, sqrt_sizes, shared_dtypes,
                                  scalars, xps)
 
@@ -84,7 +84,7 @@ def test_empty(shape, dtype):
         dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    dtype=one_of(none(), shared_dtypes),
+    dtype=one_of(none(), shared_dtypes.flatmap(promotable_dtypes)),
 )
 def test_empty_like(a, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
@@ -96,7 +96,7 @@ def test_empty_like(a, dtype):
         # assert is_float_dtype(a_like.dtype), "empty_like() should produce an array with the default floating point dtype"
         pass
     else:
-        assert a_like.dtype == a.dtype, "empty_like() produced an array with an incorrect dtype"
+        assert a_like.dtype == dtype, "empty_like() produced an array with an incorrect dtype"
 
     assert a_like.shape == a.shape, "empty_like() produced an array with an incorrect shape"
 
@@ -155,8 +155,8 @@ def test_full(shape, fill_value, dtype):
         dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    fill_value=shared_dtypes.flatmap(xps.from_dtype),
-    dtype=one_of(none(), shared_dtypes),
+    fill_value=shared_dtypes.flatmap(promotable_dtypes).flatmap(xps.from_dtype),
+    dtype=one_of(none(), shared_dtypes.flatmap(promotable_dtypes)),
 )
 def test_full_like(a, fill_value, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
@@ -167,13 +167,13 @@ def test_full_like(a, fill_value, dtype):
         # TODO: Should it actually match a.dtype?
         pass
     else:
-        assert a_like.dtype == a.dtype
+        assert a_like.dtype == dtype
 
     assert a_like.shape == a.shape, "full_like() produced an array with incorrect shape"
     if is_float_dtype(a_like.dtype) and isnan(asarray(fill_value)):
         assert all(isnan(a_like)), "full_like() array did not equal the fill value"
     else:
-        assert all(equal(a_like, asarray(fill_value, dtype=a.dtype))), "full_like() array did not equal the fill value"
+        assert all(equal(a_like, asarray(fill_value, dtype=a_like.dtype))), "full_like() array did not equal the fill value"
 
 
 @given(scalars(shared_dtypes, finite=True),
@@ -247,7 +247,7 @@ def test_ones(shape, dtype):
         dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    dtype=one_of(none(), shared_dtypes),
+    dtype=one_of(none(), shared_dtypes.flatmap(promotable_dtypes)),
 )
 def test_ones_like(a, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
@@ -260,11 +260,11 @@ def test_ones_like(a, dtype):
 
     a_like = ones_like(a, **kwargs)
 
-    if kwargs is None:
+    if dtype is None:
         # TODO: Should it actually match a.dtype?
         pass
     else:
-        assert a_like.dtype == a.dtype, "ones_like() produced an array with an incorrect dtype"
+        assert a_like.dtype == dtype, "ones_like() produced an array with an incorrect dtype"
 
     assert a_like.shape == a.shape, "ones_like() produced an array with an incorrect shape"
     assert all(equal(a_like, full((), ONE, dtype=a_like.dtype))), "ones_like() array did not equal 1"
@@ -298,7 +298,7 @@ def test_zeros(shape, dtype):
         dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    dtype=one_of(none(), shared_dtypes),
+    dtype=one_of(none(), shared_dtypes.flatmap(promotable_dtypes)),
 )
 def test_zeros_like(a, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
@@ -311,11 +311,11 @@ def test_zeros_like(a, dtype):
 
     a_like = zeros_like(a, **kwargs)
 
-    if kwargs is None:
+    if dtype is None:
         # TODO: Should it actually match a.dtype?
         pass
     else:
-        assert a_like.dtype == a.dtype, "zeros_like() produced an array with an incorrect dtype"
+        assert a_like.dtype == dtype, "zeros_like() produced an array with an incorrect dtype"
 
     assert a_like.shape == a.shape, "zeros_like() produced an array with an incorrect shape"
     assert all(equal(a_like, full((), ZERO, dtype=a_like.dtype))), "zeros_like() array did not equal 0"

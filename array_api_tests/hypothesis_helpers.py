@@ -16,7 +16,7 @@ from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             integer_or_boolean_dtype_objects, dtype_objects)
 from ._array_module import full, float32, float64, bool as bool_dtype, _UndefinedStub
 from . import _array_module
-from ._array_module import mod as xp
+from . import _array_module as xp
 
 from .function_stubs import elementwise_functions
 
@@ -49,8 +49,7 @@ if FILTER_UNDEFINED_DTYPES:
 
 shared_dtypes = shared(dtypes)
 
-@composite
-def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
+def make_dtype_pairs():
     from .test_type_promotion import dtype_mapping, promotion_table
     # sort for shrinking (sampled_from shrinks to the earlier elements in the
     # list). Give pairs of the same dtypes first, then smaller dtypes,
@@ -60,17 +59,25 @@ def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
     # pairs (XXX: Can we redesign the strategies so that they can prefer
     # shrinking dtypes over values?)
     sorted_table = sorted(promotion_table)
-    sorted_table = sorted(sorted_table, key=lambda ij: -1 if ij[0] == ij[1] else sorted_table.index(ij))
-    dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in
-                   sorted_table]
-
-    filtered_dtype_pairs = [(i, j) for i, j in dtype_pairs if i in
-                            dtype_objects and j in dtype_objects]
+    sorted_table = sorted(
+        sorted_table, key=lambda ij: -1 if ij[0] == ij[1] else sorted_table.index(ij)
+    )
+    dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in sorted_table]
     if FILTER_UNDEFINED_DTYPES:
-        filtered_dtype_pairs = [(i, j) for i, j in filtered_dtype_pairs
-                                if not isinstance(i, _UndefinedStub)
-                                and not isinstance(j, _UndefinedStub)]
-    return draw(sampled_from(filtered_dtype_pairs))
+        dtype_pairs = [(i, j) for i, j in dtype_pairs
+                       if not isinstance(i, _UndefinedStub)
+                       and not isinstance(j, _UndefinedStub)]
+    return dtype_pairs
+
+def promotable_dtypes(dtype):
+    dtype_pairs = make_dtype_pairs()
+    dtypes = [j for i, j in dtype_pairs if i == dtype]
+    return sampled_from(dtypes)
+
+def mutually_promotable_dtype_pairs(dtype_objects=dtype_objects):
+    dtype_pairs = make_dtype_pairs()
+    dtype_pairs = [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
+    return sampled_from(dtype_pairs)
 
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
