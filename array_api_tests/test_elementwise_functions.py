@@ -213,12 +213,16 @@ def test_bitwise_and(args):
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x1.shape == x2.shape == ()):
         raise RuntimeError("Error: test_bitwise_and needs to be updated for nonscalar array inputs")
-    x = int(x1)
-    y = int(x2)
-    res = int(a)
+
     if a.dtype == bool_dtype:
+        x = bool(x1)
+        y = bool(x2)
+        res = bool(a)
         assert (x and y) == res
     else:
+        x = int(x1)
+        y = int(x2)
+        res = int(a)
         ans = int_to_dtype(x & y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
         assert ans == res
 
@@ -254,11 +258,13 @@ def test_bitwise_invert(x):
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x.shape == ()):
         raise RuntimeError("Error: test_bitwise_invert needs to be updated for nonscalar array inputs")
-    x = int(x)
-    res = int(a)
     if a.dtype == bool_dtype:
+        x = bool(x)
+        res = bool(a)
         assert (not x) == res
     else:
+        x = int(x)
+        res = int(a)
         ans = int_to_dtype(~x, dtype_nbits(a.dtype), dtype_signed(a.dtype))
         assert ans == res
 
@@ -272,12 +278,15 @@ def test_bitwise_or(args):
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x1.shape == x2.shape == ()):
         raise RuntimeError("Error: test_bitwise_or needs to be updated for nonscalar array inputs")
-    x = int(x1)
-    y = int(x2)
-    res = int(a)
     if a.dtype == bool_dtype:
+        x = bool(x1)
+        y = bool(x2)
+        res = bool(a)
         assert (x or y) == res
     else:
+        x = int(x1)
+        y = int(x2)
+        res = int(a)
         ans = int_to_dtype(x | y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
         assert ans == res
 
@@ -310,12 +319,15 @@ def test_bitwise_xor(args):
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x1.shape == x2.shape == ()):
         raise RuntimeError("Error: test_bitwise_xor needs to be updated for nonscalar array inputs")
-    x = int(x1)
-    y = int(x2)
-    res = int(a)
     if a.dtype == bool_dtype:
+        x = bool(x1)
+        y = bool(x2)
+        res = bool(a)
         assert (x ^ y) == res
     else:
+        x = int(x1)
+        y = int(x2)
+        res = int(a)
         ans = int_to_dtype(x ^ y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
         assert ans == res
 
