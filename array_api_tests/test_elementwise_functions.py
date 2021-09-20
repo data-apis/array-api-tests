@@ -26,7 +26,8 @@ from .hypothesis_helpers import (integer_dtype_objects,
                                  boolean_dtype_objects, floating_dtypes,
                                  numeric_dtypes, integer_or_boolean_dtypes,
                                  boolean_dtypes, mutually_promotable_dtypes,
-                                 array_scalars, shared_arrays1, shared_arrays2)
+                                 array_scalars, shared_arrays1, shared_arrays2,
+                                 xps)
 from .array_helpers import (assert_exactly_equal, negative,
                             positive_mathematical_sign,
                             negative_mathematical_sign, logical_not,
@@ -37,7 +38,7 @@ from .array_helpers import (assert_exactly_equal, negative,
                             ndindex, promote_dtypes, is_integer_dtype,
                             is_float_dtype, not_equal, float64, asarray,
                             dtype_ranges, full, true, false, assert_same_sign,
-                            isnan, less)
+                            isnan, equal, less)
 # We might as well use this implementation rather than requiring
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
@@ -901,7 +902,16 @@ def test_tanh(x):
     # a = _array_module.tanh(x)
     pass
 
-@given(numeric_scalars)
+@given(xps.arrays(dtype=numeric_dtypes, shape=xps.array_shapes()))
 def test_trunc(x):
-    # a = _array_module.trunc(x)
-    pass
+    a = _array_module.trunc(x)
+    assert a.dtype == x.dtype, f"{x.dtype=!s}, but trunc() did not produce a {x.dtype} array - instead was {a.dtype}"
+    if x.dtype in integer_dtype_objects:
+        assert array_all(equal(x, a)), f"{x=!s} but trunc(x)={x} - {x.dtype=!s} so trunc(x) should do nothing"
+    else:
+        # TODO: a method that generates all indices, so we don't have to flatten first
+        a = _array_module.reshape(a, a.size)
+        finite_mask = _array_module.isfinite(a)
+        for i in range(a.size):
+            if finite_mask[i]:
+                assert float(a[i]).is_integer(), f"trunc(x) did not round float {a[i]} to 0 decimals"
