@@ -5,8 +5,7 @@ For these tests, we only need arrays where each element is distinct, so we use
 arange().
 """
 
-from hypothesis import given
-from hypothesis.strategies import shared
+from hypothesis import given, strategies as st
 
 from .array_helpers import assert_exactly_equal
 from .hypothesis_helpers import (slices, sizes, integer_indices, shapes, prod,
@@ -16,7 +15,7 @@ from ._array_module import arange, reshape
 
 # TODO: Add tests for __setitem__
 
-@given(shared(sizes, key='array_sizes'), integer_indices(shared(sizes, key='array_sizes')))
+@given(st.shared(sizes, key='array_sizes'), integer_indices(st.shared(sizes, key='array_sizes')))
 def test_integer_indexing(size, idx):
     # Test that indices on single dimensional arrays give the same result as
     # Python lists. idx may be a Python integer or a 0-D array with integer dtype.
@@ -35,7 +34,7 @@ def test_integer_indexing(size, idx):
     assert sliced_array.dtype == a.dtype, "Integer indices should not change the dtype"
     assert sliced_array == sliced_list, "Integer index did not give the correct entry"
 
-@given(shared(sizes, key='array_sizes'), slices(shared(sizes, key='array_sizes')))
+@given(st.shared(sizes, key='array_sizes'), slices(st.shared(sizes, key='array_sizes')))
 def test_slicing(size, s):
     # Test that slices on arrays give the same result as Python lists.
 
@@ -58,8 +57,8 @@ def test_slicing(size, s):
     for i in range(len(sliced_list)):
         assert sliced_array[i] == sliced_list[i], "Slice index did not give the same elements as slicing an equivalent Python list"
 
-@given(shared(shapes, key='array_shapes'),
-       multiaxis_indices(shapes=shared(shapes, key='array_shapes')))
+@given(st.shared(shapes, key='array_shapes'),
+       multiaxis_indices(shapes=st.shared(shapes, key='array_shapes')))
 def test_multiaxis_indexing(shape, idx):
     # NOTE: Out of bounds indices (both integer and slices) are out of scope
     # for the spec. If you get a (valid) out of bounds error, it indicates a

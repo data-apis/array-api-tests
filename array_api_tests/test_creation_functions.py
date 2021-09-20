@@ -6,17 +6,16 @@ from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  shapes, sizes, sqrt_sizes, shared_dtypes,
                                  scalars)
 
-from hypothesis import assume, given
-from hypothesis.strategies import integers, floats, one_of, none, booleans, just
+from hypothesis import assume, given, strategies as st
 
-int_range = integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
-float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE,
+int_range = st.integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
+float_range = st.floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE,
                      allow_nan=False)
-@given(one_of(int_range, float_range),
-       one_of(none(), int_range, float_range),
-       one_of(none(), int_range, float_range).filter(lambda x: x != 0
+@given(st.one_of(int_range, float_range),
+       st.one_of(st.none(), int_range, float_range),
+       st.one_of(st.none(), int_range, float_range).filter(lambda x: x != 0
                                                      and (abs(x) > 0.01 if isinstance(x, float) else True)),
-       one_of(none(), numeric_dtypes))
+       st.one_of(st.none(), numeric_dtypes))
 def test_arange(start, stop, step, dtype):
     if dtype in dtype_ranges:
         m, M = dtype_ranges[dtype]
@@ -64,7 +63,7 @@ def test_arange(start, stop, step, dtype):
                  or step < 0 and stop <= start)):
             assert a.size == ceil(asarray((stop-start)/step)), "arange() produced an array of the incorrect size"
 
-@given(one_of(shapes, sizes), one_of(none(), dtypes))
+@given(st.one_of(shapes, sizes), st.one_of(st.none(), dtypes))
 def test_empty(shape, dtype):
     if dtype is None:
         a = empty(shape)
@@ -84,7 +83,7 @@ def test_empty_like():
 # TODO: Use this method for all optional arguments
 optional_marker = object()
 
-@given(sqrt_sizes, one_of(just(optional_marker), none(), sqrt_sizes), one_of(none(), integers()), numeric_dtypes)
+@given(sqrt_sizes, st.one_of(st.just(optional_marker), st.none(), sqrt_sizes), st.one_of(st.none(), st.integers()), numeric_dtypes)
 def test_eye(n_rows, n_cols, k, dtype):
     kwargs = {k: v for k, v in {'k': k, 'dtype': dtype}.items() if v
               is not None}
@@ -111,7 +110,7 @@ def test_eye(n_rows, n_cols, k, dtype):
             else:
                 assert a[i, j] == 0, "eye() did not produce a 0 off the diagonal"
 
-@given(shapes, scalars(shared_dtypes), one_of(none(), shared_dtypes))
+@given(shapes, scalars(shared_dtypes), st.one_of(st.none(), shared_dtypes))
 def test_full(shape, fill_value, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
 
@@ -137,8 +136,8 @@ def test_full_like():
 @given(scalars(shared_dtypes, finite=True),
        scalars(shared_dtypes, finite=True),
        sizes,
-       one_of(none(), shared_dtypes),
-       one_of(none(), booleans()),)
+       st.one_of(st.none(), shared_dtypes),
+       st.one_of(st.none(), st.booleans()),)
 def test_linspace(start, stop, num, dtype, endpoint):
     # Skip on int start or stop that cannot be exactly represented as a float,
     # since we do not have good approx_equal helpers yet.
@@ -177,7 +176,7 @@ def test_linspace(start, stop, num, dtype, endpoint):
         # for i in range(1, num):
         #     assert all(equal(a[i], full((), i*(stop - start)/n + start, dtype=dtype))), f"linspace() produced an array with an incorrect value at index {i}"
 
-@given(shapes, one_of(none(), dtypes))
+@given(shapes, st.one_of(st.none(), dtypes))
 def test_ones(shape, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
     if dtype is None or is_float_dtype(dtype):
@@ -203,7 +202,7 @@ def test_ones(shape, dtype):
 def test_ones_like():
     pass
 
-@given(shapes, one_of(none(), dtypes))
+@given(shapes, st.one_of(st.none(), dtypes))
 def test_zeros(shape, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
     if dtype is None or is_float_dtype(dtype):

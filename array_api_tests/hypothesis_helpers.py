@@ -2,10 +2,7 @@ from functools import reduce
 from operator import mul
 from math import sqrt
 
-from hypothesis.strategies import (lists, integers, builds, sampled_from,
-                                   shared, tuples as hypotheses_tuples,
-                                   floats, just, composite, one_of, none,
-                                   booleans)
+from hypothesis import strategies as st
 from hypothesis.extra.numpy import mutually_broadcastable_shapes
 from hypothesis import assume
 
@@ -27,12 +24,12 @@ from .function_stubs import elementwise_functions
 # places in the tests.
 FILTER_UNDEFINED_DTYPES = True
 
-integer_dtypes = sampled_from(integer_dtype_objects)
-floating_dtypes = sampled_from(floating_dtype_objects)
-numeric_dtypes = sampled_from(numeric_dtype_objects)
-integer_or_boolean_dtypes = sampled_from(integer_or_boolean_dtype_objects)
-boolean_dtypes = sampled_from(boolean_dtype_objects)
-dtypes = sampled_from(dtype_objects)
+integer_dtypes = st.sampled_from(integer_dtype_objects)
+floating_dtypes = st.sampled_from(floating_dtype_objects)
+numeric_dtypes = st.sampled_from(numeric_dtype_objects)
+integer_or_boolean_dtypes = st.sampled_from(integer_or_boolean_dtype_objects)
+boolean_dtypes = st.sampled_from(boolean_dtype_objects)
+dtypes = st.sampled_from(dtype_objects)
 
 if FILTER_UNDEFINED_DTYPES:
     integer_dtypes = integer_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
@@ -43,12 +40,12 @@ if FILTER_UNDEFINED_DTYPES:
     boolean_dtypes = boolean_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
     dtypes = dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
 
-shared_dtypes = shared(dtypes)
+shared_dtypes = st.shared(dtypes)
 
-@composite
+@st.composite
 def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
     from .test_type_promotion import dtype_mapping, promotion_table
-    # sort for shrinking (sampled_from shrinks to the earlier elements in the
+    # sort for shrinking (st.sampled_from shrinks to the earlier elements in the
     # list). Give pairs of the same dtypes first, then smaller dtypes,
     # preferring float, then int, then unsigned int. Note, this might not
     # always result in examples shrinking to these pairs because strategies
@@ -66,13 +63,13 @@ def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
         filtered_dtype_pairs = [(i, j) for i, j in filtered_dtype_pairs
                                 if not isinstance(i, _UndefinedStub)
                                 and not isinstance(j, _UndefinedStub)]
-    return draw(sampled_from(filtered_dtype_pairs))
+    return draw(st.sampled_from(filtered_dtype_pairs))
 
-# shared() allows us to draw either the function or the function name and they
+# st.shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
 
-# TODO: Extend this to all functions, not just elementwise
-elementwise_functions_names = shared(sampled_from(elementwise_functions.__all__))
+# TODO: Extend this to all functions, not st.just elementwise
+elementwise_functions_names = st.shared(st.sampled_from(elementwise_functions.__all__))
 array_functions_names = elementwise_functions_names
 multiarg_array_functions_names = array_functions_names.filter(
     lambda func_name: nargs(func_name) > 1)
@@ -92,23 +89,23 @@ SQRT_MAX_ARRAY_SIZE = int(sqrt(MAX_ARRAY_SIZE))
 def prod(seq):
     return reduce(mul, seq, 1)
 
-# hypotheses.strategies.tuples only generates tuples of a fixed size
+# st.tuples() only generates tuples of a fixed size
 def tuples(elements, *, min_size=0, max_size=None, unique_by=None, unique=False):
-    return lists(elements, min_size=min_size, max_size=max_size,
+    return st.lists(elements, min_size=min_size, max_size=max_size,
                  unique_by=unique_by, unique=unique).map(tuple)
 
-shapes = tuples(integers(0, 10)).filter(lambda shape: prod(shape) < MAX_ARRAY_SIZE)
+shapes = tuples(st.integers(0, 10)).filter(lambda shape: prod(shape) < MAX_ARRAY_SIZE)
 
 # Use this to avoid memory errors with NumPy.
 # See https://github.com/numpy/numpy/issues/15753
-shapes = tuples(integers(0, 10)).filter(
+shapes = tuples(st.integers(0, 10)).filter(
              lambda shape: prod([i for i in shape if i]) < MAX_ARRAY_SIZE)
 
 two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(num_shapes=2)\
     .map(lambda S: S.input_shapes)\
     .filter(lambda S: all(prod([i for i in shape if i]) < MAX_ARRAY_SIZE for shape in S))
 
-@composite
+@st.composite
 def two_broadcastable_shapes(draw, shapes=shapes):
     """
     This will produce two shapes (shape1, shape2) such that shape2 can be
@@ -122,17 +119,17 @@ def two_broadcastable_shapes(draw, shapes=shapes):
         assume(False)
     return (shape1, shape2)
 
-sizes = integers(0, MAX_ARRAY_SIZE)
-sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
+sizes = st.integers(0, MAX_ARRAY_SIZE)
+sqrt_sizes = st.integers(0, SQRT_MAX_ARRAY_SIZE)
 
-ones_arrays = builds(ones, shapes, dtype=shared_dtypes)
+ones_arrays = st.builds(ones, shapes, dtype=shared_dtypes)
 
-nonbroadcastable_ones_array_two_args = hypotheses_tuples(ones_arrays, ones_arrays)
+nonbroadcastable_ones_array_two_args = st.tuples(ones_arrays, ones_arrays)
 
-# TODO: Generate general arrays here, rather than just scalars.
-numeric_arrays = builds(full, just((1,)), floats())
+# TODO: Generate general arrays here, rather than st.just scalars.
+numeric_arrays = st.builds(full, st.just((1,)), st.floats())
 
-@composite
+@st.composite
 def scalars(draw, dtypes, finite=False):
     """
     Strategy to generate a scalar that matches a dtype strategy
@@ -142,54 +139,54 @@ def scalars(draw, dtypes, finite=False):
     dtype = draw(dtypes)
     if dtype in dtype_ranges:
         m, M = dtype_ranges[dtype]
-        return draw(integers(m, M))
+        return draw(st.integers(m, M))
     elif dtype == bool_dtype:
-        return draw(booleans())
+        return draw(st.booleans())
     elif dtype == float64:
         if finite:
-            return draw(floats(allow_nan=False, allow_infinity=False))
-        return draw(floats())
+            return draw(st.floats(allow_nan=False, allow_infinity=False))
+        return draw(st.floats())
     elif dtype == float32:
         if finite:
-            return draw(floats(width=32, allow_nan=False, allow_infinity=False))
-        return draw(floats(width=32))
+            return draw(st.floats(width=32, allow_nan=False, allow_infinity=False))
+        return draw(st.floats(width=32))
     else:
         raise ValueError(f"Unrecognized dtype {dtype}")
 
-@composite
+@st.composite
 def array_scalars(draw, dtypes):
     dtype = draw(dtypes)
-    return full((), draw(scalars(just(dtype))), dtype=dtype)
+    return full((), draw(scalars(st.just(dtype))), dtype=dtype)
 
-@composite
+@st.composite
 def python_integer_indices(draw, sizes):
     size = draw(sizes)
     if size == 0:
         assume(False)
-    return draw(integers(-size, size - 1))
+    return draw(st.integers(-size, size - 1))
 
-@composite
+@st.composite
 def integer_indices(draw, sizes):
     # Return either a Python integer or a 0-D array with some integer dtype
     idx = draw(python_integer_indices(sizes))
     dtype = draw(integer_dtypes)
     m, M = dtype_ranges[dtype]
     if m <= idx <= M:
-        return draw(one_of(just(idx),
-                           just(full((), idx, dtype=dtype))))
+        return draw(st.one_of(st.just(idx),
+                           st.just(full((), idx, dtype=dtype))))
     return idx
 
-@composite
+@st.composite
 def slices(draw, sizes):
     size = draw(sizes)
     # The spec does not specify out of bounds behavior.
-    max_step_size = draw(integers(1, max(1, size)))
-    step = draw(one_of(integers(-max_step_size, -1), integers(1, max_step_size), none()))
-    start = draw(one_of(integers(-size, max(0, size-1)), none()))
+    max_step_size = draw(st.integers(1, max(1, size)))
+    step = draw(st.one_of(st.integers(-max_step_size, -1), st.integers(1, max_step_size), st.none()))
+    start = draw(st.one_of(st.integers(-size, max(0, size-1)), st.none()))
     if step is None or step > 0:
-        stop = draw(one_of(integers(-size, size)), none())
+        stop = draw(st.one_of(st.integers(-size, size)), st.none())
     else:
-        stop = draw(one_of(integers(-size - 1, size - 1)), none())
+        stop = draw(st.one_of(st.integers(-size - 1, size - 1)), st.none())
     s = slice(start, stop, step)
     l = list(range(size))
     sliced_list = l[s]
@@ -204,23 +201,23 @@ def slices(draw, sizes):
         assume(False)
     return s
 
-@composite
+@st.composite
 def multiaxis_indices(draw, shapes):
     res = []
-    # Generate tuples no longer than the shape, with indices corresponding to
+    # Generate st.tuples no longer than the shape, with indices corresponding to
     # each dimension.
     shape = draw(shapes)
-    n_entries = draw(integers(0, len(shape)))
+    n_entries = draw(st.integers(0, len(shape)))
     # from hypothesis import note
     # note(f"multiaxis_indices n_entries: {n_entries}")
 
     k = 0
     for i in range(n_entries):
         size = shape[k]
-        idx = draw(one_of(
-            integer_indices(just(size)),
-            slices(just(size)),
-            just(...)))
+        idx = draw(st.one_of(
+            integer_indices(st.just(size)),
+            slices(st.just(size)),
+            st.just(...)))
         if idx is ... and k >= 0:
             # If there is an ellipsis, index from the end of the shape
             k = k - n_entries
@@ -232,6 +229,6 @@ def multiaxis_indices(draw, shapes):
     res_has_ellipsis = any(i is ... for i in res)
     if n_entries == len(shape) and not res_has_ellipsis:
         # note("Adding extra")
-        extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
+        extra = draw(st.lists(st.one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
         res += extra
     return tuple(res)

@@ -3,8 +3,7 @@ from ..hypothesis_helpers import integer_dtypes
 from ..test_type_promotion import dtype_nbits, dtype_signed
 from .._array_module import asarray, nan, equal, all
 
-from hypothesis import given, assume
-from hypothesis.strategies import integers
+from hypothesis import given, assume, strategies as st
 
 # TODO: These meta-tests currently only work with NumPy
 
@@ -22,7 +21,7 @@ def test_notequal():
     res = asarray([False, True, False, False, False, True, False, True])
     assert all(equal(notequal(a, b), res))
 
-@given(integers(), integer_dtypes)
+@given(st.integers(), integer_dtypes)
 def test_int_to_dtype(x, dtype):
     n = dtype_nbits(dtype)
     signed = dtype_signed(dtype)

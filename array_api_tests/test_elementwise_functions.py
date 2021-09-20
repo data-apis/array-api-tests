@@ -14,8 +14,7 @@ arrays of any shape, using masking patterns (similar to the tests in special_cas
 
 """
 
-from hypothesis import given, assume
-from hypothesis.strategies import composite, just
+from hypothesis import given, assume, strategies as st
 
 import math
 
@@ -57,11 +56,11 @@ two_integer_or_boolean_dtypes = mutually_promotable_dtypes(integer_or_boolean_dt
 two_boolean_dtypes = mutually_promotable_dtypes(boolean_dtype_objects)
 two_any_dtypes = mutually_promotable_dtypes()
 
-@composite
+@st.composite
 def two_array_scalars(draw, dtype1, dtype2):
     # two_dtypes should be a strategy that returns two dtypes (like
     # mutually_promotable_dtypes())
-    return draw(array_scalars(just(dtype1))), draw(array_scalars(just(dtype2)))
+    return draw(array_scalars(st.just(dtype1))), draw(array_scalars(st.just(dtype2)))
 
 def sanity_check(x1, x2):
     try:

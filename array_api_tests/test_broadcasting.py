@@ -4,8 +4,7 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/broadc
 
 import pytest
 
-from hypothesis import given, assume
-from hypothesis.strategies import data, sampled_from
+from hypothesis import given, assume, strategies as st
 
 from .hypothesis_helpers import shapes, FILTER_UNDEFINED_DTYPES
 from .pytest_helpers import raises, doesnt_raise, nargs
@@ -111,12 +110,12 @@ def test_broadcast_shapes_explicit_spec():
 @pytest.mark.parametrize('func_name', [i for i in
                                        elementwise_functions.__all__ if
                                        nargs(i) > 1])
-@given(shape1=shapes, shape2=shapes, dtype=data())
+@given(shape1=shapes, shape2=shapes, dtype=st.data())
 def test_broadcasting_hypothesis(func_name, shape1, shape2, dtype):
     # Internal consistency checks
     assert nargs(func_name) == 2
 
-    dtype = dtype_mapping[dtype.draw(sampled_from(input_types[elementwise_function_input_types[func_name]]))]
+    dtype = dtype_mapping[dtype.draw(st.sampled_from(input_types[elementwise_function_input_types[func_name]]))]
     if FILTER_UNDEFINED_DTYPES and isinstance(dtype, _UndefinedStub):
         assume(False)
     func = getattr(_array_module, func_name)
