@@ -37,7 +37,7 @@ from .array_helpers import (assert_exactly_equal, negative,
                             ndindex, promote_dtypes, is_integer_dtype,
                             is_float_dtype, not_equal, float64, asarray,
                             dtype_ranges, full, true, false, assert_same_sign,
-                            isnan, equal, less)
+                            isnan, less)
 # We might as well use this implementation rather than requiring
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
