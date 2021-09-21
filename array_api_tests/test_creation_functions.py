@@ -82,7 +82,7 @@ def test_empty(shape, dtype):
 @given(
     a=xps.arrays(
         dtype=shared_dtypes,
-        shape=xps.array_shapes(),
+        shape=shapes,
     ),
     dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
 )
@@ -153,7 +153,7 @@ def test_full(shape, fill_value, dtype):
 @given(
     a=xps.arrays(
         dtype=shared_dtypes,
-        shape=xps.array_shapes(),
+        shape=shapes,
     ),
     fill_value=promotable_dtypes(shared_dtypes).flatmap(xps.from_dtype),
     dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
@@ -245,7 +245,7 @@ def test_ones(shape, dtype):
 @given(
     a=xps.arrays(
         dtype=shared_dtypes,
-        shape=xps.array_shapes(),
+        shape=shapes,
     ),
     dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
 )
@@ -296,7 +296,7 @@ def test_zeros(shape, dtype):
 @given(
     a=xps.arrays(
         dtype=shared_dtypes,
-        shape=xps.array_shapes(),
+        shape=shapes,
     ),
     dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
 )

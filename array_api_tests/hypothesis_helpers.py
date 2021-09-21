@@ -6,7 +6,6 @@ from hypothesis.strategies import (lists, integers, builds, sampled_from,
                                    shared, tuples as hypotheses_tuples,
                                    floats, just, composite, one_of, none,
                                    booleans, SearchStrategy)
-from hypothesis.extra.numpy import mutually_broadcastable_shapes
 from hypothesis.extra.array_api import make_strategies_namespace
 from hypothesis import assume
 
@@ -111,29 +110,25 @@ def tuples(elements, *, min_size=0, max_size=None, unique_by=None, unique=False)
     return lists(elements, min_size=min_size, max_size=max_size,
                  unique_by=unique_by, unique=unique).map(tuple)
 
-shapes = tuples(integers(0, 10)).filter(lambda shape: prod(shape) < MAX_ARRAY_SIZE)
-
 # Use this to avoid memory errors with NumPy.
 # See https://github.com/numpy/numpy/issues/15753
-shapes = tuples(integers(0, 10)).filter(
-             lambda shape: prod([i for i in shape if i]) < MAX_ARRAY_SIZE)
+shapes = xps.array_shapes(min_dims=0, min_side=0).filter(
+    lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
+)
 
-two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(num_shapes=2)\
+two_mutually_broadcastable_shapes = xps.mutually_broadcastable_shapes(num_shapes=2)\
     .map(lambda S: S.input_shapes)\
-    .filter(lambda S: all(prod([i for i in shape if i]) < MAX_ARRAY_SIZE for shape in S))
+    .filter(lambda S: all(prod(i for i in shape if i) < MAX_ARRAY_SIZE for shape in S))
 
 @composite
-def two_broadcastable_shapes(draw, shapes=shapes):
+def two_broadcastable_shapes(draw):
     """
     This will produce two shapes (shape1, shape2) such that shape2 can be
     broadcast to shape1.
-
     """
     from .test_broadcasting import broadcast_shapes
-
-    shape1, shape2 = draw(two_mutually_broadcastable_shapes)
-    if broadcast_shapes(shape1, shape2) != shape1:
-        assume(False)
+    shape1, shape2 =  draw(two_mutually_broadcastable_shapes)
+    assume(broadcast_shapes(shape1, shape2) == shape1)
     return (shape1, shape2)
 
 sizes = integers(0, MAX_ARRAY_SIZE)
