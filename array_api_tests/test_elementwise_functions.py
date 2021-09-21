@@ -26,7 +26,7 @@ from .hypothesis_helpers import (integer_dtype_objects,
                                  boolean_dtype_objects, floating_dtypes,
                                  numeric_dtypes, integer_or_boolean_dtypes,
                                  boolean_dtypes, mutually_promotable_dtype_pairs,
-                                 array_scalars, xps)
+                                 array_scalars, two_broadcastable_shapes, xps, shared_dtypes, promotable_dtypes)
 from .array_helpers import (assert_exactly_equal, negative,
                             positive_mathematical_sign,
                             negative_mathematical_sign, logical_not,
@@ -377,11 +377,13 @@ def test_divide(args):
 
 
 @given(
-    x1=shared(
-        xps.arrays(dtype=xps.scalar_dtypes(), shape=xps.array_shapes()), key='arrays'
+    x1=xps.arrays(
+        dtype=shared_dtypes,
+        shape=shared(two_broadcastable_shapes(), key="shape_pair").map(lambda pair: pair[0])
     ),
-    x2=shared(
-        xps.arrays(dtype=xps.scalar_dtypes(), shape=xps.array_shapes()), key='arrays'
+    x2=xps.arrays(
+        dtype=promotable_dtypes(shared_dtypes),
+        shape=shared(two_broadcastable_shapes(), key="shape_pair").map(lambda pair: pair[1])
     ),
 )
 def test_equal(x1, x2):
