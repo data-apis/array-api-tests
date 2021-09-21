@@ -2,10 +2,9 @@ from functools import reduce
 from operator import mul
 from math import sqrt
 
-from hypothesis.strategies import (lists, integers, builds, sampled_from,
-                                   shared, tuples as hypotheses_tuples,
-                                   floats, just, composite, one_of, none,
-                                   booleans, SearchStrategy)
+from hypothesis.strategies import (lists, integers, sampled_from,
+                                   shared, floats, just, composite, one_of,
+                                   none, booleans, SearchStrategy)
 from hypothesis.extra.array_api import make_strategies_namespace
 from hypothesis import assume
 
