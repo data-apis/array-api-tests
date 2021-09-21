@@ -42,6 +42,7 @@ jobs:
             # Updates to the spec since the last change to numpy.array_api.
             # These will fail until NumPy is updated.
             "array_api_tests/test_signatures.py::test_has_names[__index__]",
+            "array_api_tests/test_signatures.py::test_has_names[to_device]",
             "array_api_tests/test_signatures.py::test_has_names[mT]",
             "array_api_tests/test_signatures.py::test_has_names[tril]",
             "array_api_tests/test_signatures.py::test_has_names[triu]",
