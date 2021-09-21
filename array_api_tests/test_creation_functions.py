@@ -84,7 +84,7 @@ def test_empty(shape, dtype):
         dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    dtype=one_of(none(), shared_dtypes.flatmap(promotable_dtypes)),
+    dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
 )
 def test_empty_like(a, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
@@ -155,8 +155,8 @@ def test_full(shape, fill_value, dtype):
         dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    fill_value=shared_dtypes.flatmap(promotable_dtypes).flatmap(xps.from_dtype),
-    dtype=one_of(none(), shared_dtypes.flatmap(promotable_dtypes)),
+    fill_value=promotable_dtypes(shared_dtypes).flatmap(xps.from_dtype),
+    dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
 )
 def test_full_like(a, fill_value, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
@@ -247,7 +247,7 @@ def test_ones(shape, dtype):
         dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    dtype=one_of(none(), shared_dtypes.flatmap(promotable_dtypes)),
+    dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
 )
 def test_ones_like(a, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
@@ -298,7 +298,7 @@ def test_zeros(shape, dtype):
         dtype=shared_dtypes,
         shape=xps.array_shapes(),
     ),
-    dtype=one_of(none(), shared_dtypes.flatmap(promotable_dtypes)),
+    dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
 )
 def test_zeros_like(a, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}

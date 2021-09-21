@@ -3,8 +3,9 @@ from operator import mul
 from math import sqrt
 
 from hypothesis.strategies import (lists, integers, builds, sampled_from,
-                                   shared, floats, just, composite, one_of,
-                                   none, booleans)
+                                   shared, tuples as hypotheses_tuples,
+                                   floats, just, composite, one_of, none,
+                                   booleans, SearchStrategy)
 from hypothesis.extra.numpy import mutually_broadcastable_shapes
 from hypothesis.extra.array_api import make_strategies_namespace
 from hypothesis import assume
@@ -70,6 +71,8 @@ def make_dtype_pairs():
     return dtype_pairs
 
 def promotable_dtypes(dtype):
+    if isinstance(dtype, SearchStrategy):
+        return dtype.flatmap(promotable_dtypes)
     dtype_pairs = make_dtype_pairs()
     dtypes = [j for i, j in dtype_pairs if i == dtype]
     return sampled_from(dtypes)
