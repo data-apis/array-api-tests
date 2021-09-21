@@ -243,3 +243,9 @@ def multiaxis_indices(draw, shapes):
         extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
         res += extra
     return tuple(res)
+
+
+shared_optional_promotable_dtypes = one_of(
+    none(),
+    promotable_dtypes(shared_dtypes),
+)

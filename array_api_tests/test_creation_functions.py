@@ -5,10 +5,12 @@ from .array_helpers import (is_integer_dtype, dtype_ranges,
                             assert_exactly_equal, isintegral, is_float_dtype)
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE, promotable_dtypes,
                                  shapes, sizes, sqrt_sizes, shared_dtypes,
-                                 scalars, xps)
+                                 scalars, xps, shared_optional_promotable_dtypes)
 
 from hypothesis import assume, given
 from hypothesis.strategies import integers, floats, one_of, none, booleans, just
+
+
 
 int_range = integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
 float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE,
@@ -84,7 +86,7 @@ def test_empty(shape, dtype):
         dtype=shared_dtypes,
         shape=shapes,
     ),
-    dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
+    dtype=shared_optional_promotable_dtypes,
 )
 def test_empty_like(a, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
@@ -156,7 +158,7 @@ def test_full(shape, fill_value, dtype):
         shape=shapes,
     ),
     fill_value=promotable_dtypes(shared_dtypes).flatmap(xps.from_dtype),
-    dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
+    dtype=shared_optional_promotable_dtypes,
 )
 def test_full_like(a, fill_value, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
@@ -247,7 +249,7 @@ def test_ones(shape, dtype):
         dtype=shared_dtypes,
         shape=shapes,
     ),
-    dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
+    dtype=shared_optional_promotable_dtypes,
 )
 def test_ones_like(a, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
@@ -298,7 +300,7 @@ def test_zeros(shape, dtype):
         dtype=shared_dtypes,
         shape=shapes,
     ),
-    dtype=one_of(none(), promotable_dtypes(shared_dtypes)),
+    dtype=shared_optional_promotable_dtypes,
 )
 def test_zeros_like(a, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
