@@ -11,27 +11,19 @@ UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in dtype_objects)
 pytestmark = [pytest.mark.skipif(UNDEFINED_DTYPES, reason="undefined dtypes")]
 
 
-def test_promotable_dtypes():
-    dtypes = set()
-    @given(promotable_dtypes(xp.uint16))
-    def run(dtype):
-        dtypes.add(dtype)
-    run()
-    assert dtypes == {
+@given(promotable_dtypes(xp.uint16))
+def test_promotable_dtypes(dtype):
+    assert dtype in (
         xp.uint8, xp.uint16, xp.uint32, xp.uint64, xp.int8, xp.int16, xp.int32, xp.int64
-    }
+    )
 
 
-def test_mutually_promotable_dtype_pairs():
-    pairs = set()
-    @given(mutually_promotable_dtype_pairs([xp.float32, xp.float64]))
-    def run(pair):
-        pairs.add(pair)
-    run()
-    assert pairs == {
+@given(mutually_promotable_dtype_pairs([xp.float32, xp.float64]))
+def test_mutually_promotable_dtype_pairs(pairs):
+    assert pairs in (
         (xp.float32, xp.float32),
         (xp.float32, xp.float64),
         (xp.float64, xp.float32),
         (xp.float64, xp.float64),
-    }
+    )
 
