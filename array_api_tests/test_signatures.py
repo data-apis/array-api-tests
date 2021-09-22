@@ -135,7 +135,7 @@ def test_function_positional_args(name):
     # written in pure Python (e.g., it won't work for numpy ufuncs).
 
     dtype = None
-    if (name.startswith('__i') and name not in ['__int__', '__invert__']
+    if (name.startswith('__i') and name not in ['__int__', '__invert__', '__index__']
         or name.startswith('__r') and name != '__rshift__'):
         n = operators_to_functions[name[:2] + name[3:]]
     else:
@@ -148,7 +148,7 @@ def test_function_positional_args(name):
     if array_method(name):
         if name == '__bool__':
             _mod = ones((), dtype=bool)
-        elif name == '__int__':
+        elif name in ['__int__', '__index__']:
             _mod = ones((), dtype=int64)
         elif name == '__float__':
             _mod = ones((), dtype=float64)
