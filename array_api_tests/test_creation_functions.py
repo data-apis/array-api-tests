@@ -3,13 +3,16 @@ from ._array_module import (asarray, arange, ceil, empty, empty_like, eye, full,
                             zeros, zeros_like, isnan)
 from .array_helpers import (is_integer_dtype, dtype_ranges,
                             assert_exactly_equal, isintegral, is_float_dtype)
-from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE, promotable_dtypes,
+from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  shapes, sizes, sqrt_sizes, shared_dtypes,
-                                 scalars, xps, shared_optional_promotable_dtypes)
+                                 scalars, xps)
 
 from hypothesis import assume, given
 from hypothesis.strategies import integers, floats, one_of, none, booleans, just, shared, composite
 
+
+optional_dtypes = none() | shared_dtypes
+shared_optional_dtypes = shared(optional_dtypes, key="optional_dtype")
 
 
 int_range = integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
@@ -82,25 +85,25 @@ def test_empty(shape, dtype):
 
 
 @given(
-    a=xps.arrays(
-        dtype=shared_dtypes,
+    x=xps.arrays(
+        dtype=dtypes,
         shape=shapes,
     ),
-    dtype=shared_optional_promotable_dtypes,
+    dtype=optional_dtypes,
 )
-def test_empty_like(a, dtype):
+def test_empty_like(x, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
 
-    a_like = empty_like(a, **kwargs)
+    x_like = empty_like(x, **kwargs)
 
     if dtype is None:
         # TODO: Should it actually match a.dtype?
-        # assert is_float_dtype(a_like.dtype), "empty_like() should produce an array with the default floating point dtype"
+        # assert is_float_dtype(x_like.dtype), "empty_like() should produce an array with the default floating point dtype"
         pass
     else:
-        assert a_like.dtype == dtype, "empty_like() produced an array with an incorrect dtype"
+        assert x_like.dtype == dtype, "empty_like() produced an array with an incorrect dtype"
 
-    assert a_like.shape == a.shape, "empty_like() produced an array with an incorrect shape"
+    assert x_like.shape == x.shape, "empty_like() produced an array with an incorrect shape"
 
 
 # TODO: Use this method for all optional arguments
@@ -151,8 +154,6 @@ def test_full(shape, fill_value, dtype):
         assert all(isnan(a)), "full() array did not equal the fill value"
     else:
         assert all(equal(a, asarray(fill_value, **kwargs))), "full() array did not equal the fill value"
-
-shared_optional_dtypes = shared(none() | shared_dtypes, key="optional_dtype")
 
 @composite
 def fill_values(draw):
@@ -251,31 +252,28 @@ def test_ones(shape, dtype):
 
 
 @given(
-    a=xps.arrays(
-        dtype=shared_dtypes,
-        shape=shapes,
-    ),
-    dtype=shared_optional_promotable_dtypes,
+    x=xps.arrays(dtype=dtypes, shape=shapes),
+    dtype=optional_dtypes,
 )
-def test_ones_like(a, dtype):
+def test_ones_like(x, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
-    if kwargs is None or is_float_dtype(a.dtype):
+    if kwargs is None or is_float_dtype(x.dtype):
         ONE = 1.0
-    elif is_integer_dtype(a.dtype):
+    elif is_integer_dtype(x.dtype):
         ONE = 1
     else:
         ONE = True
 
-    a_like = ones_like(a, **kwargs)
+    x_like = ones_like(x, **kwargs)
 
     if dtype is None:
         # TODO: Should it actually match a.dtype?
         pass
     else:
-        assert a_like.dtype == dtype, "ones_like() produced an array with an incorrect dtype"
+        assert x_like.dtype == dtype, "ones_like() produced an array with an incorrect dtype"
 
-    assert a_like.shape == a.shape, "ones_like() produced an array with an incorrect shape"
-    assert all(equal(a_like, full((), ONE, dtype=a_like.dtype))), "ones_like() array did not equal 1"
+    assert x_like.shape == x.shape, "ones_like() produced an array with an incorrect shape"
+    assert all(equal(x_like, full((), ONE, dtype=x_like.dtype))), "ones_like() array did not equal 1"
 
 
 @given(shapes, one_of(none(), dtypes))
@@ -302,29 +300,26 @@ def test_zeros(shape, dtype):
 
 
 @given(
-    a=xps.arrays(
-        dtype=shared_dtypes,
-        shape=shapes,
-    ),
-    dtype=shared_optional_promotable_dtypes,
+    x=xps.arrays(dtype=dtypes, shape=shapes),
+    dtype=optional_dtypes,
 )
-def test_zeros_like(a, dtype):
+def test_zeros_like(x, dtype):
     kwargs = {} if dtype is None else {'dtype': dtype}
-    if dtype is None or is_float_dtype(a.dtype):
+    if dtype is None or is_float_dtype(x.dtype):
         ZERO = 0.0
-    elif is_integer_dtype(a.dtype):
+    elif is_integer_dtype(x.dtype):
         ZERO = 0
     else:
         ZERO = False
 
-    a_like = zeros_like(a, **kwargs)
+    x_like = zeros_like(x, **kwargs)
 
     if dtype is None:
         # TODO: Should it actually match a.dtype?
         pass
     else:
-        assert a_like.dtype == dtype, "zeros_like() produced an array with an incorrect dtype"
+        assert x_like.dtype == dtype, "zeros_like() produced an array with an incorrect dtype"
 
-    assert a_like.shape == a.shape, "zeros_like() produced an array with an incorrect shape"
-    assert all(equal(a_like, full((), ZERO, dtype=a_like.dtype))), "zeros_like() array did not equal 0"
+    assert x_like.shape == x.shape, "zeros_like() produced an array with an incorrect shape"
+    assert all(equal(x_like, full((), ZERO, dtype=x_like.dtype))), "zeros_like() array did not equal 0"
 
