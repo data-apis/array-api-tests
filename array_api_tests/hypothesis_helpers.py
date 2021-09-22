@@ -4,7 +4,7 @@ from math import sqrt
 
 from hypothesis.strategies import (lists, integers, sampled_from,
                                    shared, floats, just, composite, one_of,
-                                   none, booleans, SearchStrategy)
+                                   none, booleans)
 from hypothesis.extra.array_api import make_strategies_namespace
 from hypothesis import assume
 
@@ -46,9 +46,15 @@ if FILTER_UNDEFINED_DTYPES:
     boolean_dtypes = boolean_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
     dtypes = dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
 
-shared_dtypes = shared(dtypes)
+shared_dtypes = shared(dtypes, key="dtype")
 
-def make_dtype_pairs():
+# TODO: Importing things from test_type_promotion should be replaced by
+# something that won't cause a circular import. Right now we use @st.composite
+# only because it returns a lazy-evaluated strategy - in the future this method
+# should remove the composite wrapper, just returning sampled_from(dtype_pairs)
+# instead of drawing from it.
+@composite
+def mutually_promotable_dtype_pairs(draw, dtype_objects=dtype_objects):
     from .test_type_promotion import dtype_mapping, promotion_table
     # sort for shrinking (sampled_from shrinks to the earlier elements in the
     # list). Give pairs of the same dtypes first, then smaller dtypes,
@@ -66,19 +72,12 @@ def make_dtype_pairs():
         dtype_pairs = [(i, j) for i, j in dtype_pairs
                        if not isinstance(i, _UndefinedStub)
                        and not isinstance(j, _UndefinedStub)]
-    return dtype_pairs
-
-def promotable_dtypes(dtype):
-    if isinstance(dtype, SearchStrategy):
-        return dtype.flatmap(promotable_dtypes)
-    dtype_pairs = make_dtype_pairs()
-    dtypes = [j for i, j in dtype_pairs if i == dtype]
-    return sampled_from(dtypes)
-
-def mutually_promotable_dtype_pairs(dtype_objects=dtype_objects):
-    dtype_pairs = make_dtype_pairs()
     dtype_pairs = [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
-    return sampled_from(dtype_pairs)
+    return draw(sampled_from(dtype_pairs))
+
+shared_mutually_promotable_dtype_pairs = shared(
+    mutually_promotable_dtype_pairs(), key="mutually_promotable_dtype_pair"
+)
 
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
@@ -245,10 +244,10 @@ def multiaxis_indices(draw, shapes):
 
 
 shared_arrays1 = xps.arrays(
-    dtype=shared_dtypes,
+    dtype=shared_mutually_promotable_dtype_pairs.map(lambda pair: pair[0]),
     shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[0]),
 )
 shared_arrays2 = xps.arrays(
-    dtype=promotable_dtypes(shared_dtypes),
+    dtype=shared_mutually_promotable_dtype_pairs.map(lambda pair: pair[1]),
     shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[1]),
 )
