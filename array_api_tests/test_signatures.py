@@ -69,11 +69,11 @@ def example_argument(arg, func_name, dtype):
         offset=1,
         ord=1,
         obj = [[[1, 1, 1], [1, 1, 1], [1, 1, 1]]],
-        other=ones((1, 3, 3), dtype=dtype),
+        other=ones((3, 3), dtype=dtype),
         return_counts=True,
         return_index=True,
         return_inverse=True,
-        self=ones((1, 3, 3), dtype=dtype),
+        self=ones((3, 3), dtype=dtype),
         shape=(1, 3, 3),
         shift=1,
         sorted=False,
@@ -118,7 +118,7 @@ def test_has_names(name):
     if extension_module(name):
         assert hasattr(mod, name), f'{mod_name} is missing the {name} extension'
     elif array_method(name):
-        arr = ones((1,))
+        arr = ones((1, 1))
         if getattr(function_stubs.array_object, name) is None:
             assert hasattr(arr, name), f"The array object is missing the attribute {name}"
         else:
@@ -198,7 +198,7 @@ def test_function_positional_args(name):
 @pytest.mark.parametrize('name', function_stubs.__all__)
 def test_function_keyword_only_args(name):
     if array_method(name):
-        _mod = ones((1,))
+        _mod = ones((1, 1))
     else:
         _mod = mod
 
