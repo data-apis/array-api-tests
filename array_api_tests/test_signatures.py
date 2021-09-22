@@ -9,13 +9,17 @@ from .test_type_promotion import elementwise_function_input_types, operators_to_
 from . import function_stubs
 
 
+submodules = [m for m in dir(function_stubs) if
+              inspect.ismodule(getattr(function_stubs, m)) and not
+              m.startswith('_')]
+
 def stub_module(name):
-    submodules = [m for m in dir(function_stubs) if
-                  inspect.ismodule(getattr(function_stubs, m)) and not
-                  m.startswith('_')]
     for m in submodules:
         if name in getattr(function_stubs, m).__all__:
             return m
+
+def extension_module(name):
+    return name in submodules and name in function_stubs.__all__
 
 def array_method(name):
     return stub_module(name) == 'array_object'
@@ -111,7 +115,9 @@ def example_argument(arg, func_name, dtype):
 
 @pytest.mark.parametrize('name', function_stubs.__all__)
 def test_has_names(name):
-    if array_method(name):
+    if extension_module(name):
+        assert hasattr(mod, name), f'{mod_name} is missing the {name} extension'
+    elif array_method(name):
         arr = ones((1,))
         if getattr(function_stubs.array_object, name) is None:
             assert hasattr(arr, name), f"The array object is missing the attribute {name}"
