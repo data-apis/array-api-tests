@@ -15,7 +15,7 @@ arrays of any shape, using masking patterns (similar to the tests in special_cas
 """
 
 from hypothesis import given, assume
-from hypothesis.strategies import composite, just, shared
+from hypothesis.strategies import composite, just
 
 import math
 
@@ -26,7 +26,7 @@ from .hypothesis_helpers import (integer_dtype_objects,
                                  boolean_dtype_objects, floating_dtypes,
                                  numeric_dtypes, integer_or_boolean_dtypes,
                                  boolean_dtypes, mutually_promotable_dtype_pairs,
-                                 array_scalars, two_broadcastable_shapes, xps, shared_dtypes, promotable_dtypes)
+                                 array_scalars, shared_arrays1, shared_arrays2)
 from .array_helpers import (assert_exactly_equal, negative,
                             positive_mathematical_sign,
                             negative_mathematical_sign, logical_not,
@@ -375,17 +375,7 @@ def test_divide(args):
     # have those sorts in general for this module.
 
 
-
-@given(
-    x1=xps.arrays(
-        dtype=shared_dtypes,
-        shape=shared(two_broadcastable_shapes(), key="shape_pair").map(lambda pair: pair[0])
-    ),
-    x2=xps.arrays(
-        dtype=promotable_dtypes(shared_dtypes),
-        shape=shared(two_broadcastable_shapes(), key="shape_pair").map(lambda pair: pair[1])
-    ),
-)
+@given(shared_arrays1, shared_arrays2)
 def test_equal(x1, x2):
     sanity_check(x1, x2)
     a = _array_module.equal(x1, x2)

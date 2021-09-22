@@ -242,3 +242,13 @@ def multiaxis_indices(draw, shapes):
         extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
         res += extra
     return tuple(res)
+
+
+shared_arrays1 = xps.arrays(
+    dtype=shared_dtypes,
+    shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[0]),
+)
+shared_arrays2 = xps.arrays(
+    dtype=promotable_dtypes(shared_dtypes),
+    shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[1]),
+)
