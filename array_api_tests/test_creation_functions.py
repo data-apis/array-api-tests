@@ -1,6 +1,8 @@
+from hypothesis.strategies._internal.core import sampled_from
 from ._array_module import (asarray, arange, ceil, empty, empty_like, eye, full,
                             full_like, equal, all, linspace, ones, ones_like,
                             zeros, zeros_like, isnan)
+from . import _array_module as xp
 from .array_helpers import (is_integer_dtype, dtype_ranges,
                             assert_exactly_equal, isintegral, is_float_dtype)
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
@@ -157,9 +159,11 @@ def test_full(shape, fill_value, dtype):
 
 @composite
 def fill_values(draw):
+    # If dtype has been specified, fill_value should be inferred from it
     dtype = draw(shared_optional_dtypes)
+    # If dtype=None, fill_value can be anything - full_like should infer the dtype
     if dtype is None:
-        dtype = draw(shared_dtypes)
+        dtype = draw(sampled_from([xp.bool, xp.int32, xp.float32]))
     return draw(xps.from_dtype(dtype))
 
 @given(
@@ -168,13 +172,17 @@ def fill_values(draw):
     dtype=shared_optional_dtypes,
 )
 def test_full_like(x, fill_value, dtype):
-    kwargs = {} if dtype is None else {'dtype': dtype}
-
-    x_like = full_like(x, fill_value, **kwargs)
+    x_like = full_like(x, fill_value, dtype=dtype)
 
     if dtype is None:
-        # TODO: Should it actually match x.dtype?
-        pass
+        if isinstance(fill_value, bool):
+            assert x_like.dtype == xp.bool, f"{fill_value=}, but full_like() did not produce a boolean array - instead was {x_like.dtype}"
+        elif isinstance(fill_value, int):
+            assert x_like.dtype in (xp.int32, xp.int64), f"{fill_value=}, but full_like() did not produce a int32 or int64 array - instead was {x_like.dtype}"
+        elif isinstance(fill_value, float):
+            assert x_like.dtype in (xp.float32, xp.float64), f"{fill_value=}, but full_like() did not produce a float32 or float64 array - instead was {x_like.dtype}"
+        else:
+            raise Exception(f"Sanity check failed, indiciating a bug in the test suite. {fill_value=} - should be a bool, int or float")
     else:
         assert x_like.dtype == dtype
 
