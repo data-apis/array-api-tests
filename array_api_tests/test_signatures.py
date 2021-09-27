@@ -21,6 +21,13 @@ def stub_module(name):
 def extension_module(name):
     return name in submodules and name in function_stubs.__all__
 
+extension_module_names = {}
+for n in function_stubs.__all__:
+    if extension_module(n):
+        extension_module_names.update({i: n for i in getattr(function_stubs, n).__all__})
+
+all_names = function_stubs.__all__ + list(extension_module_names)
+
 def array_method(name):
     return stub_module(name) == 'array_object'
 
@@ -59,10 +66,13 @@ def example_argument(arg, func_name, dtype):
         endpoint=False,
         fill_value=1.0,
         from_=int64,
+        full_matrices=False,
         k=1,
         keepdims=True,
         key=0,
         indexing='ij',
+        mode='complete',
+        n=2,
         n_cols=1,
         n_rows=1,
         num=2,
@@ -73,6 +83,7 @@ def example_argument(arg, func_name, dtype):
         return_counts=True,
         return_index=True,
         return_inverse=True,
+        rtol=1e-10,
         self=ones((3, 3), dtype=dtype),
         shape=(1, 3, 3),
         shift=1,
@@ -83,6 +94,7 @@ def example_argument(arg, func_name, dtype):
         stop=1,
         to=float64,
         type=float64,
+        upper=True,
         value=0,
         x1=ones((1, 3, 3), dtype=dtype),
         x2=ones((1, 3, 3), dtype=dtype),
@@ -97,8 +109,6 @@ def example_argument(arg, func_name, dtype):
         if func_name == 'squeeze' and arg == 'axis':
             return 0
         # ones() is not invertible
-        elif func_name == 'inv' and arg == 'x':
-            return eye(3)
         # finfo requires a float dtype and iinfo requires an int dtype
         elif func_name == 'iinfo' and arg == 'type':
             return int64
@@ -109,14 +119,24 @@ def example_argument(arg, func_name, dtype):
         # contractible axes or a 2-tuple or axes
         elif func_name == 'tensordot' and arg == 'axes':
             return 1
+        # The inputs to outer() must be 1-dimensional
+        elif func_name == 'outer' and arg in ['x1', 'x2']:
+            return ones((3,), dtype=dtype)
+        # Linear algebra functions tend to error if the input isn't "nice" as
+        # a matrix
+        elif arg.startswith('x') and func_name in function_stubs.linalg.__all__:
+            return eye(3)
         return known_args[arg]
     else:
         raise RuntimeError(f"Don't know how to test argument {arg}. Please update test_signatures.py")
 
-@pytest.mark.parametrize('name', function_stubs.__all__)
+@pytest.mark.parametrize('name', all_names)
 def test_has_names(name):
     if extension_module(name):
         assert hasattr(mod, name), f'{mod_name} is missing the {name} extension'
+    elif name in extension_module_names:
+        extension_mod = extension_module_names[name]
+        assert hasattr(getattr(mod, extension_mod), name), f"{mod_name} is missing the {function_category(name)} extension function {name}()"
     elif array_method(name):
         arr = ones((1, 1))
         if getattr(function_stubs.array_object, name) is None:
@@ -126,7 +146,7 @@ def test_has_names(name):
     else:
         assert hasattr(mod, name), f"{mod_name} is missing the {function_category(name)} function {name}()"
 
-@pytest.mark.parametrize('name', function_stubs.__all__)
+@pytest.mark.parametrize('name', all_names)
 def test_function_positional_args(name):
     # Note: We can't actually test that positional arguments are
     # positional-only, as that would require knowing the argument name and
@@ -157,12 +177,16 @@ def test_function_positional_args(name):
             _mod = ones((), dtype=float64)
         else:
             _mod = example_argument('self', name, dtype)
+        stub_func = getattr(function_stubs, name)
+    elif name in extension_module_names:
+        _mod = getattr(mod, extension_module_names[name])
+        stub_func = getattr(getattr(function_stubs, extension_module_names[name]), name)
     else:
         _mod = mod
+        stub_func = getattr(function_stubs, name)
 
     if not hasattr(_mod, name):
         pytest.skip(f"{mod_name} does not have {name}(), skipping.")
-    stub_func = getattr(function_stubs, name)
     if stub_func is None:
         # TODO: Can we make this skip the parameterization entirely?
         pytest.skip(f"{name} is not a function, skipping.")
@@ -198,19 +222,23 @@ def test_function_positional_args(name):
             # NumPy ufuncs raise ValueError instead of TypeError
             raises((TypeError, ValueError), lambda: mod_func(*args[:n]), f"{name}() should not accept {n} positional arguments")
 
-@pytest.mark.parametrize('name', function_stubs.__all__)
+@pytest.mark.parametrize('name', all_names)
 def test_function_keyword_only_args(name):
     if extension_module(name):
         return
 
     if array_method(name):
         _mod = ones((1, 1))
+        stub_func = getattr(function_stubs, name)
+    elif name in extension_module_names:
+        _mod = getattr(mod, extension_module_names[name])
+        stub_func = getattr(getattr(function_stubs, extension_module_names[name]), name)
     else:
         _mod = mod
+        stub_func = getattr(function_stubs, name)
 
     if not hasattr(_mod, name):
         pytest.skip(f"{mod_name} does not have {name}(), skipping.")
-    stub_func = getattr(function_stubs, name)
     if stub_func is None:
         # TODO: Can we make this skip the parameterization entirely?
         pytest.skip(f"{name} is not a function, skipping.")
