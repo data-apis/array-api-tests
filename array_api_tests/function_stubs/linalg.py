@@ -26,13 +26,7 @@ def det(x: array, /) -> array:
 def diagonal(x: array, /, *, offset: int = 0) -> array:
     pass
 
-def eig():
-    pass
-
 def eigh(x: array, /) -> Tuple[array]:
-    pass
-
-def eigvals():
     pass
 
 def eigvalsh(x: array, /) -> array:
@@ -89,4 +83,4 @@ def vecdot(x1: array, x2: array, /, *, axis: Optional[int] = None) -> array:
 def vector_norm(x: array, /, *, axis: Optional[Union[int, Tuple[int, int]]] = None, keepdims: bool = False, ord: Optional[Union[int, float, Literal[inf, -inf]]] = 2) -> array:
     pass
 
-__all__ = ['cholesky', 'cross', 'det', 'diagonal', 'eig', 'eigh', 'eigvals', 'eigvalsh', 'inv', 'matmul', 'matrix_norm', 'matrix_power', 'matrix_rank', 'matrix_transpose', 'outer', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'svdvals', 'tensordot', 'trace', 'vecdot', 'vector_norm']
+__all__ = ['cholesky', 'cross', 'det', 'diagonal', 'eigh', 'eigvalsh', 'inv', 'matmul', 'matrix_norm', 'matrix_power', 'matrix_rank', 'matrix_transpose', 'outer', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'svdvals', 'tensordot', 'trace', 'vecdot', 'vector_norm']
