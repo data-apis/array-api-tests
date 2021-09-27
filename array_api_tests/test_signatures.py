@@ -134,6 +134,9 @@ def test_function_positional_args(name):
     # inspection does not work for most array library functions that are not
     # written in pure Python (e.g., it won't work for numpy ufuncs).
 
+    if extension_module(name):
+        return
+
     dtype = None
     if (name.startswith('__i') and name not in ['__int__', '__invert__', '__index__']
         or name.startswith('__r') and name != '__rshift__'):
@@ -197,6 +200,9 @@ def test_function_positional_args(name):
 
 @pytest.mark.parametrize('name', function_stubs.__all__)
 def test_function_keyword_only_args(name):
+    if extension_module(name):
+        return
+
     if array_method(name):
         _mod = ones((1, 1))
     else:
