@@ -97,11 +97,9 @@ def test_empty_like(x, dtype):
     x_like = empty_like(x, **kwargs)
 
     if dtype is None:
-        # TODO: Should it actually match a.dtype?
-        # assert is_float_dtype(x_like.dtype), "empty_like() should produce an array with the default floating point dtype"
-        pass
+        assert x_like.dtype == x.dtype, f"{x.dtype=!s}, but empty_like() did not produce a {x.dtype} array - instead was {x_like.dtype}"
     else:
-        assert x_like.dtype == dtype, "empty_like() produced an array with an incorrect dtype"
+        assert x_like.dtype == dtype, f"{dtype=!s}, but empty_like() did not produce a {dtype} array - instead was {x_like.dtype}"
 
     assert x_like.shape == x.shape, "empty_like() produced an array with an incorrect shape"
 
@@ -165,9 +163,9 @@ def test_full_like(x, fill_value, dtype):
     x_like = full_like(x, fill_value, dtype=dtype)
 
     if dtype is None:
-        assert x_like.dtype == x.dtype, f"{x.dtype=}, but full_like() did not produce a {x.dtype} array - instead was {x_like.dtype}"
+        assert x_like.dtype == x.dtype, f"{x.dtype=!s}, but full_like() did not produce a {x.dtype} array - instead was {x_like.dtype}"
     else:
-        assert x_like.dtype == None, f"{dtype=}, but full_like() did not produce a {dtype} array - instead was {x_like.dtype}"
+        assert x_like.dtype == dtype, f"{dtype=!s}, but full_like() did not produce a {dtype} array - instead was {x_like.dtype}"
 
     assert x_like.shape == x.shape, "full_like() produced an array with incorrect shape"
     if is_float_dtype(x_like.dtype) and isnan(asarray(fill_value)):
@@ -258,10 +256,9 @@ def test_ones_like(x, dtype):
     x_like = ones_like(x, **kwargs)
 
     if dtype is None:
-        # TODO: Should it actually match a.dtype?
-        pass
+        assert x_like.dtype == x.dtype, f"{x.dtype=!s}, but ones_like() did not produce a {x.dtype} array - instead was {x_like.dtype}"
     else:
-        assert x_like.dtype == dtype, "ones_like() produced an array with an incorrect dtype"
+        assert x_like.dtype == dtype, f"{dtype=!s}, but ones_like() did not produce a {dtype} array - instead was {x_like.dtype}"
 
     assert x_like.shape == x.shape, "ones_like() produced an array with an incorrect shape"
     assert all(equal(x_like, full((), ONE, dtype=x_like.dtype))), "ones_like() array did not equal 1"
@@ -306,10 +303,9 @@ def test_zeros_like(x, dtype):
     x_like = zeros_like(x, **kwargs)
 
     if dtype is None:
-        # TODO: Should it actually match a.dtype?
-        pass
+        assert x_like.dtype == x.dtype, f"{x.dtype=!s}, but zeros_like() did not produce a {x.dtype} array - instead was {x_like.dtype}"
     else:
-        assert x_like.dtype == dtype, "zeros_like() produced an array with an incorrect dtype"
+        assert x_like.dtype == dtype, f"{dtype=!s}, but zeros_like() did not produce a {dtype} array - instead was {x_like.dtype}"
 
     assert x_like.shape == x.shape, "zeros_like() produced an array with an incorrect shape"
     assert all(equal(x_like, full((), ZERO, dtype=x_like.dtype))), "zeros_like() array did not equal 0"
