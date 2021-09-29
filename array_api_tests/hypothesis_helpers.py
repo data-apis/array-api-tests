@@ -54,7 +54,7 @@ shared_dtypes = shared(dtypes, key="dtype")
 # should remove the composite wrapper, just returning sampled_from(dtype_pairs)
 # instead of drawing from it.
 @composite
-def mutually_promotable_dtype_pairs(draw, dtype_objects=dtype_objects):
+def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
     from .test_type_promotion import dtype_mapping, promotion_table
     # sort for shrinking (sampled_from shrinks to the earlier elements in the
     # list). Give pairs of the same dtypes first, then smaller dtypes,
@@ -76,7 +76,7 @@ def mutually_promotable_dtype_pairs(draw, dtype_objects=dtype_objects):
     return draw(sampled_from(dtype_pairs))
 
 shared_mutually_promotable_dtype_pairs = shared(
-    mutually_promotable_dtype_pairs(), key="mutually_promotable_dtype_pair"
+    mutually_promotable_dtypes(), key="mutually_promotable_dtype_pair"
 )
 
 # shared() allows us to draw either the function or the function name and they

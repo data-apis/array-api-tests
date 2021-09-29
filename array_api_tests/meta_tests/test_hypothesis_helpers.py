@@ -7,7 +7,7 @@ from .. import _array_module as xp
 from .._array_module import _UndefinedStub
 from ..array_helpers import dtype_objects
 from ..hypothesis_helpers import (MAX_ARRAY_SIZE,
-                                  mutually_promotable_dtype_pairs,
+                                  mutually_promotable_dtypes,
                                   shapes, two_broadcastable_shapes,
                                   two_mutually_broadcastable_shapes)
 
@@ -15,8 +15,8 @@ UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in dtype_objects)
 pytestmark = [pytest.mark.skipif(UNDEFINED_DTYPES, reason="undefined dtypes")]
 
 
-@given(mutually_promotable_dtype_pairs([xp.float32, xp.float64]))
-def test_mutually_promotable_dtype_pairs(pairs):
+@given(mutually_promotable_dtypes([xp.float32, xp.float64]))
+def test_mutually_promotable_dtypes(pairs):
     assert pairs in (
         (xp.float32, xp.float32),
         (xp.float32, xp.float64),
