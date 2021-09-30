@@ -11,10 +11,6 @@ from hypothesis import assume, given
 from hypothesis.strategies import integers, floats, one_of, none, booleans, just, shared, composite
 
 
-optional_dtypes = none() | shared_dtypes
-shared_optional_dtypes = shared(optional_dtypes, key="optional_dtype")
-
-
 int_range = integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
 float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE,
                      allow_nan=False)
@@ -95,7 +91,7 @@ def test_empty_like(x, kw):
         assert out.dtype == x.dtype, f"{x.dtype=!s}, but empty_like() returned an array with dtype {out.dtype}"
     else:
         assert out.dtype == dtype, f"{dtype=!s}, but empty_like() returned an array with dtype {out.dtype}"
-    assert out.shape == x.shape, "empty_like() produced an array with an incorrect shape"
+    assert out.shape == x.shape, f"{x.shape=}, but empty_like() returned an array with shape {out.shape}"
 
 
 # TODO: Use this method for all optional arguments
