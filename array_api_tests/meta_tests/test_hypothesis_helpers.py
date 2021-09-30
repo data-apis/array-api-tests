@@ -1,7 +1,7 @@
 from math import prod
 
 import pytest
-from hypothesis import given, strategies as st, assume
+from hypothesis import given, strategies as st
 
 from .. import _array_module as xp
 from .._array_module import _UndefinedStub
@@ -70,4 +70,3 @@ def test_kwargs():
     c_results = [kw for kw in results if "c" in kw]
     assert len(c_results) > 0
     assert all(isinstance(kw["c"], str) for kw in c_results)
-

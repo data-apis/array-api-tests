@@ -2,11 +2,11 @@ from functools import reduce
 from operator import mul
 from math import sqrt
 
+from hypothesis import assume
 from hypothesis.strategies import (lists, integers, sampled_from,
                                    shared, floats, just, composite, one_of,
                                    none, booleans)
 from hypothesis.extra.array_api import make_strategies_namespace
-from hypothesis import assume
 
 from .pytest_helpers import nargs
 from .array_helpers import (dtype_ranges, integer_dtype_objects,

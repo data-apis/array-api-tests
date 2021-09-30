@@ -8,7 +8,7 @@ from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  scalars, xps, kwargs)
 
 from hypothesis import assume, given
-from hypothesis.strategies import integers, floats, one_of, none, booleans, just, shared
+from hypothesis.strategies import integers, floats, one_of, none, booleans, just, shared, composite
 
 
 optional_dtypes = none() | shared_dtypes
@@ -148,10 +148,17 @@ def test_full(shape, fill_value, dtype):
         assert all(equal(a, asarray(fill_value, **kwargs))), "full() array did not equal the fill value"
 
 
+@composite
+def fill_values(draw):
+    kw = draw(shared(kwargs(dtype=none() | xps.scalar_dtypes()), key="full_like_kw"))
+    dtype = kw.get("dtype", None) or draw(shared_dtypes)
+    return draw(xps.from_dtype(dtype))
+
+
 @given(
     x=xps.arrays(dtype=shared_dtypes, shape=shapes),
-    fill_value=shared_dtypes.flatmap(xps.from_dtype),
-    kw=kwargs(dtype=none() | shared_dtypes),
+    fill_value=fill_values(),
+    kw=shared(kwargs(dtype=none() | xps.scalar_dtypes()), key="full_like_kw"),
 )
 def test_full_like(x, fill_value, kw):
     out = full_like(x, fill_value, **kw)
