@@ -251,3 +251,12 @@ shared_arrays2 = xps.arrays(
     dtype=shared_mutually_promotable_dtype_pairs.map(lambda pair: pair[1]),
     shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[1]),
 )
+
+
+@composite
+def kwargs(draw, **kw):
+    result = {}
+    for k, strat in kw.items():
+        if draw(booleans()):
+            result[k] = draw(strat)
+    return result
