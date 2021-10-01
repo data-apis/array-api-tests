@@ -109,7 +109,7 @@ def test_eye(n_rows, n_cols, k, dtype):
     else:
         a = eye(n_rows, n_cols, **kwargs)
     if dtype is None:
-        assert is_float_dtype(a.dtype), "eye() should returned an array with the default floating point dtype"
+        assert is_float_dtype(a.dtype), "eye() should return an array with the default floating point dtype"
     else:
         assert a.dtype == dtype, "eye() did not produce the correct dtype"
 
@@ -209,11 +209,11 @@ def test_linspace(start, stop, num, dtype, endpoint):
     a = linspace(start, stop, num, **kwargs)
 
     if dtype is None:
-        assert is_float_dtype(a.dtype), "linspace() should returned an array with the default floating point dtype"
+        assert is_float_dtype(a.dtype), "linspace() should return an array with the default floating point dtype"
     else:
         assert a.dtype == dtype, "linspace() did not produce the correct dtype"
 
-    assert a.shape == (num,), "linspace() did not returned an array with the correct shape"
+    assert a.shape == (num,), "linspace() did not return an array with the correct shape"
 
     if endpoint in [None, True]:
         if num > 1:
