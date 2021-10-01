@@ -26,7 +26,7 @@ from .hypothesis_helpers import (integer_dtype_objects,
                                  boolean_dtype_objects, floating_dtypes,
                                  numeric_dtypes, integer_or_boolean_dtypes,
                                  boolean_dtypes, mutually_promotable_dtypes,
-                                 array_scalars)
+                                 array_scalars, shared_arrays1, shared_arrays2)
 from .array_helpers import (assert_exactly_equal, negative,
                             positive_mathematical_sign,
                             negative_mathematical_sign, logical_not,
@@ -374,9 +374,9 @@ def test_divide(args):
     # could test that this does implement IEEE 754 division, but we don't yet
     # have those sorts in general for this module.
 
-@given(two_any_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_equal(args):
-    x1, x2 = args
+
+@given(shared_arrays1, shared_arrays2)
+def test_equal(x1, x2):
     sanity_check(x1, x2)
     a = _array_module.equal(x1, x2)
     # NOTE: assert_exactly_equal() itself uses equal(), so we must be careful

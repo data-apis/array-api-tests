@@ -2,11 +2,11 @@ from functools import reduce
 from operator import mul
 from math import sqrt
 
-from hypothesis.strategies import (lists, integers, builds, sampled_from,
+from hypothesis import assume
+from hypothesis.strategies import (lists, integers, sampled_from,
                                    shared, floats, just, composite, one_of,
                                    none, booleans)
-from hypothesis.extra.numpy import mutually_broadcastable_shapes
-from hypothesis import assume
+from hypothesis.extra.array_api import make_strategies_namespace
 
 from .pytest_helpers import nargs
 from .array_helpers import (dtype_ranges, integer_dtype_objects,
@@ -15,8 +15,12 @@ from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             integer_or_boolean_dtype_objects, dtype_objects)
 from ._array_module import full, float32, float64, bool as bool_dtype, _UndefinedStub
 from . import _array_module
+from . import _array_module as xp
 
 from .function_stubs import elementwise_functions
+
+
+xps = make_strategies_namespace(xp)
 
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
@@ -42,8 +46,13 @@ if FILTER_UNDEFINED_DTYPES:
     boolean_dtypes = boolean_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
     dtypes = dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
 
-shared_dtypes = shared(dtypes)
+shared_dtypes = shared(dtypes, key="dtype")
 
+# TODO: Importing things from test_type_promotion should be replaced by
+# something that won't cause a circular import. Right now we use @st.composite
+# only because it returns a lazy-evaluated strategy - in the future this method
+# should remove the composite wrapper, just returning sampled_from(dtype_pairs)
+# instead of drawing from it.
 @composite
 def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
     from .test_type_promotion import dtype_mapping, promotion_table
@@ -55,17 +64,20 @@ def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
     # pairs (XXX: Can we redesign the strategies so that they can prefer
     # shrinking dtypes over values?)
     sorted_table = sorted(promotion_table)
-    sorted_table = sorted(sorted_table, key=lambda ij: -1 if ij[0] == ij[1] else sorted_table.index(ij))
-    dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in
-                   sorted_table]
-
-    filtered_dtype_pairs = [(i, j) for i, j in dtype_pairs if i in
-                            dtype_objects and j in dtype_objects]
+    sorted_table = sorted(
+        sorted_table, key=lambda ij: -1 if ij[0] == ij[1] else sorted_table.index(ij)
+    )
+    dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in sorted_table]
     if FILTER_UNDEFINED_DTYPES:
-        filtered_dtype_pairs = [(i, j) for i, j in filtered_dtype_pairs
-                                if not isinstance(i, _UndefinedStub)
-                                and not isinstance(j, _UndefinedStub)]
-    return draw(sampled_from(filtered_dtype_pairs))
+        dtype_pairs = [(i, j) for i, j in dtype_pairs
+                       if not isinstance(i, _UndefinedStub)
+                       and not isinstance(j, _UndefinedStub)]
+    dtype_pairs = [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
+    return draw(sampled_from(dtype_pairs))
+
+shared_mutually_promotable_dtype_pairs = shared(
+    mutually_promotable_dtypes(), key="mutually_promotable_dtype_pair"
+)
 
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
@@ -96,36 +108,35 @@ def tuples(elements, *, min_size=0, max_size=None, unique_by=None, unique=False)
     return lists(elements, min_size=min_size, max_size=max_size,
                  unique_by=unique_by, unique=unique).map(tuple)
 
-shapes = tuples(integers(0, 10)).filter(lambda shape: prod(shape) < MAX_ARRAY_SIZE)
-
 # Use this to avoid memory errors with NumPy.
 # See https://github.com/numpy/numpy/issues/15753
-shapes = tuples(integers(0, 10)).filter(
-             lambda shape: prod([i for i in shape if i]) < MAX_ARRAY_SIZE)
+shapes = xps.array_shapes(min_dims=0, min_side=0).filter(
+    lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
+)
 
-two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(num_shapes=2)\
+two_mutually_broadcastable_shapes = xps.mutually_broadcastable_shapes(num_shapes=2)\
     .map(lambda S: S.input_shapes)\
-    .filter(lambda S: all(prod([i for i in shape if i]) < MAX_ARRAY_SIZE for shape in S))
+    .filter(lambda S: all(prod(i for i in shape if i) < MAX_ARRAY_SIZE for shape in S))
 
 @composite
-def two_broadcastable_shapes(draw, shapes=shapes):
+def two_broadcastable_shapes(draw):
     """
     This will produce two shapes (shape1, shape2) such that shape2 can be
     broadcast to shape1.
-
     """
     from .test_broadcasting import broadcast_shapes
-
-    shape1, shape2 = draw(two_mutually_broadcastable_shapes)
-    if broadcast_shapes(shape1, shape2) != shape1:
-        assume(False)
+    shape1, shape2 =  draw(two_mutually_broadcastable_shapes)
+    assume(broadcast_shapes(shape1, shape2) == shape1)
     return (shape1, shape2)
 
 sizes = integers(0, MAX_ARRAY_SIZE)
 sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
 
 # TODO: Generate general arrays here, rather than just scalars.
-numeric_arrays = builds(full, just((1,)), floats())
+numeric_arrays = xps.arrays(
+    dtype=shared(xps.floating_dtypes(), key='dtypes'),
+    shape=shared(xps.array_shapes(), key='shapes'),
+)
 
 @composite
 def scalars(draw, dtypes, finite=False):
@@ -230,3 +241,22 @@ def multiaxis_indices(draw, shapes):
         extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
         res += extra
     return tuple(res)
+
+
+shared_arrays1 = xps.arrays(
+    dtype=shared_mutually_promotable_dtype_pairs.map(lambda pair: pair[0]),
+    shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[0]),
+)
+shared_arrays2 = xps.arrays(
+    dtype=shared_mutually_promotable_dtype_pairs.map(lambda pair: pair[1]),
+    shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[1]),
+)
+
+
+@composite
+def kwargs(draw, **kw):
+    result = {}
+    for k, strat in kw.items():
+        if draw(booleans()):
+            result[k] = draw(strat)
+    return result

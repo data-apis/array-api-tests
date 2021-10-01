@@ -51,7 +51,6 @@ jobs:
             "array_api_tests/test_signatures.py::test_function_positional_args[__index__]",
             "array_api_tests/test_signatures.py::test_function_keyword_only_args[prod]",
             "array_api_tests/test_signatures.py::test_function_keyword_only_args[sum]",
-
         )
 
         def pytest_collection_modifyitems(config, items):

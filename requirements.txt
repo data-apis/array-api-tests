@@ -1,4 +1,4 @@
 pytest
-hypothesis
+hypothesis>=6.21.5
 regex
 removestar
