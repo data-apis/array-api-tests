@@ -1,3 +1,5 @@
+import math
+
 from ._array_module import (asarray, arange, ceil, empty, empty_like, eye, full,
                             full_like, equal, all, linspace, ones, ones_like,
                             zeros, zeros_like, isnan)
@@ -157,7 +159,7 @@ def test_full(shape, fill_value, kw):
     else:
         assert out.dtype == dtype
     assert out.shape == shape,  f"{shape=}, but full() returned an array with shape {out.shape}"
-    if is_float_dtype(out.dtype) and isnan(asarray(fill_value)):
+    if is_float_dtype(out.dtype) and math.isnan(fill_value):
         assert all(isnan(out)), "full() array did not equal the fill value"
     else:
         assert all(equal(out, asarray(fill_value, dtype=dtype))), "full() array did not equal the fill value"
@@ -183,7 +185,7 @@ def test_full_like(x, fill_value, kw):
     else:
         assert out.dtype == dtype, f"{dtype=!s}, but full_like() returned an array with dtype {out.dtype}"
     assert out.shape == x.shape, "{x.shape=}, but full_like() returned an array with shape {out.shape}"
-    if is_float_dtype(dtype) and isnan(asarray(fill_value)):
+    if is_float_dtype(dtype) and math.isnan(fill_value):
         assert all(isnan(out)), "full_like() array did not equal the fill value"
     else:
         assert all(equal(out, asarray(fill_value, dtype=dtype))), "full_like() array did not equal the fill value"
