@@ -27,7 +27,7 @@ from .hypothesis_helpers import (integer_dtype_objects,
                                  numeric_dtypes, integer_or_boolean_dtypes,
                                  boolean_dtypes, mutually_promotable_dtypes,
                                  array_scalars, shared_arrays1, shared_arrays2,
-                                 xps)
+                                 xps, shapes)
 from .array_helpers import (assert_exactly_equal, negative,
                             positive_mathematical_sign,
                             negative_mathematical_sign, logical_not,
@@ -838,7 +838,7 @@ def test_remainder(args):
     not_nan = logical_not(logical_or(isnan(a), isnan(x2)))
     assert_same_sign(a[not_nan], x2[not_nan])
 
-@given(numeric_scalars)
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_round(x):
     a = _array_module.round(x)
 
