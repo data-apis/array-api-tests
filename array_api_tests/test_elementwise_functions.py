@@ -810,11 +810,11 @@ def test_not_equal(args):
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) != scalar_func(x2idx))
 
-@given(numeric_scalars)
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_positive(x):
-    a = _array_module.positive(x)
+    out = _array_module.positive(x)
     # Positive does nothing
-    assert_exactly_equal(a, x)
+    assert_exactly_equal(out, x)
 
 @given(two_mutual_arrays(floating_dtype_objects))
 def test_pow(x1_and_x2):
