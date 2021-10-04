@@ -904,14 +904,13 @@ def test_tanh(x):
 
 @given(xps.arrays(dtype=numeric_dtypes, shape=xps.array_shapes()))
 def test_trunc(x):
-    a = _array_module.trunc(x)
-    assert a.dtype == x.dtype, f"{x.dtype=!s}, but trunc() did not produce a {x.dtype} array - instead was {a.dtype}"
+    out = _array_module.trunc(x)
+    assert out.dtype == x.dtype, f"{x.dtype=!s} but {out.dtype=!s}"
+    assert out.shape == x.shape, f"{x.shape} but {out.shape}"
     if x.dtype in integer_dtype_objects:
-        assert array_all(equal(x, a)), f"{x=!s} but trunc(x)={x} - {x.dtype=!s} so trunc(x) should do nothing"
+        assert array_all(equal(x, out)), f"{x=!s} but {out=!s}"
     else:
-        # TODO: a method that generates all indices, so we don't have to flatten first
-        a = _array_module.reshape(a, a.size)
-        finite_mask = _array_module.isfinite(a)
-        for i in range(a.size):
-            if finite_mask[i]:
-                assert float(a[i]).is_integer(), f"trunc(x) did not round float {a[i]} to 0 decimals"
+        finite_mask = _array_module.isfinite(out)
+        for idx in ndindex(out.shape):
+            if finite_mask[idx]:
+                assert float(out[idx]).is_integer(), f"x at {idx=} is {x[idx]}, but out at idx is {out[idx]}"
