@@ -816,9 +816,9 @@ def test_positive(x):
     # Positive does nothing
     assert_exactly_equal(a, x)
 
-@given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_pow(args):
-    x1, x2 = args
+@given(two_mutual_arrays(floating_dtype_objects))
+def test_pow(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     _array_module.pow(x1, x2)
     # There isn't much we can test here. The spec doesn't require any behavior
