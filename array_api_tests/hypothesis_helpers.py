@@ -255,6 +255,18 @@ shared_arrays2 = xps.arrays(
 
 @composite
 def kwargs(draw, **kw):
+    """
+    Strategy for keyword arguments
+
+    For a signature like f(x, /, dtype=None, val=1) use
+
+    @given(x=arrays(), kw=kwargs(a=none() | dtypes, val=integers()))
+    def test_f(x, kw):
+        res = f(x, **kw)
+
+    kw may omit the keyword argument, meaning the default for f will be used.
+
+    """
     result = {}
     for k, strat in kw.items():
         if draw(booleans()):
