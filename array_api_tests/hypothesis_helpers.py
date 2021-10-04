@@ -77,10 +77,6 @@ def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
     dtype_pairs = [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
     return draw(sampled_from(dtype_pairs))
 
-shared_mutually_promotable_dtype_pairs = shared(
-    mutually_promotable_dtypes(), key="mutually_promotable_dtype_pair"
-)
-
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
 
@@ -275,14 +271,13 @@ def multiaxis_indices(draw, shapes):
     return tuple(res)
 
 
-shared_arrays1 = xps.arrays(
-    dtype=shared_mutually_promotable_dtype_pairs.map(lambda pair: pair[0]),
-    shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[0]),
-)
-shared_arrays2 = xps.arrays(
-    dtype=shared_mutually_promotable_dtype_pairs.map(lambda pair: pair[1]),
-    shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[1]),
-)
+@composite
+def two_mutual_arrays(draw, dtypes=dtype_objects):
+    dtype1, dtype2 = draw(mutually_promotable_dtypes(dtypes))
+    shape1, shape2 = draw(two_mutually_broadcastable_shapes)
+    x1 = draw(xps.arrays(dtype=dtype1, shape=shape1))
+    x2 = draw(xps.arrays(dtype=dtype2, shape=shape2))
+    return x1, x2
 
 
 @composite

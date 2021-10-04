@@ -26,8 +26,7 @@ from .hypothesis_helpers import (integer_dtype_objects,
                                  boolean_dtype_objects, floating_dtypes,
                                  numeric_dtypes, integer_or_boolean_dtypes,
                                  boolean_dtypes, mutually_promotable_dtypes,
-                                 array_scalars, shared_arrays1, shared_arrays2,
-                                 xps, shapes)
+                                 array_scalars, two_mutual_arrays, xps, shapes)
 from .array_helpers import (assert_exactly_equal, negative,
                             positive_mathematical_sign,
                             negative_mathematical_sign, logical_not,
@@ -376,8 +375,9 @@ def test_divide(args):
     # have those sorts in general for this module.
 
 
-@given(shared_arrays1, shared_arrays2)
-def test_equal(x1, x2):
+@given(two_mutual_arrays())
+def test_equal(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     a = _array_module.equal(x1, x2)
     # NOTE: assert_exactly_equal() itself uses equal(), so we must be careful
@@ -827,16 +827,17 @@ def test_pow(args):
     # numbers. We could test that this does implement IEEE 754 pow, but we
     # don't yet have those sorts in general for this module.
 
-@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_remainder(args):
-    x1, x2 = args
+@given(two_mutual_arrays(numeric_dtype_objects))
+def test_remainder(x1_and_x2):
+    x1, x2 = x1_and_x2
+    assume(len(x1.shape) <= len(x2.shape)) # TODO: rework same sign testing below to remove this
     sanity_check(x1, x2)
-    a = _array_module.remainder(x1, x2)
+    out = _array_module.remainder(x1, x2)
 
-    # a and x2 should have the same sign.
+    # out and x2 should have the same sign.
     # assert_same_sign returns False for nans
-    not_nan = logical_not(logical_or(isnan(a), isnan(x2)))
-    assert_same_sign(a[not_nan], x2[not_nan])
+    not_nan = logical_not(logical_or(isnan(out), isnan(x2)))
+    assert_same_sign(out[not_nan], x2[not_nan])
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_round(x):
