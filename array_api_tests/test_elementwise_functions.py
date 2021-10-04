@@ -780,9 +780,9 @@ def test_negative(x):
     ZERO = zero(x[mask].shape, x.dtype)
     assert_exactly_equal(y, ZERO)
 
-@given(two_any_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_not_equal(args):
-    x1, x2 = args
+@given(two_mutual_arrays())
+def test_not_equal(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     a = _array_module.not_equal(x1, x2)
 
