@@ -115,6 +115,13 @@ shapes = xps.array_shapes(min_dims=0, min_side=0).filter(
     lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
 )
 
+# Matrix shapes assume stacks of matrices
+matrix_shapes = xps.array_shapes(min_dims=2, min_side=1).filter(
+    lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
+)
+
+square_matrix_shapes = matrix_shapes.filter(lambda shape: shape[-1] == shape[-2])
+
 two_mutually_broadcastable_shapes = xps.mutually_broadcastable_shapes(num_shapes=2)\
     .map(lambda S: S.input_shapes)\
     .filter(lambda S: all(prod(i for i in shape if i) < MAX_ARRAY_SIZE for shape in S))
