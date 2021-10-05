@@ -749,9 +749,9 @@ def test_logical_xor(args):
     for idx in ndindex(shape):
         assert a[idx] == (bool(_x1[idx]) ^ bool(_x2[idx]))
 
-@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_multiply(args):
-    x1, x2 = args
+@given(two_mutual_arrays(numeric_dtype_objects))
+def test_multiply(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     a = _array_module.multiply(x1, x2)
 
