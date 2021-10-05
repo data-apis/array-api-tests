@@ -541,7 +541,7 @@ def test_greater_equal(x1_and_x2):
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) >= scalar_func(x2idx))
 
-@given(numeric_scalars)
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_isfinite(x):
     a = xp.isfinite(x)
     TRUE = true(x.shape)
@@ -557,7 +557,7 @@ def test_isfinite(x):
             s = float(x[idx])
             assert bool(a[idx]) == math.isfinite(s)
 
-@given(numeric_scalars)
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_isinf(x):
     a = xp.isinf(x)
     FALSE = false(x.shape)
@@ -572,7 +572,7 @@ def test_isinf(x):
             s = float(x[idx])
             assert bool(a[idx]) == math.isinf(s)
 
-@given(numeric_scalars)
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_isnan(x):
     a = xp.isnan(x)
     FALSE = false(x.shape)
