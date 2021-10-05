@@ -38,6 +38,7 @@ from .array_helpers import (assert_exactly_equal, negative,
                             is_float_dtype, not_equal, float64, asarray,
                             dtype_ranges, full, true, false, assert_same_sign,
                             isnan, less)
+from .dtype_helpers import dtype_nbits, dtype_signed
 # We might as well use this implementation rather than requiring
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
@@ -205,7 +206,6 @@ def test_atanh(x):
 
 @given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_and(args):
-    from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.bitwise_and(x1, x2)
@@ -228,7 +228,6 @@ def test_bitwise_and(args):
 
 @given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_left_shift(args):
-    from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
     negative_x2 = isnegative(x2)
@@ -252,7 +251,6 @@ def test_bitwise_left_shift(args):
 
 @given(integer_or_boolean_scalars)
 def test_bitwise_invert(x):
-    from .test_type_promotion import dtype_nbits, dtype_signed
     a = _array_module.bitwise_invert(x)
     # Compare against the Python ~ operator.
     # TODO: Generalize this properly for inputs that are arrays.
@@ -270,7 +268,6 @@ def test_bitwise_invert(x):
 
 @given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_or(args):
-    from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.bitwise_or(x1, x2)
@@ -292,7 +289,6 @@ def test_bitwise_or(args):
 
 @given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_right_shift(args):
-    from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
     negative_x2 = isnegative(x2)
@@ -311,7 +307,6 @@ def test_bitwise_right_shift(args):
 
 @given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_bitwise_xor(args):
-    from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
     a = _array_module.bitwise_xor(x1, x2)

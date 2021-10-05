@@ -10,7 +10,7 @@ from hypothesis.strategies import data, sampled_from
 from .hypothesis_helpers import shapes, FILTER_UNDEFINED_DTYPES
 from .pytest_helpers import raises, doesnt_raise, nargs
 
-from .test_type_promotion import (elementwise_function_input_types,
+from .dtype_helpers import (elementwise_function_input_types,
                                   input_types, dtype_mapping)
 from .function_stubs import elementwise_functions
 from . import _array_module

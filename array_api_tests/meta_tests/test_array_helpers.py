@@ -1,6 +1,6 @@
 from ..array_helpers import exactly_equal, notequal, int_to_dtype
 from ..hypothesis_helpers import integer_dtypes
-from ..test_type_promotion import dtype_nbits, dtype_signed
+from ..dtype_helpers import dtype_nbits, dtype_signed
 from .._array_module import asarray, nan, equal, all
 
 from hypothesis import given, assume

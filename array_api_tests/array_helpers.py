@@ -9,10 +9,12 @@ from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
                             _numeric_dtypes, _boolean_dtypes, _dtypes,
                             asarray)
 from . import _array_module
+from .dtype_helpers import dtype_mapping, promotion_table
 
 # These are exported here so that they can be included in the special cases
 # tests from this file.
 from ._array_module import logical_not, subtract, floor, ceil, where
+
 
 __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'less_equal', 'greater', 'subtract', 'negative', 'floor', 'ceil',
@@ -369,8 +371,6 @@ def promote_dtypes(dtype1, dtype2):
     Special case of result_type() which uses the exact type promotion table
     from the spec.
     """
-    from .test_type_promotion import dtype_mapping, promotion_table
-
     # Equivalent to this, but some libraries may not work properly with using
     # dtype objects as dict keys
     #

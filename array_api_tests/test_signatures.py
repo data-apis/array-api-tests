@@ -4,7 +4,7 @@ import pytest
 
 from ._array_module import mod, mod_name, ones, eye, float64, bool, int64
 from .pytest_helpers import raises, doesnt_raise
-from .test_type_promotion import elementwise_function_input_types, operators_to_functions
+from .dtype_helpers import elementwise_function_input_types, operators_to_functions
 
 from . import function_stubs
 

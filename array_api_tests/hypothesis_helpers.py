@@ -14,6 +14,7 @@ from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             boolean_dtype_objects,
                             integer_or_boolean_dtype_objects, dtype_objects)
 from ._array_module import full, float32, float64, bool as bool_dtype, _UndefinedStub
+from .dtype_helpers import dtype_mapping, promotion_table
 from . import _array_module
 from . import _array_module as xp
 
@@ -48,14 +49,19 @@ if FILTER_UNDEFINED_DTYPES:
 
 shared_dtypes = shared(dtypes, key="dtype")
 
-# TODO: Importing things from test_type_promotion should be replaced by
-# something that won't cause a circular import. Right now we use @st.composite
-# only because it returns a lazy-evaluated strategy - in the future this method
-# should remove the composite wrapper, just returning sampled_from(dtype_pairs)
-# instead of drawing from it.
-@composite
-def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
-    from .test_type_promotion import dtype_mapping, promotion_table
+
+sorted_table = sorted(promotion_table)
+sorted_table = sorted(
+    sorted_table, key=lambda ij: -1 if ij[0] == ij[1] else sorted_table.index(ij)
+)
+dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in sorted_table]
+if FILTER_UNDEFINED_DTYPES:
+    dtype_pairs = [(i, j) for i, j in dtype_pairs
+                    if not isinstance(i, _UndefinedStub)
+                    and not isinstance(j, _UndefinedStub)]
+
+
+def mutually_promotable_dtypes(dtype_objects=dtype_objects):
     # sort for shrinking (sampled_from shrinks to the earlier elements in the
     # list). Give pairs of the same dtypes first, then smaller dtypes,
     # preferring float, then int, then unsigned int. Note, this might not
@@ -63,17 +69,9 @@ def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
     # that draw from dtypes might not draw the same example from different
     # pairs (XXX: Can we redesign the strategies so that they can prefer
     # shrinking dtypes over values?)
-    sorted_table = sorted(promotion_table)
-    sorted_table = sorted(
-        sorted_table, key=lambda ij: -1 if ij[0] == ij[1] else sorted_table.index(ij)
+    return sampled_from(
+        [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
     )
-    dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in sorted_table]
-    if FILTER_UNDEFINED_DTYPES:
-        dtype_pairs = [(i, j) for i, j in dtype_pairs
-                       if not isinstance(i, _UndefinedStub)
-                       and not isinstance(j, _UndefinedStub)]
-    dtype_pairs = [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
-    return draw(sampled_from(dtype_pairs))
 
 shared_mutually_promotable_dtype_pairs = shared(
     mutually_promotable_dtypes(), key="mutually_promotable_dtype_pair"
