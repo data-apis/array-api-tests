@@ -481,9 +481,9 @@ def test_floor_divide(args):
 
     # TODO: Test the exact output for floor_divide.
 
-@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_greater(args):
-    x1, x2 = args
+@given(two_mutual_arrays(numeric_dtype_objects))
+def test_greater(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     a = xp.greater(x1, x2)
 
@@ -511,9 +511,9 @@ def test_greater(args):
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) > scalar_func(x2idx))
 
-@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_greater_equal(args):
-    x1, x2 = args
+@given(two_mutual_arrays(numeric_dtype_objects))
+def test_greater_equal(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     a = xp.greater_equal(x1, x2)
 
@@ -587,9 +587,9 @@ def test_isnan(x):
             s = float(x[idx])
             assert bool(a[idx]) == math.isnan(s)
 
-@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_less(args):
-    x1, x2 = args
+@given(two_mutual_arrays(numeric_dtype_objects))
+def test_less(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     a = xp.less(x1, x2)
 
@@ -617,9 +617,9 @@ def test_less(args):
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) < scalar_func(x2idx))
 
-@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_less_equal(args):
-    x1, x2 = args
+@given(two_mutual_arrays(numeric_dtype_objects))
+def test_less_equal(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     a = xp.less_equal(x1, x2)
 
