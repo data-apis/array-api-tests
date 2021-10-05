@@ -14,10 +14,11 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 """
 
 from hypothesis import given
-from hypothesis.strategies import booleans
+from hypothesis.strategies import booleans, none
 
 from .array_helpers import assert_exactly_equal, ndindex
-from .hypothesis_helpers import (xps, shapes, kwargs, none, positive_definite_matrices)
+from .hypothesis_helpers import (xps, shapes, kwargs, square_matrix_shapes,
+                                 positive_definite_matrices)
 
 from . import _array_module
 
@@ -58,11 +59,15 @@ def test_cross(x1, x2, kw):
     pass
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
 )
 def test_det(x):
-    # res = _array_module.linalg.det(x)
-    pass
+    res = _array_module.linalg.det(x)
+
+    assert res.dtype == x.dtype, "det() did not return the correct dtype"
+    assert res.shape == x.shape[:-2], "det() did not return the correct shape"
+
+    # TODO: Test that res actually corresponds to the determinant of x
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
