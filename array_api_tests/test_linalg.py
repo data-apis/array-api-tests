@@ -14,8 +14,10 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 """
 
 from hypothesis import given
+from hypothesis.strategies import booleans
 
-from .hypothesis_helpers import xps, shapes, kwargs, none
+from .array_helpers import assert_exactly_equal, ndindex
+from .hypothesis_helpers import (xps, shapes, kwargs, none, positive_definite_matrices)
 
 from . import _array_module
 
@@ -23,12 +25,28 @@ from . import _array_module
 todo = none()
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    kw=kwargs(upper=todo)
+    x=positive_definite_matrices(),
+    kw=kwargs(upper=booleans())
 )
 def test_cholesky(x, kw):
-    # res = _array_module.linalg.cholesky(x, **kw)
-    pass
+    res = _array_module.linalg.cholesky(x, **kw)
+
+    assert res.shape == x.shape, "cholesky did not return the correct shape"
+    assert res.dtype == x.dtype, "cholesky did not return the correct dtype"
+
+    # Test that the result along stacks is the same
+    for _idx in ndindex(x.shape[:-2]):
+        idx = _idx + (slice(None), slice(None))
+        res_stack = res[idx]
+        x_stack = x[idx]
+        decomp_res_stack = _array_module.linalg.cholesky(x_stack, **kw)
+        assert_exactly_equal(res_stack, decomp_res_stack)
+
+    # Test that the result is upper or lower triangular
+    if kw.get('upper', False):
+        assert_exactly_equal(res, _array_module.triu(res))
+    else:
+        assert_exactly_equal(res, _array_module.tril(res))
 
 @given(
     x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
