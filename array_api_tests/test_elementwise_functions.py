@@ -331,7 +331,7 @@ def test_bitwise_xor(args):
         ans = int_to_dtype(x ^ y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
         assert ans == res
 
-@given(numeric_scalars)
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_ceil(x):
     # This test is almost identical to test_floor()
     a = xp.ceil(x)
@@ -342,7 +342,7 @@ def test_ceil(x):
     integers = isintegral(x)
     assert_exactly_equal(a[integers], x[integers])
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_cos(x):
     a = xp.cos(x)
     ONE = one(x.shape, x.dtype)
@@ -353,7 +353,7 @@ def test_cos(x):
     # to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_cosh(x):
     a = xp.cosh(x)
     INFINITY = infinity(x.shape, x.dtype)
@@ -363,9 +363,9 @@ def test_cosh(x):
     # mapped to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_divide(args):
-    x1, x2 = args
+@given(two_mutual_arrays(floating_dtype_objects))
+def test_divide(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     xp.divide(x1, x2)
     # There isn't much we can test here. The spec doesn't require any behavior
