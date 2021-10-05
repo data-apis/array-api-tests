@@ -647,7 +647,7 @@ def test_less_equal(args):
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) <= scalar_func(x2idx))
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_log(x):
     a = xp.log(x)
     INFINITY = infinity(x.shape, x.dtype)
@@ -658,7 +658,7 @@ def test_log(x):
     # mapped to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_log1p(x):
     a = xp.log1p(x)
     INFINITY = infinity(x.shape, x.dtype)
@@ -669,7 +669,7 @@ def test_log1p(x):
     # mapped to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_log2(x):
     a = xp.log2(x)
     INFINITY = infinity(x.shape, x.dtype)
@@ -680,7 +680,7 @@ def test_log2(x):
     # mapped to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_log10(x):
     a = xp.log10(x)
     INFINITY = infinity(x.shape, x.dtype)
@@ -691,9 +691,9 @@ def test_log10(x):
     # mapped to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_logaddexp(args):
-    x1, x2 = args
+@given(two_mutual_arrays(floating_dtype_objects))
+def test_logaddexp(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     xp.logaddexp(x1, x2)
     # The spec doesn't require any behavior for this function. We could test
