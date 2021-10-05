@@ -69,7 +69,7 @@ def sanity_check(x1, x2):
     except ValueError:
         raise RuntimeError("Error in test generation (probably a bug in the test suite")
 
-@given(numeric_scalars)
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_abs(x):
     if is_integer_dtype(x.dtype):
         minval = dtype_ranges[x.dtype][0]
@@ -86,7 +86,7 @@ def test_abs(x):
     # abs(x) = x for x >= 0
     assert_exactly_equal(a[logical_not(less_zero)], x[logical_not(less_zero)])
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_acos(x):
     a = xp.acos(x)
     ONE = one(x.shape, x.dtype)
@@ -100,7 +100,7 @@ def test_acos(x):
     # nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_acosh(x):
     a = xp.acosh(x)
     ONE = one(x.shape, x.dtype)
@@ -112,9 +112,9 @@ def test_acosh(x):
     # to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_add(args):
-    x1, x2 = args
+@given(two_mutual_arrays(numeric_dtype_objects))
+def test_add(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     a = xp.add(x1, x2)
 
@@ -123,7 +123,7 @@ def test_add(args):
     assert_exactly_equal(a, b)
     # TODO: Test that add is actually addition
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_asin(x):
     a = xp.asin(x)
     ONE = one(x.shape, x.dtype)
@@ -134,7 +134,7 @@ def test_asin(x):
     # mapped to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_asinh(x):
     a = xp.asinh(x)
     INFINITY = infinity(x.shape, x.dtype)
@@ -144,7 +144,7 @@ def test_asinh(x):
     # mapped to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_atan(x):
     a = xp.atan(x)
     INFINITY = infinity(x.shape, x.dtype)
@@ -155,9 +155,9 @@ def test_atan(x):
     # mapped to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(two_floating_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_atan2(args):
-    x1, x2 = args
+@given(two_mutual_arrays(floating_dtype_objects))
+def test_atan2(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     a = xp.atan2(x1, x2)
     INFINITY1 = infinity(x1.shape, x1.dtype)
@@ -192,7 +192,7 @@ def test_atan2(args):
     assert_exactly_equal(logical_or(logical_and(negx1, posx2),
                                     logical_and(negx1, negx2)), nega)
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_atanh(x):
     a = xp.atanh(x)
     ONE = one(x.shape, x.dtype)
