@@ -15,17 +15,17 @@ __all__ = [
 ]
 
 dtype_mapping = {
-    'i1': xp.int8,
-    'i2': xp.int16,
-    'i4': xp.int32,
-    'i8': xp.int64,
-    'u1': xp.uint8,
-    'u2': xp.uint16,
-    'u4': xp.uint32,
-    'u8': xp.uint64,
-    'f4': xp.float32,
-    'f8': xp.float64,
-    'b': xp.bool,
+    'int8': xp.int8,
+    'int16': xp.int16,
+    'int32': xp.int32,
+    'int64': xp.int64,
+    'uint8': xp.uint8,
+    'uint16': xp.uint16,
+    'uint32': xp.uint32,
+    'uint64': xp.uint64,
+    'float32': xp.float32,
+    'float64': xp.float64,
+    'bool': xp.bool,
 }
 
 reverse_dtype_mapping = {v: k for k, v in dtype_mapping.items()}
@@ -62,69 +62,69 @@ def dtype_signed(dtype):
     raise ValueError("dtype_signed is only defined for integer dtypes")
 
 signed_integer_promotion_table = {
-    ('i1', 'i1'): 'i1',
-    ('i1', 'i2'): 'i2',
-    ('i1', 'i4'): 'i4',
-    ('i1', 'i8'): 'i8',
-    ('i2', 'i1'): 'i2',
-    ('i2', 'i2'): 'i2',
-    ('i2', 'i4'): 'i4',
-    ('i2', 'i8'): 'i8',
-    ('i4', 'i1'): 'i4',
-    ('i4', 'i2'): 'i4',
-    ('i4', 'i4'): 'i4',
-    ('i4', 'i8'): 'i8',
-    ('i8', 'i1'): 'i8',
-    ('i8', 'i2'): 'i8',
-    ('i8', 'i4'): 'i8',
-    ('i8', 'i8'): 'i8',
+    ('int8', 'int8'): 'int8',
+    ('int8', 'int16'): 'int16',
+    ('int8', 'int32'): 'int32',
+    ('int8', 'int64'): 'int64',
+    ('int16', 'int8'): 'int16',
+    ('int16', 'int16'): 'int16',
+    ('int16', 'int32'): 'int32',
+    ('int16', 'int64'): 'int64',
+    ('int32', 'int8'): 'int32',
+    ('int32', 'int16'): 'int32',
+    ('int32', 'int32'): 'int32',
+    ('int32', 'int64'): 'int64',
+    ('int64', 'int8'): 'int64',
+    ('int64', 'int16'): 'int64',
+    ('int64', 'int32'): 'int64',
+    ('int64', 'int64'): 'int64',
 }
 
 unsigned_integer_promotion_table = {
-    ('u1', 'u1'): 'u1',
-    ('u1', 'u2'): 'u2',
-    ('u1', 'u4'): 'u4',
-    ('u1', 'u8'): 'u8',
-    ('u2', 'u1'): 'u2',
-    ('u2', 'u2'): 'u2',
-    ('u2', 'u4'): 'u4',
-    ('u2', 'u8'): 'u8',
-    ('u4', 'u1'): 'u4',
-    ('u4', 'u2'): 'u4',
-    ('u4', 'u4'): 'u4',
-    ('u4', 'u8'): 'u8',
-    ('u8', 'u1'): 'u8',
-    ('u8', 'u2'): 'u8',
-    ('u8', 'u4'): 'u8',
-    ('u8', 'u8'): 'u8',
+    ('uint8', 'uint8'): 'uint8',
+    ('uint8', 'uint16'): 'uint16',
+    ('uint8', 'uint32'): 'uint32',
+    ('uint8', 'uint64'): 'uint64',
+    ('uint16', 'uint8'): 'uint16',
+    ('uint16', 'uint16'): 'uint16',
+    ('uint16', 'uint32'): 'uint32',
+    ('uint16', 'uint64'): 'uint64',
+    ('uint32', 'uint8'): 'uint32',
+    ('uint32', 'uint16'): 'uint32',
+    ('uint32', 'uint32'): 'uint32',
+    ('uint32', 'uint64'): 'uint64',
+    ('uint64', 'uint8'): 'uint64',
+    ('uint64', 'uint16'): 'uint64',
+    ('uint64', 'uint32'): 'uint64',
+    ('uint64', 'uint64'): 'uint64',
 }
 
 mixed_signed_unsigned_promotion_table = {
-    ('i1', 'u1'): 'i2',
-    ('i1', 'u2'): 'i4',
-    ('i1', 'u4'): 'i8',
-    ('i2', 'u1'): 'i2',
-    ('i2', 'u2'): 'i4',
-    ('i2', 'u4'): 'i8',
-    ('i4', 'u1'): 'i4',
-    ('i4', 'u2'): 'i4',
-    ('i4', 'u4'): 'i8',
-    ('i8', 'u1'): 'i8',
-    ('i8', 'u2'): 'i8',
-    ('i8', 'u4'): 'i8',
+    ('int8', 'uint8'): 'int16',
+    ('int8', 'uint16'): 'int32',
+    ('int8', 'uint32'): 'int64',
+    ('int16', 'uint8'): 'int16',
+    ('int16', 'uint16'): 'int32',
+    ('int16', 'uint32'): 'int64',
+    ('int32', 'uint8'): 'int32',
+    ('int32', 'uint16'): 'int32',
+    ('int32', 'uint32'): 'int64',
+    ('int64', 'uint8'): 'int64',
+    ('int64', 'uint16'): 'int64',
+    ('int64', 'uint32'): 'int64',
 }
 
 flipped_mixed_signed_unsigned_promotion_table = {(u, i): p for (i, u), p in mixed_signed_unsigned_promotion_table.items()}
 
 float_promotion_table = {
-    ('f4', 'f4'): 'f4',
-    ('f4', 'f8'): 'f8',
-    ('f8', 'f4'): 'f8',
-    ('f8', 'f8'): 'f8',
+    ('float32', 'float32'): 'float32',
+    ('float32', 'float64'): 'float64',
+    ('float64', 'float32'): 'float64',
+    ('float64', 'float64'): 'float64',
 }
 
 boolean_promotion_table = {
-    ('b', 'b'): 'b',
+    ('bool', 'bool'): 'bool',
 }
 
 promotion_table = {
@@ -151,18 +151,18 @@ input_types = {
 }
 
 dtypes_to_scalars = {
-    'b': [bool],
-    'i1': [int],
-    'i2': [int],
-    'i4': [int],
-    'i8': [int],
+    'bool': [bool],
+    'int8': [int],
+    'int16': [int],
+    'int32': [int],
+    'int64': [int],
     # Note: unsigned int dtypes only correspond to positive integers
-    'u1': [int],
-    'u2': [int],
-    'u4': [int],
-    'u8': [int],
-    'f4': [int, float],
-    'f8': [int, float],
+    'uint8': [int],
+    'uint16': [int],
+    'uint32': [int],
+    'uint64': [int],
+    'float32': [int, float],
+    'float64': [int, float],
 }
 
 elementwise_function_input_types = {
