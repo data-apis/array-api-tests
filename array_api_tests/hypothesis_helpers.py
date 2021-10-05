@@ -13,7 +13,8 @@ from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             floating_dtype_objects, numeric_dtype_objects,
                             boolean_dtype_objects,
                             integer_or_boolean_dtype_objects, dtype_objects)
-from ._array_module import full, float32, float64, bool as bool_dtype, _UndefinedStub
+from ._array_module import (full, float32, float64, bool as bool_dtype,
+                            _UndefinedStub, eye, broadcast_to)
 from . import _array_module
 from . import _array_module as xp
 
@@ -119,13 +120,24 @@ two_mutually_broadcastable_shapes = xps.mutually_broadcastable_shapes(num_shapes
     .filter(lambda S: all(prod(i for i in shape if i) < MAX_ARRAY_SIZE for shape in S))
 
 @composite
+def positive_definite_matrices(draw, dtype=xps.floating_dtypes()):
+    # For now just generate stacks of identity matrices
+    # TODO: Generate arbitrary positive definite matrices, for instance, by
+    # using something like
+    # https://github.com/scikit-learn/scikit-learn/blob/844b4be24/sklearn/datasets/_samples_generator.py#L1351.
+    n = draw(integers(0))
+    shape = draw(shapes) + (n, n)
+    assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
+    return broadcast_to(eye(n), shape)
+
+@composite
 def two_broadcastable_shapes(draw):
     """
     This will produce two shapes (shape1, shape2) such that shape2 can be
     broadcast to shape1.
     """
     from .test_broadcasting import broadcast_shapes
-    shape1, shape2 =  draw(two_mutually_broadcastable_shapes)
+    shape1, shape2 = draw(two_mutually_broadcastable_shapes)
     assume(broadcast_shapes(shape1, shape2) == shape1)
     return (shape1, shape2)
 
