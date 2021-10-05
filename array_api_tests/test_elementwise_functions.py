@@ -32,10 +32,10 @@ from .array_helpers import (assert_exactly_equal, negative,
                             negative_mathematical_sign, logical_not,
                             logical_or, logical_and, inrange, π, one, zero,
                             infinity, isnegative, all as array_all, any as
-                            array_any, int_to_dtype, bool as bool_dtype,
+                            array_any, int_to_dtype,
                             assert_integral, less_equal, isintegral, isfinite,
                             ndindex, promote_dtypes, is_integer_dtype,
-                            is_float_dtype, not_equal, float64, asarray,
+                            is_float_dtype, not_equal, asarray,
                             dtype_ranges, full, true, false, assert_same_sign,
                             isnan, equal, less)
 # We might as well use this implementation rather than requiring
@@ -214,7 +214,7 @@ def test_bitwise_and(args):
     if not (x1.shape == x2.shape == ()):
         raise RuntimeError("Error: test_bitwise_and needs to be updated for nonscalar array inputs")
 
-    if a.dtype == bool_dtype:
+    if a.dtype == xp.bool:
         x = bool(x1)
         y = bool(x2)
         res = bool(a)
@@ -258,7 +258,7 @@ def test_bitwise_invert(x):
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x.shape == ()):
         raise RuntimeError("Error: test_bitwise_invert needs to be updated for nonscalar array inputs")
-    if a.dtype == bool_dtype:
+    if a.dtype == xp.bool:
         x = bool(x)
         res = bool(a)
         assert (not x) == res
@@ -278,7 +278,7 @@ def test_bitwise_or(args):
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x1.shape == x2.shape == ()):
         raise RuntimeError("Error: test_bitwise_or needs to be updated for nonscalar array inputs")
-    if a.dtype == bool_dtype:
+    if a.dtype == xp.bool:
         x = bool(x1)
         y = bool(x2)
         res = bool(a)
@@ -319,7 +319,7 @@ def test_bitwise_xor(args):
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x1.shape == x2.shape == ()):
         raise RuntimeError("Error: test_bitwise_xor needs to be updated for nonscalar array inputs")
-    if a.dtype == bool_dtype:
+    if a.dtype == xp.bool:
         x = bool(x1)
         y = bool(x2)
         res = bool(a)
@@ -399,9 +399,9 @@ def test_equal(x1_and_x2):
     # Second, manually promote the dtypes. This is important. If the internal
     # type promotion in equal() is wrong, it will not be directly visible in
     # the output type, but it can lead to wrong answers. For example,
-    # equal(array(1.0, dtype=float32), array(1.00000001, dtype=float64)) will
-    # be wrong if the float64 is downcast to float32. # be wrong if the
-    # float64 is downcast to float32. See the comment on
+    # equal(array(1.0, dtype=float32), array(1.00000001, dtype=xp.float64)) will
+    # be wrong if the xp.float64 is downcast to float32. # be wrong if the
+    # xp.float64 is downcast to float32. See the comment on
     # test_elementwise_function_two_arg_bool_type_promotion() in
     # test_type_promotion.py. The type promotion for equal() is not *really*
     # tested in that file, because doing so requires doing the consistency
@@ -424,7 +424,7 @@ def test_equal(x1_and_x2):
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) == scalar_func(x2idx))
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_exp(x):
     a = xp.exp(x)
     INFINITY = infinity(x.shape, x.dtype)
@@ -435,7 +435,7 @@ def test_exp(x):
     # mapped to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=shapes))
 def test_expm1(x):
     a = xp.expm1(x)
     INFINITY = infinity(x.shape, x.dtype)
@@ -446,7 +446,7 @@ def test_expm1(x):
     # mapped to nan, which is already tested in the special cases.
     assert_exactly_equal(domain, codomain)
 
-@given(numeric_scalars)
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_floor(x):
     # This test is almost identical to test_ceil
     a = xp.floor(x)
@@ -457,27 +457,28 @@ def test_floor(x):
     integers = isintegral(x)
     assert_exactly_equal(a[integers], x[integers])
 
-@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_floor_divide(args):
-    x1, x2 = args
+@given(two_mutual_arrays(numeric_dtype_objects))
+def test_floor_divide(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
     if is_integer_dtype(x1.dtype):
         # The spec does not specify the behavior for division by 0 for integer
         # dtypes. A library may choose to raise an exception in this case, so
         # we avoid passing it in entirely.
-        nonzero = not_equal(x2, zero(x2.shape, x2.dtype))
+        assume(not xp.any(x1 == 0) and not xp.any(x2 == 0))
         div = xp.divide(
-            asarray(x1[nonzero], dtype=float64),
-            asarray(x2[nonzero], dtype=float64))
-        a = xp.floor_divide(x1[nonzero], x2[nonzero])
+            asarray(x1, dtype=xp.float64),
+            asarray(x2, dtype=xp.float64),
+        )
     else:
         div = xp.divide(x1, x2)
-        a = xp.floor_divide(x1, x2)
+
+    out = xp.floor_divide(x1, x2)
 
     # TODO: The spec doesn't clearly specify the behavior of floor_divide on
     # infinities. See https://github.com/data-apis/array-api/issues/199.
     finite = isfinite(div)
-    assert_integral(a[finite])
+    assert_integral(out[finite])
 
     # TODO: Test the exact output for floor_divide.
 
