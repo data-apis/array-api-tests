@@ -42,7 +42,7 @@ from .array_helpers import (assert_exactly_equal, negative,
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
 
-from . import _array_module
+from . import _array_module as xp
 
 # integer_scalars = array_scalars(integer_dtypes)
 floating_scalars = array_scalars(floating_dtypes)
@@ -77,7 +77,7 @@ def test_abs(x):
             # abs of the smallest representable negative integer is not defined
             mask = not_equal(x, full(x.shape, minval, dtype=x.dtype))
             x = x[mask]
-    a = _array_module.abs(x)
+    a = xp.abs(x)
     assert array_all(logical_not(negative_mathematical_sign(a))), "abs(x) did not have positive sign"
     less_zero = negative_mathematical_sign(x)
     negx = negative(x)
@@ -88,7 +88,7 @@ def test_abs(x):
 
 @given(floating_scalars)
 def test_acos(x):
-    a = _array_module.acos(x)
+    a = xp.acos(x)
     ONE = one(x.shape, x.dtype)
     # Here (and elsewhere), should technically be a.dtype, but this is the
     # same as x.dtype, as tested by the type_promotion tests.
@@ -102,7 +102,7 @@ def test_acos(x):
 
 @given(floating_scalars)
 def test_acosh(x):
-    a = _array_module.acosh(x)
+    a = xp.acosh(x)
     ONE = one(x.shape, x.dtype)
     INFINITY = infinity(x.shape, x.dtype)
     ZERO = zero(x.shape, x.dtype)
@@ -116,16 +116,16 @@ def test_acosh(x):
 def test_add(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    a = _array_module.add(x1, x2)
+    a = xp.add(x1, x2)
 
-    b = _array_module.add(x2, x1)
+    b = xp.add(x2, x1)
     # add is commutative
     assert_exactly_equal(a, b)
     # TODO: Test that add is actually addition
 
 @given(floating_scalars)
 def test_asin(x):
-    a = _array_module.asin(x)
+    a = xp.asin(x)
     ONE = one(x.shape, x.dtype)
     PI = π(x.shape, x.dtype)
     domain = inrange(x, -ONE, ONE)
@@ -136,7 +136,7 @@ def test_asin(x):
 
 @given(floating_scalars)
 def test_asinh(x):
-    a = _array_module.asinh(x)
+    a = xp.asinh(x)
     INFINITY = infinity(x.shape, x.dtype)
     domain = inrange(x, -INFINITY, INFINITY)
     codomain = inrange(a, -INFINITY, INFINITY)
@@ -146,7 +146,7 @@ def test_asinh(x):
 
 @given(floating_scalars)
 def test_atan(x):
-    a = _array_module.atan(x)
+    a = xp.atan(x)
     INFINITY = infinity(x.shape, x.dtype)
     PI = π(x.shape, x.dtype)
     domain = inrange(x, -INFINITY, INFINITY)
@@ -159,7 +159,7 @@ def test_atan(x):
 def test_atan2(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    a = _array_module.atan2(x1, x2)
+    a = xp.atan2(x1, x2)
     INFINITY1 = infinity(x1.shape, x1.dtype)
     INFINITY2 = infinity(x2.shape, x2.dtype)
     PI = π(a.shape, a.dtype)
@@ -194,7 +194,7 @@ def test_atan2(args):
 
 @given(floating_scalars)
 def test_atanh(x):
-    a = _array_module.atanh(x)
+    a = xp.atanh(x)
     ONE = one(x.shape, x.dtype)
     INFINITY = infinity(x.shape, x.dtype)
     domain = inrange(x, -ONE, ONE)
@@ -208,7 +208,7 @@ def test_bitwise_and(args):
     from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
-    a = _array_module.bitwise_and(x1, x2)
+    a = xp.bitwise_and(x1, x2)
     # Compare against the Python & operator.
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x1.shape == x2.shape == ()):
@@ -234,7 +234,7 @@ def test_bitwise_left_shift(args):
     negative_x2 = isnegative(x2)
     if array_any(negative_x2):
         assume(False)
-    a = _array_module.bitwise_left_shift(x1, x2)
+    a = xp.bitwise_left_shift(x1, x2)
     # Compare against the Python << operator.
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x1.shape == x2.shape == ()):
@@ -253,7 +253,7 @@ def test_bitwise_left_shift(args):
 @given(integer_or_boolean_scalars)
 def test_bitwise_invert(x):
     from .test_type_promotion import dtype_nbits, dtype_signed
-    a = _array_module.bitwise_invert(x)
+    a = xp.bitwise_invert(x)
     # Compare against the Python ~ operator.
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x.shape == ()):
@@ -273,7 +273,7 @@ def test_bitwise_or(args):
     from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
-    a = _array_module.bitwise_or(x1, x2)
+    a = xp.bitwise_or(x1, x2)
     # Compare against the Python | operator.
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x1.shape == x2.shape == ()):
@@ -298,7 +298,7 @@ def test_bitwise_right_shift(args):
     negative_x2 = isnegative(x2)
     if array_any(negative_x2):
         assume(False)
-    a = _array_module.bitwise_right_shift(x1, x2)
+    a = xp.bitwise_right_shift(x1, x2)
     # Compare against the Python >> operator.
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x1.shape == x2.shape == ()):
@@ -314,7 +314,7 @@ def test_bitwise_xor(args):
     from .test_type_promotion import dtype_nbits, dtype_signed
     x1, x2 = args
     sanity_check(x1, x2)
-    a = _array_module.bitwise_xor(x1, x2)
+    a = xp.bitwise_xor(x1, x2)
     # Compare against the Python ^ operator.
     # TODO: Generalize this properly for inputs that are arrays.
     if not (x1.shape == x2.shape == ()):
@@ -334,7 +334,7 @@ def test_bitwise_xor(args):
 @given(numeric_scalars)
 def test_ceil(x):
     # This test is almost identical to test_floor()
-    a = _array_module.ceil(x)
+    a = xp.ceil(x)
     finite = isfinite(x)
     assert_integral(a[finite])
     assert array_all(less_equal(x[finite], a[finite]))
@@ -344,7 +344,7 @@ def test_ceil(x):
 
 @given(floating_scalars)
 def test_cos(x):
-    a = _array_module.cos(x)
+    a = xp.cos(x)
     ONE = one(x.shape, x.dtype)
     INFINITY = infinity(x.shape, x.dtype)
     domain = inrange(x, -INFINITY, INFINITY, open=True)
@@ -355,7 +355,7 @@ def test_cos(x):
 
 @given(floating_scalars)
 def test_cosh(x):
-    a = _array_module.cosh(x)
+    a = xp.cosh(x)
     INFINITY = infinity(x.shape, x.dtype)
     domain = inrange(x, -INFINITY, INFINITY)
     codomain = inrange(a, -INFINITY, INFINITY)
@@ -367,7 +367,7 @@ def test_cosh(x):
 def test_divide(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    _array_module.divide(x1, x2)
+    xp.divide(x1, x2)
     # There isn't much we can test here. The spec doesn't require any behavior
     # beyond the special cases, and indeed, there aren't many mathematical
     # properties of division that strictly hold for floating-point numbers. We
@@ -379,7 +379,7 @@ def test_divide(args):
 def test_equal(x1_and_x2):
     x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    a = _array_module.equal(x1, x2)
+    a = xp.equal(x1, x2)
     # NOTE: assert_exactly_equal() itself uses equal(), so we must be careful
     # not to use it here. Otherwise, the test would be circular and
     # meaningless. Instead, we implement this by iterating every element of
@@ -393,8 +393,8 @@ def test_equal(x1_and_x2):
     # indices to x1 and x2 that correspond to the broadcasted shapes. This
     # would avoid the dependence in this test on broadcast_to().
     shape = broadcast_shapes(x1.shape, x2.shape)
-    _x1 = _array_module.broadcast_to(x1, shape)
-    _x2 = _array_module.broadcast_to(x2, shape)
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
 
     # Second, manually promote the dtypes. This is important. If the internal
     # type promotion in equal() is wrong, it will not be directly visible in
@@ -407,8 +407,8 @@ def test_equal(x1_and_x2):
     # tested in that file, because doing so requires doing the consistency
     # check we do here rather than just checking the result dtype.
     promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
-    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
-    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+    _x1 = xp.asarray(_x1, dtype=promoted_dtype)
+    _x2 = xp.asarray(_x2, dtype=promoted_dtype)
 
     if is_integer_dtype(promoted_dtype):
         scalar_func = int
@@ -426,7 +426,7 @@ def test_equal(x1_and_x2):
 
 @given(floating_scalars)
 def test_exp(x):
-    a = _array_module.exp(x)
+    a = xp.exp(x)
     INFINITY = infinity(x.shape, x.dtype)
     ZERO = zero(x.shape, x.dtype)
     domain = inrange(x, -INFINITY, INFINITY)
@@ -437,7 +437,7 @@ def test_exp(x):
 
 @given(floating_scalars)
 def test_expm1(x):
-    a = _array_module.expm1(x)
+    a = xp.expm1(x)
     INFINITY = infinity(x.shape, x.dtype)
     NEGONE = -one(x.shape, x.dtype)
     domain = inrange(x, -INFINITY, INFINITY)
@@ -449,7 +449,7 @@ def test_expm1(x):
 @given(numeric_scalars)
 def test_floor(x):
     # This test is almost identical to test_ceil
-    a = _array_module.floor(x)
+    a = xp.floor(x)
     finite = isfinite(x)
     assert_integral(a[finite])
     assert array_all(less_equal(a[finite], x[finite]))
@@ -466,13 +466,13 @@ def test_floor_divide(args):
         # dtypes. A library may choose to raise an exception in this case, so
         # we avoid passing it in entirely.
         nonzero = not_equal(x2, zero(x2.shape, x2.dtype))
-        div = _array_module.divide(
+        div = xp.divide(
             asarray(x1[nonzero], dtype=float64),
             asarray(x2[nonzero], dtype=float64))
-        a = _array_module.floor_divide(x1[nonzero], x2[nonzero])
+        a = xp.floor_divide(x1[nonzero], x2[nonzero])
     else:
-        div = _array_module.divide(x1, x2)
-        a = _array_module.floor_divide(x1, x2)
+        div = xp.divide(x1, x2)
+        a = xp.floor_divide(x1, x2)
 
     # TODO: The spec doesn't clearly specify the behavior of floor_divide on
     # infinities. See https://github.com/data-apis/array-api/issues/199.
@@ -485,17 +485,17 @@ def test_floor_divide(args):
 def test_greater(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    a = _array_module.greater(x1, x2)
+    a = xp.greater(x1, x2)
 
     # See the comments in test_equal() for a description of how this test
     # works.
     shape = broadcast_shapes(x1.shape, x2.shape)
-    _x1 = _array_module.broadcast_to(x1, shape)
-    _x2 = _array_module.broadcast_to(x2, shape)
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
 
     promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
-    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
-    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+    _x1 = xp.asarray(_x1, dtype=promoted_dtype)
+    _x2 = xp.asarray(_x2, dtype=promoted_dtype)
 
     if is_integer_dtype(promoted_dtype):
         scalar_func = int
@@ -515,17 +515,17 @@ def test_greater(args):
 def test_greater_equal(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    a = _array_module.greater_equal(x1, x2)
+    a = xp.greater_equal(x1, x2)
 
     # See the comments in test_equal() for a description of how this test
     # works.
     shape = broadcast_shapes(x1.shape, x2.shape)
-    _x1 = _array_module.broadcast_to(x1, shape)
-    _x2 = _array_module.broadcast_to(x2, shape)
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
 
     promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
-    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
-    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+    _x1 = xp.asarray(_x1, dtype=promoted_dtype)
+    _x2 = xp.asarray(_x2, dtype=promoted_dtype)
 
     if is_integer_dtype(promoted_dtype):
         scalar_func = int
@@ -543,12 +543,12 @@ def test_greater_equal(args):
 
 @given(numeric_scalars)
 def test_isfinite(x):
-    a = _array_module.isfinite(x)
+    a = xp.isfinite(x)
     TRUE = true(x.shape)
     if is_integer_dtype(x.dtype):
         assert_exactly_equal(a, TRUE)
     # Test that isfinite, isinf, and isnan are self-consistent.
-    inf = logical_or(_array_module.isinf(x), _array_module.isnan(x))
+    inf = logical_or(xp.isinf(x), xp.isnan(x))
     assert_exactly_equal(a, logical_not(inf))
 
     # Test the exact value by comparing to the math version
@@ -559,11 +559,11 @@ def test_isfinite(x):
 
 @given(numeric_scalars)
 def test_isinf(x):
-    a = _array_module.isinf(x)
+    a = xp.isinf(x)
     FALSE = false(x.shape)
     if is_integer_dtype(x.dtype):
         assert_exactly_equal(a, FALSE)
-    finite_or_nan = logical_or(_array_module.isfinite(x), _array_module.isnan(x))
+    finite_or_nan = logical_or(xp.isfinite(x), xp.isnan(x))
     assert_exactly_equal(a, logical_not(finite_or_nan))
 
     # Test the exact value by comparing to the math version
@@ -574,11 +574,11 @@ def test_isinf(x):
 
 @given(numeric_scalars)
 def test_isnan(x):
-    a = _array_module.isnan(x)
+    a = xp.isnan(x)
     FALSE = false(x.shape)
     if is_integer_dtype(x.dtype):
         assert_exactly_equal(a, FALSE)
-    finite_or_inf = logical_or(_array_module.isfinite(x), _array_module.isinf(x))
+    finite_or_inf = logical_or(xp.isfinite(x), xp.isinf(x))
     assert_exactly_equal(a, logical_not(finite_or_inf))
 
     # Test the exact value by comparing to the math version
@@ -591,17 +591,17 @@ def test_isnan(x):
 def test_less(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    a = _array_module.less(x1, x2)
+    a = xp.less(x1, x2)
 
     # See the comments in test_equal() for a description of how this test
     # works.
     shape = broadcast_shapes(x1.shape, x2.shape)
-    _x1 = _array_module.broadcast_to(x1, shape)
-    _x2 = _array_module.broadcast_to(x2, shape)
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
 
     promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
-    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
-    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+    _x1 = xp.asarray(_x1, dtype=promoted_dtype)
+    _x2 = xp.asarray(_x2, dtype=promoted_dtype)
 
     if is_integer_dtype(promoted_dtype):
         scalar_func = int
@@ -621,17 +621,17 @@ def test_less(args):
 def test_less_equal(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    a = _array_module.less_equal(x1, x2)
+    a = xp.less_equal(x1, x2)
 
     # See the comments in test_equal() for a description of how this test
     # works.
     shape = broadcast_shapes(x1.shape, x2.shape)
-    _x1 = _array_module.broadcast_to(x1, shape)
-    _x2 = _array_module.broadcast_to(x2, shape)
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
 
     promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
-    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
-    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+    _x1 = xp.asarray(_x1, dtype=promoted_dtype)
+    _x2 = xp.asarray(_x2, dtype=promoted_dtype)
 
     if is_integer_dtype(promoted_dtype):
         scalar_func = int
@@ -649,7 +649,7 @@ def test_less_equal(args):
 
 @given(floating_scalars)
 def test_log(x):
-    a = _array_module.log(x)
+    a = xp.log(x)
     INFINITY = infinity(x.shape, x.dtype)
     ZERO = zero(x.shape, x.dtype)
     domain = inrange(x, ZERO, INFINITY)
@@ -660,7 +660,7 @@ def test_log(x):
 
 @given(floating_scalars)
 def test_log1p(x):
-    a = _array_module.log1p(x)
+    a = xp.log1p(x)
     INFINITY = infinity(x.shape, x.dtype)
     NEGONE = -one(x.shape, x.dtype)
     codomain = inrange(x, NEGONE, INFINITY)
@@ -671,7 +671,7 @@ def test_log1p(x):
 
 @given(floating_scalars)
 def test_log2(x):
-    a = _array_module.log2(x)
+    a = xp.log2(x)
     INFINITY = infinity(x.shape, x.dtype)
     ZERO = zero(x.shape, x.dtype)
     domain = inrange(x, ZERO, INFINITY)
@@ -682,7 +682,7 @@ def test_log2(x):
 
 @given(floating_scalars)
 def test_log10(x):
-    a = _array_module.log10(x)
+    a = xp.log10(x)
     INFINITY = infinity(x.shape, x.dtype)
     ZERO = zero(x.shape, x.dtype)
     domain = inrange(x, ZERO, INFINITY)
@@ -695,56 +695,56 @@ def test_log10(x):
 def test_logaddexp(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    _array_module.logaddexp(x1, x2)
+    xp.logaddexp(x1, x2)
     # The spec doesn't require any behavior for this function. We could test
     # that this is indeed an approximation of log(exp(x1) + exp(x2)), but we
     # don't have tests for this sort of thing for any functions yet.
 
-@given(two_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_logical_and(args):
-    x1, x2 = args
+@given(two_mutual_arrays([xp.bool]))
+def test_logical_and(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    a = _array_module.logical_and(x1, x2)
+    a = xp.logical_and(x1, x2)
 
     # See the comments in test_equal
     shape = broadcast_shapes(x1.shape, x2.shape)
-    _x1 = _array_module.broadcast_to(x1, shape)
-    _x2 = _array_module.broadcast_to(x2, shape)
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
 
     for idx in ndindex(shape):
         assert a[idx] == (bool(_x1[idx]) and bool(_x2[idx]))
 
-@given(boolean_scalars)
+@given(xps.arrays(dtype=xp.bool, shape=shapes))
 def test_logical_not(x):
-    a = _array_module.logical_not(x)
+    a = xp.logical_not(x)
 
     for idx in ndindex(x.shape):
         assert a[idx] == (not bool(x[idx]))
 
-@given(two_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_logical_or(args):
-    x1, x2 = args
+@given(two_mutual_arrays([xp.bool]))
+def test_logical_or(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    a = _array_module.logical_or(x1, x2)
+    a = xp.logical_or(x1, x2)
 
     # See the comments in test_equal
     shape = broadcast_shapes(x1.shape, x2.shape)
-    _x1 = _array_module.broadcast_to(x1, shape)
-    _x2 = _array_module.broadcast_to(x2, shape)
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
 
     for idx in ndindex(shape):
         assert a[idx] == (bool(_x1[idx]) or bool(_x2[idx]))
 
-@given(two_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_logical_xor(args):
-    x1, x2 = args
+@given(two_mutual_arrays([xp.bool]))
+def test_logical_xor(x1_and_x2):
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    a = _array_module.logical_xor(x1, x2)
+    a = xp.logical_xor(x1, x2)
 
     # See the comments in test_equal
     shape = broadcast_shapes(x1.shape, x2.shape)
-    _x1 = _array_module.broadcast_to(x1, shape)
-    _x2 = _array_module.broadcast_to(x2, shape)
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
 
     for idx in ndindex(shape):
         assert a[idx] == (bool(_x1[idx]) ^ bool(_x2[idx]))
@@ -753,18 +753,18 @@ def test_logical_xor(args):
 def test_multiply(x1_and_x2):
     x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    a = _array_module.multiply(x1, x2)
+    a = xp.multiply(x1, x2)
 
-    b = _array_module.multiply(x2, x1)
+    b = xp.multiply(x2, x1)
     # multiply is commutative
     assert_exactly_equal(a, b)
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_negative(x):
-    out = _array_module.negative(x)
+    out = xp.negative(x)
 
     # Negation is an involution
-    assert_exactly_equal(x, _array_module.negative(out))
+    assert_exactly_equal(x, xp.negative(out))
 
     mask = isfinite(x)
     if is_integer_dtype(x.dtype):
@@ -774,7 +774,7 @@ def test_negative(x):
             mask = not_equal(x, full(x.shape, minval, dtype=x.dtype))
 
     # Additive inverse
-    y = _array_module.add(x[mask], out[mask])
+    y = xp.add(x[mask], out[mask])
     ZERO = zero(x[mask].shape, x.dtype)
     assert_exactly_equal(y, ZERO)
 
@@ -783,17 +783,17 @@ def test_negative(x):
 def test_not_equal(x1_and_x2):
     x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    a = _array_module.not_equal(x1, x2)
+    a = xp.not_equal(x1, x2)
 
     # See the comments in test_equal() for a description of how this test
     # works.
     shape = broadcast_shapes(x1.shape, x2.shape)
-    _x1 = _array_module.broadcast_to(x1, shape)
-    _x2 = _array_module.broadcast_to(x2, shape)
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
 
     promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
-    _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
-    _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
+    _x1 = xp.asarray(_x1, dtype=promoted_dtype)
+    _x2 = xp.asarray(_x2, dtype=promoted_dtype)
 
     if is_integer_dtype(promoted_dtype):
         scalar_func = int
@@ -812,7 +812,7 @@ def test_not_equal(x1_and_x2):
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_positive(x):
-    out = _array_module.positive(x)
+    out = xp.positive(x)
     # Positive does nothing
     assert_exactly_equal(out, x)
 
@@ -820,7 +820,7 @@ def test_positive(x):
 def test_pow(x1_and_x2):
     x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    _array_module.pow(x1, x2)
+    xp.pow(x1, x2)
     # There isn't much we can test here. The spec doesn't require any behavior
     # beyond the special cases, and indeed, there aren't many mathematical
     # properties of exponentiation that strictly hold for floating-point
@@ -832,7 +832,7 @@ def test_remainder(x1_and_x2):
     x1, x2 = x1_and_x2
     assume(len(x1.shape) <= len(x2.shape)) # TODO: rework same sign testing below to remove this
     sanity_check(x1, x2)
-    out = _array_module.remainder(x1, x2)
+    out = xp.remainder(x1, x2)
 
     # out and x2 should have the same sign.
     # assert_same_sign returns False for nans
@@ -841,7 +841,7 @@ def test_remainder(x1_and_x2):
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=shapes))
 def test_round(x):
-    a = _array_module.round(x)
+    a = xp.round(x)
 
     # Test that the result is integral
     finite = isfinite(x)
@@ -853,10 +853,10 @@ def test_round(x):
     # This is the same strategy used in the mask in the
     # test_round_special_cases_one_arg_two_integers_equally_close special
     # cases test.
-    floor = _array_module.floor(x)
-    ceil = _array_module.ceil(x)
-    over = _array_module.subtract(x, floor)
-    under = _array_module.subtract(ceil, x)
+    floor = xp.floor(x)
+    ceil = xp.ceil(x)
+    over = xp.subtract(x, floor)
+    under = xp.subtract(ceil, x)
     round_down = less(over, under)
     round_up = less(under, over)
     assert_exactly_equal(a[round_down], floor[round_down])
@@ -864,54 +864,54 @@ def test_round(x):
 
 @given(numeric_scalars)
 def test_sign(x):
-    # a = _array_module.sign(x)
+    # a = xp.sign(x)
     pass
 
 @given(floating_scalars)
 def test_sin(x):
-    # a = _array_module.sin(x)
+    # a = xp.sin(x)
     pass
 
 @given(floating_scalars)
 def test_sinh(x):
-    # a = _array_module.sinh(x)
+    # a = xp.sinh(x)
     pass
 
 @given(numeric_scalars)
 def test_square(x):
-    # a = _array_module.square(x)
+    # a = xp.square(x)
     pass
 
 @given(floating_scalars)
 def test_sqrt(x):
-    # a = _array_module.sqrt(x)
+    # a = xp.sqrt(x)
     pass
 
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_subtract(args):
     x1, x2 = args
     sanity_check(x1, x2)
-    # a = _array_module.subtract(x1, x2)
+    # a = xp.subtract(x1, x2)
 
 @given(floating_scalars)
 def test_tan(x):
-    # a = _array_module.tan(x)
+    # a = xp.tan(x)
     pass
 
 @given(floating_scalars)
 def test_tanh(x):
-    # a = _array_module.tanh(x)
+    # a = xp.tanh(x)
     pass
 
 @given(xps.arrays(dtype=numeric_dtypes, shape=xps.array_shapes()))
 def test_trunc(x):
-    out = _array_module.trunc(x)
+    out = xp.trunc(x)
     assert out.dtype == x.dtype, f"{x.dtype=!s} but {out.dtype=!s}"
     assert out.shape == x.shape, f"{x.shape} but {out.shape}"
     if x.dtype in integer_dtype_objects:
         assert array_all(equal(x, out)), f"{x=!s} but {out=!s}"
     else:
-        finite_mask = _array_module.isfinite(out)
+        finite_mask = xp.isfinite(out)
         for idx in ndindex(out.shape):
             if finite_mask[idx]:
                 assert float(out[idx]).is_integer(), f"x at {idx=} is {x[idx]}, but out at idx is {out[idx]}"
