@@ -6,7 +6,6 @@ from hypothesis import assume
 from hypothesis.strategies import (lists, integers, sampled_from,
                                    shared, floats, just, composite, one_of,
                                    none, booleans)
-from hypothesis.extra.array_api import make_strategies_namespace
 
 from .pytest_helpers import nargs
 from .array_helpers import (dtype_ranges, integer_dtype_objects,
@@ -15,13 +14,10 @@ from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             integer_or_boolean_dtype_objects, dtype_objects)
 from ._array_module import (full, float32, float64, bool as bool_dtype,
                             _UndefinedStub, eye, broadcast_to)
-from . import _array_module
 from . import _array_module as xp
+from . import xps
 
 from .function_stubs import elementwise_functions
-
-
-xps = make_strategies_namespace(xp)
 
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
@@ -87,10 +83,10 @@ multiarg_array_functions_names = array_functions_names.filter(
     lambda func_name: nargs(func_name) > 1)
 
 elementwise_function_objects = elementwise_functions_names.map(
-    lambda i: getattr(_array_module, i))
+    lambda i: getattr(xp, i))
 array_functions = elementwise_function_objects
 multiarg_array_functions = multiarg_array_functions_names.map(
-    lambda i: getattr(_array_module, i))
+    lambda i: getattr(xp, i))
 
 # Limit the total size of an array shape
 MAX_ARRAY_SIZE = 10000
