@@ -25,6 +25,23 @@ from . import _array_module
 # Standin strategy for not yet implemented tests
 todo = none()
 
+def _test_stacks(f, x, kw, res=None, dims=2):
+    """
+    Test that f(x, **kw) maps across stacks of matrices
+
+    dims is the number of dimensions f should have for a single n x m matrix
+    stack.
+
+    """
+    if res is None:
+        res = f(x)
+    for _idx in ndindex(x.shape[:-2]):
+        idx = _idx + (slice(None),)*dims
+        res_stack = res[idx]
+        x_stack = x[idx]
+        decomp_res_stack = f(x_stack, **kw)
+        assert_exactly_equal(res_stack, decomp_res_stack)
+
 @given(
     x=positive_definite_matrices(),
     kw=kwargs(upper=booleans())
@@ -35,13 +52,7 @@ def test_cholesky(x, kw):
     assert res.shape == x.shape, "cholesky did not return the correct shape"
     assert res.dtype == x.dtype, "cholesky did not return the correct dtype"
 
-    # Test that the result along stacks is the same
-    for _idx in ndindex(x.shape[:-2]):
-        idx = _idx + (slice(None), slice(None))
-        res_stack = res[idx]
-        x_stack = x[idx]
-        decomp_res_stack = _array_module.linalg.cholesky(x_stack, **kw)
-        assert_exactly_equal(res_stack, decomp_res_stack)
+    _test_stacks(_array_module.linalg, x, kw, res)
 
     # Test that the result is upper or lower triangular
     if kw.get('upper', False):
