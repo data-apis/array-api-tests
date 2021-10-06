@@ -19,7 +19,8 @@ from hypothesis.strategies import booleans, none, integers
 from .array_helpers import assert_exactly_equal, ndindex, asarray
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
-                                 positive_definite_matrices, MAX_ARRAY_SIZE)
+                                 positive_definite_matrices, MAX_ARRAY_SIZE,
+                                 invertible_matrices)
 
 from . import _array_module
 
@@ -169,12 +170,16 @@ def test_eigvalsh(x):
 
     # TODO: Test that res actually corresponds to the eigenvalues of x
 
-@given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-)
+@given(x=invertible_matrices())
 def test_inv(x):
-    # res = _array_module.linalg.inv(x)
-    pass
+    res = _array_module.linalg.inv(x)
+
+    assert res.shape == x.shape, "inv() did not return the correct shape"
+    assert res.dtype == x.dtype, "inv() did not return the correct dtype"
+
+    _test_stacks(_array_module.linalg.inv, x, {}, res)
+
+    # TODO: Test that the result is actually the inverse
 
 @given(
     x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
