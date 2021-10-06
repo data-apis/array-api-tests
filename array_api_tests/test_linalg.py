@@ -18,7 +18,7 @@ from hypothesis.strategies import booleans, none, integers
 
 from .array_helpers import assert_exactly_equal, ndindex, asarray
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
-                                 square_matrix_shapes,
+                                 square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE)
 
 from . import _array_module
@@ -122,11 +122,36 @@ def test_diagonal(x, kw):
     _test_stacks(_array_module.linalg.diagonal, x, kw, res, dims=1, true_val=true_diag)
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=symmetric_matrices(finite=True),
 )
 def test_eigh(x):
-    # res = _array_module.linalg.eigh(x)
-    pass
+    res = _array_module.linalg.eigh(x)
+
+    # TODO: Factor out namedtuple checks
+
+    # isinstance(namedtuple) doesn't work
+    assert isinstance(res, tuple), "eigh() did not return a tuple"
+    assert len(res) == 2, "eigh() result tuple not the correct length"
+    assert hasattr(res, 'eigenvalues'), "eigh() result namedtuple doesn't have the 'eigenvalues' field"
+    assert hasattr(res, 'eigenvectors'), "eigh() result namedtuple doesn't have the 'eigenvectors' field"
+
+    eigenvalues = res.eigenvalues
+    eigenvectors = res.eigenvectors
+
+    assert_exactly_equal(res[0], eigenvalues)
+    assert_exactly_equal(res[1], eigenvectors)
+
+    assert eigenvalues.dtype == x.dtype, "eigh().eigenvalues did not return the correct dtype"
+    assert eigenvalues.shape == x.shape[:-1], "eigh().eigenvalues did not return the correct shape"
+
+    assert eigenvectors.dtype == x.dtype, "eigh().eigenvectors did not return the correct dtype"
+    assert eigenvectors.shape == x.shape, "eigh().eigenvectors did not return the correct shape"
+
+    _test_stacks(lambda x: _array_module.linalg.eigh(x).eigenvalues, x, {}, eigenvalues, dims=1)
+    _test_stacks(lambda x: _array_module.linalg.eigh(x).eigenvectors, x, {}, eigenvectors, dims=2)
+
+    # TODO: Test that res actually corresponds to the eigenvalues and
+    # eigenvectors of x
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
