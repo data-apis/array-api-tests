@@ -1,7 +1,7 @@
 from math import prod
 
 import pytest
-from hypothesis import given, strategies as st
+from hypothesis import given, strategies as st, settings
 
 from .. import _array_module as xp
 from .._array_module import _UndefinedStub
@@ -54,10 +54,11 @@ def test_kwargs():
     results = []
 
     @given(hh.kwargs(n=st.integers(0, 10), c=st.from_regex("[a-f]")))
+    @settings(max_examples=100)
     def run(kw):
         results.append(kw)
-
     run()
+
     assert all(isinstance(kw, dict) for kw in results)
     for size in [0, 1, 2]:
         assert any(len(kw) == size for kw in results)
