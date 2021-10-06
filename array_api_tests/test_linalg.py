@@ -14,11 +14,12 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 """
 
 from hypothesis import given
-from hypothesis.strategies import booleans, none
+from hypothesis.strategies import booleans, none, integers
 
-from .array_helpers import assert_exactly_equal, ndindex
-from .hypothesis_helpers import (xps, shapes, kwargs, square_matrix_shapes,
-                                 positive_definite_matrices)
+from .array_helpers import assert_exactly_equal, ndindex, asarray
+from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
+                                 square_matrix_shapes,
+                                 positive_definite_matrices, MAX_ARRAY_SIZE)
 
 from . import _array_module
 
@@ -81,12 +82,42 @@ def test_det(x):
     # TODO: Test that res actually corresponds to the determinant of x
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    kw=kwargs(offset=todo)
+    x=xps.arrays(dtype=dtypes, shape=matrix_shapes),
+    # offset may produce an overflow if it is too large. Supporting offsets
+    # that are way larger than the array shape isn't very important.
+    kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
 )
 def test_diagonal(x, kw):
-    # res = _array_module.linalg.diagonal(x, **kw)
-    pass
+    res = _array_module.linalg.diagonal(x, **kw)
+
+    assert res.dtype == x.dtype, "diagonal() returned the wrong dtype"
+
+    n, m = x.shape[-2:]
+    offset = kw.get('offset', 0)
+    # Note: the spec does not specify that offset must be within the bounds of
+    # the matrix. A large offset should just produce a size 0 in the last
+    # dimension.
+    if offset < 0:
+        diag_size = min(n, m, max(n + offset, 0))
+    elif offset == 0:
+        diag_size = min(n, m)
+    else:
+        diag_size = min(n, m, max(m - offset, 0))
+
+    assert res.shape == (*x.shape[:-2], diag_size), "diagonal() returned the wrong shape"
+
+    _test_stacks(_array_module.linalg.diagonal, x, kw, res, dims=1)
+
+    # Test that the result is actually the diagonal.
+    for _idx in ndindex(x.shape[:-2]):
+        idx = _idx + (slice(None),)
+        res_stack = res[idx]
+        x_stack = x[idx]
+        if offset >= 0:
+            x_stack_diag = [x_stack[i + offset, i] for i in range(diag_size)]
+        else:
+            x_stack_diag = [x_stack[i, i - offset] for i in range(diag_size)]
+        assert_exactly_equal(res_stack, asarray(x_stack_diag, dtype=x.dtype))
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
