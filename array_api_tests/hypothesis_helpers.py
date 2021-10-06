@@ -127,7 +127,7 @@ two_mutually_broadcastable_shapes = xps.mutually_broadcastable_shapes(num_shapes
     .filter(lambda S: all(prod(i for i in shape if i) < MAX_ARRAY_SIZE for shape in S))
 
 @composite
-def positive_definite_matrices(draw, dtype=xps.floating_dtypes()):
+def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
     # For now just generate stacks of identity matrices
     # TODO: Generate arbitrary positive definite matrices, for instance, by
     # using something like
@@ -135,7 +135,8 @@ def positive_definite_matrices(draw, dtype=xps.floating_dtypes()):
     n = draw(integers(0))
     shape = draw(shapes) + (n, n)
     assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
-    return broadcast_to(eye(n), shape)
+    dtype = draw(dtypes)
+    return broadcast_to(eye(n, dtype=dtype), shape)
 
 @composite
 def two_broadcastable_shapes(draw):
