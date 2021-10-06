@@ -129,10 +129,11 @@ two_mutually_broadcastable_shapes = xps.mutually_broadcastable_shapes(num_shapes
 
 # Note: This should become hermitian_matrices when complex dtypes are added
 @composite
-def symmetric_matrices(draw, dtypes=xps.floating_dtypes()):
+def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True):
     shape = draw(square_matrix_shapes)
     dtype = draw(dtypes)
-    a = draw(xps.arrays(dtype=dtype, shape=shape))
+    elements = {'allow_nan': False, 'allow_infinity': False} if finite else None
+    a = draw(xps.arrays(dtype=dtype, shape=shape, elements=elements))
     upper = xp.triu(a)
     lower = xp.triu(a, k=1).mT
     return upper + lower

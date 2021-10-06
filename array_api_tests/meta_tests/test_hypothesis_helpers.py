@@ -70,14 +70,20 @@ def test_kwargs():
     assert len(c_results) > 0
     assert all(isinstance(kw["c"], str) for kw in c_results)
 
-@given(hh.symmetric_matrices(hh.shared_floating_dtypes), hh.shared_floating_dtypes)
-def test_symmetric_matrices(m, dtype):
+@given(m=hh.symmetric_matrices(hh.shared_floating_dtypes,
+                                     finite=st.shared(st.booleans(), key='finite')),
+       dtype=hh.shared_floating_dtypes,
+       finite=st.shared(st.booleans(), key='finite'))
+def test_symmetric_matrices(m, dtype, finite):
     assert m.dtype == dtype
     # TODO: This part of this test should be part of the .mT test
     ah.assert_exactly_equal(m, m.mT)
 
+    if finite:
+        ah.assert_finite(m)
 
-@given(hh.positive_definite_matrices(hh.shared_floating_dtypes), hh.shared_floating_dtypes)
+@given(m=hh.positive_definite_matrices(hh.shared_floating_dtypes),
+       dtype=hh.shared_floating_dtypes)
 def test_positive_definite_matrices(m, dtype):
     assert m.dtype == dtype
     # TODO: Test that it actually is positive definite
