@@ -68,8 +68,8 @@ def _test_namedtuple(res, fields, func_name):
 def test_cholesky(x, kw):
     res = _array_module.linalg.cholesky(x, **kw)
 
-    assert res.shape == x.shape, "cholesky did not return the correct shape"
-    assert res.dtype == x.dtype, "cholesky did not return the correct dtype"
+    assert res.shape == x.shape, "cholesky() did not return the correct shape"
+    assert res.dtype == x.dtype, "cholesky() did not return the correct dtype"
 
     _test_stacks(_array_module.linalg.cholesky, x, kw, res)
 
@@ -135,9 +135,7 @@ def test_diagonal(x, kw):
 
     _test_stacks(_array_module.linalg.diagonal, x, kw, res, dims=1, true_val=true_diag)
 
-@given(
-    x=symmetric_matrices(finite=True),
-)
+@given(x=symmetric_matrices(finite=True))
 def test_eigh(x):
     res = _array_module.linalg.eigh(x)
 
@@ -158,9 +156,7 @@ def test_eigh(x):
     # TODO: Test that res actually corresponds to the eigenvalues and
     # eigenvectors of x
 
-@given(
-    x=symmetric_matrices(finite=True),
-)
+@given(x=symmetric_matrices(finite=True))
 def test_eigvalsh(x):
     res = _array_module.linalg.eigvalsh(x)
 
