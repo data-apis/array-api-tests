@@ -1,6 +1,7 @@
 from functools import reduce
 from operator import mul
 from math import sqrt
+import itertools
 
 from hypothesis import assume
 from hypothesis.strategies import (lists, integers, sampled_from,
@@ -12,7 +13,8 @@ from .pytest_helpers import nargs
 from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             floating_dtype_objects, numeric_dtype_objects,
                             boolean_dtype_objects,
-                            integer_or_boolean_dtype_objects, dtype_objects)
+                            integer_or_boolean_dtype_objects, dtype_objects,
+                            ndindex)
 from ._array_module import (full, float32, float64, bool as bool_dtype,
                             _UndefinedStub, eye, broadcast_to)
 from . import _array_module
@@ -149,6 +151,24 @@ def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
     assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
     dtype = draw(dtypes)
     return broadcast_to(eye(n, dtype=dtype), shape)
+
+@composite
+def invertible_matrices(draw, dtypes=xps.floating_dtypes()):
+    # For now, just generate stacks of diagonal matrices.
+    n = draw(integers(0, SQRT_MAX_ARRAY_SIZE),)
+    stack_shape = draw(shapes)
+    shape = stack_shape + (n, n)
+    d = draw(xps.arrays(dtypes, shape=n*prod(stack_shape),
+                        elements=dict(allow_nan=False, allow_infinity=False)))
+    # Functions that require invertible matrices may do anything when it is
+    # singular, including raising an exception, so we make sure the diagonals
+    # are sufficiently nonzero to avoid any numerical issues.
+    assume(xp.all(xp.abs(d) > 0.5))
+
+    a = xp.zeros(shape)
+    for j, (idx, i) in enumerate(itertools.product(ndindex(stack_shape), range(n))):
+        a[idx + (i, i)] = d[j]
+    return a
 
 @composite
 def two_broadcastable_shapes(draw):
