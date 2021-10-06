@@ -159,11 +159,19 @@ def test_eigh(x):
     # eigenvectors of x
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=symmetric_matrices(finite=True),
 )
 def test_eigvalsh(x):
-    # res = _array_module.linalg.eigvalsh(x)
-    pass
+    res = _array_module.linalg.eigvalsh(x)
+
+    assert res.dtype == x.dtype, "eigvalsh() did not return the correct dtype"
+    assert res.shape == x.shape[:-1], "eigvalsh() did not return the correct shape"
+
+    _test_stacks(_array_module.linalg.eigvalsh, x, {}, res, dims=1)
+
+    # TODO: Should we test that the result is the same as eigh(x).eigenvalues?
+
+    # TODO: Test that res actually corresponds to the eigenvalues of x
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
