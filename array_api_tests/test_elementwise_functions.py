@@ -885,15 +885,18 @@ def test_tanh(x):
     # a = xp.tanh(x)
     pass
 
-@given(xps.arrays(dtype=hh.numeric_dtypes, shape=xps.array_shapes()))
+@given(
+    xps.arrays(
+        dtype=hh.numeric_dtypes,
+        shape=xps.array_shapes(),
+        elements={"allow_nan": False, "allow_infinity": False},
+    )
+)
 def test_trunc(x):
     out = xp.trunc(x)
     assert out.dtype == x.dtype, f"{x.dtype=!s} but {out.dtype=!s}"
-    assert out.shape == x.shape, f"{x.shape} but {out.shape}"
+    assert out.shape == x.shape, f"{x.shape=} but {out.shape=}"
     if x.dtype in hh.integer_dtype_objects:
         assert ah.all(ah.equal(x, out)), f"{x=!s} but {out=!s}"
     else:
-        finite_mask = ah.isfinite(out)
-        for idx in ah.ndindex(out.shape):
-            if finite_mask[idx]:
-                assert float(out[idx]).is_integer(), f"x at {idx=} is {x[idx]}, but out at idx is {out[idx]}"
+        ah.assert_integral(out)
