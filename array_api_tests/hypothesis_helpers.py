@@ -126,6 +126,16 @@ two_mutually_broadcastable_shapes = xps.mutually_broadcastable_shapes(num_shapes
     .map(lambda S: S.input_shapes)\
     .filter(lambda S: all(prod(i for i in shape if i) < MAX_ARRAY_SIZE for shape in S))
 
+# Note: This should become hermitian_matrices when complex dtypes are added
+@composite
+def symmetric_matrices(draw, dtypes=xps.floating_dtypes()):
+    shape = draw(square_matrix_shapes)
+    dtype = draw(dtypes)
+    a = draw(xps.arrays(dtype=dtype, shape=shape))
+    upper = xp.triu(a)
+    lower = xp.triu(a, k=1).mT
+    return upper + lower
+
 @composite
 def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
     # For now just generate stacks of identity matrices
