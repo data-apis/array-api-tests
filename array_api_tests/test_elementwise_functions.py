@@ -157,8 +157,8 @@ def test_atan2(x1_and_x2):
     # From the spec:
     #
     # The mathematical signs of `x1_i` and `x2_i` determine the quadrant of
-    # each element-wise result. The quadrant (i.e., branch) is chosen such
-    # that each element-wise result is the signed angle in radians between the
+    # each element-wise res. The quadrant (i.e., branch) is chosen such
+    # that each element-wise res is the signed angle in radians between the
     # ray ending at the origin and passing through the point `(1,0)` and the
     # ray ending at the origin and passing through the point `(x2_i, x1_i)`.
 
@@ -186,131 +186,159 @@ def test_atanh(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_bitwise_and(args):
+@given(hh.two_mutual_arrays(ah.integer_or_boolean_dtype_objects))
+def test_bitwise_and(x1_and_x2):
     from .test_type_promotion import dtype_nbits, dtype_signed
-    x1, x2 = args
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    a = xp.bitwise_and(x1, x2)
+    out = xp.bitwise_and(x1, x2)
+
+    # TODO: generate indices without broadcasting arrays (see test_equal comment)
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    assert out.shape == shape
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
+
     # Compare against the Python & operator.
-    # TODO: Generalize this properly for inputs that are arrays.
-    if not (x1.shape == x2.shape == ()):
-        raise RuntimeError("Error: test_bitwise_and needs to be updated for nonscalar array inputs")
-
-    if a.dtype == xp.bool:
-        x = bool(x1)
-        y = bool(x2)
-        res = bool(a)
-        assert (x and y) == res
+    if out.dtype == xp.bool:
+        for idx in ah.ndindex(out.shape):
+            val1 = bool(_x1[idx])
+            val2 = bool(_x2[idx])
+            res = bool(out[idx])
+            assert (val1 and val2) == res
     else:
-        x = int(x1)
-        y = int(x2)
-        res = int(a)
-        ans = ah.int_to_dtype(x & y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
-        assert ans == res
+        for idx in ah.ndindex(out.shape):
+            val1 = int(_x1[idx])
+            val2 = int(_x2[idx])
+            res = int(out[idx])
+            vals_and = val1 & val2
+            vals_and = ah.int_to_dtype(vals_and, dtype_nbits(out.dtype), dtype_signed(out.dtype))
+            assert vals_and == res
 
-@given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_bitwise_left_shift(args):
+
+@given(hh.two_mutual_arrays(ah.integer_dtype_objects))
+def test_bitwise_left_shift(x1_and_x2):
     from .test_type_promotion import dtype_nbits, dtype_signed
-    x1, x2 = args
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    negative_x2 = ah.isnegative(x2)
-    assume(not xp.any(negative_x2))
-    a = xp.bitwise_left_shift(x1, x2)
-    # Compare against the Python << operator.
-    # TODO: Generalize this properly for inputs that are arrays.
-    if not (x1.shape == x2.shape == ()):
-        raise RuntimeError("Error: test_bitwise_left_shift needs to be updated for nonscalar array inputs")
-    x = int(x1)
-    y = int(x2)
-    if y >= dtype_nbits(a.dtype):
-        # Avoid shifting very large y in Python ints
-        ans = 0
-    else:
-        ans = x << y
-    ans = ah.int_to_dtype(ans, dtype_nbits(a.dtype), dtype_signed(a.dtype))
-    res = int(a)
-    assert ans == res
+    assume(not ah.any(ah.isnegative(x2)))
+    out = xp.bitwise_left_shift(x1, x2)
 
-@given(integer_or_boolean_scalars)
+    # TODO: generate indices without broadcasting arrays (see test_equal comment)
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    assert out.shape == shape
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
+
+    # Compare against the Python << operator.
+    for idx in ah.ndindex(out.shape):
+        val1 = int(_x1[idx])
+        val2 = int(_x2[idx])
+        res = int(out[idx])
+        # We avoid shifting very large ints
+        vals_shift = val1 << val2 if val2 < dtype_nbits(out.dtype) else 0
+        vals_shift = ah.int_to_dtype(vals_shift, dtype_nbits(out.dtype), dtype_signed(out.dtype))
+        assert vals_shift == res
+
+@given(xps.arrays(dtype=hh.integer_or_boolean_dtypes, shape=hh.shapes))
 def test_bitwise_invert(x):
     from .test_type_promotion import dtype_nbits, dtype_signed
-    a = xp.bitwise_invert(x)
+    out = xp.bitwise_invert(x)
+
     # Compare against the Python ~ operator.
-    # TODO: Generalize this properly for inputs that are arrays.
-    if not (x.shape == ()):
-        raise RuntimeError("Error: test_bitwise_invert needs to be updated for nonscalar array inputs")
-    if a.dtype == xp.bool:
-        x = bool(x)
-        res = bool(a)
-        assert (not x) == res
+    if out.dtype == xp.bool:
+        for idx in ah.ndindex(out.shape):
+            val = bool(x[idx])
+            res = bool(out[idx])
+            assert (not val) == res
     else:
-        x = int(x)
-        res = int(a)
-        ans = ah.int_to_dtype(~x, dtype_nbits(a.dtype), dtype_signed(a.dtype))
-        assert ans == res
+        for idx in ah.ndindex(out.shape):
+            val = int(x[idx])
+            res = int(out[idx])
+            val_invert = ~val
+            val_invert = ah.int_to_dtype(val_invert, dtype_nbits(out.dtype), dtype_signed(out.dtype))
+            assert val_invert == res
 
-@given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_bitwise_or(args):
+@given(hh.two_mutual_arrays(ah.integer_or_boolean_dtype_objects))
+def test_bitwise_or(x1_and_x2):
     from .test_type_promotion import dtype_nbits, dtype_signed
-    x1, x2 = args
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    a = xp.bitwise_or(x1, x2)
+    out = xp.bitwise_or(x1, x2)
+
+    # TODO: generate indices without broadcasting arrays (see test_equal comment)
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    assert out.shape == shape
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
+
     # Compare against the Python | operator.
-    # TODO: Generalize this properly for inputs that are arrays.
-    if not (x1.shape == x2.shape == ()):
-        raise RuntimeError("Error: test_bitwise_or needs to be updated for nonscalar array inputs")
-    if a.dtype == xp.bool:
-        x = bool(x1)
-        y = bool(x2)
-        res = bool(a)
-        assert (x or y) == res
+    if out.dtype == xp.bool:
+        for idx in ah.ndindex(out.shape):
+            val1 = bool(_x1[idx])
+            val2 = bool(_x2[idx])
+            res = bool(out[idx])
+            assert (val1 or val2) == res
     else:
-        x = int(x1)
-        y = int(x2)
-        res = int(a)
-        ans = ah.int_to_dtype(x | y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
-        assert ans == res
+        for idx in ah.ndindex(out.shape):
+            val1 = int(_x1[idx])
+            val2 = int(_x2[idx])
+            res = int(out[idx])
+            vals_or = val1 | val2
+            vals_or = ah.int_to_dtype(vals_or, dtype_nbits(out.dtype), dtype_signed(out.dtype))
+            assert vals_or == res
 
-@given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_bitwise_right_shift(args):
+@given(hh.two_mutual_arrays(ah.integer_dtype_objects))
+def test_bitwise_right_shift(x1_and_x2):
     from .test_type_promotion import dtype_nbits, dtype_signed
-    x1, x2 = args
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    negative_x2 = ah.isnegative(x2)
-    assume(not xp.any(negative_x2))
-    a = xp.bitwise_right_shift(x1, x2)
+    assume(not ah.any(ah.isnegative(x2)))
+    out = xp.bitwise_right_shift(x1, x2)
+
+    # TODO: generate indices without broadcasting arrays (see test_equal comment)
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    assert out.shape == shape
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
+
     # Compare against the Python >> operator.
-    # TODO: Generalize this properly for inputs that are arrays.
-    if not (x1.shape == x2.shape == ()):
-        raise RuntimeError("Error: test_bitwise_right_shift needs to be updated for nonscalar array inputs")
-    x = int(x1)
-    y = int(x2)
-    ans = ah.int_to_dtype(x >> y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
-    res = int(a)
-    assert ans == res
+    for idx in ah.ndindex(out.shape):
+        val1 = int(_x1[idx])
+        val2 = int(_x2[idx])
+        res = int(out[idx])
+        vals_shift = val1 >> val2
+        vals_shift = ah.int_to_dtype(vals_shift, dtype_nbits(out.dtype), dtype_signed(out.dtype))
+        assert vals_shift == res
 
-@given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_bitwise_xor(args):
+@given(hh.two_mutual_arrays(ah.integer_or_boolean_dtype_objects))
+def test_bitwise_xor(x1_and_x2):
     from .test_type_promotion import dtype_nbits, dtype_signed
-    x1, x2 = args
+    x1, x2 = x1_and_x2
     sanity_check(x1, x2)
-    a = xp.bitwise_xor(x1, x2)
+    out = xp.bitwise_xor(x1, x2)
+
+    # TODO: generate indices without broadcasting arrays (see test_equal comment)
+    shape = broadcast_shapes(x1.shape, x2.shape)
+    assert out.shape == shape
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
+
     # Compare against the Python ^ operator.
-    # TODO: Generalize this properly for inputs that are arrays.
-    if not (x1.shape == x2.shape == ()):
-        raise RuntimeError("Error: test_bitwise_xor needs to be updated for nonscalar array inputs")
-    if a.dtype == xp.bool:
-        x = bool(x1)
-        y = bool(x2)
-        res = bool(a)
-        assert (x ^ y) == res
+    if out.dtype == xp.bool:
+        for idx in ah.ndindex(out.shape):
+            val1 = bool(_x1[idx])
+            val2 = bool(_x2[idx])
+            res = bool(out[idx])
+            assert (val1 ^ val2) == res
     else:
-        x = int(x1)
-        y = int(x2)
-        res = int(a)
-        ans = ah.int_to_dtype(x ^ y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
-        assert ans == res
+        for idx in ah.ndindex(out.shape):
+            val1 = int(_x1[idx])
+            val2 = int(_x2[idx])
+            res = int(out[idx])
+            vals_xor = val1 ^ val2
+            vals_xor = ah.int_to_dtype(vals_xor, dtype_nbits(out.dtype), dtype_signed(out.dtype))
+            assert vals_xor == res
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
 def test_ceil(x):
@@ -386,7 +414,7 @@ def test_equal(x1_and_x2):
     # test_elementwise_function_two_arg_bool_type_promotion() in
     # test_type_promotion.py. The type promotion for ah.equal() is not *really*
     # tested in that file, because doing so requires doing the consistency
-    # check we do here rather than st.just checking the result dtype.
+    # check we do here rather than st.just checking the res dtype.
     promoted_dtype = ah.promote_dtypes(x1.dtype, x2.dtype)
     _x1 = ah.asarray(_x1, dtype=promoted_dtype)
     _x2 = ah.asarray(_x2, dtype=promoted_dtype)
@@ -446,7 +474,7 @@ def test_floor_divide(x1_and_x2):
         # The spec does not specify the behavior for division by 0 for integer
         # dtypes. A library may choose to raise an exception in this case, so
         # we avoid passing it in entirely.
-        assume(not xp.any(x1 == 0) and not xp.any(x2 == 0))
+        assume(not ah.any(x1 == 0) and not ah.any(x2 == 0))
         div = xp.divide(
             ah.asarray(x1, dtype=xp.float64),
             ah.asarray(x2, dtype=xp.float64),
@@ -825,7 +853,7 @@ def test_remainder(x1_and_x2):
 def test_round(x):
     a = xp.round(x)
 
-    # Test that the result is integral
+    # Test that the res is integral
     finite = ah.isfinite(x)
     ah.assert_integral(a[finite])
 
