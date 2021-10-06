@@ -48,6 +48,7 @@ if FILTER_UNDEFINED_DTYPES:
     dtypes = dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
 
 shared_dtypes = shared(dtypes, key="dtype")
+shared_floating_dtypes = shared(floating_dtypes, key="dtype")
 
 # TODO: Importing things from test_type_promotion should be replaced by
 # something that won't cause a circular import. Right now we use @st.composite

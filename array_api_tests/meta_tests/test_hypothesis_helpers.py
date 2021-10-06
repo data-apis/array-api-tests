@@ -11,7 +11,6 @@ from .. import hypothesis_helpers as hh
 UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in ah.dtype_objects)
 pytestmark = [pytest.mark.skipif(UNDEFINED_DTYPES, reason="undefined dtypes")]
 
-
 @given(hh.mutually_promotable_dtypes([xp.float32, xp.float64]))
 def test_mutually_promotable_dtypes(pairs):
     assert pairs in (
@@ -70,3 +69,15 @@ def test_kwargs():
     c_results = [kw for kw in results if "c" in kw]
     assert len(c_results) > 0
     assert all(isinstance(kw["c"], str) for kw in c_results)
+
+@given(hh.symmetric_matrices(hh.shared_floating_dtypes), hh.shared_floating_dtypes)
+def test_symmetric_matrices(m, dtype):
+    assert m.dtype == dtype
+    # TODO: This part of this test should be part of the .mT test
+    ah.assert_exactly_equal(m, m.mT)
+
+
+@given(hh.positive_definite_matrices(hh.shared_floating_dtypes), hh.shared_floating_dtypes)
+def test_positive_definite_matrices(m, dtype):
+    assert m.dtype == dtype
+    # TODO: Test that it actually is positive definite
