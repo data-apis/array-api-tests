@@ -83,6 +83,8 @@ def test_det(x):
     assert res.dtype == x.dtype, "det() did not return the correct dtype"
     assert res.shape == x.shape[:-2], "det() did not return the correct shape"
 
+    _test_stacks(_array_module.linalg.det, x, {}, res, dims=0)
+
     # TODO: Test that res actually corresponds to the determinant of x
 
 @given(
