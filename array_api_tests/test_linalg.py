@@ -26,13 +26,15 @@ from . import _array_module
 # Standin strategy for not yet implemented tests
 todo = none()
 
-def _test_stacks(f, x, kw, res=None, dims=2):
+def _test_stacks(f, x, kw, res=None, dims=2, true_val=None):
     """
     Test that f(x, **kw) maps across stacks of matrices
 
     dims is the number of dimensions f should have for a single n x m matrix
     stack.
 
+    true_val may be a function such that true_val(x_stack) gives the true
+    value for f on a stack
     """
     if res is None:
         res = f(x)
@@ -42,6 +44,8 @@ def _test_stacks(f, x, kw, res=None, dims=2):
         x_stack = x[idx]
         decomp_res_stack = f(x_stack, **kw)
         assert_exactly_equal(res_stack, decomp_res_stack)
+        if true_val:
+            assert_exactly_equal(decomp_res_stack, true_val(x_stack))
 
 @given(
     x=positive_definite_matrices(),
@@ -53,7 +57,7 @@ def test_cholesky(x, kw):
     assert res.shape == x.shape, "cholesky did not return the correct shape"
     assert res.dtype == x.dtype, "cholesky did not return the correct dtype"
 
-    _test_stacks(_array_module.linalg, x, kw, res)
+    _test_stacks(_array_module.linalg.cholesky, x, kw, res)
 
     # Test that the result is upper or lower triangular
     if kw.get('upper', False):
@@ -106,18 +110,14 @@ def test_diagonal(x, kw):
 
     assert res.shape == (*x.shape[:-2], diag_size), "diagonal() returned the wrong shape"
 
-    _test_stacks(_array_module.linalg.diagonal, x, kw, res, dims=1)
-
-    # Test that the result is actually the diagonal.
-    for _idx in ndindex(x.shape[:-2]):
-        idx = _idx + (slice(None),)
-        res_stack = res[idx]
-        x_stack = x[idx]
+    def true_diag(x_stack):
         if offset >= 0:
             x_stack_diag = [x_stack[i + offset, i] for i in range(diag_size)]
         else:
             x_stack_diag = [x_stack[i, i - offset] for i in range(diag_size)]
-        assert_exactly_equal(res_stack, asarray(x_stack_diag, dtype=x.dtype))
+        return asarray(x_stack_diag, dtype=x.dtype)
+
+    _test_stacks(_array_module.linalg.diagonal, x, kw, res, dims=1, true_val=true_diag)
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
