@@ -47,6 +47,20 @@ def _test_stacks(f, x, kw, res=None, dims=2, true_val=None):
         if true_val:
             assert_exactly_equal(decomp_res_stack, true_val(x_stack))
 
+def _test_namedtuple(res, fields, func_name):
+    """
+    Test that res is a namedtuple with the correct fields.
+    """
+    # isinstance(namedtuple) doesn't work, and it could be either
+    # collections.namedtuple or typing.NamedTuple. So we just check that it is
+    # a tuple subclass with the right fields in the right order.
+
+    assert isinstance(res, tuple), f"{func_name}() did not return a tuple"
+    assert len(res) == len(fields), f"{func_name}() result tuple not the correct length (should have {len(fields)} elements)"
+    for i, field in enumerate(fields):
+        assert hasattr(res, field), f"{func_name}() result namedtuple doesn't have the '{field}' field"
+        assert res[i] is getattr(res, field), f"{func_name}() result namedtuple '{field}' field is not in position {i}"
+
 @given(
     x=positive_definite_matrices(),
     kw=kwargs(upper=booleans())
@@ -127,19 +141,10 @@ def test_diagonal(x, kw):
 def test_eigh(x):
     res = _array_module.linalg.eigh(x)
 
-    # TODO: Factor out namedtuple checks
-
-    # isinstance(namedtuple) doesn't work
-    assert isinstance(res, tuple), "eigh() did not return a tuple"
-    assert len(res) == 2, "eigh() result tuple not the correct length"
-    assert hasattr(res, 'eigenvalues'), "eigh() result namedtuple doesn't have the 'eigenvalues' field"
-    assert hasattr(res, 'eigenvectors'), "eigh() result namedtuple doesn't have the 'eigenvectors' field"
+    _test_namedtuple(res, ['eigenvalues', 'eigenvectors'], 'eigh')
 
     eigenvalues = res.eigenvalues
     eigenvectors = res.eigenvectors
-
-    assert_exactly_equal(res[0], eigenvalues)
-    assert_exactly_equal(res[1], eigenvectors)
 
     assert eigenvalues.dtype == x.dtype, "eigh().eigenvalues did not return the correct dtype"
     assert eigenvalues.shape == x.shape[:-1], "eigh().eigenvalues did not return the correct shape"
