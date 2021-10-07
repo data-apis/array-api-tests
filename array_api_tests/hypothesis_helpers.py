@@ -291,8 +291,8 @@ def multiaxis_indices(draw, shapes):
     return tuple(res)
 
 
-def two_mutual_arrays(dtypes=dtype_objects):
-    mutual_dtypes = shared(mutually_promotable_dtypes(dtypes))
+def two_mutual_arrays(dtype_objects=dtype_objects):
+    mutual_dtypes = shared(mutually_promotable_dtypes(dtype_objects))
     mutual_shapes = shared(two_mutually_broadcastable_shapes)
     arrays1 = xps.arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[0]),
