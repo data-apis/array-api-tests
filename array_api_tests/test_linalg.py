@@ -129,9 +129,9 @@ def test_diagonal(x, kw):
 
     def true_diag(x_stack):
         if offset >= 0:
-            x_stack_diag = [x_stack[i + offset, i] for i in range(diag_size)]
+            x_stack_diag = [x_stack[i, i + offset] for i in range(diag_size)]
         else:
-            x_stack_diag = [x_stack[i, i - offset] for i in range(diag_size)]
+            x_stack_diag = [x_stack[i - offset, i] for i in range(diag_size)]
         return asarray(x_stack_diag, dtype=x.dtype)
 
     _test_stacks(_array_module.linalg.diagonal, x, kw, res, dims=1, true_val=true_diag)
