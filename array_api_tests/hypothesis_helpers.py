@@ -288,10 +288,15 @@ def multiaxis_indices(draw, shapes):
 
     # Avoid using 'in', which might do == on an array.
     res_has_ellipsis = any(i is ... for i in res)
-    if n_entries == len(shape) and not res_has_ellipsis:
-        # note("Adding extra")
-        extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
-        res += extra
+    if not res_has_ellipsis:
+        if n_entries < len(shape):
+            # The spec requires either an ellipsis or exactly as many indices
+            # as dimensions.
+            assume(False)
+        elif n_entries == len(shape):
+            # note("Adding extra")
+            extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
+            res += extra
     return tuple(res)
 
 
