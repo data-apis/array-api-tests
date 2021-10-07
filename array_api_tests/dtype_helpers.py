@@ -15,37 +15,18 @@ __all__ = [
 ]
 
 
-def dtype_nbits(dtype):
-    if dtype == xp.int8:
-        return 8
-    elif dtype == xp.int16:
-        return 16
-    elif dtype == xp.int32:
-        return 32
-    elif dtype == xp.int64:
-        return 64
-    elif dtype == xp.uint8:
-        return 8
-    elif dtype == xp.uint16:
-        return 16
-    elif dtype == xp.uint32:
-        return 32
-    elif dtype == xp.uint64:
-        return 64
-    elif dtype == xp.float32:
-        return 32
-    elif dtype == xp.float64:
-        return 64
-    else:
-        raise ValueError(f"dtype_nbits is not defined for {dtype}")
+dtype_nbits = {
+    **{d: 8 for d in [xp.int8, xp.uint8]},
+    **{d: 16 for d in [xp.int16, xp.uint16]},
+    **{d: 32 for d in [xp.int32, xp.uint32, xp.float32]},
+    **{d: 64 for d in [xp.int64, xp.uint64, xp.float64]},
+}
 
 
-def dtype_signed(dtype):
-    if dtype in [xp.int8, xp.int16, xp.int32, xp.int64]:
-        return True
-    elif dtype in [xp.uint8, xp.uint16, xp.uint32, xp.uint64]:
-        return False
-    raise ValueError("dtype_signed is only defined for integer dtypes")
+dtype_signed = {
+    **{d: True for d in [xp.int8, xp.int16, xp.int32, xp.int64]},
+    **{d: False for d in [xp.uint8, xp.uint16, xp.uint32, xp.uint64]},
+}
 
 
 signed_integer_promotion_table = {

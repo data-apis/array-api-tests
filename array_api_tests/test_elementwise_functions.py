@@ -223,7 +223,7 @@ def test_bitwise_and(args):
         x = int(x1)
         y = int(x2)
         res = int(a)
-        ans = int_to_dtype(x & y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+        ans = int_to_dtype(x & y, dtype_nbits[a.dtype], dtype_signed[a.dtype])
         assert ans == res
 
 @given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
@@ -240,12 +240,12 @@ def test_bitwise_left_shift(args):
         raise RuntimeError("Error: test_bitwise_left_shift needs to be updated for nonscalar array inputs")
     x = int(x1)
     y = int(x2)
-    if y >= dtype_nbits(a.dtype):
+    if y >= dtype_nbits[a.dtype]:
         # Avoid shifting very large y in Python ints
         ans = 0
     else:
         ans = x << y
-    ans = int_to_dtype(ans, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+    ans = int_to_dtype(ans, dtype_nbits[a.dtype], dtype_signed[a.dtype])
     res = int(a)
     assert ans == res
 
@@ -263,7 +263,7 @@ def test_bitwise_invert(x):
     else:
         x = int(x)
         res = int(a)
-        ans = int_to_dtype(~x, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+        ans = int_to_dtype(~x, dtype_nbits[a.dtype], dtype_signed[a.dtype])
         assert ans == res
 
 @given(two_integer_or_boolean_dtypes.flatmap(lambda i: two_array_scalars(*i)))
@@ -284,7 +284,7 @@ def test_bitwise_or(args):
         x = int(x1)
         y = int(x2)
         res = int(a)
-        ans = int_to_dtype(x | y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+        ans = int_to_dtype(x | y, dtype_nbits[a.dtype], dtype_signed[a.dtype])
         assert ans == res
 
 @given(two_integer_dtypes.flatmap(lambda i: two_array_scalars(*i)))
@@ -301,7 +301,7 @@ def test_bitwise_right_shift(args):
         raise RuntimeError("Error: test_bitwise_right_shift needs to be updated for nonscalar array inputs")
     x = int(x1)
     y = int(x2)
-    ans = int_to_dtype(x >> y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+    ans = int_to_dtype(x >> y, dtype_nbits[a.dtype], dtype_signed[a.dtype])
     res = int(a)
     assert ans == res
 
@@ -323,7 +323,7 @@ def test_bitwise_xor(args):
         x = int(x1)
         y = int(x2)
         res = int(a)
-        ans = int_to_dtype(x ^ y, dtype_nbits(a.dtype), dtype_signed(a.dtype))
+        ans = int_to_dtype(x ^ y, dtype_nbits[a.dtype], dtype_signed[a.dtype])
         assert ans == res
 
 @given(numeric_scalars)

@@ -25,8 +25,8 @@ def test_notequal():
 
 @given(integers(), integer_dtypes)
 def test_int_to_dtype(x, dtype):
-    n = dtype_nbits(dtype)
-    signed = dtype_signed(dtype)
+    n = dtype_nbits[dtype]
+    signed = dtype_signed[dtype]
     try:
         d = xp.asarray(x, dtype=dtype)
     except OverflowError:
