@@ -156,7 +156,6 @@ def two_broadcastable_shapes(draw):
 sizes = integers(0, MAX_ARRAY_SIZE)
 sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
 
-# TODO: Generate general arrays here, rather than just scalars.
 numeric_arrays = xps.arrays(
     dtype=shared(xps.floating_dtypes(), key='dtypes'),
     shape=shared(xps.array_shapes(), key='shapes'),
@@ -267,13 +266,18 @@ def multiaxis_indices(draw, shapes):
     return tuple(res)
 
 
-@composite
-def two_mutual_arrays(draw, dtypes=dtype_objects):
-    dtype1, dtype2 = draw(mutually_promotable_dtypes(dtypes))
-    shape1, shape2 = draw(two_mutually_broadcastable_shapes)
-    x1 = draw(xps.arrays(dtype=dtype1, shape=shape1))
-    x2 = draw(xps.arrays(dtype=dtype2, shape=shape2))
-    return x1, x2
+def two_mutual_arrays(dtypes=dtype_objects):
+    mutual_dtypes = shared(mutually_promotable_dtypes(dtypes))
+    mutual_shapes = shared(two_mutually_broadcastable_shapes)
+    arrays1 = xps.arrays(
+        dtype=mutual_dtypes.map(lambda pair: pair[0]),
+        shape=mutual_shapes.map(lambda pair: pair[0]),
+    )
+    arrays2 = xps.arrays(
+        dtype=mutual_dtypes.map(lambda pair: pair[1]),
+        shape=mutual_shapes.map(lambda pair: pair[1]),
+    )
+    return arrays1, arrays2
 
 
 @composite
