@@ -374,10 +374,12 @@ def test_operator_inplace_two_arg_promoted_promotion(binary_op_name, dtypes, two
 
     assert res.dtype == res_dtype, f"{dtype1} {binary_op}= {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
 
-scalar_promotion_parametrize_inputs = [(binary_op_name, dtype, scalar_type)
-                                       for binary_op_name in sorted(set(binary_operators) - {'__matmul__'})
-                                       for dtype in input_types[elementwise_function_input_types[operators_to_functions[binary_op_name]]]
-                                       for scalar_type in dtypes_to_scalars[dtype]]
+scalar_promotion_parametrize_inputs = [
+    pytest.param(binary_op_name, dtype, scalar_type, id=f"{binary_op_name}-{dtype}-{scalar_type.__name__}")
+    for binary_op_name in sorted(set(binary_operators) - {'__matmul__'})
+    for dtype in input_types[elementwise_function_input_types[operators_to_functions[binary_op_name]]]
+    for scalar_type in dtypes_to_scalars[dtype]
+]
 
 @pytest.mark.parametrize('binary_op_name,dtype,scalar_type',
                          scalar_promotion_parametrize_inputs)
