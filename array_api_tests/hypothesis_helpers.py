@@ -7,7 +7,6 @@ from hypothesis import assume
 from hypothesis.strategies import (lists, integers, sampled_from,
                                    shared, floats, just, composite, one_of,
                                    none, booleans)
-from hypothesis.extra.array_api import make_strategies_namespace
 
 from .pytest_helpers import nargs
 from .array_helpers import (dtype_ranges, integer_dtype_objects,
@@ -17,13 +16,10 @@ from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             ndindex)
 from ._array_module import (full, float32, float64, bool as bool_dtype,
                             _UndefinedStub, eye, broadcast_to)
-from . import _array_module
 from . import _array_module as xp
+from . import xps
 
 from .function_stubs import elementwise_functions
-
-
-xps = make_strategies_namespace(xp)
 
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
@@ -79,10 +75,6 @@ def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
     dtype_pairs = [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
     return draw(sampled_from(dtype_pairs))
 
-shared_mutually_promotable_dtype_pairs = shared(
-    mutually_promotable_dtypes(), key="mutually_promotable_dtype_pair"
-)
-
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
 
@@ -93,10 +85,10 @@ multiarg_array_functions_names = array_functions_names.filter(
     lambda func_name: nargs(func_name) > 1)
 
 elementwise_function_objects = elementwise_functions_names.map(
-    lambda i: getattr(_array_module, i))
+    lambda i: getattr(xp, i))
 array_functions = elementwise_function_objects
 multiarg_array_functions = multiarg_array_functions_names.map(
-    lambda i: getattr(_array_module, i))
+    lambda i: getattr(xp, i))
 
 # Limit the total size of an array shape
 MAX_ARRAY_SIZE = 10000
@@ -184,7 +176,6 @@ def two_broadcastable_shapes(draw):
 sizes = integers(0, MAX_ARRAY_SIZE)
 sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
 
-# TODO: Generate general arrays here, rather than just scalars.
 numeric_arrays = xps.arrays(
     dtype=shared(xps.floating_dtypes(), key='dtypes'),
     shape=shared(xps.array_shapes(), key='shapes'),
@@ -300,14 +291,18 @@ def multiaxis_indices(draw, shapes):
     return tuple(res)
 
 
-shared_arrays1 = xps.arrays(
-    dtype=shared_mutually_promotable_dtype_pairs.map(lambda pair: pair[0]),
-    shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[0]),
-)
-shared_arrays2 = xps.arrays(
-    dtype=shared_mutually_promotable_dtype_pairs.map(lambda pair: pair[1]),
-    shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[1]),
-)
+def two_mutual_arrays(dtypes=dtype_objects):
+    mutual_dtypes = shared(mutually_promotable_dtypes(dtypes))
+    mutual_shapes = shared(two_mutually_broadcastable_shapes)
+    arrays1 = xps.arrays(
+        dtype=mutual_dtypes.map(lambda pair: pair[0]),
+        shape=mutual_shapes.map(lambda pair: pair[0]),
+    )
+    arrays2 = xps.arrays(
+        dtype=mutual_dtypes.map(lambda pair: pair[1]),
+        shape=mutual_shapes.map(lambda pair: pair[1]),
+    )
+    return arrays1, arrays2
 
 
 @composite
