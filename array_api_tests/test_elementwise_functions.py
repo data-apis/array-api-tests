@@ -7,11 +7,6 @@ This tests behavior that is explicitly mentioned in the spec. Note that the
 spec does not make any accuracy requirements for functions, so this does not
 test that. Tests for the special cases are generated and tested separately in
 special_cases/
-
-Note: Due to current limitations in Hypothesis, the tests below only test
-arrays of shape (). In the future, the tests should be updated to test
-arrays of any shape, using masking patterns (similar to the tests in special_cases/
-
 """
 
 import math
@@ -913,13 +908,7 @@ def test_tanh(x):
     # a = xp.tanh(x)
     pass
 
-@given(
-    xps.arrays(
-        dtype=hh.numeric_dtypes,
-        shape=xps.array_shapes(),
-        elements={"allow_nan": False, "allow_infinity": False},
-    )
-)
+@given(xps.arrays(dtype=hh.numeric_dtypes, shape=xps.array_shapes()))
 def test_trunc(x):
     out = xp.trunc(x)
     assert out.dtype == x.dtype, f"{x.dtype=!s} but {out.dtype=!s}"
@@ -927,4 +916,5 @@ def test_trunc(x):
     if x.dtype in hh.integer_dtype_objects:
         assert ah.all(ah.equal(x, out)), f"{x=!s} but {out=!s}"
     else:
-        ah.assert_integral(out)
+        finite = ah.isfinite(x)
+        ah.assert_integral(out[finite])
