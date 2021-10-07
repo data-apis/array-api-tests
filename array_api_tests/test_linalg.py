@@ -13,14 +13,16 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 
 """
 
-from hypothesis import given
-from hypothesis.strategies import booleans, none, integers
+from hypothesis import assume, given
+from hypothesis.strategies import booleans, composite, none, integers, shared
 
-from .array_helpers import assert_exactly_equal, ndindex, asarray
+from .array_helpers import (assert_exactly_equal, ndindex, asarray,
+                            numeric_dtype_objects)
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
-                                 invertible_matrices)
+                                 invertible_matrices,
+                                 mutually_promotable_dtypes)
 
 from . import _array_module
 
@@ -80,14 +82,72 @@ def test_cholesky(x, kw):
     else:
         assert_exactly_equal(res, _array_module.tril(res))
 
+
+@composite
+def cross_args(draw, dtype_objects=numeric_dtype_objects):
+    """
+    cross() requires two arrays with a size 3 in the 'axis' dimension
+
+    To do this, we generate a shape and an axis but change the shape to be 3
+    in the drawn axis.
+
+    """
+    shape = list(draw(shapes))
+    size = len(shape)
+    assume(size > 0)
+
+    kw = draw(kwargs(axis=integers(-size, size-1)))
+    axis = kw.get('axis', -1)
+    shape[axis] = 3
+
+    mutual_dtypes = shared(mutually_promotable_dtypes(dtype_objects))
+    arrays1 = xps.arrays(
+        dtype=mutual_dtypes.map(lambda pair: pair[0]),
+        shape=shape,
+    )
+    arrays2 = xps.arrays(
+        dtype=mutual_dtypes.map(lambda pair: pair[1]),
+        shape=shape,
+    )
+    return draw(arrays1), draw(arrays2), kw
+
 @given(
-    x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    kw=kwargs(axis=todo)
+    cross_args()
 )
-def test_cross(x1, x2, kw):
-    # res = _array_module.linalg.cross(x1, x2, **kw)
-    pass
+def test_cross(x1_x2_kw):
+    x1, x2, kw = x1_x2_kw
+
+    axis = kw.get('axis', -1)
+    err = "test_cross produced invalid input. This indicates a bug in the test suite."
+    assert x1.shape == x2.shape, err
+    shape = x1.shape
+    assert x1.shape[axis] == x2.shape[axis] == 3, err
+
+    res = _array_module.linalg.cross(x1, x2, **kw)
+
+    assert res.dtype == _array_module.result_type(x1, x2), "cross() did not return the correct dtype"
+    assert res.shape == shape, "cross() did not return the correct shape"
+
+    # cross is too different from other functions to use _test_stacks, and it
+    # is the only function that works the way it does, so it's not really
+    # worth generalizing _test_stacks to handle it.
+    a = axis if axis >= 0 else axis + len(shape)
+    for _idx in ndindex(shape[:a] + shape[a+1:]):
+        idx = _idx[:a] + (slice(None),) + _idx[a:]
+        assert len(idx) == len(shape), "Invalid index. This indicates a bug in the test suite."
+        res_stack = res[idx]
+        x1_stack = x1[idx]
+        x2_stack = x2[idx]
+        assert x1_stack.shape == x2_stack.shape == (3,), "Invalid cross() stack shapes. This indicates a bug in the test suite."
+        decomp_res_stack = _array_module.linalg.cross(x1_stack, x2_stack)
+        assert_exactly_equal(res_stack, decomp_res_stack)
+
+        exact_cross = asarray([
+            x1_stack[1]*x2_stack[2] - x1_stack[2]*x2_stack[1],
+            x1_stack[2]*x2_stack[0] - x1_stack[0]*x2_stack[2],
+            x1_stack[0]*x2_stack[1] - x1_stack[1]*x2_stack[0],
+            ], dtype=res.dtype)
+        assert_exactly_equal(res_stack, exact_cross)
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
