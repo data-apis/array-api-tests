@@ -16,7 +16,6 @@ from .function_stubs import elementwise_functions
 from ._array_module import (full, bool as bool_dtype)
 from . import _array_module
 from .dtype_helpers import (
-    dtype_mapping,
     promotion_table,
     input_types,
     dtypes_to_scalars,
@@ -26,7 +25,6 @@ from .dtype_helpers import (
     unary_operators,
     operators_to_functions,
 )
-
 
 
 elementwise_function_two_arg_func_names = [func_name for func_name in
@@ -46,7 +44,7 @@ elementwise_function_two_arg_bool_parametrize_inputs = [(func_name, dtypes)
                                                             for d in dtypes)
                ]
 
-elementwise_function_two_arg_bool_parametrize_ids = ['-'.join((n, d1, d2)) for n, (d1, d2)
+elementwise_function_two_arg_bool_parametrize_ids = [f"{n}-{d1}-{d2}" for n, (d1, d2)
                                             in elementwise_function_two_arg_bool_parametrize_inputs]
 
 # TODO: These functions should still do type promotion internally, but we do
@@ -70,9 +68,7 @@ def test_elementwise_function_two_arg_bool_type_promotion(func_name,
     assert nargs(func_name) == 2
     func = getattr(_array_module, func_name)
 
-    type1, type2 = dtypes
-    dtype1 = dtype_mapping[type1]
-    dtype2 = dtype_mapping[type2]
+    dtype1, dtype2 = dtypes
 
     fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
     if func_name in ['bitwise_left_shift', 'bitwise_right_shift']:
@@ -105,7 +101,7 @@ elementwise_function_two_arg_promoted_parametrize_inputs = [(func_name, dtypes)
                                                             for d in dtypes[0])
                ]
 
-elementwise_function_two_arg_promoted_parametrize_ids = ['-'.join((n, d1, d2)) for n, ((d1, d2), _)
+elementwise_function_two_arg_promoted_parametrize_ids = [f"{n}-{d1}-{d2}" for n, ((d1, d2), _)
                                             in elementwise_function_two_arg_promoted_parametrize_inputs]
 
 # TODO: Extend this to all functions (not just elementwise), and handle
@@ -124,10 +120,7 @@ def test_elementwise_function_two_arg_promoted_type_promotion(func_name,
     assert nargs(func_name) == 2
     func = getattr(_array_module, func_name)
 
-    (type1, type2), res_type = dtypes
-    dtype1 = dtype_mapping[type1]
-    dtype2 = dtype_mapping[type2]
-    res_dtype = dtype_mapping[res_type]
+    (dtype1, dtype2), res_dtype = dtypes
     fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
     if func_name in ['bitwise_left_shift', 'bitwise_right_shift']:
         fillvalue2 = fillvalues.draw(scalars(just(dtype2)).filter(lambda x: x > 0))
@@ -159,12 +152,12 @@ elementwise_function_one_arg_func_names_bool = [func_name for func_name in
 elementwise_function_one_arg_bool_parametrize_inputs = [(func_name, dtypes)
                for func_name in elementwise_function_one_arg_func_names_bool
                for dtypes in input_types[elementwise_function_input_types[func_name]]]
-elementwise_function_one_arg_bool_parametrize_ids = ['-'.join((n, d)) for n, d
+elementwise_function_one_arg_bool_parametrize_ids = [f"{n}-{d}" for n, d
                                             in elementwise_function_one_arg_bool_parametrize_inputs]
 
 # TODO: Extend this to all functions (not just elementwise), and handle
 # functions that take more than 2 args
-@pytest.mark.parametrize('func_name,dtype_name',
+@pytest.mark.parametrize('func_name,dtype',
                          elementwise_function_one_arg_bool_parametrize_inputs,
                          ids=elementwise_function_one_arg_bool_parametrize_ids)
 # The spec explicitly requires type promotion to work for shape 0
@@ -173,11 +166,10 @@ elementwise_function_one_arg_bool_parametrize_ids = ['-'.join((n, d)) for n, d
 # @example(shape=(0,))
 @given(shape=shapes, fillvalues=data())
 def test_elementwise_function_one_arg_bool(func_name, shape,
-                                                     dtype_name, fillvalues):
+                                                     dtype, fillvalues):
     assert nargs(func_name) == 1
     func = getattr(_array_module, func_name)
 
-    dtype = dtype_mapping[dtype_name]
     fillvalue = fillvalues.draw(scalars(just(dtype)))
 
     for i in [func, dtype]:
@@ -198,12 +190,12 @@ elementwise_function_one_arg_func_names_promoted = [func_name for func_name in
 elementwise_function_one_arg_promoted_parametrize_inputs = [(func_name, dtypes)
                for func_name in elementwise_function_one_arg_func_names_promoted
                for dtypes in input_types[elementwise_function_input_types[func_name]]]
-elementwise_function_one_arg_promoted_parametrize_ids = ['-'.join((n, d)) for n, d
+elementwise_function_one_arg_promoted_parametrize_ids = [f"{n}-{d}" for n, d
                                             in elementwise_function_one_arg_promoted_parametrize_inputs]
 
 # TODO: Extend this to all functions (not just elementwise), and handle
 # functions that take more than 2 args
-@pytest.mark.parametrize('func_name,dtype_name',
+@pytest.mark.parametrize('func_name,dtype',
                          elementwise_function_one_arg_promoted_parametrize_inputs,
                          ids=elementwise_function_one_arg_promoted_parametrize_ids)
 # The spec explicitly requires type promotion to work for shape 0
@@ -212,11 +204,10 @@ elementwise_function_one_arg_promoted_parametrize_ids = ['-'.join((n, d)) for n,
 # @example(shape=(0,))
 @given(shape=shapes, fillvalues=data())
 def test_elementwise_function_one_arg_type_promotion(func_name, shape,
-                                                     dtype_name, fillvalues):
+                                                     dtype, fillvalues):
     assert nargs(func_name) == 1
     func = getattr(_array_module, func_name)
 
-    dtype = dtype_mapping[dtype_name]
     fillvalue = fillvalues.draw(scalars(just(dtype)))
 
     for i in [func, dtype]:
@@ -234,13 +225,13 @@ operator_one_arg_promoted_parametrize_inputs = [(unary_op_name, dtypes)
                                        for unary_op_name in unary_operators_promoted
                                        for dtypes in input_types[elementwise_function_input_types[operators_to_functions[unary_op_name]]]
                                        ]
-operator_one_arg_promoted_parametrize_ids = ['-'.join((n, d)) for n, d
+operator_one_arg_promoted_parametrize_ids = [f"{n}-{d}" for n, d
                                             in operator_one_arg_promoted_parametrize_inputs]
 
 
 # TODO: Extend this to all functions (not just elementwise), and handle
 # functions that take more than 2 args
-@pytest.mark.parametrize('unary_op_name,dtype_name',
+@pytest.mark.parametrize('unary_op_name,dtype',
                          operator_one_arg_promoted_parametrize_inputs,
                          ids=operator_one_arg_promoted_parametrize_ids)
 # The spec explicitly requires type promotion to work for shape 0
@@ -248,10 +239,9 @@ operator_one_arg_promoted_parametrize_ids = ['-'.join((n, d)) for n, d
 # out for now.
 # @example(shape=(0,))
 @given(shape=shapes, fillvalues=data())
-def test_operator_one_arg_type_promotion(unary_op_name, shape, dtype_name, fillvalues):
+def test_operator_one_arg_type_promotion(unary_op_name, shape, dtype, fillvalues):
     unary_op = unary_operators[unary_op_name]
 
-    dtype = dtype_mapping[dtype_name]
     fillvalue = fillvalues.draw(scalars(just(dtype)))
 
     if isinstance(dtype, _array_module._UndefinedStub):
@@ -278,7 +268,7 @@ operator_two_arg_bool_parametrize_inputs = [(binary_op_name, dtypes)
                                        for dtypes in promotion_table.keys()
                                        if all(d in input_types[elementwise_function_input_types[operators_to_functions[binary_op_name]]] for d in dtypes)
                                        ]
-operator_two_arg_bool_parametrize_ids = ['-'.join((n, d1, d2)) for n, (d1, d2)
+operator_two_arg_bool_parametrize_ids = [f"{n}-{d1}-{d2}" for n, (d1, d2)
                                             in operator_two_arg_bool_parametrize_inputs]
 
 @pytest.mark.parametrize('binary_op_name,dtypes',
@@ -289,9 +279,7 @@ def test_operator_two_arg_bool_promotion(binary_op_name, dtypes, two_shapes,
                                     fillvalues):
     binary_op = binary_operators[binary_op_name]
 
-    type1, type2 = dtypes
-    dtype1 = dtype_mapping[type1]
-    dtype2 = dtype_mapping[type2]
+    dtype1, dtype2 = dtypes
     fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
     fillvalue2 = fillvalues.draw(scalars(just(dtype2)))
 
@@ -316,7 +304,7 @@ operator_two_arg_promoted_parametrize_inputs = [(binary_op_name, dtypes)
                                        for dtypes in promotion_table.items()
                                        if all(d in input_types[elementwise_function_input_types[operators_to_functions[binary_op_name]]] for d in dtypes[0])
                                        ]
-operator_two_arg_promoted_parametrize_ids = ['-'.join((n, d1, d2)) for n, ((d1, d2), _)
+operator_two_arg_promoted_parametrize_ids = [f"{n}-{d1}-{d2}" for n, ((d1, d2), _)
                                             in operator_two_arg_promoted_parametrize_inputs]
 
 @pytest.mark.parametrize('binary_op_name,dtypes',
@@ -327,10 +315,7 @@ def test_operator_two_arg_promoted_promotion(binary_op_name, dtypes, two_shapes,
                                     fillvalues):
     binary_op = binary_operators[binary_op_name]
 
-    (type1, type2), res_type = dtypes
-    dtype1 = dtype_mapping[type1]
-    dtype2 = dtype_mapping[type2]
-    res_dtype = dtype_mapping[res_type]
+    (dtype1, dtype2), res_dtype = dtypes
     fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
     if binary_op_name in ['>>', '<<']:
         fillvalue2 = fillvalues.draw(scalars(just(dtype2)).filter(lambda x: x > 0))
@@ -354,7 +339,7 @@ def test_operator_two_arg_promoted_promotion(binary_op_name, dtypes, two_shapes,
 
 operator_inplace_two_arg_promoted_parametrize_inputs = [(binary_op, dtypes) for binary_op, dtypes in operator_two_arg_promoted_parametrize_inputs
                                                         if dtypes[0][0] == dtypes[1]]
-operator_inplace_two_arg_promoted_parametrize_ids = ['-'.join((n[:2] + 'i' + n[2:], d1, d2)) for n, ((d1, d2), _)
+operator_inplace_two_arg_promoted_parametrize_ids = ['-'.join((n[:2] + 'i' + n[2:], str(d1), str(d2))) for n, ((d1, d2), _)
                                             in operator_inplace_two_arg_promoted_parametrize_inputs]
 
 @pytest.mark.parametrize('binary_op_name,dtypes',
@@ -365,10 +350,7 @@ def test_operator_inplace_two_arg_promoted_promotion(binary_op_name, dtypes, two
                                     fillvalues):
     binary_op = binary_operators[binary_op_name]
 
-    (type1, type2), res_type = dtypes
-    dtype1 = dtype_mapping[type1]
-    dtype2 = dtype_mapping[type2]
-    res_dtype = dtype_mapping[res_type]
+    (dtype1, dtype2), res_dtype = dtypes
     fillvalue1 = fillvalues.draw(scalars(just(dtype1)))
     if binary_op_name in ['>>', '<<']:
         fillvalue2 = fillvalues.draw(scalars(just(dtype2)).filter(lambda x: x > 0))
@@ -392,15 +374,15 @@ def test_operator_inplace_two_arg_promoted_promotion(binary_op_name, dtypes, two
 
     assert res.dtype == res_dtype, f"{dtype1} {binary_op}= {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
 
-scalar_promotion_parametrize_inputs = [(binary_op_name, dtype_name, scalar_type)
+scalar_promotion_parametrize_inputs = [(binary_op_name, dtype, scalar_type)
                                        for binary_op_name in sorted(set(binary_operators) - {'__matmul__'})
-                                       for dtype_name in input_types[elementwise_function_input_types[operators_to_functions[binary_op_name]]]
-                                       for scalar_type in dtypes_to_scalars[dtype_name]]
+                                       for dtype in input_types[elementwise_function_input_types[operators_to_functions[binary_op_name]]]
+                                       for scalar_type in dtypes_to_scalars[dtype]]
 
-@pytest.mark.parametrize('binary_op_name,dtype_name,scalar_type',
+@pytest.mark.parametrize('binary_op_name,dtype,scalar_type',
                          scalar_promotion_parametrize_inputs)
 @given(shape=shapes, python_scalars=data(), fillvalues=data())
-def test_operator_scalar_promotion(binary_op_name, dtype_name, scalar_type,
+def test_operator_scalar_promotion(binary_op_name, dtype, scalar_type,
                                    shape, python_scalars, fillvalues):
     """
     See https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html#mixing-arrays-with-python-scalars
@@ -408,9 +390,8 @@ def test_operator_scalar_promotion(binary_op_name, dtype_name, scalar_type,
     binary_op = binary_operators[binary_op_name]
     if binary_op == '@':
         pytest.skip("matmul (@) is not supported for scalars")
-    dtype = dtype_mapping[dtype_name]
 
-    if dtype_name in input_types['integer']:
+    if dtype in input_types['integer']:
         s = python_scalars.draw(integers(*dtype_ranges[dtype]))
     else:
         s = python_scalars.draw(from_type(scalar_type))

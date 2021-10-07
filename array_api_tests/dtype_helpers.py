@@ -1,7 +1,7 @@
 from . import _array_module as xp
 
+
 __all__ = [
-    "dtype_mapping",
     "promotion_table",
     "dtype_nbits",
     "dtype_signed",
@@ -14,21 +14,6 @@ __all__ = [
     "operators_to_functions",
 ]
 
-dtype_mapping = {
-    'int8': xp.int8,
-    'int16': xp.int16,
-    'int32': xp.int32,
-    'int64': xp.int64,
-    'uint8': xp.uint8,
-    'uint16': xp.uint16,
-    'uint32': xp.uint32,
-    'uint64': xp.uint64,
-    'float32': xp.float32,
-    'float64': xp.float64,
-    'bool': xp.bool,
-}
-
-reverse_dtype_mapping = {v: k for k, v in dtype_mapping.items()}
 
 def dtype_nbits(dtype):
     if dtype == xp.int8:
@@ -54,6 +39,7 @@ def dtype_nbits(dtype):
     else:
         raise ValueError(f"dtype_nbits is not defined for {dtype}")
 
+
 def dtype_signed(dtype):
     if dtype in [xp.int8, xp.int16, xp.int32, xp.int64]:
         return True
@@ -61,71 +47,78 @@ def dtype_signed(dtype):
         return False
     raise ValueError("dtype_signed is only defined for integer dtypes")
 
+
 signed_integer_promotion_table = {
-    ('int8', 'int8'): 'int8',
-    ('int8', 'int16'): 'int16',
-    ('int8', 'int32'): 'int32',
-    ('int8', 'int64'): 'int64',
-    ('int16', 'int8'): 'int16',
-    ('int16', 'int16'): 'int16',
-    ('int16', 'int32'): 'int32',
-    ('int16', 'int64'): 'int64',
-    ('int32', 'int8'): 'int32',
-    ('int32', 'int16'): 'int32',
-    ('int32', 'int32'): 'int32',
-    ('int32', 'int64'): 'int64',
-    ('int64', 'int8'): 'int64',
-    ('int64', 'int16'): 'int64',
-    ('int64', 'int32'): 'int64',
-    ('int64', 'int64'): 'int64',
+    (xp.int8, xp.int8): xp.int8,
+    (xp.int8, xp.int16): xp.int16,
+    (xp.int8, xp.int32): xp.int32,
+    (xp.int8, xp.int64): xp.int64,
+    (xp.int16, xp.int8): xp.int16,
+    (xp.int16, xp.int16): xp.int16,
+    (xp.int16, xp.int32): xp.int32,
+    (xp.int16, xp.int64): xp.int64,
+    (xp.int32, xp.int8): xp.int32,
+    (xp.int32, xp.int16): xp.int32,
+    (xp.int32, xp.int32): xp.int32,
+    (xp.int32, xp.int64): xp.int64,
+    (xp.int64, xp.int8): xp.int64,
+    (xp.int64, xp.int16): xp.int64,
+    (xp.int64, xp.int32): xp.int64,
+    (xp.int64, xp.int64): xp.int64,
 }
+
 
 unsigned_integer_promotion_table = {
-    ('uint8', 'uint8'): 'uint8',
-    ('uint8', 'uint16'): 'uint16',
-    ('uint8', 'uint32'): 'uint32',
-    ('uint8', 'uint64'): 'uint64',
-    ('uint16', 'uint8'): 'uint16',
-    ('uint16', 'uint16'): 'uint16',
-    ('uint16', 'uint32'): 'uint32',
-    ('uint16', 'uint64'): 'uint64',
-    ('uint32', 'uint8'): 'uint32',
-    ('uint32', 'uint16'): 'uint32',
-    ('uint32', 'uint32'): 'uint32',
-    ('uint32', 'uint64'): 'uint64',
-    ('uint64', 'uint8'): 'uint64',
-    ('uint64', 'uint16'): 'uint64',
-    ('uint64', 'uint32'): 'uint64',
-    ('uint64', 'uint64'): 'uint64',
+    (xp.uint8, xp.uint8): xp.uint8,
+    (xp.uint8, xp.uint16): xp.uint16,
+    (xp.uint8, xp.uint32): xp.uint32,
+    (xp.uint8, xp.uint64): xp.uint64,
+    (xp.uint16, xp.uint8): xp.uint16,
+    (xp.uint16, xp.uint16): xp.uint16,
+    (xp.uint16, xp.uint32): xp.uint32,
+    (xp.uint16, xp.uint64): xp.uint64,
+    (xp.uint32, xp.uint8): xp.uint32,
+    (xp.uint32, xp.uint16): xp.uint32,
+    (xp.uint32, xp.uint32): xp.uint32,
+    (xp.uint32, xp.uint64): xp.uint64,
+    (xp.uint64, xp.uint8): xp.uint64,
+    (xp.uint64, xp.uint16): xp.uint64,
+    (xp.uint64, xp.uint32): xp.uint64,
+    (xp.uint64, xp.uint64): xp.uint64,
 }
 
+
 mixed_signed_unsigned_promotion_table = {
-    ('int8', 'uint8'): 'int16',
-    ('int8', 'uint16'): 'int32',
-    ('int8', 'uint32'): 'int64',
-    ('int16', 'uint8'): 'int16',
-    ('int16', 'uint16'): 'int32',
-    ('int16', 'uint32'): 'int64',
-    ('int32', 'uint8'): 'int32',
-    ('int32', 'uint16'): 'int32',
-    ('int32', 'uint32'): 'int64',
-    ('int64', 'uint8'): 'int64',
-    ('int64', 'uint16'): 'int64',
-    ('int64', 'uint32'): 'int64',
+    (xp.int8, xp.uint8): xp.int16,
+    (xp.int8, xp.uint16): xp.int32,
+    (xp.int8, xp.uint32): xp.int64,
+    (xp.int16, xp.uint8): xp.int16,
+    (xp.int16, xp.uint16): xp.int32,
+    (xp.int16, xp.uint32): xp.int64,
+    (xp.int32, xp.uint8): xp.int32,
+    (xp.int32, xp.uint16): xp.int32,
+    (xp.int32, xp.uint32): xp.int64,
+    (xp.int64, xp.uint8): xp.int64,
+    (xp.int64, xp.uint16): xp.int64,
+    (xp.int64, xp.uint32): xp.int64,
 }
+
 
 flipped_mixed_signed_unsigned_promotion_table = {(u, i): p for (i, u), p in mixed_signed_unsigned_promotion_table.items()}
 
+
 float_promotion_table = {
-    ('float32', 'float32'): 'float32',
-    ('float32', 'float64'): 'float64',
-    ('float64', 'float32'): 'float64',
-    ('float64', 'float64'): 'float64',
+    (xp.float32, xp.float32): xp.float32,
+    (xp.float32, xp.float64): xp.float64,
+    (xp.float64, xp.float32): xp.float64,
+    (xp.float64, xp.float64): xp.float64,
 }
 
+
 boolean_promotion_table = {
-    ('bool', 'bool'): 'bool',
+    (xp.bool, xp.bool): xp.bool,
 }
+
 
 promotion_table = {
     **signed_integer_promotion_table,
@@ -135,6 +128,7 @@ promotion_table = {
     **float_promotion_table,
     **boolean_promotion_table,
 }
+
 
 input_types = {
     'any': sorted(set(promotion_table.values())),
@@ -150,20 +144,22 @@ input_types = {
                            **unsigned_integer_promotion_table}.values())),
 }
 
+
 dtypes_to_scalars = {
-    'bool': [bool],
-    'int8': [int],
-    'int16': [int],
-    'int32': [int],
-    'int64': [int],
+    xp.bool: [bool],
+    xp.int8: [int],
+    xp.int16: [int],
+    xp.int32: [int],
+    xp.int64: [int],
     # Note: unsigned int dtypes only correspond to positive integers
-    'uint8': [int],
-    'uint16': [int],
-    'uint32': [int],
-    'uint64': [int],
-    'float32': [int, float],
-    'float64': [int, float],
+    xp.uint8: [int],
+    xp.uint16: [int],
+    xp.uint32: [int],
+    xp.uint64: [int],
+    xp.float32: [int, float],
+    xp.float64: [int, float],
 }
+
 
 elementwise_function_input_types = {
     'abs': 'numeric',
@@ -224,6 +220,7 @@ elementwise_function_input_types = {
     'trunc': 'numeric',
 }
 
+
 elementwise_function_output_types = {
     'abs': 'promoted',
     'acos': 'promoted',
@@ -283,6 +280,7 @@ elementwise_function_output_types = {
     'trunc': 'promoted',
 }
 
+
 binary_operators = {
     '__add__': '+',
     '__and__': '&',
@@ -304,6 +302,7 @@ binary_operators = {
     '__truediv__': '/',
     '__xor__': '^',
 }
+
 
 unary_operators = {
     '__abs__': 'abs()',

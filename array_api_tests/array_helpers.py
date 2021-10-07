@@ -9,7 +9,7 @@ from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
                             _numeric_dtypes, _boolean_dtypes, _dtypes,
                             asarray)
 from . import _array_module
-from .dtype_helpers import dtype_mapping, promotion_table
+from .dtype_helpers import promotion_table
 
 # These are exported here so that they can be included in the special cases
 # tests from this file.
@@ -371,14 +371,10 @@ def promote_dtypes(dtype1, dtype2):
     Special case of result_type() which uses the exact type promotion table
     from the spec.
     """
-    # Equivalent to this, but some libraries may not work properly with using
-    # dtype objects as dict keys
-    #
-    # d1, d2 = reverse_dtype_mapping[dtype1], reverse_dtype_mapping[dtype2]
-
-    d1 = [i for i in dtype_mapping if dtype_mapping[i] == dtype1][0]
-    d2 = [i for i in dtype_mapping if dtype_mapping[i] == dtype2][0]
-
-    if (d1, d2) not in promotion_table:
-        raise ValueError(f"{d1} and {d2} are not type promotable according to the spec (this may indicate a bug in the test suite).")
-    return dtype_mapping[promotion_table[d1, d2]]
+    try:
+        return promotion_table[(dtype1, dtype2)]
+    except KeyError as e:
+        raise ValueError(
+            f"{dtype1} and {dtype2} are not type promotable according to the spec"
+            f"(this may indicate a bug in the test suite)."
+        ) from e

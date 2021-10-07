@@ -14,7 +14,7 @@ from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             boolean_dtype_objects,
                             integer_or_boolean_dtype_objects, dtype_objects)
 from ._array_module import full, float32, float64, bool as bool_dtype, _UndefinedStub
-from .dtype_helpers import dtype_mapping, promotion_table
+from .dtype_helpers import promotion_table
 from . import _array_module
 from . import _array_module as xp
 
@@ -54,9 +54,8 @@ sorted_table = sorted(promotion_table)
 sorted_table = sorted(
     sorted_table, key=lambda ij: -1 if ij[0] == ij[1] else sorted_table.index(ij)
 )
-dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in sorted_table]
 if FILTER_UNDEFINED_DTYPES:
-    dtype_pairs = [(i, j) for i, j in dtype_pairs
+    sorted_table = [(i, j) for i, j in sorted_table
                     if not isinstance(i, _UndefinedStub)
                     and not isinstance(j, _UndefinedStub)]
 
@@ -70,7 +69,7 @@ def mutually_promotable_dtypes(dtype_objects=dtype_objects):
     # pairs (XXX: Can we redesign the strategies so that they can prefer
     # shrinking dtypes over values?)
     return sampled_from(
-        [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
+        [(i, j) for i, j in sorted_table if i in dtype_objects and j in dtype_objects]
     )
 
 shared_mutually_promotable_dtype_pairs = shared(
