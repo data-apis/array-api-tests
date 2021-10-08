@@ -23,6 +23,7 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
                                  invertible_matrices,
                                  mutually_promotable_dtypes)
+from .pytest_helpers import raises
 
 from . import _array_module
 
@@ -246,8 +247,18 @@ def test_inv(x):
     x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
 )
 def test_matmul(x1, x2):
-    # res = _array_module.linalg.matmul(x1, x2)
-    pass
+    if (x1.shape == () or x2.shape == ()
+        or len(x1.shape) == len(x2.shape) == 1 and x1.shape != x2.shape
+        or len(x1.shape) == 1 and len(x2.shape) >= 2 and x1.shape[0] != x2.shape[-2]
+        or len(x2.shape) == 1 and len(x1.shape) >= 2 and x2.shape[0] != x1.shape[-1]
+        or len(x1.shape) >= 2 and len(x2.shape) >= 2 and x1.shape[-1] != x2.shape[-2]):
+        # The spec doesn't specify what kind of exception is used here. Most
+        # libraries will use a custom exception class.
+        raises(Exception, lambda: _array_module.linalg.matmul(x1, x2),
+               "matmul did not raise an exception for invalid shapes")
+        return
+    else:
+        res = _array_module.linalg.matmul(x1, x2)
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
