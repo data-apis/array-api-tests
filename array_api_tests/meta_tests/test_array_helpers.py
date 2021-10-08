@@ -2,7 +2,7 @@ import pytest
 from hypothesis import given, assume
 from hypothesis.strategies import integers
 
-from ..array_helpers import exactly_equal, notequal, int_to_dtype, promote_dtypes
+from ..array_helpers import exactly_equal, notequal, int_to_dtype
 from ..hypothesis_helpers import integer_dtypes
 from ..dtype_helpers import dtype_nbits, dtype_signed
 from .. import _array_module as xp
@@ -32,20 +32,3 @@ def test_int_to_dtype(x, dtype):
     except OverflowError:
         assume(False)
     assert int_to_dtype(x, n, signed) == d
-
-@pytest.mark.parametrize(
-    "dtype1, dtype2, result",
-    [
-        (xp.uint8, xp.uint8, xp.uint8),
-        (xp.uint8, xp.int8, xp.int16),
-        (xp.int8, xp.int8, xp.int8),
-    ]
-)
-def test_promote_dtypes(dtype1, dtype2, result):
-    assert promote_dtypes(dtype1, dtype2) == result
-
-
-@pytest.mark.parametrize("dtype1, dtype2", [(xp.uint8, xp.float32)])
-def test_promote_dtypes_incompatible_dtypes_fail(dtype1, dtype2):
-    with pytest.raises(ValueError):
-        promote_dtypes(dtype1, dtype2)

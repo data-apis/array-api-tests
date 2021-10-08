@@ -34,11 +34,11 @@ from .array_helpers import (assert_exactly_equal, negative,
                             infinity, isnegative, all as array_all, any as
                             array_any, int_to_dtype, bool as bool_dtype,
                             assert_integral, less_equal, isintegral, isfinite,
-                            ndindex, promote_dtypes, is_integer_dtype,
+                            ndindex, is_integer_dtype,
                             is_float_dtype, not_equal, float64, asarray,
                             dtype_ranges, full, true, false, assert_same_sign,
                             isnan, less)
-from .dtype_helpers import dtype_nbits, dtype_signed
+from .dtype_helpers import dtype_nbits, dtype_signed, promotion_table
 # We might as well use this implementation rather than requiring
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
@@ -66,7 +66,7 @@ def two_array_scalars(draw, dtype1, dtype2):
 
 def sanity_check(x1, x2):
     try:
-        promote_dtypes(x1.dtype, x2.dtype)
+        promotion_table[x1.dtype, x2.dtype]
     except ValueError:
         raise RuntimeError("Error in test generation (probably a bug in the test suite")
 
@@ -400,7 +400,7 @@ def test_equal(x1, x2):
     # test_type_promotion.py. The type promotion for equal() is not *really*
     # tested in that file, because doing so requires doing the consistency
     # check we do here rather than just checking the result dtype.
-    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
     _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
     _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
 
@@ -487,7 +487,7 @@ def test_greater(args):
     _x1 = _array_module.broadcast_to(x1, shape)
     _x2 = _array_module.broadcast_to(x2, shape)
 
-    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
     _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
     _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
 
@@ -517,7 +517,7 @@ def test_greater_equal(args):
     _x1 = _array_module.broadcast_to(x1, shape)
     _x2 = _array_module.broadcast_to(x2, shape)
 
-    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
     _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
     _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
 
@@ -593,7 +593,7 @@ def test_less(args):
     _x1 = _array_module.broadcast_to(x1, shape)
     _x2 = _array_module.broadcast_to(x2, shape)
 
-    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
     _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
     _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
 
@@ -623,7 +623,7 @@ def test_less_equal(args):
     _x1 = _array_module.broadcast_to(x1, shape)
     _x2 = _array_module.broadcast_to(x2, shape)
 
-    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
     _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
     _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
 
@@ -786,7 +786,7 @@ def test_not_equal(args):
     _x1 = _array_module.broadcast_to(x1, shape)
     _x2 = _array_module.broadcast_to(x2, shape)
 
-    promoted_dtype = promote_dtypes(x1.dtype, x2.dtype)
+    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
     _x1 = _array_module.asarray(_x1, dtype=promoted_dtype)
     _x2 = _array_module.asarray(_x2, dtype=promoted_dtype)
 

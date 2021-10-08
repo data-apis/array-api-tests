@@ -9,7 +9,6 @@ from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
                             _numeric_dtypes, _boolean_dtypes, _dtypes,
                             asarray)
 from . import _array_module
-from .dtype_helpers import promotion_table
 
 # These are exported here so that they can be included in the special cases
 # tests from this file.
@@ -27,7 +26,7 @@ __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'assert_isinf', 'positive_mathematical_sign',
            'assert_positive_mathematical_sign', 'negative_mathematical_sign',
            'assert_negative_mathematical_sign', 'same_sign',
-           'assert_same_sign', 'ndindex', 'promote_dtypes', 'float64',
+           'assert_same_sign', 'ndindex', 'float64',
            'asarray', 'is_integer_dtype', 'is_float_dtype', 'dtype_ranges',
            'full', 'true', 'false', 'isnan']
 
@@ -365,16 +364,3 @@ def ndindex(shape):
 
     """
     return itertools.product(*[range(i) for i in shape])
-
-def promote_dtypes(dtype1, dtype2):
-    """
-    Special case of result_type() which uses the exact type promotion table
-    from the spec.
-    """
-    try:
-        return promotion_table[(dtype1, dtype2)]
-    except KeyError as e:
-        raise ValueError(
-            f"{dtype1} and {dtype2} are not type promotable according to the spec"
-            f"(this may indicate a bug in the test suite)."
-        ) from e
