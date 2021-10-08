@@ -2,74 +2,68 @@ from . import _array_module as xp
 
 
 __all__ = [
-    "promotion_table",
-    "dtype_nbits",
-    "dtype_signed",
-    "input_types",
-    "dtypes_to_scalars",
-    "elementwise_function_input_types",
-    "elementwise_function_output_types",
-    "binary_operators",
-    "unary_operators",
-    "operators_to_functions",
+    'dtypes_to_scalars',
+    'input_types',
+    'promotion_table',
+    'dtype_nbits',
+    'dtype_signed',
+    'binary_operators',
+    'unary_operators',
+    'operators_to_functions',
+    'elementwise_function_input_types',
+    'elementwise_function_output_types',
 ]
 
 
-dtype_nbits = {
-    **{d: 8 for d in [xp.int8, xp.uint8]},
-    **{d: 16 for d in [xp.int16, xp.uint16]},
-    **{d: 32 for d in [xp.int32, xp.uint32, xp.float32]},
-    **{d: 64 for d in [xp.int64, xp.uint64, xp.float64]},
+int_dtypes = (xp.int8, xp.int16, xp.int32, xp.int64)
+uint_dtypes = (xp.uint8, xp.uint16, xp.uint32, xp.uint64)
+all_int_dtypes = int_dtypes + uint_dtypes
+float_dtypes = (xp.float32, xp.float64)
+numeric_dtypes = all_int_dtypes + float_dtypes
+all_dtypes = (xp.bool,) + numeric_dtypes
+
+
+dtypes_to_scalars = {
+    xp.bool: [bool],
+    **{d: [int] for d in all_int_dtypes},
+    **{d: [int, float] for d in float_dtypes},
 }
 
 
-dtype_signed = {
-    **{d: True for d in [xp.int8, xp.int16, xp.int32, xp.int64]},
-    **{d: False for d in [xp.uint8, xp.uint16, xp.uint32, xp.uint64]},
+input_types = {
+    'any': all_dtypes,
+    'boolean': (xp.bool,),
+    'floating': float_dtypes,
+    'integer': all_int_dtypes,
+    'integer_or_boolean': (xp.bool,) + uint_dtypes + int_dtypes,
+    'numeric': numeric_dtypes,
 }
 
 
-signed_integer_promotion_table = {
+_numeric_promotions = {
+    # ints
     (xp.int8, xp.int8): xp.int8,
     (xp.int8, xp.int16): xp.int16,
     (xp.int8, xp.int32): xp.int32,
     (xp.int8, xp.int64): xp.int64,
-    (xp.int16, xp.int8): xp.int16,
     (xp.int16, xp.int16): xp.int16,
     (xp.int16, xp.int32): xp.int32,
     (xp.int16, xp.int64): xp.int64,
-    (xp.int32, xp.int8): xp.int32,
-    (xp.int32, xp.int16): xp.int32,
     (xp.int32, xp.int32): xp.int32,
     (xp.int32, xp.int64): xp.int64,
-    (xp.int64, xp.int8): xp.int64,
-    (xp.int64, xp.int16): xp.int64,
-    (xp.int64, xp.int32): xp.int64,
     (xp.int64, xp.int64): xp.int64,
-}
-
-
-unsigned_integer_promotion_table = {
+    # uints
     (xp.uint8, xp.uint8): xp.uint8,
     (xp.uint8, xp.uint16): xp.uint16,
     (xp.uint8, xp.uint32): xp.uint32,
     (xp.uint8, xp.uint64): xp.uint64,
-    (xp.uint16, xp.uint8): xp.uint16,
     (xp.uint16, xp.uint16): xp.uint16,
     (xp.uint16, xp.uint32): xp.uint32,
     (xp.uint16, xp.uint64): xp.uint64,
-    (xp.uint32, xp.uint8): xp.uint32,
-    (xp.uint32, xp.uint16): xp.uint32,
     (xp.uint32, xp.uint32): xp.uint32,
     (xp.uint32, xp.uint64): xp.uint64,
-    (xp.uint64, xp.uint8): xp.uint64,
-    (xp.uint64, xp.uint16): xp.uint64,
-    (xp.uint64, xp.uint32): xp.uint64,
     (xp.uint64, xp.uint64): xp.uint64,
-}
-
-
-mixed_signed_unsigned_promotion_table = {
+    # ints and uints (mixed sign)
     (xp.int8, xp.uint8): xp.int16,
     (xp.int8, xp.uint16): xp.int32,
     (xp.int8, xp.uint32): xp.int64,
@@ -82,63 +76,29 @@ mixed_signed_unsigned_promotion_table = {
     (xp.int64, xp.uint8): xp.int64,
     (xp.int64, xp.uint16): xp.int64,
     (xp.int64, xp.uint32): xp.int64,
-}
-
-
-flipped_mixed_signed_unsigned_promotion_table = {(u, i): p for (i, u), p in mixed_signed_unsigned_promotion_table.items()}
-
-
-float_promotion_table = {
+    # floats
     (xp.float32, xp.float32): xp.float32,
     (xp.float32, xp.float64): xp.float64,
-    (xp.float64, xp.float32): xp.float64,
     (xp.float64, xp.float64): xp.float64,
 }
-
-
-boolean_promotion_table = {
-    (xp.bool, xp.bool): xp.bool,
-}
-
-
 promotion_table = {
-    **signed_integer_promotion_table,
-    **unsigned_integer_promotion_table,
-    **mixed_signed_unsigned_promotion_table,
-    **flipped_mixed_signed_unsigned_promotion_table,
-    **float_promotion_table,
-    **boolean_promotion_table,
+    (xp.bool, xp.bool): xp.bool,
+    **_numeric_promotions,
+    **{(d2, d1): res for (d1, d2), res in _numeric_promotions.items()},
 }
 
 
-input_types = {
-    'any': sorted(set(promotion_table.values())),
-    'boolean': sorted(set(boolean_promotion_table.values())),
-    'floating': sorted(set(float_promotion_table.values())),
-    'integer': sorted(set({**signed_integer_promotion_table,
-                           **unsigned_integer_promotion_table}.values())),
-    'integer_or_boolean': sorted(set({**signed_integer_promotion_table,
-                                      **unsigned_integer_promotion_table,
-                                      **boolean_promotion_table}.values())),
-    'numeric': sorted(set({**float_promotion_table,
-                           **signed_integer_promotion_table,
-                           **unsigned_integer_promotion_table}.values())),
+dtype_nbits = {
+    **{d: 8 for d in [xp.int8, xp.uint8]},
+    **{d: 16 for d in [xp.int16, xp.uint16]},
+    **{d: 32 for d in [xp.int32, xp.uint32, xp.float32]},
+    **{d: 64 for d in [xp.int64, xp.uint64, xp.float64]},
 }
 
 
-dtypes_to_scalars = {
-    xp.bool: [bool],
-    xp.int8: [int],
-    xp.int16: [int],
-    xp.int32: [int],
-    xp.int64: [int],
-    # Note: unsigned int dtypes only correspond to positive integers
-    xp.uint8: [int],
-    xp.uint16: [int],
-    xp.uint32: [int],
-    xp.uint64: [int],
-    xp.float32: [int, float],
-    xp.float64: [int, float],
+dtype_signed = {
+    **{d: True for d in int_dtypes},
+    **{d: False for d in uint_dtypes},
 }
 
 
