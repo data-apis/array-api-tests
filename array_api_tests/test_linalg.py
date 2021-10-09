@@ -294,7 +294,7 @@ def test_matrix_norm(x, kw):
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    n=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    n=integers(),
 )
 def test_matrix_power(x, n):
     # res = _array_module.linalg.matrix_power(x, n)
