@@ -68,7 +68,7 @@ def solve(x1: array, x2: array, /) -> array:
 def svd(x: array, /, *, full_matrices: bool = True) -> Tuple[array, array, array]:
     pass
 
-def svdvals(x: array, /) -> Union[array, Tuple[array, ...]]:
+def svdvals(x: array, /) -> array:
     pass
 
 def tensordot(x1: array, x2: array, /, *, axes: Union[int, Tuple[Sequence[int], Sequence[int]]] = 2) -> array:
@@ -77,10 +77,10 @@ def tensordot(x1: array, x2: array, /, *, axes: Union[int, Tuple[Sequence[int], 
 def trace(x: array, /, *, offset: int = 0) -> array:
     pass
 
-def vecdot(x1: array, x2: array, /, *, axis: Optional[int] = None) -> array:
+def vecdot(x1: array, x2: array, /, *, axis: int = None) -> array:
     pass
 
-def vector_norm(x: array, /, *, axis: Optional[Union[int, Tuple[int, int]]] = None, keepdims: bool = False, ord: Optional[Union[int, float, Literal[inf, -inf]]] = 2) -> array:
+def vector_norm(x: array, /, *, axis: Optional[Union[int, Tuple[int, ...]]] = None, keepdims: bool = False, ord: Union[int, float, Literal[inf, -inf]] = 2) -> array:
     pass
 
 __all__ = ['cholesky', 'cross', 'det', 'diagonal', 'eigh', 'eigvalsh', 'inv', 'matmul', 'matrix_norm', 'matrix_power', 'matrix_rank', 'matrix_transpose', 'outer', 'pinv', 'qr', 'slogdet', 'solve', 'svd', 'svdvals', 'tensordot', 'trace', 'vecdot', 'vector_norm']

@@ -11,9 +11,8 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/data_t
 from __future__ import annotations
 
 from ._types import List, Tuple, Union, array, dtype, finfo_object, iinfo_object
-from collections.abc import Sequence
 
-def broadcast_arrays(*arrays: Sequence[array]) -> List[array]:
+def broadcast_arrays(*arrays: array) -> List[array]:
     pass
 
 def broadcast_to(x: array, /, shape: Tuple[int, ...]) -> array:
@@ -28,7 +27,7 @@ def finfo(type: Union[dtype, array], /) -> finfo_object:
 def iinfo(type: Union[dtype, array], /) -> iinfo_object:
     pass
 
-def result_type(*arrays_and_dtypes: Sequence[Union[array, dtype]]) -> dtype:
+def result_type(*arrays_and_dtypes: Union[array, dtype]) -> dtype:
     pass
 
 __all__ = ['broadcast_arrays', 'broadcast_to', 'can_cast', 'finfo', 'iinfo', 'result_type']
