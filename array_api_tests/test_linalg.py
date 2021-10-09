@@ -32,26 +32,29 @@ from . import _array_module
 # Standin strategy for not yet implemented tests
 todo = none()
 
-def _test_stacks(f, x, kw, res=None, dims=2, true_val=None):
+def _test_stacks(f, *args, res=None, dims=2, true_val=None, **kw):
     """
-    Test that f(x, **kw) maps across stacks of matrices
+    Test that f(*args, **kw) maps across stacks of matrices
 
     dims is the number of dimensions f should have for a single n x m matrix
     stack.
 
-    true_val may be a function such that true_val(x_stack) gives the true
+    true_val may be a function such that true_val(*x_stacks) gives the true
     value for f on a stack
     """
     if res is None:
-        res = f(x)
-    for _idx in ndindex(x.shape[:-2]):
+        res = f(*args, **kw)
+
+    shape = args[0].shape if len(args) == 1 else broadcast_shapes(*[x.shape
+                                                                    for x in args])
+    for _idx in ndindex(shape[:-2]):
         idx = _idx + (slice(None),)*dims
         res_stack = res[idx]
-        x_stack = x[idx]
-        decomp_res_stack = f(x_stack, **kw)
+        x_stacks = [x[idx] for x in args]
+        decomp_res_stack = f(*x_stacks, **kw)
         assert_exactly_equal(res_stack, decomp_res_stack)
         if true_val:
-            assert_exactly_equal(decomp_res_stack, true_val(x_stack))
+            assert_exactly_equal(decomp_res_stack, true_val(*x_stacks))
 
 def _test_namedtuple(res, fields, func_name):
     """
@@ -77,7 +80,7 @@ def test_cholesky(x, kw):
     assert res.shape == x.shape, "cholesky() did not return the correct shape"
     assert res.dtype == x.dtype, "cholesky() did not return the correct dtype"
 
-    _test_stacks(_array_module.linalg.cholesky, x, kw, res)
+    _test_stacks(_array_module.linalg.cholesky, x, **kw, res=res)
 
     # Test that the result is upper or lower triangular
     if kw.get('upper', False):
@@ -161,7 +164,7 @@ def test_det(x):
     assert res.dtype == x.dtype, "det() did not return the correct dtype"
     assert res.shape == x.shape[:-2], "det() did not return the correct shape"
 
-    _test_stacks(_array_module.linalg.det, x, {}, res, dims=0)
+    _test_stacks(_array_module.linalg.det, x, res=res, dims=0)
 
     # TODO: Test that res actually corresponds to the determinant of x
 
@@ -197,7 +200,7 @@ def test_diagonal(x, kw):
             x_stack_diag = [x_stack[i - offset, i] for i in range(diag_size)]
         return asarray(x_stack_diag, dtype=x.dtype)
 
-    _test_stacks(_array_module.linalg.diagonal, x, kw, res, dims=1, true_val=true_diag)
+    _test_stacks(_array_module.linalg.diagonal, x, **kw, res=res, dims=1, true_val=true_diag)
 
 @given(x=symmetric_matrices(finite=True))
 def test_eigh(x):
@@ -214,8 +217,10 @@ def test_eigh(x):
     assert eigenvectors.dtype == x.dtype, "eigh().eigenvectors did not return the correct dtype"
     assert eigenvectors.shape == x.shape, "eigh().eigenvectors did not return the correct shape"
 
-    _test_stacks(lambda x: _array_module.linalg.eigh(x).eigenvalues, x, {}, eigenvalues, dims=1)
-    _test_stacks(lambda x: _array_module.linalg.eigh(x).eigenvectors, x, {}, eigenvectors, dims=2)
+    _test_stacks(lambda x: _array_module.linalg.eigh(x).eigenvalues, x,
+                 res=eigenvalues, dims=1)
+    _test_stacks(lambda x: _array_module.linalg.eigh(x).eigenvectors, x,
+                 res=eigenvectors, dims=2)
 
     # TODO: Test that res actually corresponds to the eigenvalues and
     # eigenvectors of x
@@ -227,7 +232,7 @@ def test_eigvalsh(x):
     assert res.dtype == x.dtype, "eigvalsh() did not return the correct dtype"
     assert res.shape == x.shape[:-1], "eigvalsh() did not return the correct shape"
 
-    _test_stacks(_array_module.linalg.eigvalsh, x, {}, res, dims=1)
+    _test_stacks(_array_module.linalg.eigvalsh, x, res=res, dims=1)
 
     # TODO: Should we test that the result is the same as eigh(x).eigenvalues?
 
