@@ -275,11 +275,14 @@ def test_matmul(x1, x2):
         assert res.shape == ()
     elif len(x1.shape) == 1:
         assert res.shape == x2.shape[:-2] + x2.shape[-1:]
+        _test_stacks(_array_module.linalg.matmul, x1, x2, res=res, dims=1)
     elif len(x2.shape) == 1:
         assert res.shape == x1.shape[:-1]
+        _test_stacks(_array_module.linalg.matmul, x1, x2, res=res, dims=1)
     else:
         stack_shape = broadcast_shapes(x1.shape[:-2], x2.shape[:-2])
         assert res.shape == stack_shape + (x1.shape[-2], x2.shape[-1])
+        _test_stacks(_array_module.linalg.matmul, x1, x2, res=res)
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
