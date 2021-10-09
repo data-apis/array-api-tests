@@ -238,13 +238,12 @@ def test_inv(x):
     assert res.shape == x.shape, "inv() did not return the correct shape"
     assert res.dtype == x.dtype, "inv() did not return the correct dtype"
 
-    _test_stacks(_array_module.linalg.inv, x, {}, res)
+    _test_stacks(_array_module.linalg.inv, x, res=res)
 
     # TODO: Test that the result is actually the inverse
 
 @given(
-    x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    *two_mutual_arrays(numeric_dtype_objects)
 )
 def test_matmul(x1, x2):
     if (x1.shape == () or x2.shape == ()
