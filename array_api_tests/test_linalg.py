@@ -21,7 +21,7 @@ from .array_helpers import (assert_exactly_equal, ndindex, asarray,
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
-                                 invertible_matrices,
+                                 invertible_matrices, two_mutual_arrays,
                                  mutually_promotable_dtypes)
 from .pytest_helpers import raises
 
