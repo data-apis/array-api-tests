@@ -25,6 +25,8 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  mutually_promotable_dtypes)
 from .pytest_helpers import raises
 
+from .test_broadcasting import broadcast_shapes
+
 from . import _array_module
 
 # Standin strategy for not yet implemented tests
@@ -258,6 +260,18 @@ def test_matmul(x1, x2):
         return
     else:
         res = _array_module.linalg.matmul(x1, x2)
+
+    assert res.dtype == _array_module.result_type(x1, x2), "matmul() did not return the correct dtype"
+
+    if len(x1.shape) == len(x2.shape) == 1:
+        assert res.shape == ()
+    elif len(x1.shape) == 1:
+        assert res.shape == x2.shape[:-2] + x2.shape[-1:]
+    elif len(x2.shape) == 1:
+        assert res.shape == x1.shape[:-1]
+    else:
+        stack_shape = broadcast_shapes(x1.shape[:-2], x2.shape[:-2])
+        assert res.shape == stack_shape + (x1.shape[-2], x2.shape[-1])
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
