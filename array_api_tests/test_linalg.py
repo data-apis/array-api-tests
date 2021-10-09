@@ -131,6 +131,7 @@ def test_cross(x1_x2_kw):
 
     res = _array_module.linalg.cross(x1, x2, **kw)
 
+    # TODO: Replace result_type() with a helper function
     assert res.dtype == _array_module.result_type(x1, x2), "cross() did not return the correct dtype"
     assert res.shape == shape, "cross() did not return the correct shape"
 
@@ -253,6 +254,7 @@ def test_inv(x):
     *two_mutual_arrays(numeric_dtype_objects)
 )
 def test_matmul(x1, x2):
+    # TODO: Make this also test the @ operator
     if (x1.shape == () or x2.shape == ()
         or len(x1.shape) == len(x2.shape) == 1 and x1.shape != x2.shape
         or len(x1.shape) == 1 and len(x2.shape) >= 2 and x1.shape[0] != x2.shape[-2]
@@ -266,6 +268,7 @@ def test_matmul(x1, x2):
     else:
         res = _array_module.linalg.matmul(x1, x2)
 
+    # TODO: Replace result_type() with a helper function
     assert res.dtype == _array_module.result_type(x1, x2), "matmul() did not return the correct dtype"
 
     if len(x1.shape) == len(x2.shape) == 1:
