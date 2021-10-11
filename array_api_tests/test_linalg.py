@@ -322,11 +322,21 @@ def test_matrix_rank(x, kw):
     pass
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=dtypes, shape=matrix_shapes),
 )
 def test_matrix_transpose(x):
-    # res = linalg.matrix_transpose(x)
-    pass
+    res = linalg.matrix_transpose(x)
+    true_val = lambda a: _array_module.asarray([[a[i, j] for i in
+                                                range(a.shape[0])] for j in
+                                                range(a.shape[1])],
+                                               dtype=a.dtype)
+    shape = list(x.shape)
+    shape[-1], shape[-2] = shape[-2], shape[-1]
+    shape = tuple(shape)
+    assert res.shape == shape, "matrix_transpose() did not return the correct shape"
+    assert res.dtype == x.dtype, "matrix_transpose() did not return the correct dtype"
+
+    _test_stacks(linalg.matrix_transpose, x, res=res, true_val=true_val)
 
 @given(
     x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
