@@ -9,9 +9,9 @@ __all__ = [
     'dtype_signed',
     'func_in_categories',
     'func_out_categories',
-    'binary_operators',
-    'unary_operators',
-    'operators_to_functions',
+    'binary_op_to_symbol',
+    'unary_op_to_symbol',
+    'op_to_func',
 ]
 
 
@@ -223,7 +223,7 @@ func_out_categories = {
 }
 
 
-binary_operators = {
+binary_op_to_symbol = {
     '__add__': '+',
     '__and__': '&',
     '__eq__': '==',
@@ -246,7 +246,7 @@ binary_operators = {
 }
 
 
-unary_operators = {
+unary_op_to_symbol = {
     '__abs__': 'abs()',
     '__invert__': '~',
     '__neg__': '-',
@@ -254,7 +254,7 @@ unary_operators = {
 }
 
 
-operators_to_functions = {
+op_to_func = {
     '__abs__': 'abs',
     '__add__': 'add',
     '__and__': 'bitwise_and',
