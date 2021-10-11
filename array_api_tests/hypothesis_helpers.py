@@ -1,27 +1,26 @@
 from functools import reduce
 from operator import mul
 from math import sqrt
+import itertools
 
 from hypothesis import assume
 from hypothesis.strategies import (lists, integers, sampled_from,
                                    shared, floats, just, composite, one_of,
                                    none, booleans)
-from hypothesis.extra.array_api import make_strategies_namespace
 
 from .pytest_helpers import nargs
 from .array_helpers import (dtype_ranges, integer_dtype_objects,
                             floating_dtype_objects, numeric_dtype_objects,
                             boolean_dtype_objects,
-                            integer_or_boolean_dtype_objects, dtype_objects)
-from ._array_module import full, float32, float64, bool as bool_dtype, _UndefinedStub
+                            integer_or_boolean_dtype_objects, dtype_objects,
+                            ndindex)
 from .dtype_helpers import promotion_table
-from . import _array_module
+from ._array_module import (full, float32, float64, bool as bool_dtype,
+                            _UndefinedStub, eye, broadcast_to)
 from . import _array_module as xp
+from . import xps
 
 from .function_stubs import elementwise_functions
-
-
-xps = make_strategies_namespace(xp)
 
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
@@ -48,6 +47,7 @@ if FILTER_UNDEFINED_DTYPES:
     dtypes = dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
 
 shared_dtypes = shared(dtypes, key="dtype")
+shared_floating_dtypes = shared(floating_dtypes, key="dtype")
 
 
 sorted_table = sorted(promotion_table)
@@ -72,10 +72,6 @@ def mutually_promotable_dtypes(dtype_objects=dtype_objects):
         [(i, j) for i, j in sorted_table if i in dtype_objects and j in dtype_objects]
     )
 
-shared_mutually_promotable_dtype_pairs = shared(
-    mutually_promotable_dtypes(), key="mutually_promotable_dtype_pair"
-)
-
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
 
@@ -86,10 +82,10 @@ multiarg_array_functions_names = array_functions_names.filter(
     lambda func_name: nargs(func_name) > 1)
 
 elementwise_function_objects = elementwise_functions_names.map(
-    lambda i: getattr(_array_module, i))
+    lambda i: getattr(xp, i))
 array_functions = elementwise_function_objects
 multiarg_array_functions = multiarg_array_functions_names.map(
-    lambda i: getattr(_array_module, i))
+    lambda i: getattr(xp, i))
 
 # Limit the total size of an array shape
 MAX_ARRAY_SIZE = 10000
@@ -111,9 +107,57 @@ shapes = xps.array_shapes(min_dims=0, min_side=0).filter(
     lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
 )
 
+# Matrix shapes assume stacks of matrices
+matrix_shapes = xps.array_shapes(min_dims=2, min_side=1).filter(
+    lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
+)
+
+square_matrix_shapes = matrix_shapes.filter(lambda shape: shape[-1] == shape[-2])
+
 two_mutually_broadcastable_shapes = xps.mutually_broadcastable_shapes(num_shapes=2)\
     .map(lambda S: S.input_shapes)\
     .filter(lambda S: all(prod(i for i in shape if i) < MAX_ARRAY_SIZE for shape in S))
+
+# Note: This should become hermitian_matrices when complex dtypes are added
+@composite
+def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True):
+    shape = draw(square_matrix_shapes)
+    dtype = draw(dtypes)
+    elements = {'allow_nan': False, 'allow_infinity': False} if finite else None
+    a = draw(xps.arrays(dtype=dtype, shape=shape, elements=elements))
+    upper = xp.triu(a)
+    lower = xp.triu(a, k=1).mT
+    return upper + lower
+
+@composite
+def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
+    # For now just generate stacks of identity matrices
+    # TODO: Generate arbitrary positive definite matrices, for instance, by
+    # using something like
+    # https://github.com/scikit-learn/scikit-learn/blob/844b4be24/sklearn/datasets/_samples_generator.py#L1351.
+    n = draw(integers(0))
+    shape = draw(shapes) + (n, n)
+    assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
+    dtype = draw(dtypes)
+    return broadcast_to(eye(n, dtype=dtype), shape)
+
+@composite
+def invertible_matrices(draw, dtypes=xps.floating_dtypes()):
+    # For now, just generate stacks of diagonal matrices.
+    n = draw(integers(0, SQRT_MAX_ARRAY_SIZE),)
+    stack_shape = draw(shapes)
+    shape = stack_shape + (n, n)
+    d = draw(xps.arrays(dtypes, shape=n*prod(stack_shape),
+                        elements=dict(allow_nan=False, allow_infinity=False)))
+    # Functions that require invertible matrices may do anything when it is
+    # singular, including raising an exception, so we make sure the diagonals
+    # are sufficiently nonzero to avoid any numerical issues.
+    assume(xp.all(xp.abs(d) > 0.5))
+
+    a = xp.zeros(shape)
+    for j, (idx, i) in enumerate(itertools.product(ndindex(stack_shape), range(n))):
+        a[idx + (i, i)] = d[j]
+    return a
 
 @composite
 def two_broadcastable_shapes(draw):
@@ -122,14 +166,13 @@ def two_broadcastable_shapes(draw):
     broadcast to shape1.
     """
     from .test_broadcasting import broadcast_shapes
-    shape1, shape2 =  draw(two_mutually_broadcastable_shapes)
+    shape1, shape2 = draw(two_mutually_broadcastable_shapes)
     assume(broadcast_shapes(shape1, shape2) == shape1)
     return (shape1, shape2)
 
 sizes = integers(0, MAX_ARRAY_SIZE)
 sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
 
-# TODO: Generate general arrays here, rather than just scalars.
 numeric_arrays = xps.arrays(
     dtype=shared(xps.floating_dtypes(), key='dtypes'),
     shape=shared(xps.array_shapes(), key='shapes'),
@@ -233,25 +276,46 @@ def multiaxis_indices(draw, shapes):
 
     # Avoid using 'in', which might do == on an array.
     res_has_ellipsis = any(i is ... for i in res)
-    if n_entries == len(shape) and not res_has_ellipsis:
-        # note("Adding extra")
-        extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
-        res += extra
+    if not res_has_ellipsis:
+        if n_entries < len(shape):
+            # The spec requires either an ellipsis or exactly as many indices
+            # as dimensions.
+            assume(False)
+        elif n_entries == len(shape):
+            # note("Adding extra")
+            extra = draw(lists(one_of(integer_indices(sizes), slices(sizes)), min_size=0, max_size=3))
+            res += extra
     return tuple(res)
 
 
-shared_arrays1 = xps.arrays(
-    dtype=shared_mutually_promotable_dtype_pairs.map(lambda pair: pair[0]),
-    shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[0]),
-)
-shared_arrays2 = xps.arrays(
-    dtype=shared_mutually_promotable_dtype_pairs.map(lambda pair: pair[1]),
-    shape=shared(two_mutually_broadcastable_shapes, key="shape_pair").map(lambda pair: pair[1]),
-)
+def two_mutual_arrays(dtype_objects=dtype_objects):
+    mutual_dtypes = shared(mutually_promotable_dtypes(dtype_objects))
+    mutual_shapes = shared(two_mutually_broadcastable_shapes)
+    arrays1 = xps.arrays(
+        dtype=mutual_dtypes.map(lambda pair: pair[0]),
+        shape=mutual_shapes.map(lambda pair: pair[0]),
+    )
+    arrays2 = xps.arrays(
+        dtype=mutual_dtypes.map(lambda pair: pair[1]),
+        shape=mutual_shapes.map(lambda pair: pair[1]),
+    )
+    return arrays1, arrays2
 
 
 @composite
 def kwargs(draw, **kw):
+    """
+    Strategy for keyword arguments
+
+    For a signature like f(x, /, dtype=None, val=1) use
+
+    @given(x=arrays(), kw=kwargs(a=none() | dtypes, val=integers()))
+    def test_f(x, kw):
+        res = f(x, **kw)
+
+    kw may omit the keyword argument, meaning the default for f will be used.
+
+    """
     result = {}
     for k, strat in kw.items():
         if draw(booleans()):

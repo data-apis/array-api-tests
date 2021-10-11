@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from ._types import (List, NestedSequence, Optional, SupportsBufferProtocol, SupportsDLPack, Tuple,
                      Union, array, device, dtype)
-from collections.abc import Sequence
 
 def arange(start: Union[int, float], /, stop: Optional[Union[int, float]] = None, step: Union[int, float] = 1, *, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
     pass
@@ -26,7 +25,7 @@ def empty(shape: Union[int, Tuple[int, ...]], *, dtype: Optional[dtype] = None, 
 def empty_like(x: array, /, *, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
     pass
 
-def eye(n_rows: int, n_cols: Optional[int] = None, /, *, k: Optional[int] = 0, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
+def eye(n_rows: int, n_cols: Optional[int] = None, /, *, k: int = 0, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
     pass
 
 def from_dlpack(x: object, /) -> array:
@@ -41,7 +40,7 @@ def full_like(x: array, /, fill_value: Union[int, float], *, dtype: Optional[dty
 def linspace(start: Union[int, float], stop: Union[int, float], /, num: int, *, dtype: Optional[dtype] = None, device: Optional[device] = None, endpoint: bool = True) -> array:
     pass
 
-def meshgrid(*arrays: Sequence[array], indexing: str = 'xy') -> List[array, ...]:
+def meshgrid(*arrays: array, indexing: str = 'xy') -> List[array, ...]:
     pass
 
 def ones(shape: Union[int, Tuple[int, ...]], *, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
