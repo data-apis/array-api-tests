@@ -292,13 +292,23 @@ def test_matrix_norm(x, kw):
     # res = _array_module.linalg.matrix_norm(x, **kw)
     pass
 
+matrix_power_n = shared(integers(-1000, 1000), key='matrix_power n')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    n=integers(),
+    # Generate any square matrix if n >= 0 but only invertible matrices if n < 0
+    x=matrix_power_n.flatmap(lambda n: invertible_matrices() if n < 0 else
+                             xps.arrays(dtype=xps.floating_dtypes(),
+                                        shape=square_matrix_shapes)),
+    n=matrix_power_n,
 )
 def test_matrix_power(x, n):
-    # res = _array_module.linalg.matrix_power(x, n)
-    pass
+    res = _array_module.linalg.matrix_power(x, n)
+    if n == 0:
+        true_val = lambda x: _array_module.eye(x.shape[0], dtype=x.dtype)
+    else:
+        true_val = None
+    # _test_stacks only works with array arguments
+    func = lambda x: _array_module.linalg.matrix_power(x, n)
+    _test_stacks(func, x, res=res, true_val=true_val)
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
