@@ -301,6 +301,10 @@ matrix_power_n = shared(integers(-1000, 1000), key='matrix_power n')
 )
 def test_matrix_power(x, n):
     res = linalg.matrix_power(x, n)
+
+    assert res.shape == x.shape, "matrix_power() did not return the correct shape"
+    assert res.dtype == x.dtype, "matrix_power() did not return the correct dtype"
+
     if n == 0:
         true_val = lambda x: _array_module.eye(x.shape[0], dtype=x.dtype)
     else:
