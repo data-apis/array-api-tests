@@ -78,7 +78,7 @@ def generate_params(
 # out for now.
 # @example(shape=(0,))
 @given(two_shapes=hh.two_mutually_broadcastable_shapes, data=st.data())
-def test_elementwise_two_args_bool_type_promotion(func, two_shapes, dtypes, data):
+def test_elementwise_two_args_return_bool(func, two_shapes, dtypes, data):
     assert nargs(func) == 2
     func = getattr(xp, func)
 
@@ -110,7 +110,7 @@ def test_elementwise_two_args_bool_type_promotion(func, two_shapes, dtypes, data
 # out for now.
 # @example(shape=(0,))
 @given(two_shapes=hh.two_mutually_broadcastable_shapes, data=st.data())
-def test_elementwise_two_args_promoted_type_promotion(func,
+def test_elementwise_two_args_return_promoted(func,
                                                               two_shapes, dtypes,
                                                               data):
     assert nargs(func) == 2
@@ -143,7 +143,7 @@ def test_elementwise_two_args_promoted_type_promotion(func,
 # out for now.
 # @example(shape=(0,))
 @given(shape=hh.shapes, data=st.data())
-def test_elementwise_one_arg_bool(func, shape, dtype, data):
+def test_elementwise_one_arg_return_bool(func, shape, dtype, data):
     assert nargs(func) == 1
     func = getattr(xp, func)
 
@@ -166,7 +166,7 @@ def test_elementwise_one_arg_bool(func, shape, dtype, data):
 # out for now.
 # @example(shape=(0,))
 @given(shape=hh.shapes, data=st.data())
-def test_elementwise_one_arg_type_promotion(func, shape,
+def test_elementwise_one_arg_return_promoted(func, shape,
                                                      dtype, data):
     assert nargs(func) == 1
     func = getattr(xp, func)
@@ -194,7 +194,7 @@ def test_elementwise_one_arg_type_promotion(func, shape,
 # out for now.
 # @example(shape=(0,))
 @given(shape=hh.shapes, data=st.data())
-def test_operator_one_arg_type_promotion(unary_op_name, unary_op, shape, dtype, data):
+def test_operator_one_arg_return_promoted(unary_op_name, unary_op, shape, dtype, data):
     fillvalue = data.draw(hh.scalars(st.just(dtype)))
 
     if isinstance(dtype, xp._UndefinedStub):
@@ -218,7 +218,7 @@ def test_operator_one_arg_type_promotion(unary_op_name, unary_op, shape, dtype, 
     generate_params('operator', in_nargs=2, out_category='bool')
 )
 @given(two_shapes=hh.two_mutually_broadcastable_shapes, data=st.data())
-def test_operator_two_args_bool_promotion(binary_op_name, binary_op, dtypes, two_shapes, data):
+def test_operator_two_args_return_bool(binary_op_name, binary_op, dtypes, two_shapes, data):
     dtype1, dtype2 = dtypes
     fillvalue1 = data.draw(hh.scalars(st.just(dtype1)))
     fillvalue2 = data.draw(hh.scalars(st.just(dtype2)))
@@ -249,7 +249,7 @@ operator_two_args_promoted_parametrize_ids = [f"{n}-{d1}-{d2}" for n, ((d1, d2),
 
 @pytest.mark.parametrize('binary_op_name, binary_op, dtypes', generate_params('operator', in_nargs=2, out_category='promoted'))
 @given(two_shapes=hh.two_mutually_broadcastable_shapes, data=st.data())
-def test_operator_two_args_promoted_promotion(binary_op_name, binary_op, dtypes, two_shapes, data):
+def test_operator_two_args_return_promoted(binary_op_name, binary_op, dtypes, two_shapes, data):
     (dtype1, dtype2), res_dtype = dtypes
     fillvalue1 = data.draw(hh.scalars(st.just(dtype1)))
     if binary_op_name in ['>>', '<<']:
@@ -279,7 +279,7 @@ operator_inplace_two_args_promoted_parametrize_ids = ['-'.join((n[:2] + 'i' + n[
 
 @pytest.mark.parametrize('binary_op_name, binary_op, dtypes', generate_params('operator', in_nargs=2, out_category='promoted'))
 @given(two_shapes=hh.two_broadcastable_shapes(), data=st.data())
-def test_operator_inplace_two_args_promoted_promotion(binary_op_name, binary_op, dtypes, two_shapes,
+def test_operator_inplace_two_args_return_promoted(binary_op_name, binary_op, dtypes, two_shapes,
                                     data):
     (dtype1, dtype2), res_dtype = dtypes
     fillvalue1 = data.draw(hh.scalars(st.just(dtype1)))
@@ -315,7 +315,7 @@ scalar_promotion_parametrize_inputs = [
 @pytest.mark.parametrize('binary_op_name,dtype,scalar_type',
                          scalar_promotion_parametrize_inputs)
 @given(shape=hh.shapes, python_scalars=st.data(), data=st.data())
-def test_operator_scalar_promotion(binary_op_name, dtype, scalar_type,
+def test_operator_scalar_arg_return_promoted(binary_op_name, dtype, scalar_type,
                                    shape, python_scalars, data):
     """
     See https://st.data-apis.github.io/array-api/latest/API_specification/type_promotion.html#mixing-arrays-with-python-hh.scalars
