@@ -9,9 +9,8 @@ __all__ = [
     'dtype_signed',
     'func_in_categories',
     'func_out_categories',
-    'binary_op_to_symbol',
-    'unary_op_to_symbol',
-    'op_to_func',
+    'binary_func_to_op',
+    'unary_func_to_op',
 ]
 
 
@@ -223,7 +222,7 @@ func_out_categories = {
 }
 
 
-binary_op_to_symbol = {
+binary_func_to_op = {
     '__add__': '+',
     '__and__': '&',
     '__eq__': '==',
@@ -246,7 +245,7 @@ binary_op_to_symbol = {
 }
 
 
-unary_op_to_symbol = {
+unary_func_to_op = {
     '__abs__': 'abs()',
     '__invert__': '~',
     '__neg__': '-',
@@ -254,7 +253,7 @@ unary_op_to_symbol = {
 }
 
 
-op_to_func = {
+_operator_to_elementwise = {
     '__abs__': 'abs',
     '__add__': 'add',
     '__and__': 'bitwise_and',
@@ -265,7 +264,7 @@ op_to_func = {
     '__le__': 'less_equal',
     '__lshift__': 'bitwise_left_shift',
     '__lt__': 'less',
-    '__matmul__': 'matmul',
+    # '__matmul__': 'matmul',  # TODO: support matmul
     '__mod__': 'remainder',
     '__mul__': 'multiply',
     '__ne__': 'not_equal',
@@ -279,3 +278,8 @@ op_to_func = {
     '__neg__': 'negative',
     '__pos__': 'positive',
 }
+
+
+for op_func, elwise_func in _operator_to_elementwise.items():
+    func_in_categories[op_func] = func_in_categories[elwise_func]
+    func_out_categories[op_func] = func_out_categories[elwise_func]

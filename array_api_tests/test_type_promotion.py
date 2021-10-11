@@ -42,26 +42,26 @@ def generate_params(
                         yield pytest.param(func, ((d1, d2), d3), id=f"{func}({d1}, {d2}) -> {d3}")
     else:
         if in_nargs == 1:
-            for op, symbol in dh.unary_op_to_symbol.items():
-                func = dh.op_to_func[op]
+            for func, op in dh.unary_func_to_op.items():
+                if func == "__matmul__":
+                    continue
                 if dh.func_out_categories[func] == out_category:
                     in_category = dh.func_in_categories[func]
                     for in_dtype in dh.category_to_dtypes[in_category]:
-                        yield pytest.param(op, symbol, in_dtype, id=f"{op}({in_dtype})")
+                        yield pytest.param(func, op, in_dtype, id=f"{func}({in_dtype})")
         else:
-            for op, symbol in dh.binary_op_to_symbol.items():
-                if op == "__matmul__":
+            for func, op in dh.binary_func_to_op.items():
+                if func == "__matmul__":
                     continue
-                func = dh.op_to_func[op]
                 if dh.func_out_categories[func] == out_category:
                     in_category = dh.func_in_categories[func]
                     for ((d1, d2), d3) in dh.promotion_table.items():
                         if all(d in dh.category_to_dtypes[in_category] for d in (d1, d2)):
                             if out_category == 'bool':
-                                yield pytest.param(op, symbol, (d1, d2), id=f"{op}({d1}, {d2})")
+                                yield pytest.param(func, op, (d1, d2), id=f"{func}({d1}, {d2})")
                             else:
                                 if d1 == d3:
-                                    yield pytest.param(op, symbol, ((d1, d2), d3), id=f"{op}({d1}, {d2}) -> {d3}")
+                                    yield pytest.param(func, op, ((d1, d2), d3), id=f"{func}({d1}, {d2}) -> {d3}")
 
 
 
@@ -214,11 +214,11 @@ def test_operator_one_arg_return_promoted(unary_op_name, unary_op, shape, dtype,
     assert res.dtype == dtype, f"{unary_op}({dtype}) returned to {res.dtype}, should have promoted to {dtype} (shape={shape})"
 
 @pytest.mark.parametrize(
-    'binary_op_name, binary_op, dtypes',
+    'func, op, dtypes',
     generate_params('operator', in_nargs=2, out_category='bool')
 )
 @given(two_shapes=hh.two_mutually_broadcastable_shapes, data=st.data())
-def test_operator_two_args_return_bool(binary_op_name, binary_op, dtypes, two_shapes, data):
+def test_operator_two_args_return_bool(func, op, dtypes, two_shapes, data):
     dtype1, dtype2 = dtypes
     fillvalue1 = data.draw(hh.scalars(st.just(dtype1)))
     fillvalue2 = data.draw(hh.scalars(st.just(dtype2)))
@@ -232,27 +232,17 @@ def test_operator_two_args_return_bool(binary_op_name, binary_op, dtypes, two_sh
     a2 = ah.full(shape2, fillvalue2, dtype=dtype2)
 
     get_locals = lambda: dict(a1=a1, a2=a2)
-    expression = f'a1 {binary_op} a2'
+    expression = f'a1 {op} a2'
     res = eval(expression, get_locals())
 
-    assert res.dtype == xp.bool, f"{dtype1} {binary_op} {dtype2} promoted to {res.dtype}, should have promoted to bool (shape={shape1, shape2})"
+    assert res.dtype == xp.bool, f"{dtype1} {op} {dtype2} promoted to {res.dtype}, should have promoted to bool (shape={shape1, shape2})"
 
-binary_operators_promoted = [binary_op_name for binary_op_name in sorted(set(dh.binary_op_to_symbol) - {'__matmul__'})
-                             if dh.func_out_categories[dh.op_to_func[binary_op_name]] == 'promoted']
-operator_two_args_promoted_parametrize_inputs = [(binary_op_name, dtypes)
-                                       for binary_op_name in binary_operators_promoted
-                                       for dtypes in dh.promotion_table.items()
-                                       if all(d in dh.category_to_dtypes[dh.func_in_categories[dh.op_to_func[binary_op_name]]] for d in dtypes[0])
-                                       ]
-operator_two_args_promoted_parametrize_ids = [f"{n}-{d1}-{d2}" for n, ((d1, d2), _)
-                                            in operator_two_args_promoted_parametrize_inputs]
-
-@pytest.mark.parametrize('binary_op_name, binary_op, dtypes', generate_params('operator', in_nargs=2, out_category='promoted'))
+@pytest.mark.parametrize('func, op, dtypes', generate_params('operator', in_nargs=2, out_category='promoted'))
 @given(two_shapes=hh.two_mutually_broadcastable_shapes, data=st.data())
-def test_operator_two_args_return_promoted(binary_op_name, binary_op, dtypes, two_shapes, data):
+def test_operator_two_args_return_promoted(func, op, dtypes, two_shapes, data):
     (dtype1, dtype2), res_dtype = dtypes
     fillvalue1 = data.draw(hh.scalars(st.just(dtype1)))
-    if binary_op_name in ['>>', '<<']:
+    if op in ['>>', '<<']:
         fillvalue2 = data.draw(hh.scalars(st.just(dtype2)).filter(lambda x: x > 0))
     else:
         fillvalue2 = data.draw(hh.scalars(st.just(dtype2)))
@@ -267,23 +257,18 @@ def test_operator_two_args_return_promoted(binary_op_name, binary_op, dtypes, tw
     a2 = ah.full(shape2, fillvalue2, dtype=dtype2)
 
     get_locals = lambda: dict(a1=a1, a2=a2)
-    expression = f'a1 {binary_op} a2'
+    expression = f'a1 {op} a2'
     res = eval(expression, get_locals())
 
-    assert res.dtype == res_dtype, f"{dtype1} {binary_op} {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
+    assert res.dtype == res_dtype, f"{dtype1} {op} {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
 
-operator_inplace_two_args_promoted_parametrize_inputs = [(binary_op, dtypes) for binary_op, dtypes in operator_two_args_promoted_parametrize_inputs
-                                                        if dtypes[0][0] == dtypes[1]]
-operator_inplace_two_args_promoted_parametrize_ids = ['-'.join((n[:2] + 'i' + n[2:], str(d1), str(d2))) for n, ((d1, d2), _)
-                                            in operator_inplace_two_args_promoted_parametrize_inputs]
-
-@pytest.mark.parametrize('binary_op_name, binary_op, dtypes', generate_params('operator', in_nargs=2, out_category='promoted'))
+@pytest.mark.parametrize('func, op, dtypes', generate_params('operator', in_nargs=2, out_category='promoted'))
 @given(two_shapes=hh.two_broadcastable_shapes(), data=st.data())
-def test_operator_inplace_two_args_return_promoted(binary_op_name, binary_op, dtypes, two_shapes,
+def test_operator_inplace_two_args_return_promoted(func, op, dtypes, two_shapes,
                                     data):
     (dtype1, dtype2), res_dtype = dtypes
     fillvalue1 = data.draw(hh.scalars(st.just(dtype1)))
-    if binary_op_name in ['>>', '<<']:
+    if func in ['>>', '<<']:
         fillvalue2 = data.draw(hh.scalars(st.just(dtype2)).filter(lambda x: x > 0))
     else:
         fillvalue2 = data.draw(hh.scalars(st.just(dtype2)))
@@ -299,29 +284,29 @@ def test_operator_inplace_two_args_return_promoted(binary_op_name, binary_op, dt
     get_locals = lambda: dict(a1=a1, a2=a2)
 
     res_locals = get_locals()
-    expression = f'a1 {binary_op}= a2'
+    expression = f'a1 {op}= a2'
     exec(expression, res_locals)
     res = res_locals['a1']
 
-    assert res.dtype == res_dtype, f"{dtype1} {binary_op}= {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
+    assert res.dtype == res_dtype, f"{dtype1} {op}= {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
 
 scalar_promotion_parametrize_inputs = [
-    pytest.param(binary_op_name, dtype, scalar_type, id=f"{binary_op_name}-{dtype}-{scalar_type.__name__}")
-    for binary_op_name in sorted(set(dh.binary_op_to_symbol) - {'__matmul__'})
-    for dtype in dh.category_to_dtypes[dh.func_in_categories[dh.op_to_func[binary_op_name]]]
+    pytest.param(func, dtype, scalar_type, id=f"{func}-{dtype}-{scalar_type.__name__}")
+    for func in sorted(set(dh.binary_func_to_op) - {'__matmul__'})
+    for dtype in dh.category_to_dtypes[dh.func_in_categories[func]]
     for scalar_type in dh.dtypes_to_scalars[dtype]
 ]
 
-@pytest.mark.parametrize('binary_op_name,dtype,scalar_type',
+@pytest.mark.parametrize('func,dtype,scalar_type',
                          scalar_promotion_parametrize_inputs)
 @given(shape=hh.shapes, python_scalars=st.data(), data=st.data())
-def test_operator_scalar_arg_return_promoted(binary_op_name, dtype, scalar_type,
+def test_operator_scalar_arg_return_promoted(func, dtype, scalar_type,
                                    shape, python_scalars, data):
     """
     See https://st.data-apis.github.io/array-api/latest/API_specification/type_promotion.html#mixing-arrays-with-python-hh.scalars
     """
-    binary_op = dh.binary_op_to_symbol[binary_op_name]
-    if binary_op == '@':
+    op = dh.binary_func_to_op[func]
+    if op == '@':
         pytest.skip("matmul (@) is not supported for hh.scalars")
 
     if dtype in dh.category_to_dtypes['integer']:
@@ -344,23 +329,23 @@ def test_operator_scalar_arg_return_promoted(binary_op_name, dtype, scalar_type,
     # 2. Execute the operation for `array <op> 0-D array` (or `0-D array <op>
     #    array` if `scalar` was the left-hand argument).
 
-    array_scalar = f'a {binary_op} s'
-    array_scalar_expected = f'a {binary_op} scalar_as_array'
+    array_scalar = f'a {op} s'
+    array_scalar_expected = f'a {op} scalar_as_array'
     res = eval(array_scalar, get_locals())
     expected = eval(array_scalar_expected, get_locals())
     ah.assert_exactly_equal(res, expected)
 
-    scalar_array = f's {binary_op} a'
-    scalar_array_expected = f'scalar_as_array {binary_op} a'
+    scalar_array = f's {op} a'
+    scalar_array_expected = f'scalar_as_array {op} a'
     res = eval(scalar_array, get_locals())
     expected = eval(scalar_array_expected, get_locals())
     ah.assert_exactly_equal(res, expected)
 
     # Test in-place operators
-    if binary_op in ['==', '!=', '<', '>', '<=', '>=']:
+    if op in ['==', '!=', '<', '>', '<=', '>=']:
         return
-    array_scalar = f'a {binary_op}= s'
-    array_scalar_expected = f'a {binary_op}= scalar_as_array'
+    array_scalar = f'a {op}= s'
+    array_scalar_expected = f'a {op}= scalar_as_array'
     a = ah.full(shape, fillvalue, dtype=dtype)
     res_locals = get_locals()
     exec(array_scalar, get_locals())
