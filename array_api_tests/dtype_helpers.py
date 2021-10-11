@@ -3,15 +3,15 @@ from . import _array_module as xp
 
 __all__ = [
     'dtypes_to_scalars',
-    'input_types',
+    'category_to_dtypes',
     'promotion_table',
     'dtype_nbits',
     'dtype_signed',
+    'func_in_categories',
+    'func_out_categories',
     'binary_operators',
     'unary_operators',
     'operators_to_functions',
-    'elementwise_function_input_types',
-    'elementwise_function_output_types',
 ]
 
 
@@ -30,7 +30,7 @@ dtypes_to_scalars = {
 }
 
 
-input_types = {
+category_to_dtypes = {
     'any': all_dtypes,
     'boolean': (xp.bool,),
     'floating': float_dtypes,
@@ -84,6 +84,7 @@ _numeric_promotions = {
 promotion_table = {
     (xp.bool, xp.bool): xp.bool,
     **_numeric_promotions,
+    # TODO: dont unpack pairs of the same dtype
     **{(d2, d1): res for (d1, d2), res in _numeric_promotions.items()},
 }
 
@@ -102,7 +103,7 @@ dtype_signed = {
 }
 
 
-elementwise_function_input_types = {
+func_in_categories = {
     'abs': 'numeric',
     'acos': 'floating',
     'acosh': 'floating',
@@ -162,7 +163,7 @@ elementwise_function_input_types = {
 }
 
 
-elementwise_function_output_types = {
+func_out_categories = {
     'abs': 'promoted',
     'acos': 'promoted',
     'acosh': 'promoted',

@@ -10,7 +10,7 @@ from hypothesis.strategies import data, sampled_from
 from .hypothesis_helpers import shapes, FILTER_UNDEFINED_DTYPES
 from .pytest_helpers import raises, doesnt_raise, nargs
 
-from .dtype_helpers import elementwise_function_input_types, input_types
+from .dtype_helpers import func_in_categories, category_to_dtypes
 from .function_stubs import elementwise_functions
 from . import _array_module
 from ._array_module import ones, _UndefinedStub
@@ -115,7 +115,7 @@ def test_broadcasting_hypothesis(func_name, shape1, shape2, data):
     # Internal consistency checks
     assert nargs(func_name) == 2
 
-    dtype = data.draw(sampled_from(input_types[elementwise_function_input_types[func_name]]))
+    dtype = data.draw(sampled_from(category_to_dtypes[func_in_categories[func_name]]))
     if FILTER_UNDEFINED_DTYPES:
         assume(not isinstance(dtype, _UndefinedStub))
     func = getattr(_array_module, func_name)

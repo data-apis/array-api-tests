@@ -4,7 +4,7 @@ import pytest
 
 from ._array_module import mod, mod_name, ones, eye, float64, bool, int64
 from .pytest_helpers import raises, doesnt_raise
-from .dtype_helpers import elementwise_function_input_types, operators_to_functions
+from .dtype_helpers import func_in_categories, operators_to_functions
 
 from . import function_stubs
 
@@ -163,9 +163,9 @@ def test_function_positional_args(name):
         n = operators_to_functions[name[:2] + name[3:]]
     else:
         n = operators_to_functions.get(name, name)
-    if 'boolean' in elementwise_function_input_types.get(n, 'floating'):
+    if 'boolean' in func_in_categories.get(n, 'floating'):
         dtype = bool
-    elif 'integer' in elementwise_function_input_types.get(n, 'floating'):
+    elif 'integer' in func_in_categories.get(n, 'floating'):
         dtype = int64
 
     if array_method(name):
