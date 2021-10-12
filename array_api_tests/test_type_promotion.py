@@ -38,7 +38,7 @@ filters = defaultdict(
 )
 
 
-def generate_func_params() -> Iterator[Tuple[Callable, Tuple[DT, ...], DT, Callable]]:
+def gen_func_params() -> Iterator[Tuple[Callable, Tuple[DT, ...], DT, Callable]]:
     for func_name in elementwise_functions.__all__:
         func = getattr(xp, func_name)
         in_category = dh.func_in_categories[func_name]
@@ -72,7 +72,7 @@ def generate_func_params() -> Iterator[Tuple[Callable, Tuple[DT, ...], DT, Calla
             raise NotImplementedError()
 
 
-@pytest.mark.parametrize('func, in_dtypes, out_dtype, x_filter', generate_func_params())
+@pytest.mark.parametrize('func, in_dtypes, out_dtype, x_filter', gen_func_params())
 @given(data=st.data())
 def test_func_returns_array_with_correct_dtype(
     func, in_dtypes, out_dtype, x_filter, data
@@ -98,7 +98,7 @@ def test_func_returns_array_with_correct_dtype(
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-def generate_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
+def gen_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
     op_to_symbol = {**dh.unary_op_to_symbol, **dh.binary_op_to_symbol}
     for op, symbol in op_to_symbol.items():
         if op == '__matmul__':
@@ -141,7 +141,7 @@ def generate_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
         )
 
 
-@pytest.mark.parametrize('expr, in_dtypes, out_dtype, x_filter', generate_op_params())
+@pytest.mark.parametrize('expr, in_dtypes, out_dtype, x_filter', gen_op_params())
 @given(data=st.data())
 def test_operator_returns_array_with_correct_dtype(
     expr, in_dtypes, out_dtype, x_filter, data
@@ -166,7 +166,7 @@ def test_operator_returns_array_with_correct_dtype(
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-def generate_inplace_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
+def gen_inplace_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
     for op, symbol in dh.binary_op_to_symbol.items():
         if op == '__matmul__' or dh.op_out_categories[op] == 'bool':
             continue
@@ -178,22 +178,30 @@ def generate_inplace_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Call
                 and in_dtype1 in valid_in_dtypes
                 and in_dtype2 in valid_in_dtypes
             ):
+                iop = f'__i{op[2:]}'
                 yield pytest.param(
                     f'x1 {symbol}= x2',
                     (in_dtype1, in_dtype2),
                     promoted_dtype,
-                    id=f'__i{op[2:]}({in_dtype1}, {in_dtype2}) -> {in_dtype1}',
+                    filters[iop],
+                    id=f'{iop}({in_dtype1}, {in_dtype2}) -> {in_dtype1}',
                 )
 
 
-@pytest.mark.parametrize('expr, in_dtypes, out_dtype', generate_inplace_op_params())
+@pytest.mark.parametrize('expr, in_dtypes, out_dtype, x_filter', gen_inplace_params())
 @given(shapes=hh.mutually_broadcastable_shapes(2), data=st.data())
 def test_inplace_operator_returns_array_with_correct_dtype(
-    expr, in_dtypes, out_dtype, shapes, data
+    expr, in_dtypes, out_dtype, x_filter, shapes, data
 ):
     assume(len(shapes[0]) >= len(shapes[1]))
-    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
-    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
+    x1 = data.draw(
+        xps.arrays(dtype=in_dtypes[0], shape=shapes[0]).filter(x_filter),
+        label='x1',
+    )
+    x2 = data.draw(
+        xps.arrays(dtype=in_dtypes[1], shape=shapes[1]).filter(x_filter),
+        label='x2',
+    )
     locals_ = {'x1': x1, 'x2': x2}
     exec(expr, locals_)
     x1 = locals_['x1']
