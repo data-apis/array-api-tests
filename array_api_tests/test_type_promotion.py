@@ -1,7 +1,7 @@
 """
 https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html
 """
-import re
+from collections import defaultdict
 from typing import Iterator
 
 import pytest
@@ -16,21 +16,23 @@ from . import xps
 from .function_stubs import elementwise_functions
 from .pytest_helpers import nargs
 
-# We apply filters to xps.arrays() when behaviour for certain array elements is
-# erroneous or undefined.
+
+bitwise_shift_funcs = [
+    'bitwise_left_shift',
+    'bitwise_right_shift',
+    '__lshift__',
+    '__rshift__',
+    '__ilshift__',
+    '__irshift__',
+]
 
 
-filters = {
-    re.compile('bitwise_[a-z]+_shift'): lambda x: ah.all(x > 0),
-    re.compile('__[rl]shift__'): lambda x: ah.all(x > 0),
-}
-
-
-def get_filter(name):
-    for regex, cond in filters.items():
-        if regex.match(name):
-            return cond
-    return lambda _: True
+# We apply filters to xps.arrays() so we don't generate array elements that
+# are erroneous or undefined for a function/operator.
+filters = defaultdict(
+    lambda: lambda _: True,
+    {func: lambda x: ah.all(x > 0) for func in bitwise_shift_funcs},
+)
 
 
 def generate_func_params() -> Iterator:
@@ -47,7 +49,7 @@ def generate_func_params() -> Iterator:
                     func,
                     (in_dtype,),
                     out_dtype,
-                    get_filter(func_name),
+                    filters[func_name],
                     id=f'{func_name}({in_dtype}) -> {out_dtype}',
                 )
         elif ndtypes == 2:
@@ -60,7 +62,7 @@ def generate_func_params() -> Iterator:
                         func,
                         (in_dtype1, in_dtype2),
                         out_dtype,
-                        get_filter(func_name),
+                        filters[func_name],
                         id=f'{func_name}({in_dtype1}, {in_dtype2}) -> {out_dtype}',
                     )
         else:
@@ -111,7 +113,7 @@ def generate_op_params() -> Iterator:
                     f'{symbol}x',
                     (in_dtype,),
                     out_dtype,
-                    get_filter(op),
+                    filters[op],
                     id=f'{op}({in_dtype}) -> {out_dtype}',
                 )
         else:
@@ -124,7 +126,7 @@ def generate_op_params() -> Iterator:
                         f'x1 {symbol} x2',
                         (in_dtype1, in_dtype2),
                         out_dtype,
-                        get_filter(op),
+                        filters[op],
                         id=f'{op}({in_dtype1}, {in_dtype2}) -> {out_dtype}',
                     )
     # We generate params for abs seperately as it does not have an associated symbol
@@ -133,7 +135,7 @@ def generate_op_params() -> Iterator:
             'abs(x)',
             (in_dtype,),
             in_dtype,
-            get_filter('__abs__'),
+            filters['__abs__'],
             id=f'__abs__({in_dtype}) -> {in_dtype}',
         )
 
