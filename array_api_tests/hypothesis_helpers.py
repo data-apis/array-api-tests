@@ -291,9 +291,10 @@ def multiaxis_indices(draw, shapes):
     return tuple(res)
 
 
-def two_mutual_arrays(dtype_objects=dtype_objects):
+def two_mutual_arrays(dtype_objects=dtype_objects,
+                      two_shapes=two_mutually_broadcastable_shapes):
     mutual_dtypes = shared(mutually_promotable_dtypes(dtype_objects))
-    mutual_shapes = shared(two_mutually_broadcastable_shapes)
+    mutual_shapes = shared(two_shapes)
     arrays1 = xps.arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[0]),
         shape=mutual_shapes.map(lambda pair: pair[0]),
@@ -303,7 +304,6 @@ def two_mutual_arrays(dtype_objects=dtype_objects):
         shape=mutual_shapes.map(lambda pair: pair[1]),
     )
     return arrays1, arrays2
-
 
 @composite
 def kwargs(draw, **kw):
