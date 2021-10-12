@@ -2,7 +2,7 @@
 https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html
 """
 from collections import defaultdict
-from typing import Iterator
+from typing import Iterator, TypeVar, Tuple, Callable
 
 import pytest
 from hypothesis import assume, given
@@ -27,6 +27,9 @@ bitwise_shift_funcs = [
 ]
 
 
+DT = TypeVar('DT')
+
+
 # We apply filters to xps.arrays() so we don't generate array elements that
 # are erroneous or undefined for a function/operator.
 filters = defaultdict(
@@ -35,7 +38,7 @@ filters = defaultdict(
 )
 
 
-def generate_func_params() -> Iterator:
+def generate_func_params() -> Iterator[Tuple[Callable, Tuple[DT, ...], DT, Callable]]:
     for func_name in elementwise_functions.__all__:
         func = getattr(xp, func_name)
         in_category = dh.func_in_categories[func_name]
@@ -69,16 +72,14 @@ def generate_func_params() -> Iterator:
             raise NotImplementedError()
 
 
-@pytest.mark.parametrize(
-    'func, in_dtypes, out_dtype, arrays_filter', generate_func_params()
-)
+@pytest.mark.parametrize('func, in_dtypes, out_dtype, x_filter', generate_func_params())
 @given(data=st.data())
 def test_func_returns_array_with_correct_dtype(
-    func, in_dtypes, out_dtype, arrays_filter, data
+    func, in_dtypes, out_dtype, x_filter, data
 ):
     if len(in_dtypes) == 1:
         x = data.draw(
-            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(arrays_filter),
+            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter),
             label='x',
         )
         out = func(x)
@@ -89,7 +90,7 @@ def test_func_returns_array_with_correct_dtype(
         )
         for i, (dtype, shape) in enumerate(zip(in_dtypes, shapes), 1):
             x = data.draw(
-                xps.arrays(dtype=dtype, shape=shape).filter(arrays_filter),
+                xps.arrays(dtype=dtype, shape=shape).filter(x_filter),
                 label=f'x{i}',
             )
             arrays.append(x)
@@ -97,7 +98,7 @@ def test_func_returns_array_with_correct_dtype(
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-def generate_op_params() -> Iterator:
+def generate_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
     op_to_symbol = {**dh.unary_op_to_symbol, **dh.binary_op_to_symbol}
     for op, symbol in op_to_symbol.items():
         if op == '__matmul__':
@@ -140,16 +141,14 @@ def generate_op_params() -> Iterator:
         )
 
 
-@pytest.mark.parametrize(
-    'expr, in_dtypes, out_dtype, arrays_filter', generate_op_params()
-)
+@pytest.mark.parametrize('expr, in_dtypes, out_dtype, x_filter', generate_op_params())
 @given(data=st.data())
 def test_operator_returns_array_with_correct_dtype(
-    expr, in_dtypes, out_dtype, arrays_filter, data
+    expr, in_dtypes, out_dtype, x_filter, data
 ):
     if len(in_dtypes) == 1:
         x = data.draw(
-            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(arrays_filter),
+            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter),
             label='x',
         )
         out = eval(expr, {'x': x})
@@ -160,14 +159,14 @@ def test_operator_returns_array_with_correct_dtype(
         )
         for i, (dtype, shape) in enumerate(zip(in_dtypes, shapes), 1):
             locals_[f'x{i}'] = data.draw(
-                xps.arrays(dtype=dtype, shape=shape).filter(arrays_filter),
+                xps.arrays(dtype=dtype, shape=shape).filter(x_filter),
                 label=f'x{i}',
             )
         out = eval(expr, locals_)
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-def generate_inplace_op_params() -> Iterator:
+def generate_inplace_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
     for op, symbol in dh.binary_op_to_symbol.items():
         if op == '__matmul__' or dh.op_out_categories[op] == 'bool':
             continue
