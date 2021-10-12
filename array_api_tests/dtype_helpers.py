@@ -13,6 +13,7 @@ __all__ = [
     'op_out_categories',
     'binary_op_to_symbol',
     'unary_op_to_symbol',
+    'op_to_func',
 ]
 
 
@@ -254,7 +255,7 @@ binary_op_to_symbol = {
 }
 
 
-_operator_to_elementwise = {
+op_to_func = {
     '__abs__': 'abs',
     '__add__': 'add',
     '__and__': 'bitwise_and',
@@ -283,6 +284,6 @@ _operator_to_elementwise = {
 
 op_in_categories = {}
 op_out_categories = {}
-for op_func, elwise_func in _operator_to_elementwise.items():
+for op_func, elwise_func in op_to_func.items():
     op_in_categories[op_func] = func_in_categories[elwise_func]
     op_out_categories[op_func] = func_out_categories[elwise_func]

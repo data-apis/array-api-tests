@@ -17,13 +17,14 @@ from hypothesis import assume, given
 from hypothesis.strategies import booleans, composite, none, integers, shared
 
 from .array_helpers import (assert_exactly_equal, ndindex, asarray,
-                            numeric_dtype_objects, promote_dtypes)
+                            numeric_dtype_objects)
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
                                  invertible_matrices, two_mutual_arrays,
                                  mutually_promotable_dtypes)
 from .pytest_helpers import raises
+from .dtype_helpers import promotion_table
 
 from .test_broadcasting import broadcast_shapes
 
@@ -132,7 +133,7 @@ def test_cross(x1_x2_kw):
 
     res = linalg.cross(x1, x2, **kw)
 
-    assert res.dtype == promote_dtypes(x1, x2), "cross() did not return the correct dtype"
+    assert res.dtype == promotion_table[x1, x2], "cross() did not return the correct dtype"
     assert res.shape == shape, "cross() did not return the correct shape"
 
     # cross is too different from other functions to use _test_stacks, and it
@@ -268,7 +269,7 @@ def test_matmul(x1, x2):
     else:
         res = linalg.matmul(x1, x2)
 
-    assert res.dtype == promote_dtypes(x1, x2), "matmul() did not return the correct dtype"
+    assert res.dtype == promotion_table[x1, x2], "matmul() did not return the correct dtype"
 
     if len(x1.shape) == len(x2.shape) == 1:
         assert res.shape == ()
