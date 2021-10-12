@@ -17,7 +17,7 @@ from hypothesis import assume, given
 from hypothesis.strategies import booleans, composite, none, integers, shared
 
 from .array_helpers import (assert_exactly_equal, ndindex, asarray,
-                            numeric_dtype_objects)
+                            numeric_dtype_objects, promote_dtypes)
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
@@ -28,6 +28,7 @@ from .pytest_helpers import raises
 from .test_broadcasting import broadcast_shapes
 
 from . import _array_module
+from ._array_module import linalg
 
 # Standin strategy for not yet implemented tests
 todo = none()
@@ -75,12 +76,12 @@ def _test_namedtuple(res, fields, func_name):
     kw=kwargs(upper=booleans())
 )
 def test_cholesky(x, kw):
-    res = _array_module.linalg.cholesky(x, **kw)
+    res = linalg.cholesky(x, **kw)
 
     assert res.shape == x.shape, "cholesky() did not return the correct shape"
     assert res.dtype == x.dtype, "cholesky() did not return the correct dtype"
 
-    _test_stacks(_array_module.linalg.cholesky, x, **kw, res=res)
+    _test_stacks(linalg.cholesky, x, **kw, res=res)
 
     # Test that the result is upper or lower triangular
     if kw.get('upper', False):
@@ -129,10 +130,9 @@ def test_cross(x1_x2_kw):
     shape = x1.shape
     assert x1.shape[axis] == x2.shape[axis] == 3, err
 
-    res = _array_module.linalg.cross(x1, x2, **kw)
+    res = linalg.cross(x1, x2, **kw)
 
-    # TODO: Replace result_type() with a helper function
-    assert res.dtype == _array_module.result_type(x1, x2), "cross() did not return the correct dtype"
+    assert res.dtype == promote_dtypes(x1, x2), "cross() did not return the correct dtype"
     assert res.shape == shape, "cross() did not return the correct shape"
 
     # cross is too different from other functions to use _test_stacks, and it
@@ -146,7 +146,7 @@ def test_cross(x1_x2_kw):
         x1_stack = x1[idx]
         x2_stack = x2[idx]
         assert x1_stack.shape == x2_stack.shape == (3,), "Invalid cross() stack shapes. This indicates a bug in the test suite."
-        decomp_res_stack = _array_module.linalg.cross(x1_stack, x2_stack)
+        decomp_res_stack = linalg.cross(x1_stack, x2_stack)
         assert_exactly_equal(res_stack, decomp_res_stack)
 
         exact_cross = asarray([
@@ -160,12 +160,12 @@ def test_cross(x1_x2_kw):
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
 )
 def test_det(x):
-    res = _array_module.linalg.det(x)
+    res = linalg.det(x)
 
     assert res.dtype == x.dtype, "det() did not return the correct dtype"
     assert res.shape == x.shape[:-2], "det() did not return the correct shape"
 
-    _test_stacks(_array_module.linalg.det, x, res=res, dims=0)
+    _test_stacks(linalg.det, x, res=res, dims=0)
 
     # TODO: Test that res actually corresponds to the determinant of x
 
@@ -176,7 +176,7 @@ def test_det(x):
     kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
 )
 def test_diagonal(x, kw):
-    res = _array_module.linalg.diagonal(x, **kw)
+    res = linalg.diagonal(x, **kw)
 
     assert res.dtype == x.dtype, "diagonal() returned the wrong dtype"
 
@@ -201,11 +201,11 @@ def test_diagonal(x, kw):
             x_stack_diag = [x_stack[i - offset, i] for i in range(diag_size)]
         return asarray(x_stack_diag, dtype=x.dtype)
 
-    _test_stacks(_array_module.linalg.diagonal, x, **kw, res=res, dims=1, true_val=true_diag)
+    _test_stacks(linalg.diagonal, x, **kw, res=res, dims=1, true_val=true_diag)
 
 @given(x=symmetric_matrices(finite=True))
 def test_eigh(x):
-    res = _array_module.linalg.eigh(x)
+    res = linalg.eigh(x)
 
     _test_namedtuple(res, ['eigenvalues', 'eigenvectors'], 'eigh')
 
@@ -218,9 +218,9 @@ def test_eigh(x):
     assert eigenvectors.dtype == x.dtype, "eigh().eigenvectors did not return the correct dtype"
     assert eigenvectors.shape == x.shape, "eigh().eigenvectors did not return the correct shape"
 
-    _test_stacks(lambda x: _array_module.linalg.eigh(x).eigenvalues, x,
+    _test_stacks(lambda x: linalg.eigh(x).eigenvalues, x,
                  res=eigenvalues, dims=1)
-    _test_stacks(lambda x: _array_module.linalg.eigh(x).eigenvectors, x,
+    _test_stacks(lambda x: linalg.eigh(x).eigenvectors, x,
                  res=eigenvectors, dims=2)
 
     # TODO: Test that res actually corresponds to the eigenvalues and
@@ -228,12 +228,12 @@ def test_eigh(x):
 
 @given(x=symmetric_matrices(finite=True))
 def test_eigvalsh(x):
-    res = _array_module.linalg.eigvalsh(x)
+    res = linalg.eigvalsh(x)
 
     assert res.dtype == x.dtype, "eigvalsh() did not return the correct dtype"
     assert res.shape == x.shape[:-1], "eigvalsh() did not return the correct shape"
 
-    _test_stacks(_array_module.linalg.eigvalsh, x, res=res, dims=1)
+    _test_stacks(linalg.eigvalsh, x, res=res, dims=1)
 
     # TODO: Should we test that the result is the same as eigh(x).eigenvalues?
 
@@ -241,12 +241,12 @@ def test_eigvalsh(x):
 
 @given(x=invertible_matrices())
 def test_inv(x):
-    res = _array_module.linalg.inv(x)
+    res = linalg.inv(x)
 
     assert res.shape == x.shape, "inv() did not return the correct shape"
     assert res.dtype == x.dtype, "inv() did not return the correct dtype"
 
-    _test_stacks(_array_module.linalg.inv, x, res=res)
+    _test_stacks(linalg.inv, x, res=res)
 
     # TODO: Test that the result is actually the inverse
 
@@ -262,65 +262,88 @@ def test_matmul(x1, x2):
         or len(x1.shape) >= 2 and len(x2.shape) >= 2 and x1.shape[-1] != x2.shape[-2]):
         # The spec doesn't specify what kind of exception is used here. Most
         # libraries will use a custom exception class.
-        raises(Exception, lambda: _array_module.linalg.matmul(x1, x2),
+        raises(Exception, lambda: linalg.matmul(x1, x2),
                "matmul did not raise an exception for invalid shapes")
         return
     else:
-        res = _array_module.linalg.matmul(x1, x2)
+        res = linalg.matmul(x1, x2)
 
-    # TODO: Replace result_type() with a helper function
-    assert res.dtype == _array_module.result_type(x1, x2), "matmul() did not return the correct dtype"
+    assert res.dtype == promote_dtypes(x1, x2), "matmul() did not return the correct dtype"
 
     if len(x1.shape) == len(x2.shape) == 1:
         assert res.shape == ()
     elif len(x1.shape) == 1:
         assert res.shape == x2.shape[:-2] + x2.shape[-1:]
-        _test_stacks(_array_module.linalg.matmul, x1, x2, res=res, dims=1)
+        _test_stacks(linalg.matmul, x1, x2, res=res, dims=1)
     elif len(x2.shape) == 1:
         assert res.shape == x1.shape[:-1]
-        _test_stacks(_array_module.linalg.matmul, x1, x2, res=res, dims=1)
+        _test_stacks(linalg.matmul, x1, x2, res=res, dims=1)
     else:
         stack_shape = broadcast_shapes(x1.shape[:-2], x2.shape[:-2])
         assert res.shape == stack_shape + (x1.shape[-2], x2.shape[-1])
-        _test_stacks(_array_module.linalg.matmul, x1, x2, res=res)
+        _test_stacks(linalg.matmul, x1, x2, res=res)
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
     kw=kwargs(axis=todo, keepdims=todo, ord=todo)
 )
 def test_matrix_norm(x, kw):
-    # res = _array_module.linalg.matrix_norm(x, **kw)
+    # res = linalg.matrix_norm(x, **kw)
     pass
 
+matrix_power_n = shared(integers(-1000, 1000), key='matrix_power n')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    n=integers(),
+    # Generate any square matrix if n >= 0 but only invertible matrices if n < 0
+    x=matrix_power_n.flatmap(lambda n: invertible_matrices() if n < 0 else
+                             xps.arrays(dtype=xps.floating_dtypes(),
+                                        shape=square_matrix_shapes)),
+    n=matrix_power_n,
 )
 def test_matrix_power(x, n):
-    # res = _array_module.linalg.matrix_power(x, n)
-    pass
+    res = linalg.matrix_power(x, n)
+
+    assert res.shape == x.shape, "matrix_power() did not return the correct shape"
+    assert res.dtype == x.dtype, "matrix_power() did not return the correct dtype"
+
+    if n == 0:
+        true_val = lambda x: _array_module.eye(x.shape[0], dtype=x.dtype)
+    else:
+        true_val = None
+    # _test_stacks only works with array arguments
+    func = lambda x: linalg.matrix_power(x, n)
+    _test_stacks(func, x, res=res, true_val=true_val)
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
     kw=kwargs(rtol=todo)
 )
 def test_matrix_rank(x, kw):
-    # res = _array_module.linalg.matrix_rank(x, **kw)
+    # res = linalg.matrix_rank(x, **kw)
     pass
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=dtypes, shape=matrix_shapes),
 )
 def test_matrix_transpose(x):
-    # res = _array_module.linalg.matrix_transpose(x)
-    pass
+    res = linalg.matrix_transpose(x)
+    true_val = lambda a: _array_module.asarray([[a[i, j] for i in
+                                                range(a.shape[0])] for j in
+                                                range(a.shape[1])],
+                                               dtype=a.dtype)
+    shape = list(x.shape)
+    shape[-1], shape[-2] = shape[-2], shape[-1]
+    shape = tuple(shape)
+    assert res.shape == shape, "matrix_transpose() did not return the correct shape"
+    assert res.dtype == x.dtype, "matrix_transpose() did not return the correct dtype"
+
+    _test_stacks(linalg.matrix_transpose, x, res=res, true_val=true_val)
 
 @given(
     x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
     x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
 )
 def test_outer(x1, x2):
-    # res = _array_module.linalg.outer(x1, x2)
+    # res = linalg.outer(x1, x2)
     pass
 
 @given(
@@ -328,7 +351,7 @@ def test_outer(x1, x2):
     kw=kwargs(rtol=todo)
 )
 def test_pinv(x, kw):
-    # res = _array_module.linalg.pinv(x, **kw)
+    # res = linalg.pinv(x, **kw)
     pass
 
 @given(
@@ -336,14 +359,14 @@ def test_pinv(x, kw):
     kw=kwargs(mode=todo)
 )
 def test_qr(x, kw):
-    # res = _array_module.linalg.qr(x, **kw)
+    # res = linalg.qr(x, **kw)
     pass
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
 )
 def test_slogdet(x):
-    # res = _array_module.linalg.slogdet(x)
+    # res = linalg.slogdet(x)
     pass
 
 @given(
@@ -351,7 +374,7 @@ def test_slogdet(x):
     x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
 )
 def test_solve(x1, x2):
-    # res = _array_module.linalg.solve(x1, x2)
+    # res = linalg.solve(x1, x2)
     pass
 
 @given(
@@ -359,14 +382,14 @@ def test_solve(x1, x2):
     kw=kwargs(full_matrices=todo)
 )
 def test_svd(x, kw):
-    # res = _array_module.linalg.svd(x, **kw)
+    # res = linalg.svd(x, **kw)
     pass
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
 )
 def test_svdvals(x):
-    # res = _array_module.linalg.svdvals(x)
+    # res = linalg.svdvals(x)
     pass
 
 @given(
@@ -375,7 +398,7 @@ def test_svdvals(x):
     kw=kwargs(axes=todo)
 )
 def test_tensordot(x1, x2, kw):
-    # res = _array_module.linalg.tensordot(x1, x2, **kw)
+    # res = linalg.tensordot(x1, x2, **kw)
     pass
 
 @given(
@@ -383,7 +406,7 @@ def test_tensordot(x1, x2, kw):
     kw=kwargs(offset=todo)
 )
 def test_trace(x, kw):
-    # res = _array_module.linalg.trace(x, **kw)
+    # res = linalg.trace(x, **kw)
     pass
 
 @given(
@@ -392,7 +415,7 @@ def test_trace(x, kw):
     kw=kwargs(axis=todo)
 )
 def test_vecdot(x1, x2, kw):
-    # res = _array_module.linalg.vecdot(x1, x2, **kw)
+    # res = linalg.vecdot(x1, x2, **kw)
     pass
 
 @given(
@@ -400,5 +423,5 @@ def test_vecdot(x1, x2, kw):
     kw=kwargs(axis=todo, keepdims=todo, ord=todo)
 )
 def test_vector_norm(x, kw):
-    # res = _array_module.linalg.vector_norm(x, **kw)
+    # res = linalg.vector_norm(x, **kw)
     pass

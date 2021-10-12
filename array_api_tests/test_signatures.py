@@ -21,12 +21,12 @@ def stub_module(name):
 def extension_module(name):
     return name in submodules and name in function_stubs.__all__
 
-extension_module_names = {}
+extension_module_names = []
 for n in function_stubs.__all__:
     if extension_module(n):
-        extension_module_names.update({i: n for i in getattr(function_stubs, n).__all__})
+        extension_module_names.extend([f'{n}.{i}' for i in getattr(function_stubs, n).__all__])
 
-all_names = function_stubs.__all__ + list(extension_module_names)
+all_names = function_stubs.__all__ + extension_module_names
 
 def array_method(name):
     return stub_module(name) == 'array_object'
@@ -134,8 +134,8 @@ def example_argument(arg, func_name, dtype):
 def test_has_names(name):
     if extension_module(name):
         assert hasattr(mod, name), f'{mod_name} is missing the {name} extension'
-    elif name in extension_module_names:
-        extension_mod = extension_module_names[name]
+    elif '.' in name:
+        extension_mod, name = name.split('.')
         assert hasattr(getattr(mod, extension_mod), name), f"{mod_name} is missing the {function_category(name)} extension function {name}()"
     elif array_method(name):
         arr = ones((1, 1))
@@ -178,9 +178,10 @@ def test_function_positional_args(name):
         else:
             _mod = example_argument('self', name, dtype)
         stub_func = getattr(function_stubs, name)
-    elif name in extension_module_names:
-        _mod = getattr(mod, extension_module_names[name])
-        stub_func = getattr(getattr(function_stubs, extension_module_names[name]), name)
+    elif '.' in name:
+        extension_module_name, name = name.split('.')
+        _mod = getattr(mod, extension_module_name)
+        stub_func = getattr(getattr(function_stubs, extension_module_name), name)
     else:
         _mod = mod
         stub_func = getattr(function_stubs, name)
@@ -230,9 +231,10 @@ def test_function_keyword_only_args(name):
     if array_method(name):
         _mod = ones((1, 1))
         stub_func = getattr(function_stubs, name)
-    elif name in extension_module_names:
-        _mod = getattr(mod, extension_module_names[name])
-        stub_func = getattr(getattr(function_stubs, extension_module_names[name]), name)
+    elif '.' in name:
+        extension_module_name, name = name.split('.')
+        _mod = getattr(mod, extension_module_name)
+        stub_func = getattr(getattr(function_stubs, extension_module_name), name)
     else:
         _mod = mod
         stub_func = getattr(function_stubs, name)
