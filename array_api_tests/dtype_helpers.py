@@ -86,7 +86,6 @@ _numeric_promotions = {
 promotion_table = {
     (xp.bool, xp.bool): xp.bool,
     **_numeric_promotions,
-    # TODO: dont unpack pairs of the same dtype
     **{(d2, d1): res for (d1, d2), res in _numeric_promotions.items()},
 }
 
