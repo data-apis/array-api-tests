@@ -2,11 +2,13 @@ from functools import reduce
 from operator import mul
 from math import sqrt
 import itertools
+from typing import Tuple
 
 from hypothesis import assume
 from hypothesis.strategies import (lists, integers, sampled_from,
                                    shared, floats, just, composite, one_of,
                                    none, booleans)
+from hypothesis.strategies._internal.strategies import SearchStrategy
 
 from .pytest_helpers import nargs
 from .array_helpers import (dtype_ranges, integer_dtype_objects,
@@ -114,9 +116,16 @@ matrix_shapes = xps.array_shapes(min_dims=2, min_side=1).filter(
 
 square_matrix_shapes = matrix_shapes.filter(lambda shape: shape[-1] == shape[-2])
 
-two_mutually_broadcastable_shapes = xps.mutually_broadcastable_shapes(num_shapes=2)\
-    .map(lambda S: S.input_shapes)\
-    .filter(lambda S: all(prod(i for i in shape if i) < MAX_ARRAY_SIZE for shape in S))
+def mutually_broadcastable_shapes(num_shapes: int) -> SearchStrategy[Tuple[Tuple]]:
+    return (
+        xps.mutually_broadcastable_shapes(num_shapes)
+        .map(lambda BS: BS.input_shapes)
+        .filter(lambda shapes: all(
+            prod(i for i in s if i > 0) < MAX_ARRAY_SIZE for s in shapes
+        ))
+    )
+
+two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(2)
 
 # Note: This should become hermitian_matrices when complex dtypes are added
 @composite

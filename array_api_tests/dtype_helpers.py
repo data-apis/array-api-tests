@@ -9,8 +9,10 @@ __all__ = [
     'dtype_signed',
     'func_in_categories',
     'func_out_categories',
-    'binary_func_to_op',
-    'unary_func_to_op',
+    'op_in_categories',
+    'op_out_categories',
+    'binary_op_to_symbol',
+    'unary_op_to_symbol',
 ]
 
 
@@ -222,7 +224,14 @@ func_out_categories = {
 }
 
 
-binary_func_to_op = {
+unary_op_to_symbol = {
+    '__invert__': '~',
+    '__neg__': '-',
+    '__pos__': '+',
+}
+
+
+binary_op_to_symbol = {
     '__add__': '+',
     '__and__': '&',
     '__eq__': '==',
@@ -242,14 +251,6 @@ binary_func_to_op = {
     '__sub__': '-',
     '__truediv__': '/',
     '__xor__': '^',
-}
-
-
-unary_func_to_op = {
-    '__abs__': 'abs()',
-    '__invert__': '~',
-    '__neg__': '-',
-    '__pos__': '+',
 }
 
 
@@ -280,6 +281,8 @@ _operator_to_elementwise = {
 }
 
 
+op_in_categories = {}
+op_out_categories = {}
 for op_func, elwise_func in _operator_to_elementwise.items():
-    func_in_categories[op_func] = func_in_categories[elwise_func]
-    func_out_categories[op_func] = func_out_categories[elwise_func]
+    op_in_categories[op_func] = func_in_categories[elwise_func]
+    op_out_categories[op_func] = func_out_categories[elwise_func]

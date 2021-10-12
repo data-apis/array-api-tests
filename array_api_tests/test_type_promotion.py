@@ -6,13 +6,14 @@ from itertools import product
 from typing import Iterator, Literal
 
 import pytest
-from hypothesis import given
+from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from . import _array_module as xp
 from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
+from . import xps
 from .function_stubs import elementwise_functions
 from .pytest_helpers import nargs
 
@@ -42,19 +43,17 @@ def generate_params(
                         yield pytest.param(func, ((d1, d2), d3), id=f"{func}({d1}, {d2}) -> {d3}")
     else:
         if in_nargs == 1:
-            for func, op in dh.unary_func_to_op.items():
-                if func == "__matmul__":
-                    continue
-                if dh.func_out_categories[func] == out_category:
-                    in_category = dh.func_in_categories[func]
+            for func, op in dh.unary_op_to_symbol.items():
+                if dh.op_out_categories[func] == out_category:
+                    in_category = dh.op_in_categories[func]
                     for in_dtype in dh.category_to_dtypes[in_category]:
                         yield pytest.param(func, op, in_dtype, id=f"{func}({in_dtype})")
         else:
-            for func, op in dh.binary_func_to_op.items():
+            for func, op in dh.binary_op_to_symbol.items():
                 if func == "__matmul__":
                     continue
-                if dh.func_out_categories[func] == out_category:
-                    in_category = dh.func_in_categories[func]
+                if dh.op_out_categories[func] == out_category:
+                    in_category = dh.op_in_categories[func]
                     for ((d1, d2), d3) in dh.promotion_table.items():
                         if all(d in dh.category_to_dtypes[in_category] for d in (d1, d2)):
                             if out_category == 'bool':
@@ -64,236 +63,140 @@ def generate_params(
                                     yield pytest.param(func, op, ((d1, d2), d3), id=f"{func}({d1}, {d2}) -> {d3}")
 
 
-
-# TODO: These functions should still do type promotion internally, but we do
-# not test this here (it is tested in the corresponding tests in
-# test_elementwise_functions.py). This can affect the resulting values if not
-# done correctly. For example, greater_equal(array(1.0, dtype=float32),
-# array(1.00000001, dtype=float64)) will be wrong if the float64 array is
-# downcast to float32. See for instance
-# https://github.com/numpy/numpy/issues/10322.
-@pytest.mark.parametrize('func, dtypes', generate_params('elementwise', in_nargs=2, out_category='bool'))
-# The spec explicitly requires type promotion to work for shape 0
-# Unfortunately, data(), isn't compatible with @example, so this is commented
-# out for now.
-# @example(shape=(0,))
-@given(two_shapes=hh.two_mutually_broadcastable_shapes, data=st.data())
-def test_elementwise_two_args_return_bool(func, two_shapes, dtypes, data):
-    assert nargs(func) == 2
-    func = getattr(xp, func)
-
-    dtype1, dtype2 = dtypes
-
-    fillvalue1 = data.draw(hh.scalars(st.just(dtype1)))
-    if func in ['bitwise_left_shift', 'bitwise_right_shift']:
-        fillvalue2 = data.draw(hh.scalars(st.just(dtype2)).filter(lambda x: x > 0))
-    else:
-        fillvalue2 = data.draw(hh.scalars(st.just(dtype2)))
+def generate_func_params() -> Iterator:
+    for func_name in elementwise_functions.__all__:
+        func = getattr(xp, func_name)
+        in_category = dh.func_in_categories[func_name]
+        out_category = dh.func_out_categories[func_name]
+        valid_in_dtypes = dh.category_to_dtypes[in_category]
+        ndtypes = nargs(func_name)
+        if ndtypes == 1:
+            for in_dtype in valid_in_dtypes:
+                out_dtype = in_dtype if out_category == 'promoted' else xp.bool
+                yield pytest.param(
+                    func, (in_dtype,), out_dtype, id=f"{func_name}({in_dtype}) -> {out_dtype}"
+                )
+        elif ndtypes == 2:
+            for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
+                if in_dtype1 in valid_in_dtypes and in_dtype2 in valid_in_dtypes:
+                    out_dtype = promoted_dtype if out_category == 'promoted' else xp.bool
+                    yield pytest.param(
+                        func, (in_dtype1, in_dtype2), out_dtype, id=f'{func_name}({in_dtype1}, {in_dtype2}) -> {out_dtype}'
+                    )
+        else:
+            raise NotImplementedError()
 
 
-    for i in [func, dtype1, dtype2]:
-        if isinstance(i, xp._UndefinedStub):
-            i._raise()
-
-    shape1, shape2 = two_shapes
-    a1 = ah.full(shape1, fillvalue1, dtype=dtype1)
-    a2 = ah.full(shape2, fillvalue2, dtype=dtype2)
-    res = func(a1, a2)
-
-    assert res.dtype == xp.bool, f"{func}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to bool (shapes={shape1, shape2})"
-
-# TODO: Extend this to all functions (not just elementwise), and handle
-# functions that take more than 2 args
-@pytest.mark.parametrize('func, dtypes', generate_params('elementwise', in_nargs=2, out_category='promoted'))
-# The spec explicitly requires type promotion to work for shape 0
-# Unfortunately, data(), isn't compatible with @example, so this is commented
-# out for now.
-# @example(shape=(0,))
-@given(two_shapes=hh.two_mutually_broadcastable_shapes, data=st.data())
-def test_elementwise_two_args_return_promoted(func,
-                                                              two_shapes, dtypes,
-                                                              data):
-    assert nargs(func) == 2
-    func = getattr(xp, func)
-
-    (dtype1, dtype2), res_dtype = dtypes
-    fillvalue1 = data.draw(hh.scalars(st.just(dtype1)))
-    if func in ['bitwise_left_shift', 'bitwise_right_shift']:
-        fillvalue2 = data.draw(hh.scalars(st.just(dtype2)).filter(lambda x: x > 0))
-    else:
-        fillvalue2 = data.draw(hh.scalars(st.just(dtype2)))
+@pytest.mark.parametrize('func, in_dtypes, out_dtype', generate_func_params())
+@given(data=st.data())
+def test_func_returns_array_with_correct_dtype(func, in_dtypes, out_dtype, data):
+    arrays = []
+    shapes = data.draw(hh.mutually_broadcastable_shapes(len(in_dtypes)), label='shapes')
+    for i, (dtype, shape) in enumerate(zip(in_dtypes, shapes), 1):
+        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label='x{i}')
+        arrays.append(x)
+    out = func(*arrays)
+    assert out.dtype == out_dtype, f"{out.dtype=!s}, but should be {out_dtype}"
 
 
-    for i in [func, dtype1, dtype2, res_dtype]:
-        if isinstance(i, xp._UndefinedStub):
-            i._raise()
-
-    shape1, shape2 = two_shapes
-    a1 = ah.full(shape1, fillvalue1, dtype=dtype1)
-    a2 = ah.full(shape2, fillvalue2, dtype=dtype2)
-    res = func(a1, a2)
-
-    assert res.dtype == res_dtype, f"{func}({dtype1}, {dtype2}) promoted to {res.dtype}, should have promoted to {res_dtype} (shapes={shape1, shape2})"
-
-# TODO: Extend this to all functions (not just elementwise), and handle
-# functions that take more than 2 args
-@pytest.mark.parametrize('func, dtype', generate_params('elementwise', in_nargs=1, out_category='bool'))
-# The spec explicitly requires type promotion to work for shape 0
-# Unfortunately, data(), isn't compatible with @example, so this is commented
-# out for now.
-# @example(shape=(0,))
-@given(shape=hh.shapes, data=st.data())
-def test_elementwise_one_arg_return_bool(func, shape, dtype, data):
-    assert nargs(func) == 1
-    func = getattr(xp, func)
-
-    fillvalue = data.draw(hh.scalars(st.just(dtype)))
-
-    for i in [func, dtype]:
-        if isinstance(i, xp._UndefinedStub):
-            i._raise()
-
-    x = ah.full(shape, fillvalue, dtype=dtype)
-    res = func(x)
-
-    assert res.dtype == xp.bool, f"{func}({dtype}) returned to {res.dtype}, should have promoted to bool (shape={shape})"
-
-# TODO: Extend this to all functions (not just elementwise), and handle
-# functions that take more than 2 args
-@pytest.mark.parametrize('func,dtype', generate_params('elementwise', in_nargs=1, out_category='promoted'))
-# The spec explicitly requires type promotion to work for shape 0
-# Unfortunately, data(), isn't compatible with @example, so this is commented
-# out for now.
-# @example(shape=(0,))
-@given(shape=hh.shapes, data=st.data())
-def test_elementwise_one_arg_return_promoted(func, shape,
-                                                     dtype, data):
-    assert nargs(func) == 1
-    func = getattr(xp, func)
-
-    fillvalue = data.draw(hh.scalars(st.just(dtype)))
-
-    for i in [func, dtype]:
-        if isinstance(i, xp._UndefinedStub):
-            i._raise()
-
-    x = ah.full(shape, fillvalue, dtype=dtype)
-    res = func(x)
-
-    assert res.dtype == dtype, f"{func}({dtype}) returned to {res.dtype}, should have promoted to {dtype} (shape={shape})"
+def generate_unary_op_params() -> Iterator:
+    for op, symbol in dh.unary_op_to_symbol.items():
+        if op == '__abs__':
+            continue
+        in_category = dh.op_in_categories[op]
+        out_category = dh.op_out_categories[op]
+        valid_in_dtypes = dh.category_to_dtypes[in_category]
+        for in_dtype in valid_in_dtypes:
+            out_dtype = in_dtype if out_category == 'promoted' else xp.bool
+            yield pytest.param(symbol, in_dtype, out_dtype, id=f'{op}({in_dtype}) -> {out_dtype}')
 
 
-# TODO: Extend this to all functions (not just elementwise), and handle
-# functions that take more than 2 args
-@pytest.mark.parametrize(
-    'unary_op_name, unary_op, dtype',
-    generate_params('operator', in_nargs=1, out_category='promoted'),
-)
-# The spec explicitly requires type promotion to work for shape 0
-# Unfortunately, data(), isn't compatible with @example, so this is commented
-# out for now.
-# @example(shape=(0,))
-@given(shape=hh.shapes, data=st.data())
-def test_operator_one_arg_return_promoted(unary_op_name, unary_op, shape, dtype, data):
-    fillvalue = data.draw(hh.scalars(st.just(dtype)))
-
-    if isinstance(dtype, xp._UndefinedStub):
-        dtype._raise()
-
-    a = ah.full(shape, fillvalue, dtype=dtype)
-
-    get_locals = lambda: dict(a=a)
-
-    if unary_op_name == '__abs__':
-        # This is the built-in abs(), not the array module's abs()
-        expression = 'abs(a)'
-    else:
-        expression = f'{unary_op} a'
-    res = eval(expression, get_locals())
-
-    assert res.dtype == dtype, f"{unary_op}({dtype}) returned to {res.dtype}, should have promoted to {dtype} (shape={shape})"
-
-@pytest.mark.parametrize(
-    'func, op, dtypes',
-    generate_params('operator', in_nargs=2, out_category='bool')
-)
-@given(two_shapes=hh.two_mutually_broadcastable_shapes, data=st.data())
-def test_operator_two_args_return_bool(func, op, dtypes, two_shapes, data):
-    dtype1, dtype2 = dtypes
-    fillvalue1 = data.draw(hh.scalars(st.just(dtype1)))
-    fillvalue2 = data.draw(hh.scalars(st.just(dtype2)))
-
-    for i in [dtype1, dtype2]:
-        if isinstance(i, xp._UndefinedStub):
-            i._raise()
-
-    shape1, shape2 = two_shapes
-    a1 = ah.full(shape1, fillvalue1, dtype=dtype1)
-    a2 = ah.full(shape2, fillvalue2, dtype=dtype2)
-
-    get_locals = lambda: dict(a1=a1, a2=a2)
-    expression = f'a1 {op} a2'
-    res = eval(expression, get_locals())
-
-    assert res.dtype == xp.bool, f"{dtype1} {op} {dtype2} promoted to {res.dtype}, should have promoted to bool (shape={shape1, shape2})"
-
-@pytest.mark.parametrize('func, op, dtypes', generate_params('operator', in_nargs=2, out_category='promoted'))
-@given(two_shapes=hh.two_mutually_broadcastable_shapes, data=st.data())
-def test_operator_two_args_return_promoted(func, op, dtypes, two_shapes, data):
-    (dtype1, dtype2), res_dtype = dtypes
-    fillvalue1 = data.draw(hh.scalars(st.just(dtype1)))
-    if op in ['>>', '<<']:
-        fillvalue2 = data.draw(hh.scalars(st.just(dtype2)).filter(lambda x: x > 0))
-    else:
-        fillvalue2 = data.draw(hh.scalars(st.just(dtype2)))
+@pytest.mark.parametrize('op_symbol, in_dtype, out_dtype', generate_unary_op_params())
+@given(data=st.data())
+def test_unary_operator_returns_array_with_correct_dtype(op_symbol, in_dtype, out_dtype, data):
+    x = data.draw(xps.arrays(dtype=in_dtype, shape=hh.shapes), label='x')
+    out = eval(f'{op_symbol}x', {"x": x})
+    assert out.dtype == out_dtype, f"{out.dtype=!s}, but should be {out_dtype}"
 
 
-    for i in [dtype1, dtype2, res_dtype]:
-        if isinstance(i, xp._UndefinedStub):
-            i._raise()
+def generate_abs_op_params() -> Iterator:
+    in_category = dh.op_in_categories['__abs__']
+    out_category = dh.op_out_categories['__abs__']
+    valid_in_dtypes = dh.category_to_dtypes[in_category]
+    for in_dtype in valid_in_dtypes:
+        out_dtype = in_dtype if out_category == 'promoted' else xp.bool
+        yield pytest.param(in_dtype, out_dtype, id=f'__abs__({in_dtype}) -> {out_dtype}')
 
-    shape1, shape2 = two_shapes
-    a1 = ah.full(shape1, fillvalue1, dtype=dtype1)
-    a2 = ah.full(shape2, fillvalue2, dtype=dtype2)
 
-    get_locals = lambda: dict(a1=a1, a2=a2)
-    expression = f'a1 {op} a2'
-    res = eval(expression, get_locals())
+@pytest.mark.parametrize('in_dtype, out_dtype', generate_abs_op_params())
+@given(data=st.data())
+def test_abs_operator_returns_array_with_correct_dtype(in_dtype, out_dtype, data):
+    x = data.draw(xps.arrays(dtype=in_dtype, shape=hh.shapes), label='x')
+    out = eval('abs(x)', {"x": x})
+    assert out.dtype == out_dtype, f"{out.dtype=!s}, but should be {out_dtype}"
 
-    assert res.dtype == res_dtype, f"{dtype1} {op} {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
 
-@pytest.mark.parametrize('func, op, dtypes', generate_params('operator', in_nargs=2, out_category='promoted'))
-@given(two_shapes=hh.two_broadcastable_shapes(), data=st.data())
-def test_operator_inplace_two_args_return_promoted(func, op, dtypes, two_shapes,
-                                    data):
-    (dtype1, dtype2), res_dtype = dtypes
-    fillvalue1 = data.draw(hh.scalars(st.just(dtype1)))
-    if func in ['>>', '<<']:
-        fillvalue2 = data.draw(hh.scalars(st.just(dtype2)).filter(lambda x: x > 0))
-    else:
-        fillvalue2 = data.draw(hh.scalars(st.just(dtype2)))
+def generate_binary_op_params() -> Iterator:
+    for op, symbol in dh.binary_op_to_symbol.items():
+        if op == '__matmul__' or 'shift' in op:
+            continue
+        in_category = dh.op_in_categories[op]
+        out_category = dh.op_out_categories[op]
+        valid_in_dtypes = dh.category_to_dtypes[in_category]
+        for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
+            if in_dtype1 in valid_in_dtypes and in_dtype2 in valid_in_dtypes:
+                out_dtype = promoted_dtype if out_category == 'promoted' else xp.bool
+                yield pytest.param(
+                    symbol,
+                    (in_dtype1, in_dtype2),
+                    out_dtype,
+                    id=f'{op}({in_dtype1}, {in_dtype2}) -> {out_dtype}'
+                )
 
-    for i in [dtype1, dtype2, res_dtype]:
-        if isinstance(i, xp._UndefinedStub):
-            i._raise()
 
-    shape1, shape2 = two_shapes
-    a1 = ah.full(shape1, fillvalue1, dtype=dtype1)
-    a2 = ah.full(shape2, fillvalue2, dtype=dtype2)
+@pytest.mark.parametrize('op_symbol, in_dtypes, out_dtype', generate_binary_op_params())
+@given(shapes=hh.mutually_broadcastable_shapes(2), data=st.data())
+def test_binary_operator_returns_array_with_correct_dtype(op_symbol, in_dtypes, out_dtype, shapes, data):
+    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
+    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
+    out = eval(f'x1 {op_symbol} x2', {"x1": x1, "x2": x2})
+    assert out.dtype == out_dtype, f"{out.dtype=!s}, but should be {out_dtype}"
 
-    get_locals = lambda: dict(a1=a1, a2=a2)
 
-    res_locals = get_locals()
-    expression = f'a1 {op}= a2'
-    exec(expression, res_locals)
-    res = res_locals['a1']
+def generate_inplace_op_params() -> Iterator:
+    for op, symbol in dh.binary_op_to_symbol.items():
+        if op == '__matmul__' or 'shift' in op or '=' in symbol or '<' in symbol or '>' in symbol:
+            continue
+        in_category = dh.op_in_categories[op]
+        out_category = dh.op_out_categories[op]
+        valid_in_dtypes = dh.category_to_dtypes[in_category]
+        for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
+            if in_dtype1 == promoted_dtype and in_dtype1 in valid_in_dtypes and in_dtype2 in valid_in_dtypes:
+                out_dtype = promoted_dtype if out_category == 'promoted' else xp.bool
+                yield pytest.param(
+                    f'{symbol}=',
+                    (in_dtype1, in_dtype2),
+                    out_dtype,
+                    id=f'__i{op[2:]}({in_dtype1}, {in_dtype2}) -> {out_dtype}'
+                )
 
-    assert res.dtype == res_dtype, f"{dtype1} {op}= {dtype2} promoted to {res.dtype}, should have promoted to {res_dtype} (shape={shape1, shape2})"
+
+@pytest.mark.parametrize('op_symbol, in_dtypes, out_dtype', generate_inplace_op_params())
+@given(shapes=hh.mutually_broadcastable_shapes(2), data=st.data())
+def test_inplace_operator_returns_array_with_correct_dtype(op_symbol, in_dtypes, out_dtype, shapes, data):
+    assume(len(shapes[0]) >= len(shapes[1]))
+    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
+    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
+    locals_ = {"x1": x1, "x2": x2}
+    exec(f'x1 {op_symbol} x2', locals_)
+    x1 = locals_["x1"]
+    assert x1.dtype == out_dtype, f"{x1.dtype=!s}, but should be {out_dtype}"
+
 
 scalar_promotion_parametrize_inputs = [
     pytest.param(func, dtype, scalar_type, id=f"{func}-{dtype}-{scalar_type.__name__}")
-    for func in sorted(set(dh.binary_func_to_op) - {'__matmul__'})
-    for dtype in dh.category_to_dtypes[dh.func_in_categories[func]]
+    for func in sorted(set(dh.binary_op_to_symbol) - {'__matmul__'})
+    for dtype in dh.category_to_dtypes[dh.op_in_categories[func]]
     for scalar_type in dh.dtypes_to_scalars[dtype]
 ]
 
@@ -305,7 +208,7 @@ def test_operator_scalar_arg_return_promoted(func, dtype, scalar_type,
     """
     See https://st.data-apis.github.io/array-api/latest/API_specification/type_promotion.html#mixing-arrays-with-python-hh.scalars
     """
-    op = dh.binary_func_to_op[func]
+    op = dh.binary_op_to_symbol[func]
     if op == '@':
         pytest.skip("matmul (@) is not supported for hh.scalars")
 
