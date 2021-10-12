@@ -110,6 +110,8 @@ shapes = xps.array_shapes(min_dims=0, min_side=0).filter(
     lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
 )
 
+one_d_shapes = xps.array_shapes(min_dims=1, max_dims=1, min_side=0, max_side=SQRT_MAX_ARRAY_SIZE)
+
 # Matrix shapes assume stacks of matrices
 matrix_shapes = xps.array_shapes(min_dims=2, min_side=1).filter(
     lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
