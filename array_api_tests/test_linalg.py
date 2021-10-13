@@ -17,7 +17,8 @@ from hypothesis import assume, given
 from hypothesis.strategies import booleans, composite, none, tuples, integers, shared
 
 from .array_helpers import (assert_exactly_equal, ndindex, asarray,
-                            numeric_dtype_objects, promote_dtypes)
+                            numeric_dtype_objects, promote_dtypes, equal,
+                            zero, infinity)
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
@@ -378,11 +379,38 @@ def test_qr(x, kw):
     pass
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
 )
 def test_slogdet(x):
-    # res = linalg.slogdet(x)
-    pass
+    res = linalg.slogdet(x)
+
+    _test_namedtuple(res, ['sign', 'logabsdet'], 'slotdet')
+
+    sign, logabsdet = res
+
+    assert sign.dtype == x.dtype, "slogdet().sign did not return the correct dtype"
+    assert sign.shape == x.shape[:-2], "slogdet().sign did not return the correct shape"
+    assert logabsdet.dtype == x.dtype, "slogdet().logabsdet did not return the correct dtype"
+    assert logabsdet.shape == x.shape[:-2], "slogdet().logabsdet did not return the correct shape"
+
+
+    _test_stacks(lambda x: linalg.slogdet(x).sign, x,
+                 res=sign, dims=0)
+    _test_stacks(lambda x: linalg.slogdet(x).logabsdet, x,
+                 res=logabsdet, dims=0)
+
+    # Check that when the determinant is 0, the sign and logabsdet are (0,
+    # -inf).
+    d = linalg.det(x)
+    zero_det = equal(d, zero(d.shape, d.dtype))
+    assert_exactly_equal(sign[zero_det], zero(sign[zero_det].shape, x.dtype))
+    assert_exactly_equal(logabsdet[zero_det], -infinity(logabsdet[zero_det].shape, x.dtype))
+
+    # More generally, det(x) should equal sign*exp(logabsdet), but this does
+    # not hold exactly due to floating-point loss of precision.
+
+    # TODO: Test this when we have tests for floating-point values.
+    # assert all(abs(linalg.det(x) - sign*exp(logabsdet)) < eps)
 
 @given(
     x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
