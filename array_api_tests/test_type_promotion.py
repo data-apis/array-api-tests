@@ -229,7 +229,7 @@ def test_operator_scalar_arg_return_promoted(
         pytest.skip('matmul (@) is not supported for hh.scalars')
 
     if dtype in dh.category_to_dtypes['integer']:
-        s = python_scalars.draw(st.integers(*ah.dtype_ranges[dtype]))
+        s = python_scalars.draw(st.integers(*dh.dtype_ranges[dtype]))
     else:
         s = python_scalars.draw(st.from_type(scalar_type))
     scalar_as_array = ah.asarray(s, dtype=dtype)

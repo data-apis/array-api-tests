@@ -6,11 +6,12 @@ from hypothesis import given, strategies as st, settings
 from .. import _array_module as xp
 from .._array_module import _UndefinedStub
 from .. import array_helpers as ah
+from .. import dtype_helpers as dh
 from .. import hypothesis_helpers as hh
 from ..test_broadcasting import broadcast_shapes
 from ..test_elementwise_functions import sanity_check
 
-UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in ah.dtype_objects)
+UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in dh.all_dtypes)
 pytestmark = [pytest.mark.skipif(UNDEFINED_DTYPES, reason="undefined dtypes")]
 
 @given(hh.mutually_promotable_dtypes([xp.float32, xp.float64]))

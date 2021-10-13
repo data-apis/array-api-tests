@@ -4,11 +4,12 @@ from ._array_module import (asarray, arange, ceil, empty, empty_like, eye, full,
                             full_like, equal, all, linspace, ones, ones_like,
                             zeros, zeros_like, isnan)
 from . import _array_module as xp
-from .array_helpers import (is_integer_dtype, dtype_ranges,
+from .array_helpers import (is_integer_dtype,
                             assert_exactly_equal, isintegral, is_float_dtype)
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  shapes, sizes, sqrt_sizes, shared_dtypes,
                                  scalars, kwargs)
+from . dtype_helpers import dtype_ranges
 from . import xps
 
 from hypothesis import assume, given

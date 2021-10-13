@@ -5,10 +5,7 @@ from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
                             zeros, ones, full, bool, int8, int16, int32,
                             int64, uint8, uint16, uint32, uint64, float32,
                             float64, nan, inf, pi, remainder, divide, isinf,
-                            negative, _integer_dtypes, _floating_dtypes,
-                            _numeric_dtypes, _boolean_dtypes, _dtypes,
-                            asarray)
-from . import _array_module
+                            negative, asarray)
 
 # These are exported here so that they can be included in the special cases
 # tests from this file.
@@ -27,7 +24,7 @@ __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'assert_positive_mathematical_sign', 'negative_mathematical_sign',
            'assert_negative_mathematical_sign', 'same_sign',
            'assert_same_sign', 'ndindex', 'float64',
-           'asarray', 'is_integer_dtype', 'is_float_dtype', 'dtype_ranges',
+           'asarray', 'is_integer_dtype', 'is_float_dtype',
            'full', 'true', 'false', 'isnan']
 
 def zero(shape, dtype):
@@ -312,13 +309,6 @@ def same_sign(x, y):
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
 
-integer_dtype_objects = [getattr(_array_module, t) for t in _integer_dtypes]
-floating_dtype_objects = [getattr(_array_module, t) for t in _floating_dtypes]
-numeric_dtype_objects = [getattr(_array_module, t) for t in _numeric_dtypes]
-boolean_dtype_objects = [getattr(_array_module, t) for t in _boolean_dtypes]
-integer_or_boolean_dtype_objects = integer_dtype_objects + boolean_dtype_objects
-dtype_objects = [getattr(_array_module, t) for t in _dtypes]
-
 def is_integer_dtype(dtype):
     if dtype is None:
         return False
@@ -331,17 +321,6 @@ def is_float_dtype(dtype):
     # TODO: Return True even for floating point dtypes that aren't part of the
     # spec, like np.float16
     return dtype in [float32, float64]
-
-dtype_ranges = {
-    int8: [-128, +127],
-    int16: [-32_768, +32_767],
-    int32: [-2_147_483_648, +2_147_483_647],
-    int64: [-9_223_372_036_854_775_808, +9_223_372_036_854_775_807],
-    uint8: [0, +255],
-    uint16: [0, +65_535],
-    uint32: [0, +4_294_967_295],
-    uint64: [0, +18_446_744_073_709_551_615],
-}
 
 def int_to_dtype(x, n, signed):
     """

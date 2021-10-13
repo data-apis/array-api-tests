@@ -16,15 +16,14 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 from hypothesis import assume, given
 from hypothesis.strategies import booleans, composite, none, integers, shared
 
-from .array_helpers import (assert_exactly_equal, ndindex, asarray,
-                            numeric_dtype_objects)
+from .array_helpers import assert_exactly_equal, ndindex, asarray
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
                                  invertible_matrices, two_mutual_arrays,
                                  mutually_promotable_dtypes)
 from .pytest_helpers import raises
-from .dtype_helpers import promotion_table
+from . import dtype_helpers as dh
 
 from .test_broadcasting import broadcast_shapes
 
@@ -92,7 +91,7 @@ def test_cholesky(x, kw):
 
 
 @composite
-def cross_args(draw, dtype_objects=numeric_dtype_objects):
+def cross_args(draw, dtype_objects=dh.numeric_dtypes):
     """
     cross() requires two arrays with a size 3 in the 'axis' dimension
 
@@ -133,7 +132,7 @@ def test_cross(x1_x2_kw):
 
     res = linalg.cross(x1, x2, **kw)
 
-    assert res.dtype == promotion_table[x1, x2], "cross() did not return the correct dtype"
+    assert res.dtype == dh.promotion_table[x1, x2], "cross() did not return the correct dtype"
     assert res.shape == shape, "cross() did not return the correct shape"
 
     # cross is too different from other functions to use _test_stacks, and it
@@ -252,7 +251,7 @@ def test_inv(x):
     # TODO: Test that the result is actually the inverse
 
 @given(
-    *two_mutual_arrays(numeric_dtype_objects)
+    *two_mutual_arrays(dh.numeric_dtypes)
 )
 def test_matmul(x1, x2):
     # TODO: Make this also test the @ operator
@@ -269,7 +268,7 @@ def test_matmul(x1, x2):
     else:
         res = linalg.matmul(x1, x2)
 
-    assert res.dtype == promotion_table[x1, x2], "matmul() did not return the correct dtype"
+    assert res.dtype == dh.promotion_table[x1, x2], "matmul() did not return the correct dtype"
 
     if len(x1.shape) == len(x2.shape) == 1:
         assert res.shape == ()

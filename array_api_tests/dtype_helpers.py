@@ -2,7 +2,15 @@ from . import _array_module as xp
 
 
 __all__ = [
+    'int_dtypes',
+    'uint_dtypes',
+    'all_int_dtypes',
+    'float_dtypes',
+    'numeric_dtypes',
+    'all_dtypes',
+    'bool_and_all_int_dtypes',
     'dtypes_to_scalars',
+    'dtype_ranges',
     'category_to_dtypes',
     'promotion_table',
     'dtype_nbits',
@@ -23,12 +31,25 @@ all_int_dtypes = int_dtypes + uint_dtypes
 float_dtypes = (xp.float32, xp.float64)
 numeric_dtypes = all_int_dtypes + float_dtypes
 all_dtypes = (xp.bool,) + numeric_dtypes
+bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
 
 
 dtypes_to_scalars = {
     xp.bool: [bool],
     **{d: [int] for d in all_int_dtypes},
     **{d: [int, float] for d in float_dtypes},
+}
+
+
+dtype_ranges = {
+    xp.int8: [-128, +127],
+    xp.int16: [-32_768, +32_767],
+    xp.int32: [-2_147_483_648, +2_147_483_647],
+    xp.int64: [-9_223_372_036_854_775_808, +9_223_372_036_854_775_807],
+    xp.uint8: [0, +255],
+    xp.uint16: [0, +65_535],
+    xp.uint32: [0, +4_294_967_295],
+    xp.uint64: [0, +18_446_744_073_709_551_615],
 }
 
 

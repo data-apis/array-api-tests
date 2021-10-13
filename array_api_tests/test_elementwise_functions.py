@@ -17,6 +17,7 @@ from hypothesis import strategies as st
 from . import _array_module as xp
 from . import array_helpers as ah
 from . import hypothesis_helpers as hh
+from . import dtype_helpers as dh
 from . import xps
 from .dtype_helpers import dtype_nbits, dtype_signed, promotion_table
 # We might as well use this implementation rather than requiring
@@ -29,11 +30,11 @@ numeric_scalars = hh.array_scalars(hh.numeric_dtypes)
 integer_or_boolean_scalars = hh.array_scalars(hh.integer_or_boolean_dtypes)
 boolean_scalars = hh.array_scalars(hh.boolean_dtypes)
 
-two_integer_dtypes = hh.mutually_promotable_dtypes(hh.integer_dtype_objects)
-two_floating_dtypes = hh.mutually_promotable_dtypes(hh.floating_dtype_objects)
-two_numeric_dtypes = hh.mutually_promotable_dtypes(hh.numeric_dtype_objects)
-two_integer_or_boolean_dtypes = hh.mutually_promotable_dtypes(hh.integer_or_boolean_dtype_objects)
-two_boolean_dtypes = hh.mutually_promotable_dtypes(hh.boolean_dtype_objects)
+two_integer_dtypes = hh.mutually_promotable_dtypes(dh.all_int_dtypes)
+two_floating_dtypes = hh.mutually_promotable_dtypes(dh.float_dtypes)
+two_numeric_dtypes = hh.mutually_promotable_dtypes(dh.numeric_dtypes)
+two_integer_or_boolean_dtypes = hh.mutually_promotable_dtypes(dh.bool_and_all_int_dtypes)
+two_boolean_dtypes = hh.mutually_promotable_dtypes((xp.bool,))
 two_any_dtypes = hh.mutually_promotable_dtypes()
 
 @st.composite
@@ -52,7 +53,7 @@ def sanity_check(x1, x2):
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
 def test_abs(x):
     if ah.is_integer_dtype(x.dtype):
-        minval = ah.dtype_ranges[x.dtype][0]
+        minval = dh.dtype_ranges[x.dtype][0]
         if minval < 0:
             # abs of the smallest representable negative integer is not defined
             mask = xp.not_equal(x, ah.full(x.shape, minval, dtype=x.dtype))
@@ -92,7 +93,7 @@ def test_acosh(x):
     # to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(*hh.two_mutual_arrays(hh.numeric_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_add(x1, x2):
     sanity_check(x1, x2)
     a = xp.add(x1, x2)
@@ -134,7 +135,7 @@ def test_atan(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(*hh.two_mutual_arrays(hh.floating_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_atan2(x1, x2):
     sanity_check(x1, x2)
     a = xp.atan2(x1, x2)
@@ -181,7 +182,7 @@ def test_atanh(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(*hh.two_mutual_arrays(ah.integer_or_boolean_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.bool_and_all_int_dtypes))
 def test_bitwise_and(x1, x2):
     sanity_check(x1, x2)
     out = xp.bitwise_and(x1, x2)
@@ -208,7 +209,7 @@ def test_bitwise_and(x1, x2):
             vals_and = ah.int_to_dtype(vals_and, dtype_nbits[out.dtype], dtype_signed[out.dtype])
             assert vals_and == res
 
-@given(*hh.two_mutual_arrays(ah.integer_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.all_int_dtypes))
 def test_bitwise_left_shift(x1, x2):
     sanity_check(x1, x2)
     assume(not ah.any(ah.isnegative(x2)))
@@ -247,7 +248,7 @@ def test_bitwise_invert(x):
             val_invert = ah.int_to_dtype(val_invert, dtype_nbits[out.dtype], dtype_signed[out.dtype])
             assert val_invert == res
 
-@given(*hh.two_mutual_arrays(ah.integer_or_boolean_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.bool_and_all_int_dtypes))
 def test_bitwise_or(x1, x2):
     sanity_check(x1, x2)
     out = xp.bitwise_or(x1, x2)
@@ -274,7 +275,7 @@ def test_bitwise_or(x1, x2):
             vals_or = ah.int_to_dtype(vals_or, dtype_nbits[out.dtype], dtype_signed[out.dtype])
             assert vals_or == res
 
-@given(*hh.two_mutual_arrays(ah.integer_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.all_int_dtypes))
 def test_bitwise_right_shift(x1, x2):
     sanity_check(x1, x2)
     assume(not ah.any(ah.isnegative(x2)))
@@ -295,7 +296,7 @@ def test_bitwise_right_shift(x1, x2):
         vals_shift = ah.int_to_dtype(vals_shift, dtype_nbits[out.dtype], dtype_signed[out.dtype])
         assert vals_shift == res
 
-@given(*hh.two_mutual_arrays(ah.integer_or_boolean_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.bool_and_all_int_dtypes))
 def test_bitwise_xor(x1, x2):
     sanity_check(x1, x2)
     out = xp.bitwise_xor(x1, x2)
@@ -354,7 +355,7 @@ def test_cosh(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(*hh.two_mutual_arrays(hh.floating_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_divide(x1, x2):
     sanity_check(x1, x2)
     xp.divide(x1, x2)
@@ -447,7 +448,7 @@ def test_floor(x):
     integers = ah.isintegral(x)
     ah.assert_exactly_equal(a[integers], x[integers])
 
-@given(*hh.two_mutual_arrays(hh.numeric_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_floor_divide(x1, x2):
     sanity_check(x1, x2)
     if ah.is_integer_dtype(x1.dtype):
@@ -471,7 +472,7 @@ def test_floor_divide(x1, x2):
 
     # TODO: Test the exact output for floor_divide.
 
-@given(*hh.two_mutual_arrays(hh.numeric_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_greater(x1, x2):
     sanity_check(x1, x2)
     a = xp.greater(x1, x2)
@@ -500,7 +501,7 @@ def test_greater(x1, x2):
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) > scalar_func(x2idx))
 
-@given(*hh.two_mutual_arrays(hh.numeric_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_greater_equal(x1, x2):
     sanity_check(x1, x2)
     a = xp.greater_equal(x1, x2)
@@ -575,7 +576,7 @@ def test_isnan(x):
             s = float(x[idx])
             assert bool(a[idx]) == math.isnan(s)
 
-@given(*hh.two_mutual_arrays(hh.numeric_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_less(x1, x2):
     sanity_check(x1, x2)
     a = ah.less(x1, x2)
@@ -604,7 +605,7 @@ def test_less(x1, x2):
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) < scalar_func(x2idx))
 
-@given(*hh.two_mutual_arrays(hh.numeric_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_less_equal(x1, x2):
     sanity_check(x1, x2)
     a = ah.less_equal(x1, x2)
@@ -677,7 +678,7 @@ def test_log10(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(*hh.two_mutual_arrays(hh.floating_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_logaddexp(x1, x2):
     sanity_check(x1, x2)
     xp.logaddexp(x1, x2)
@@ -731,7 +732,7 @@ def test_logical_xor(x1, x2):
     for idx in ah.ndindex(shape):
         assert a[idx] == (bool(_x1[idx]) ^ bool(_x2[idx]))
 
-@given(*hh.two_mutual_arrays(hh.numeric_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_multiply(x1, x2):
     sanity_check(x1, x2)
     a = xp.multiply(x1, x2)
@@ -749,7 +750,7 @@ def test_negative(x):
 
     mask = ah.isfinite(x)
     if ah.is_integer_dtype(x.dtype):
-        minval = ah.dtype_ranges[x.dtype][0]
+        minval = dh.dtype_ranges[x.dtype][0]
         if minval < 0:
             # negative of the smallest representable negative integer is not defined
             mask = xp.not_equal(x, ah.full(x.shape, minval, dtype=x.dtype))
@@ -796,7 +797,7 @@ def test_positive(x):
     # Positive does nothing
     ah.assert_exactly_equal(out, x)
 
-@given(*hh.two_mutual_arrays(hh.floating_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_pow(x1, x2):
     sanity_check(x1, x2)
     xp.pow(x1, x2)
@@ -806,7 +807,7 @@ def test_pow(x1, x2):
     # numbers. We could test that this does implement IEEE 754 pow, but we
     # don't yet have those sorts in general for this module.
 
-@given(*hh.two_mutual_arrays(hh.numeric_dtype_objects))
+@given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_remainder(x1, x2):
     assume(len(x1.shape) <= len(x2.shape)) # TODO: rework same sign testing below to remove this
     sanity_check(x1, x2)
@@ -886,7 +887,7 @@ def test_trunc(x):
     out = xp.trunc(x)
     assert out.dtype == x.dtype, f"{x.dtype=!s} but {out.dtype=!s}"
     assert out.shape == x.shape, f"{x.shape=} but {out.shape=}"
-    if x.dtype in hh.integer_dtype_objects:
+    if x.dtype in dh.all_int_dtypes:
         assert ah.all(ah.equal(x, out)), f"{x=!s} but {out=!s}"
     else:
         finite = ah.isfinite(x)
