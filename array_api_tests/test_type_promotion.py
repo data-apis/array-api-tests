@@ -221,6 +221,10 @@ def gen_op_scalar_params() -> Iterator[Tuple[str, DT, Type[float], DT, Callable]
                 )
 
 
+# We ignore generating NaNs and infs - they are tested in the special_cases directory
+dtype_kw = {'allow_nan': False, 'allow_infinity': False}
+
+
 @pytest.mark.parametrize(
     'expr, in_dtype, in_stype, out_dtype, x_filter', gen_op_scalar_params()
 )
@@ -228,9 +232,8 @@ def gen_op_scalar_params() -> Iterator[Tuple[str, DT, Type[float], DT, Callable]
 def test_binary_operator_promotes_python_scalars(
     expr, in_dtype, in_stype, out_dtype, x_filter, data
 ):
-    # TODO: do not trigger undefined behaviours (overflows, infs, nans)
-    kw = {} if in_stype is float else {'allow_nan': False, 'allow_infinity': False}
-    s = data.draw(xps.from_dtype(in_dtype, **kw).map(in_stype), label=f'scalar')
+    # TODO: do not trigger overflows
+    s = data.draw(xps.from_dtype(in_dtype, **dtype_kw).map(in_stype), label=f'scalar')
     x = data.draw(
         xps.arrays(dtype=in_dtype, shape=hh.shapes).filter(x_filter), label='x'
     )
@@ -260,9 +263,8 @@ def gen_inplace_scalar_params() -> Iterator[Tuple[str, DT, Type[float], Callable
 def test_inplace_operator_promotes_python_scalars(
     expr, dtype, in_stype, x_filter, data
 ):
-    # TODO: do not trigger undefined behaviours (overflows, infs, nans)
-    kw = {} if in_stype is float else {'allow_nan': False, 'allow_infinity': False}
-    s = data.draw(xps.from_dtype(dtype, **kw).map(in_stype), label=f'scalar')
+    # TODO: do not trigger overflows
+    s = data.draw(xps.from_dtype(dtype, **dtype_kw).map(in_stype), label=f'scalar')
     x = data.draw(xps.arrays(dtype=dtype, shape=hh.shapes).filter(x_filter), label='x')
     locals_ = {'x': x, 's': s}
     exec(expr, locals_)
