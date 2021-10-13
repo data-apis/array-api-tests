@@ -326,7 +326,7 @@ def is_integer_dtype(dtype):
 
 def is_float_dtype(dtype):
     if dtype is None:
-        # numpy.dtype('float64') == True gives True
+        # numpy.dtype('float64') == None gives True
         return False
     # TODO: Return True even for floating point dtypes that aren't part of the
     # spec, like np.float16
