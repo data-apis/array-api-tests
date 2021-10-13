@@ -1,3 +1,5 @@
+from typing import NamedTuple
+
 from . import _array_module as xp
 
 
@@ -58,15 +60,20 @@ def is_float_dtype(dtype):
     return dtype in float_dtypes
 
 
+class MinMax(NamedTuple):
+    min: int
+    max: int
+
+
 dtype_ranges = {
-    xp.int8: [-128, +127],
-    xp.int16: [-32_768, +32_767],
-    xp.int32: [-2_147_483_648, +2_147_483_647],
-    xp.int64: [-9_223_372_036_854_775_808, +9_223_372_036_854_775_807],
-    xp.uint8: [0, +255],
-    xp.uint16: [0, +65_535],
-    xp.uint32: [0, +4_294_967_295],
-    xp.uint64: [0, +18_446_744_073_709_551_615],
+    xp.int8: MinMax(-128, +127),
+    xp.int16: MinMax(-32_768, +32_767),
+    xp.int32: MinMax(-2_147_483_648, +2_147_483_647),
+    xp.int64: MinMax(-9_223_372_036_854_775_808, +9_223_372_036_854_775_807),
+    xp.uint8: MinMax(0, +255),
+    xp.uint16: MinMax(0, +65_535),
+    xp.uint32: MinMax(0, +4_294_967_295),
+    xp.uint64: MinMax(0, +18_446_744_073_709_551_615),
 }
 
 

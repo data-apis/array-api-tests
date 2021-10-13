@@ -2,7 +2,7 @@
 https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html
 """
 from collections import defaultdict
-from typing import Iterator, TypeVar, Tuple, Callable, Type
+from typing import Iterator, TypeVar, Tuple, Callable, Type, Union
 
 import pytest
 from hypothesis import assume, given
@@ -202,7 +202,39 @@ def test_inplace_operator_returns_array_with_correct_dtype(
     assert x1.dtype == out_dtype, f'{x1.dtype=!s}, but should be {out_dtype}'
 
 
-def gen_op_scalar_params() -> Iterator[Tuple[str, DT, Type[float], DT, Callable]]:
+finite_kw = {'allow_nan': False, 'allow_infinity': False}
+
+
+int_kw_factories = defaultdict(
+    lambda: lambda m, M: lambda s: {},
+    {
+        '__add__': lambda m, M: lambda s: {
+            'min_value': max(m - s, m),
+            'max_value': min(M - s, M),
+        },
+        '__sub__': lambda m, M: lambda s: {
+            'min_value': max(m + s, m),
+            'max_value': min(M + s, M),
+        },
+        # TODO: cover all the ops which require element factories
+    },
+)
+
+
+def make_elements_factory(op, dtype):
+    if dh.is_int_dtype(dtype):
+        m, M = dh.dtype_ranges[dtype]
+        return int_kw_factories[op](m, M)
+    else:
+        return lambda _: finite_kw
+
+
+ScalarType = Union[Type[bool], Type[int], Type[float]]
+
+
+def gen_op_scalar_params() -> Iterator[
+    Tuple[str, DT, ScalarType, DT, Callable, Callable]
+]:
     for op, symbol in dh.binary_op_to_symbol.items():
         if op == '__matmul__':
             continue
@@ -217,31 +249,32 @@ def gen_op_scalar_params() -> Iterator[Tuple[str, DT, Type[float], DT, Callable]
                     in_stype,
                     out_dtype,
                     filters[op],
+                    make_elements_factory(op, in_dtype),
                     id=f'{op}({in_dtype}, {in_stype.__name__}) -> {out_dtype}',
                 )
 
 
-# We ignore generating NaNs and infs - they are tested in the special_cases directory
-dtype_kw = {'allow_nan': False, 'allow_infinity': False}
-
-
 @pytest.mark.parametrize(
-    'expr, in_dtype, in_stype, out_dtype, x_filter', gen_op_scalar_params()
+    'expr, in_dtype, in_stype, out_dtype, x_filter, elements_factory',
+    gen_op_scalar_params(),
 )
 @given(data=st.data())
 def test_binary_operator_promotes_python_scalars(
-    expr, in_dtype, in_stype, out_dtype, x_filter, data
+    expr, in_dtype, in_stype, out_dtype, x_filter, elements_factory, data
 ):
-    # TODO: do not trigger overflows
-    s = data.draw(xps.from_dtype(in_dtype, **dtype_kw).map(in_stype), label=f'scalar')
+    s = data.draw(xps.from_dtype(in_dtype, **finite_kw).map(in_stype), label='scalar')
+    elements = elements_factory(s)
     x = data.draw(
-        xps.arrays(dtype=in_dtype, shape=hh.shapes).filter(x_filter), label='x'
+        xps.arrays(dtype=in_dtype, shape=hh.shapes, elements=elements).filter(x_filter),
+        label='x',
     )
     out = eval(expr, {'x': x, 's': s})
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-def gen_inplace_scalar_params() -> Iterator[Tuple[str, DT, Type[float], Callable]]:
+def gen_inplace_scalar_params() -> Iterator[
+    Tuple[str, DT, ScalarType, Callable, Callable]
+]:
     for op, symbol in dh.binary_op_to_symbol.items():
         if op == '__matmul__' or dh.op_out_categories[op] == 'bool':
             continue
@@ -254,18 +287,24 @@ def gen_inplace_scalar_params() -> Iterator[Tuple[str, DT, Type[float], Callable
                     dtype,
                     in_stype,
                     filters[iop],
+                    make_elements_factory(op, dtype),
                     id=f'{iop}({dtype}, {in_stype.__name__}) -> {dtype}',
                 )
 
 
-@pytest.mark.parametrize('expr, dtype, in_stype, x_filter', gen_inplace_scalar_params())
+@pytest.mark.parametrize(
+    'expr, dtype, in_stype, x_filter, elements_factory', gen_inplace_scalar_params()
+)
 @given(data=st.data())
 def test_inplace_operator_promotes_python_scalars(
-    expr, dtype, in_stype, x_filter, data
+    expr, dtype, in_stype, x_filter, elements_factory, data
 ):
-    # TODO: do not trigger overflows
-    s = data.draw(xps.from_dtype(dtype, **dtype_kw).map(in_stype), label=f'scalar')
-    x = data.draw(xps.arrays(dtype=dtype, shape=hh.shapes).filter(x_filter), label='x')
+    s = data.draw(xps.from_dtype(dtype, **finite_kw).map(in_stype), label='scalar')
+    elements = elements_factory(s)
+    x = data.draw(
+        xps.arrays(dtype=dtype, shape=hh.shapes, elements=elements).filter(x_filter),
+        label='x',
+    )
     locals_ = {'x': x, 's': s}
     exec(expr, locals_)
     x = locals_['x']
