@@ -10,6 +10,8 @@ __all__ = [
     'all_dtypes',
     'bool_and_all_int_dtypes',
     'dtypes_to_scalars',
+    'is_int_dtype',
+    'is_float_dtype',
     'dtype_ranges',
     'category_to_dtypes',
     'promotion_table',
@@ -39,6 +41,21 @@ dtypes_to_scalars = {
     **{d: [int] for d in all_int_dtypes},
     **{d: [int, float] for d in float_dtypes},
 }
+
+
+def is_int_dtype(dtype):
+    return dtype in all_int_dtypes
+
+
+def is_float_dtype(dtype):
+    # None equals NumPy's xp.float64 object, so we specifically check it here.
+    # xp.float64 is in fact an alias of np.dtype('float64'), and its equality
+    # with None is meant to be deprecated at some point.
+    # See https://github.com/numpy/numpy/issues/18434
+    if dtype is None:
+        return False
+    # TODO: Return True for float dtypes that aren't part of the spec e.g. np.float16
+    return dtype in float_dtypes
 
 
 dtype_ranges = {

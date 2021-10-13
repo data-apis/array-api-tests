@@ -19,7 +19,6 @@ from . import array_helpers as ah
 from . import hypothesis_helpers as hh
 from . import dtype_helpers as dh
 from . import xps
-from .dtype_helpers import dtype_nbits, dtype_signed, promotion_table
 # We might as well use this implementation rather than requiring
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
@@ -46,13 +45,13 @@ def two_array_scalars(draw, dtype1, dtype2):
 # TODO: refactor this into dtype_helpers.py, see https://github.com/data-apis/array-api-tests/pull/26
 def sanity_check(x1, x2):
     try:
-        promotion_table[x1.dtype, x2.dtype]
+        dh.promotion_table[x1.dtype, x2.dtype]
     except ValueError:
         raise RuntimeError("Error in test generation (probably a bug in the test suite")
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
 def test_abs(x):
-    if ah.is_integer_dtype(x.dtype):
+    if dh.is_int_dtype(x.dtype):
         minval = dh.dtype_ranges[x.dtype][0]
         if minval < 0:
             # abs of the smallest representable negative integer is not defined
@@ -206,7 +205,7 @@ def test_bitwise_and(x1, x2):
             val2 = int(_x2[idx])
             res = int(out[idx])
             vals_and = val1 & val2
-            vals_and = ah.int_to_dtype(vals_and, dtype_nbits[out.dtype], dtype_signed[out.dtype])
+            vals_and = ah.int_to_dtype(vals_and, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype])
             assert vals_and == res
 
 @given(*hh.two_mutual_arrays(dh.all_int_dtypes))
@@ -227,8 +226,8 @@ def test_bitwise_left_shift(x1, x2):
         val2 = int(_x2[idx])
         res = int(out[idx])
         # We avoid shifting very large ints
-        vals_shift = val1 << val2 if val2 < dtype_nbits[out.dtype] else 0
-        vals_shift = ah.int_to_dtype(vals_shift, dtype_nbits[out.dtype], dtype_signed[out.dtype])
+        vals_shift = val1 << val2 if val2 < dh.dtype_nbits[out.dtype] else 0
+        vals_shift = ah.int_to_dtype(vals_shift, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype])
         assert vals_shift == res
 
 @given(xps.arrays(dtype=hh.integer_or_boolean_dtypes, shape=hh.shapes))
@@ -245,7 +244,7 @@ def test_bitwise_invert(x):
             val = int(x[idx])
             res = int(out[idx])
             val_invert = ~val
-            val_invert = ah.int_to_dtype(val_invert, dtype_nbits[out.dtype], dtype_signed[out.dtype])
+            val_invert = ah.int_to_dtype(val_invert, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype])
             assert val_invert == res
 
 @given(*hh.two_mutual_arrays(dh.bool_and_all_int_dtypes))
@@ -272,7 +271,7 @@ def test_bitwise_or(x1, x2):
             val2 = int(_x2[idx])
             res = int(out[idx])
             vals_or = val1 | val2
-            vals_or = ah.int_to_dtype(vals_or, dtype_nbits[out.dtype], dtype_signed[out.dtype])
+            vals_or = ah.int_to_dtype(vals_or, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype])
             assert vals_or == res
 
 @given(*hh.two_mutual_arrays(dh.all_int_dtypes))
@@ -293,7 +292,7 @@ def test_bitwise_right_shift(x1, x2):
         val2 = int(_x2[idx])
         res = int(out[idx])
         vals_shift = val1 >> val2
-        vals_shift = ah.int_to_dtype(vals_shift, dtype_nbits[out.dtype], dtype_signed[out.dtype])
+        vals_shift = ah.int_to_dtype(vals_shift, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype])
         assert vals_shift == res
 
 @given(*hh.two_mutual_arrays(dh.bool_and_all_int_dtypes))
@@ -320,7 +319,7 @@ def test_bitwise_xor(x1, x2):
             val2 = int(_x2[idx])
             res = int(out[idx])
             vals_xor = val1 ^ val2
-            vals_xor = ah.int_to_dtype(vals_xor, dtype_nbits[out.dtype], dtype_signed[out.dtype])
+            vals_xor = ah.int_to_dtype(vals_xor, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype])
             assert vals_xor == res
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
@@ -397,13 +396,13 @@ def test_equal(x1, x2):
     # tested in that file, because doing so requires doing the consistency
 
     # check we do here rather than just checking the result dtype.
-    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
+    promoted_dtype = dh.promotion_table[x1.dtype, x2.dtype]
     _x1 = ah.asarray(_x1, dtype=promoted_dtype)
     _x2 = ah.asarray(_x2, dtype=promoted_dtype)
 
-    if ah.is_integer_dtype(promoted_dtype):
+    if dh.is_int_dtype(promoted_dtype):
         scalar_func = int
-    elif ah.is_float_dtype(promoted_dtype):
+    elif dh.is_float_dtype(promoted_dtype):
         scalar_func = float
     else:
         scalar_func = bool
@@ -451,7 +450,7 @@ def test_floor(x):
 @given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_floor_divide(x1, x2):
     sanity_check(x1, x2)
-    if ah.is_integer_dtype(x1.dtype):
+    if dh.is_int_dtype(x1.dtype):
         # The spec does not specify the behavior for division by 0 for integer
         # dtypes. A library may choose to raise an exception in this case, so
         # we avoid passing it in entirely.
@@ -483,13 +482,13 @@ def test_greater(x1, x2):
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
 
-    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
+    promoted_dtype = dh.promotion_table[x1.dtype, x2.dtype]
     _x1 = ah.asarray(_x1, dtype=promoted_dtype)
     _x2 = ah.asarray(_x2, dtype=promoted_dtype)
 
-    if ah.is_integer_dtype(promoted_dtype):
+    if dh.is_int_dtype(promoted_dtype):
         scalar_func = int
-    elif ah.is_float_dtype(promoted_dtype):
+    elif dh.is_float_dtype(promoted_dtype):
         scalar_func = float
     else:
         scalar_func = bool
@@ -512,13 +511,13 @@ def test_greater_equal(x1, x2):
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
 
-    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
+    promoted_dtype = dh.promotion_table[x1.dtype, x2.dtype]
     _x1 = ah.asarray(_x1, dtype=promoted_dtype)
     _x2 = ah.asarray(_x2, dtype=promoted_dtype)
 
-    if ah.is_integer_dtype(promoted_dtype):
+    if dh.is_int_dtype(promoted_dtype):
         scalar_func = int
-    elif ah.is_float_dtype(promoted_dtype):
+    elif dh.is_float_dtype(promoted_dtype):
         scalar_func = float
     else:
         scalar_func = bool
@@ -534,14 +533,14 @@ def test_greater_equal(x1, x2):
 def test_isfinite(x):
     a = ah.isfinite(x)
     TRUE = ah.true(x.shape)
-    if ah.is_integer_dtype(x.dtype):
+    if dh.is_int_dtype(x.dtype):
         ah.assert_exactly_equal(a, TRUE)
     # Test that isfinite, isinf, and isnan are self-consistent.
     inf = ah.logical_or(xp.isinf(x), ah.isnan(x))
     ah.assert_exactly_equal(a, ah.logical_not(inf))
 
     # Test the exact value by comparing to the math version
-    if ah.is_float_dtype(x.dtype):
+    if dh.is_float_dtype(x.dtype):
         for idx in ah.ndindex(x.shape):
             s = float(x[idx])
             assert bool(a[idx]) == math.isfinite(s)
@@ -550,13 +549,13 @@ def test_isfinite(x):
 def test_isinf(x):
     a = xp.isinf(x)
     FALSE = ah.false(x.shape)
-    if ah.is_integer_dtype(x.dtype):
+    if dh.is_int_dtype(x.dtype):
         ah.assert_exactly_equal(a, FALSE)
     finite_or_nan = ah.logical_or(ah.isfinite(x), ah.isnan(x))
     ah.assert_exactly_equal(a, ah.logical_not(finite_or_nan))
 
     # Test the exact value by comparing to the math version
-    if ah.is_float_dtype(x.dtype):
+    if dh.is_float_dtype(x.dtype):
         for idx in ah.ndindex(x.shape):
             s = float(x[idx])
             assert bool(a[idx]) == math.isinf(s)
@@ -565,13 +564,13 @@ def test_isinf(x):
 def test_isnan(x):
     a = ah.isnan(x)
     FALSE = ah.false(x.shape)
-    if ah.is_integer_dtype(x.dtype):
+    if dh.is_int_dtype(x.dtype):
         ah.assert_exactly_equal(a, FALSE)
     finite_or_inf = ah.logical_or(ah.isfinite(x), xp.isinf(x))
     ah.assert_exactly_equal(a, ah.logical_not(finite_or_inf))
 
     # Test the exact value by comparing to the math version
-    if ah.is_float_dtype(x.dtype):
+    if dh.is_float_dtype(x.dtype):
         for idx in ah.ndindex(x.shape):
             s = float(x[idx])
             assert bool(a[idx]) == math.isnan(s)
@@ -587,13 +586,13 @@ def test_less(x1, x2):
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
 
-    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
+    promoted_dtype = dh.promotion_table[x1.dtype, x2.dtype]
     _x1 = ah.asarray(_x1, dtype=promoted_dtype)
     _x2 = ah.asarray(_x2, dtype=promoted_dtype)
 
-    if ah.is_integer_dtype(promoted_dtype):
+    if dh.is_int_dtype(promoted_dtype):
         scalar_func = int
-    elif ah.is_float_dtype(promoted_dtype):
+    elif dh.is_float_dtype(promoted_dtype):
         scalar_func = float
     else:
         scalar_func = bool
@@ -616,13 +615,13 @@ def test_less_equal(x1, x2):
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
 
-    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
+    promoted_dtype = dh.promotion_table[x1.dtype, x2.dtype]
     _x1 = ah.asarray(_x1, dtype=promoted_dtype)
     _x2 = ah.asarray(_x2, dtype=promoted_dtype)
 
-    if ah.is_integer_dtype(promoted_dtype):
+    if dh.is_int_dtype(promoted_dtype):
         scalar_func = int
-    elif ah.is_float_dtype(promoted_dtype):
+    elif dh.is_float_dtype(promoted_dtype):
         scalar_func = float
     else:
         scalar_func = bool
@@ -749,7 +748,7 @@ def test_negative(x):
     ah.assert_exactly_equal(x, ah.negative(out))
 
     mask = ah.isfinite(x)
-    if ah.is_integer_dtype(x.dtype):
+    if dh.is_int_dtype(x.dtype):
         minval = dh.dtype_ranges[x.dtype][0]
         if minval < 0:
             # negative of the smallest representable negative integer is not defined
@@ -772,13 +771,13 @@ def test_not_equal(x1, x2):
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
 
-    promoted_dtype = promotion_table[x1.dtype, x2.dtype]
+    promoted_dtype = dh.promotion_table[x1.dtype, x2.dtype]
     _x1 = ah.asarray(_x1, dtype=promoted_dtype)
     _x2 = ah.asarray(_x2, dtype=promoted_dtype)
 
-    if ah.is_integer_dtype(promoted_dtype):
+    if dh.is_int_dtype(promoted_dtype):
         scalar_func = int
-    elif ah.is_float_dtype(promoted_dtype):
+    elif dh.is_float_dtype(promoted_dtype):
         scalar_func = float
     else:
         scalar_func = bool

@@ -6,10 +6,10 @@ from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
                             int64, uint8, uint16, uint32, uint64, float32,
                             float64, nan, inf, pi, remainder, divide, isinf,
                             negative, asarray)
-
 # These are exported here so that they can be included in the special cases
 # tests from this file.
 from ._array_module import logical_not, subtract, floor, ceil, where
+from . import dtype_helpers as dh
 
 
 __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
@@ -24,8 +24,7 @@ __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'assert_positive_mathematical_sign', 'negative_mathematical_sign',
            'assert_negative_mathematical_sign', 'same_sign',
            'assert_same_sign', 'ndindex', 'float64',
-           'asarray', 'is_integer_dtype', 'is_float_dtype',
-           'full', 'true', 'false', 'isnan']
+           'asarray', 'full', 'true', 'false', 'isnan']
 
 def zero(shape, dtype):
     """
@@ -109,7 +108,7 @@ def isnegzero(x):
     # TODO: If copysign or signbit are added to the spec, use those instead.
     shape = x.shape
     dtype = x.dtype
-    if is_integer_dtype(dtype):
+    if dh.is_int_dtype(dtype):
         return false(shape)
     return equal(divide(one(shape, dtype), x), -infinity(shape, dtype))
 
@@ -120,7 +119,7 @@ def isposzero(x):
     # TODO: If copysign or signbit are added to the spec, use those instead.
     shape = x.shape
     dtype = x.dtype
-    if is_integer_dtype(dtype):
+    if dh.is_int_dtype(dtype):
         return true(shape)
     return equal(divide(one(shape, dtype), x), infinity(shape, dtype))
 
@@ -308,19 +307,6 @@ def same_sign(x, y):
 
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
-
-def is_integer_dtype(dtype):
-    if dtype is None:
-        return False
-    return dtype in [int8, int16, int32, int64, uint8, uint16, uint32, uint64]
-
-def is_float_dtype(dtype):
-    if dtype is None:
-        # numpy.dtype('float64') == None gives True
-        return False
-    # TODO: Return True even for floating point dtypes that aren't part of the
-    # spec, like np.float16
-    return dtype in [float32, float64]
 
 def int_to_dtype(x, n, signed):
     """
