@@ -14,7 +14,8 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 """
 
 from hypothesis import assume, given
-from hypothesis.strategies import booleans, composite, none, tuples, integers, shared
+from hypothesis.strategies import (booleans, composite, none, tuples, integers,
+                                   shared, sampled_from)
 
 from .array_helpers import (assert_exactly_equal, ndindex, asarray,
                             numeric_dtype_objects, promote_dtypes, equal,
@@ -371,12 +372,39 @@ def test_pinv(x, kw):
     pass
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    kw=kwargs(mode=todo)
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=matrix_shapes),
+    kw=kwargs(mode=sampled_from(['reduced', 'complete']))
 )
 def test_qr(x, kw):
-    # res = linalg.qr(x, **kw)
-    pass
+    res = linalg.qr(x, **kw)
+    mode = kw.get('mode', 'reduced')
+
+    M, N = x.shape[-2:]
+    K = min(M, N)
+
+    _test_namedtuple(res, ['q', 'r'], 'qr')
+    q = res.q
+    r = res.r
+
+    assert q.dtype == x.dtype, "qr().q did not return the correct dtype"
+    if mode == 'complete':
+        assert q.shape == x.shape[:-2] + (M, M), "qr().q did not return the correct shape"
+    else:
+        assert q.shape == x.shape[:-2] + (M, K), "qr().q did not return the correct shape"
+
+    assert r.dtype == x.dtype, "qr().r did not return the correct dtype"
+    if mode == 'complete':
+        assert r.shape == x.shape[:-2] + (M, N), "qr().r did not return the correct shape"
+    else:
+        assert r.shape == x.shape[:-2] + (K, N), "qr().r did not return the correct shape"
+
+    _test_stacks(lambda x: linalg.qr(x, **kw).q, x, res=q)
+    _test_stacks(lambda x: linalg.qr(x, **kw).r, x, res=r)
+
+    # TODO: Test that q is orthonormal
+
+    # Check that r is upper-triangular.
+    assert_exactly_equal(r, _array_module.triu(r))
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
