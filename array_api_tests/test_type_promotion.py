@@ -2,7 +2,7 @@
 https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html
 """
 from collections import defaultdict
-from typing import Iterator, TypeVar, Tuple, Callable
+from typing import Iterator, TypeVar, Tuple, Callable, Type
 
 import pytest
 from hypothesis import assume, given
@@ -79,8 +79,7 @@ def test_func_returns_array_with_correct_dtype(
 ):
     if len(in_dtypes) == 1:
         x = data.draw(
-            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter),
-            label='x',
+            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter), label='x'
         )
         out = func(x)
     else:
@@ -90,8 +89,7 @@ def test_func_returns_array_with_correct_dtype(
         )
         for i, (dtype, shape) in enumerate(zip(in_dtypes, shapes), 1):
             x = data.draw(
-                xps.arrays(dtype=dtype, shape=shape).filter(x_filter),
-                label=f'x{i}',
+                xps.arrays(dtype=dtype, shape=shape).filter(x_filter), label=f'x{i}'
             )
             arrays.append(x)
         out = func(*arrays)
@@ -148,8 +146,7 @@ def test_operator_returns_array_with_correct_dtype(
 ):
     if len(in_dtypes) == 1:
         x = data.draw(
-            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter),
-            label='x',
+            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter), label='x'
         )
         out = eval(expr, {'x': x})
     else:
@@ -159,8 +156,7 @@ def test_operator_returns_array_with_correct_dtype(
         )
         for i, (dtype, shape) in enumerate(zip(in_dtypes, shapes), 1):
             locals_[f'x{i}'] = data.draw(
-                xps.arrays(dtype=dtype, shape=shape).filter(x_filter),
-                label=f'x{i}',
+                xps.arrays(dtype=dtype, shape=shape).filter(x_filter), label=f'x{i}'
             )
         out = eval(expr, locals_)
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
@@ -172,19 +168,19 @@ def gen_inplace_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
             continue
         in_category = dh.op_in_categories[op]
         valid_in_dtypes = dh.category_to_dtypes[in_category]
+        iop = f'__i{op[2:]}'
         for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
             if (
                 in_dtype1 == promoted_dtype
                 and in_dtype1 in valid_in_dtypes
                 and in_dtype2 in valid_in_dtypes
             ):
-                iop = f'__i{op[2:]}'
                 yield pytest.param(
                     f'x1 {symbol}= x2',
                     (in_dtype1, in_dtype2),
                     promoted_dtype,
                     filters[iop],
-                    id=f'{iop}({in_dtype1}, {in_dtype2}) -> {in_dtype1}',
+                    id=f'{iop}({in_dtype1}, {in_dtype2}) -> {promoted_dtype}',
                 )
 
 
@@ -195,17 +191,83 @@ def test_inplace_operator_returns_array_with_correct_dtype(
 ):
     assume(len(shapes[0]) >= len(shapes[1]))
     x1 = data.draw(
-        xps.arrays(dtype=in_dtypes[0], shape=shapes[0]).filter(x_filter),
-        label='x1',
+        xps.arrays(dtype=in_dtypes[0], shape=shapes[0]).filter(x_filter), label='x1'
     )
     x2 = data.draw(
-        xps.arrays(dtype=in_dtypes[1], shape=shapes[1]).filter(x_filter),
-        label='x2',
+        xps.arrays(dtype=in_dtypes[1], shape=shapes[1]).filter(x_filter), label='x2'
     )
     locals_ = {'x1': x1, 'x2': x2}
     exec(expr, locals_)
     x1 = locals_['x1']
     assert x1.dtype == out_dtype, f'{x1.dtype=!s}, but should be {out_dtype}'
+
+
+def gen_op_scalar_params() -> Iterator[Tuple[str, DT, Type[float], DT, Callable]]:
+    for op, symbol in dh.binary_op_to_symbol.items():
+        if op == '__matmul__':
+            continue
+        in_category = dh.op_in_categories[op]
+        out_category = dh.op_out_categories[op]
+        for in_dtype in dh.category_to_dtypes[in_category]:
+            out_dtype = in_dtype if out_category == 'promoted' else xp.bool
+            for in_stype in dh.dtypes_to_scalars[in_dtype]:
+                yield pytest.param(
+                    f'x {symbol} s',
+                    in_dtype,
+                    in_stype,
+                    out_dtype,
+                    filters[op],
+                    id=f'{op}({in_dtype}, {in_stype.__name__}) -> {out_dtype}',
+                )
+
+
+@pytest.mark.parametrize(
+    'expr, in_dtype, in_stype, out_dtype, x_filter', gen_op_scalar_params()
+)
+@given(data=st.data())
+def test_binary_operator_promotes_python_scalars(
+    expr, in_dtype, in_stype, out_dtype, x_filter, data
+):
+    # TODO: do not trigger undefined behaviours (overflows, infs, nans)
+    kw = {} if in_stype is float else {'allow_nan': False, 'allow_infinity': False}
+    s = data.draw(xps.from_dtype(in_dtype, **kw).map(in_stype), label=f'scalar')
+    x = data.draw(
+        xps.arrays(dtype=in_dtype, shape=hh.shapes).filter(x_filter), label='x'
+    )
+    out = eval(expr, {'x': x, 's': s})
+    assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
+
+
+def gen_inplace_scalar_params() -> Iterator[Tuple[str, DT, Type[float], Callable]]:
+    for op, symbol in dh.binary_op_to_symbol.items():
+        if op == '__matmul__' or dh.op_out_categories[op] == 'bool':
+            continue
+        in_category = dh.op_in_categories[op]
+        iop = f'__i{op[2:]}'
+        for dtype in dh.category_to_dtypes[in_category]:
+            for in_stype in dh.dtypes_to_scalars[dtype]:
+                yield pytest.param(
+                    f'x {symbol}= s',
+                    dtype,
+                    in_stype,
+                    filters[iop],
+                    id=f'{iop}({dtype}, {in_stype.__name__}) -> {dtype}',
+                )
+
+
+@pytest.mark.parametrize('expr, dtype, in_stype, x_filter', gen_inplace_scalar_params())
+@given(data=st.data())
+def test_inplace_operator_promotes_python_scalars(
+    expr, dtype, in_stype, x_filter, data
+):
+    # TODO: do not trigger undefined behaviours (overflows, infs, nans)
+    kw = {} if in_stype is float else {'allow_nan': False, 'allow_infinity': False}
+    s = data.draw(xps.from_dtype(dtype, **kw).map(in_stype), label=f'scalar')
+    x = data.draw(xps.arrays(dtype=dtype, shape=hh.shapes).filter(x_filter), label='x')
+    locals_ = {'x': x, 's': s}
+    exec(expr, locals_)
+    x = locals_['x']
+    assert x.dtype == dtype, f'{x.dtype=!s}, but should be {dtype}'
 
 
 scalar_promotion_parametrize_inputs = [
