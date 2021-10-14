@@ -209,7 +209,6 @@ def test_inplace_operator_returns_array_with_correct_dtype(
     assert x1.dtype == out_dtype, f'{x1.dtype=!s}, but should be {out_dtype}'
 
 
-finite_kw = {'allow_nan': False, 'allow_infinity': False}
 ScalarType = Union[Type[bool], Type[int], Type[float]]
 
 
@@ -239,7 +238,8 @@ def gen_op_scalar_params() -> Iterator[Tuple[str, DT, ScalarType, DT, Callable]]
 def test_binary_operator_promotes_python_scalars(
     expr, in_dtype, in_stype, out_dtype, x_filter, data
 ):
-    s = data.draw(xps.from_dtype(in_dtype, **finite_kw).map(in_stype), label='scalar')
+    kw = {k: in_stype is float for k in ('allow_nan', 'allow_infinity')}
+    s = data.draw(xps.from_dtype(in_dtype, **kw).map(in_stype), label='scalar')
     x = data.draw(
         xps.arrays(dtype=in_dtype, shape=hh.shapes).filter(x_filter), label='x'
     )
@@ -271,7 +271,8 @@ def gen_inplace_scalar_params() -> Iterator[Tuple[str, DT, ScalarType, Callable]
 def test_inplace_operator_promotes_python_scalars(
     expr, dtype, in_stype, x_filter, data
 ):
-    s = data.draw(xps.from_dtype(dtype, **finite_kw).map(in_stype), label='scalar')
+    kw = {k: in_stype is float for k in ('allow_nan', 'allow_infinity')}
+    s = data.draw(xps.from_dtype(dtype, **kw).map(in_stype), label='scalar')
     x = data.draw(xps.arrays(dtype=dtype, shape=hh.shapes).filter(x_filter), label='x')
     locals_ = {'x': x, 's': s}
     try:
