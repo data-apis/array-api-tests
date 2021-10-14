@@ -1,30 +1,43 @@
 from hypothesis import settings
+from pytest import mark
 
-# Add a --hypothesis-max-examples flag to pytest. See
-# https://github.com/HypothesisWorks/hypothesis/issues/2434#issuecomment-630309150
+
+settings.register_profile('xp_default', deadline=800)
+
 
 def pytest_addoption(parser):
-    # Add an option to change the Hypothesis max_examples setting.
+    # Enable extensions
     parser.addoption(
-        "--hypothesis-max-examples",
-        "--max-examples",
-        action="store",
-        default=None,
-        help="set the Hypothesis max_examples setting",
+        '--ext',
+        '--extensions',
+        nargs='+',
+        default=[],
+        help='enable testing for Array API extensions',
     )
-
-    # Add an option to disable the Hypothesis deadline
+    # Hypothesis max examples
+    # See https://github.com/HypothesisWorks/hypothesis/issues/2434
     parser.addoption(
-        "--hypothesis-disable-deadline",
-        "--disable-deadline",
-        action="store_true",
-        help="disable the Hypothesis deadline",
+        '--hypothesis-max-examples',
+        '--max-examples',
+        action='store',
+        default=None,
+        help='set the Hypothesis max_examples setting',
+    )
+    # Hypothesis deadline
+    parser.addoption(
+        '--hypothesis-disable-deadline',
+        '--disable-deadline',
+        action='store_true',
+        help='disable the Hypothesis deadline',
     )
 
 
 def pytest_configure(config):
-    # Set Hypothesis max_examples.
-    hypothesis_max_examples = config.getoption("--hypothesis-max-examples")
+    config.addinivalue_line(
+        'markers', 'xp_extension(ext): tests an Array API extension'
+    )
+    # Configure Hypothesis
+    hypothesis_max_examples = config.getoption('--hypothesis-max-examples')
     disable_deadline = config.getoption('--hypothesis-disable-deadline')
     profile_settings = {}
     if hypothesis_max_examples is not None:
@@ -32,14 +45,16 @@ def pytest_configure(config):
     if disable_deadline is not None:
         profile_settings['deadline'] = None
     if profile_settings:
-        import hypothesis
-
-        hypothesis.settings.register_profile(
-            "array-api-tests-hypothesis-overridden", **profile_settings,
-        )
-
-        hypothesis.settings.load_profile("array-api-tests-hypothesis-overridden")
+        settings.register_profile('xp_override', **profile_settings)
+        settings.load_profile('xp_override')
+    else:
+        settings.load_profile('xp_default')
 
 
-settings.register_profile('array_api_tests_hypothesis_profile', deadline=800)
-settings.load_profile('array_api_tests_hypothesis_profile')
+def pytest_collection_modifyitems(config, items):
+    exts = config.getoption('--extensions')
+    for item in items:
+        if 'xp_extension' in item.keywords:
+            ext = item.keywords['xp_extension'].args[0]
+            if ext not in exts:
+                item.add_marker(mark.skip(reason=f'{ext} not enabled in --extensions'))
