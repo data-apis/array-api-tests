@@ -105,6 +105,8 @@ shapes = xps.array_shapes(min_dims=0, min_side=0).filter(
     lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
 )
 
+one_d_shapes = xps.array_shapes(min_dims=1, max_dims=1, min_side=0, max_side=SQRT_MAX_ARRAY_SIZE)
+
 # Matrix shapes assume stacks of matrices
 matrix_shapes = xps.array_shapes(min_dims=2, min_side=1).filter(
     lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
@@ -293,9 +295,11 @@ def multiaxis_indices(draw, shapes):
     return tuple(res)
 
 
-def two_mutual_arrays(dtype_objs=dh.all_dtypes):
+def two_mutual_arrays(
+    dtype_objs=dh.all_dtypes, two_shapes=two_mutually_broadcastable_shapes
+):
     mutual_dtypes = shared(mutually_promotable_dtypes(dtype_objs))
-    mutual_shapes = shared(two_mutually_broadcastable_shapes)
+    mutual_shapes = shared(two_shapes)
     arrays1 = xps.arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[0]),
         shape=mutual_shapes.map(lambda pair: pair[0]),
@@ -305,7 +309,6 @@ def two_mutual_arrays(dtype_objs=dh.all_dtypes):
         shape=mutual_shapes.map(lambda pair: pair[1]),
     )
     return arrays1, arrays2
-
 
 @composite
 def kwargs(draw, **kw):

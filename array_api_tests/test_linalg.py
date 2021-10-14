@@ -14,14 +14,14 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 """
 
 from hypothesis import assume, given
-from hypothesis.strategies import booleans, composite, none, integers, shared
+from hypothesis.strategies import booleans, composite, none, tuples, integers, shared
 
-from .array_helpers import assert_exactly_equal, ndindex, asarray
+from .array_helpers import assert_exactly_equal, ndindex, asarray, equal, zero, infinity
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
                                  invertible_matrices, two_mutual_arrays,
-                                 mutually_promotable_dtypes)
+                                 mutually_promotable_dtypes, one_d_shapes)
 from .pytest_helpers import raises
 from . import dtype_helpers as dh
 
@@ -339,12 +339,27 @@ def test_matrix_transpose(x):
     _test_stacks(linalg.matrix_transpose, x, res=res, true_val=true_val)
 
 @given(
-    x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    *two_mutual_arrays(dtype_objects=dh.numeric_dtypes,
+                       two_shapes=tuples(one_d_shapes, one_d_shapes))
 )
 def test_outer(x1, x2):
-    # res = linalg.outer(x1, x2)
-    pass
+    # outer does not work on stacks. See
+    # https://github.com/data-apis/array-api/issues/242.
+    res = linalg.outer(x1, x2)
+
+    shape = (x1.shape[0], x2.shape[0])
+    assert res.shape == shape, "outer() did not return the correct shape"
+    assert res.dtype == dh.promotion_table[x1, x2], "outer() did not return the correct dtype"
+
+    if 0 in shape:
+        true_res = _array_module.empty(shape, dtype=res.dtype)
+    else:
+        true_res = _array_module.asarray([[x1[i]*x2[j]
+                                           for j in range(x2.shape[0])]
+                                          for i in range(x1.shape[0])],
+                                         dtype=res.dtype)
+
+    assert_exactly_equal(res, true_res)
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
@@ -363,11 +378,38 @@ def test_qr(x, kw):
     pass
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
 )
 def test_slogdet(x):
-    # res = linalg.slogdet(x)
-    pass
+    res = linalg.slogdet(x)
+
+    _test_namedtuple(res, ['sign', 'logabsdet'], 'slotdet')
+
+    sign, logabsdet = res
+
+    assert sign.dtype == x.dtype, "slogdet().sign did not return the correct dtype"
+    assert sign.shape == x.shape[:-2], "slogdet().sign did not return the correct shape"
+    assert logabsdet.dtype == x.dtype, "slogdet().logabsdet did not return the correct dtype"
+    assert logabsdet.shape == x.shape[:-2], "slogdet().logabsdet did not return the correct shape"
+
+
+    _test_stacks(lambda x: linalg.slogdet(x).sign, x,
+                 res=sign, dims=0)
+    _test_stacks(lambda x: linalg.slogdet(x).logabsdet, x,
+                 res=logabsdet, dims=0)
+
+    # Check that when the determinant is 0, the sign and logabsdet are (0,
+    # -inf).
+    d = linalg.det(x)
+    zero_det = equal(d, zero(d.shape, d.dtype))
+    assert_exactly_equal(sign[zero_det], zero(sign[zero_det].shape, x.dtype))
+    assert_exactly_equal(logabsdet[zero_det], -infinity(logabsdet[zero_det].shape, x.dtype))
+
+    # More generally, det(x) should equal sign*exp(logabsdet), but this does
+    # not hold exactly due to floating-point loss of precision.
+
+    # TODO: Test this when we have tests for floating-point values.
+    # assert all(abs(linalg.det(x) - sign*exp(logabsdet)) < eps)
 
 @given(
     x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
