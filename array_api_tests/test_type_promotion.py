@@ -168,12 +168,11 @@ def test_operator_returns_array_with_correct_dtype(
 
 
 def gen_inplace_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
-    for op, symbol in dh.binary_op_to_symbol.items():
-        if op == '__matmul__' or dh.op_out_categories[op] == 'bool':
+    for op, symbol in dh.inplace_op_to_symbol.items():
+        if op == '__imatmul__':
             continue
         in_category = dh.op_in_categories[op]
         valid_in_dtypes = dh.category_to_dtypes[in_category]
-        iop = f'__i{op[2:]}'
         for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
             if (
                 in_dtype1 == promoted_dtype
@@ -181,11 +180,11 @@ def gen_inplace_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
                 and in_dtype2 in valid_in_dtypes
             ):
                 yield pytest.param(
-                    f'x1 {symbol}= x2',
+                    f'x1 {symbol} x2',
                     (in_dtype1, in_dtype2),
                     promoted_dtype,
-                    filters[iop],
-                    id=f'{iop}({in_dtype1}, {in_dtype2}) -> {promoted_dtype}',
+                    filters[op],
+                    id=f'{op}({in_dtype1}, {in_dtype2}) -> {promoted_dtype}',
                 )
 
 
@@ -252,19 +251,18 @@ def test_binary_operator_promotes_python_scalars(
 
 
 def gen_inplace_scalar_params() -> Iterator[Tuple[str, DT, ScalarType, Callable]]:
-    for op, symbol in dh.binary_op_to_symbol.items():
-        if op == '__matmul__' or dh.op_out_categories[op] == 'bool':
+    for op, symbol in dh.inplace_op_to_symbol.items():
+        if op == '__imatmul__':
             continue
         in_category = dh.op_in_categories[op]
-        iop = f'__i{op[2:]}'
         for dtype in dh.category_to_dtypes[in_category]:
             for in_stype in dh.dtypes_to_scalars[dtype]:
                 yield pytest.param(
-                    f'x {symbol}= s',
+                    f'x {symbol} s',
                     dtype,
                     in_stype,
-                    filters[iop],
-                    id=f'{iop}({dtype}, {in_stype.__name__}) -> {dtype}',
+                    filters[op],
+                    id=f'{op}({dtype}, {in_stype.__name__}) -> {dtype}',
                 )
 
 

@@ -23,9 +23,10 @@ __all__ = [
     'func_out_categories',
     'op_in_categories',
     'op_out_categories',
+    'op_to_func',
     'binary_op_to_symbol',
     'unary_op_to_symbol',
-    'op_to_func',
+    'inplace_op_to_symbol',
 ]
 
 
@@ -328,6 +329,16 @@ op_to_func = {
 
 op_in_categories = {}
 op_out_categories = {}
-for op_func, elwise_func in op_to_func.items():
-    op_in_categories[op_func] = func_in_categories[elwise_func]
-    op_out_categories[op_func] = func_out_categories[elwise_func]
+for op, elwise_func in op_to_func.items():
+    op_in_categories[op] = func_in_categories[elwise_func]
+    op_out_categories[op] = func_out_categories[elwise_func]
+
+
+inplace_op_to_symbol = {}
+for op, symbol in binary_op_to_symbol.items():
+    if op == '__matmul__' or op_out_categories[op] == 'bool':
+        continue
+    iop = f'__i{op[2:]}'
+    inplace_op_to_symbol[iop] = f'{symbol}='
+    op_in_categories[iop] = op_in_categories[op]
+    op_out_categories[iop] = op_out_categories[op]
