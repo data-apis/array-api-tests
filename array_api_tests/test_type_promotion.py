@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import Iterator, TypeVar, Tuple, Callable, Type, Union
 
 import pytest
-from hypothesis import assume, given
+from hypothesis import assume, given, reject
 from hypothesis import strategies as st
 
 from . import _array_module as xp
@@ -81,7 +81,7 @@ def test_func_returns_array_with_correct_dtype(
         x = data.draw(
             xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter), label='x'
         )
-        out = func(x)
+        arrays = [x]
     else:
         arrays = []
         shapes = data.draw(
@@ -92,7 +92,10 @@ def test_func_returns_array_with_correct_dtype(
                 xps.arrays(dtype=dtype, shape=shape).filter(x_filter), label=f'x{i}'
             )
             arrays.append(x)
+    try:
         out = func(*arrays)
+    except OverflowError:
+        reject()
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
@@ -144,13 +147,12 @@ def gen_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
 def test_operator_returns_array_with_correct_dtype(
     expr, in_dtypes, out_dtype, x_filter, data
 ):
+    locals_ = {}
     if len(in_dtypes) == 1:
-        x = data.draw(
+        locals_['x'] = data.draw(
             xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter), label='x'
         )
-        out = eval(expr, {'x': x})
     else:
-        locals_ = {}
         shapes = data.draw(
             hh.mutually_broadcastable_shapes(len(in_dtypes)), label='shapes'
         )
@@ -158,7 +160,10 @@ def test_operator_returns_array_with_correct_dtype(
             locals_[f'x{i}'] = data.draw(
                 xps.arrays(dtype=dtype, shape=shape).filter(x_filter), label=f'x{i}'
             )
+    try:
         out = eval(expr, locals_)
+    except OverflowError:
+        reject()
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
@@ -197,7 +202,10 @@ def test_inplace_operator_returns_array_with_correct_dtype(
         xps.arrays(dtype=in_dtypes[1], shape=shapes[1]).filter(x_filter), label='x2'
     )
     locals_ = {'x1': x1, 'x2': x2}
-    exec(expr, locals_)
+    try:
+        exec(expr, locals_)
+    except OverflowError:
+        reject()
     x1 = locals_['x1']
     assert x1.dtype == out_dtype, f'{x1.dtype=!s}, but should be {out_dtype}'
 
@@ -239,7 +247,7 @@ def test_binary_operator_promotes_python_scalars(
     try:
         out = eval(expr, {'x': x, 's': s})
     except OverflowError:
-        assume(False)
+        reject()
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
@@ -271,7 +279,7 @@ def test_inplace_operator_promotes_python_scalars(
     try:
         exec(expr, locals_)
     except OverflowError:
-        assume(False)
+        reject()
     x = locals_['x']
     assert x.dtype == dtype, f'{x.dtype=!s}, but should be {dtype}'
 
