@@ -339,7 +339,7 @@ def test_matrix_transpose(x):
     _test_stacks(linalg.matrix_transpose, x, res=res, true_val=true_val)
 
 @given(
-    *two_mutual_arrays(dtype_objects=dh.numeric_dtypes,
+    *two_mutual_arrays(dtype_objs=dh.numeric_dtypes,
                        two_shapes=tuples(one_d_shapes, one_d_shapes))
 )
 def test_outer(x1, x2):
