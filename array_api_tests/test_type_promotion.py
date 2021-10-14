@@ -81,7 +81,7 @@ def test_func_returns_array_with_correct_dtype(
         x = data.draw(
             xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter), label='x'
         )
-        arrays = [x]
+        out = func(x)
     else:
         arrays = []
         shapes = data.draw(
@@ -92,10 +92,10 @@ def test_func_returns_array_with_correct_dtype(
                 xps.arrays(dtype=dtype, shape=shape).filter(x_filter), label=f'x{i}'
             )
             arrays.append(x)
-    try:
-        out = func(*arrays)
-    except OverflowError:
-        reject()
+        try:
+            out = func(*arrays)
+        except OverflowError:
+            reject()
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
@@ -147,12 +147,13 @@ def gen_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
 def test_operator_returns_array_with_correct_dtype(
     expr, in_dtypes, out_dtype, x_filter, data
 ):
-    locals_ = {}
     if len(in_dtypes) == 1:
-        locals_['x'] = data.draw(
+        x = data.draw(
             xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter), label='x'
         )
+        out = eval(expr, {'x': x})
     else:
+        locals_ = {}
         shapes = data.draw(
             hh.mutually_broadcastable_shapes(len(in_dtypes)), label='shapes'
         )
@@ -160,10 +161,10 @@ def test_operator_returns_array_with_correct_dtype(
             locals_[f'x{i}'] = data.draw(
                 xps.arrays(dtype=dtype, shape=shape).filter(x_filter), label=f'x{i}'
             )
-    try:
-        out = eval(expr, locals_)
-    except OverflowError:
-        reject()
+        try:
+            out = eval(expr, locals_)
+        except OverflowError:
+            reject()
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
