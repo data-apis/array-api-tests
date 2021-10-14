@@ -203,38 +203,10 @@ def test_inplace_operator_returns_array_with_correct_dtype(
 
 
 finite_kw = {'allow_nan': False, 'allow_infinity': False}
-
-
-int_kw_factories = defaultdict(
-    lambda: lambda m, M: lambda s: {},
-    {
-        '__add__': lambda m, M: lambda s: {
-            'min_value': max(m - s, m),
-            'max_value': min(M - s, M),
-        },
-        '__sub__': lambda m, M: lambda s: {
-            'min_value': max(m + s, m),
-            'max_value': min(M + s, M),
-        },
-        # TODO: cover all the ops which require element factories
-    },
-)
-
-
-def make_elements_factory(op, dtype):
-    if dh.is_int_dtype(dtype):
-        m, M = dh.dtype_ranges[dtype]
-        return int_kw_factories[op](m, M)
-    else:
-        return lambda _: finite_kw
-
-
 ScalarType = Union[Type[bool], Type[int], Type[float]]
 
 
-def gen_op_scalar_params() -> Iterator[
-    Tuple[str, DT, ScalarType, DT, Callable, Callable]
-]:
+def gen_op_scalar_params() -> Iterator[Tuple[str, DT, ScalarType, DT, Callable]]:
     for op, symbol in dh.binary_op_to_symbol.items():
         if op == '__matmul__':
             continue
@@ -249,32 +221,29 @@ def gen_op_scalar_params() -> Iterator[
                     in_stype,
                     out_dtype,
                     filters[op],
-                    make_elements_factory(op, in_dtype),
                     id=f'{op}({in_dtype}, {in_stype.__name__}) -> {out_dtype}',
                 )
 
 
 @pytest.mark.parametrize(
-    'expr, in_dtype, in_stype, out_dtype, x_filter, elements_factory',
-    gen_op_scalar_params(),
+    'expr, in_dtype, in_stype, out_dtype, x_filter', gen_op_scalar_params()
 )
 @given(data=st.data())
 def test_binary_operator_promotes_python_scalars(
-    expr, in_dtype, in_stype, out_dtype, x_filter, elements_factory, data
+    expr, in_dtype, in_stype, out_dtype, x_filter, data
 ):
     s = data.draw(xps.from_dtype(in_dtype, **finite_kw).map(in_stype), label='scalar')
-    elements = elements_factory(s)
     x = data.draw(
-        xps.arrays(dtype=in_dtype, shape=hh.shapes, elements=elements).filter(x_filter),
-        label='x',
+        xps.arrays(dtype=in_dtype, shape=hh.shapes).filter(x_filter), label='x'
     )
-    out = eval(expr, {'x': x, 's': s})
+    try:
+        out = eval(expr, {'x': x, 's': s})
+    except OverflowError:
+        assume(False)
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-def gen_inplace_scalar_params() -> Iterator[
-    Tuple[str, DT, ScalarType, Callable, Callable]
-]:
+def gen_inplace_scalar_params() -> Iterator[Tuple[str, DT, ScalarType, Callable]]:
     for op, symbol in dh.binary_op_to_symbol.items():
         if op == '__matmul__' or dh.op_out_categories[op] == 'bool':
             continue
@@ -287,26 +256,22 @@ def gen_inplace_scalar_params() -> Iterator[
                     dtype,
                     in_stype,
                     filters[iop],
-                    make_elements_factory(op, dtype),
                     id=f'{iop}({dtype}, {in_stype.__name__}) -> {dtype}',
                 )
 
 
-@pytest.mark.parametrize(
-    'expr, dtype, in_stype, x_filter, elements_factory', gen_inplace_scalar_params()
-)
+@pytest.mark.parametrize('expr, dtype, in_stype, x_filter', gen_inplace_scalar_params())
 @given(data=st.data())
 def test_inplace_operator_promotes_python_scalars(
-    expr, dtype, in_stype, x_filter, elements_factory, data
+    expr, dtype, in_stype, x_filter, data
 ):
     s = data.draw(xps.from_dtype(dtype, **finite_kw).map(in_stype), label='scalar')
-    elements = elements_factory(s)
-    x = data.draw(
-        xps.arrays(dtype=dtype, shape=hh.shapes, elements=elements).filter(x_filter),
-        label='x',
-    )
+    x = data.draw(xps.arrays(dtype=dtype, shape=hh.shapes).filter(x_filter), label='x')
     locals_ = {'x': x, 's': s}
-    exec(expr, locals_)
+    try:
+        exec(expr, locals_)
+    except OverflowError:
+        assume(False)
     x = locals_['x']
     assert x.dtype == dtype, f'{x.dtype=!s}, but should be {dtype}'
 
