@@ -47,27 +47,39 @@ if FILTER_UNDEFINED_DTYPES:
 shared_dtypes = shared(dtypes, key="dtype")
 shared_floating_dtypes = shared(floating_dtypes, key="dtype")
 
+_dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.float_dtypes]
+_sorted_dtypes = [d for category in _dtype_categories for d in category]
 
-sorted_table = sorted(dh.promotion_table)
-sorted_table = sorted(
-    sorted_table, key=lambda ij: -1 if ij[0] == ij[1] else sorted_table.index(ij)
-)
+def _dtypes_sorter(dtype_pair):
+    dtype1, dtype2 = dtype_pair
+    if dtype1 == dtype2:
+        return _sorted_dtypes.index(dtype1)
+    key = len(_sorted_dtypes)
+    rank1 = _sorted_dtypes.index(dtype1)
+    rank2 = _sorted_dtypes.index(dtype2)
+    for category in _dtype_categories:
+        if dtype1 in category and dtype2 in category:
+            break
+    else:
+        key += len(_sorted_dtypes) ** 2
+    key += 2 * (rank1 + rank2)
+    if rank1 > rank2:
+        key += 1
+    return key
+
+promotable_dtypes = sorted(dh.promotion_table.keys(), key=_dtypes_sorter)
+
 if FILTER_UNDEFINED_DTYPES:
-    sorted_table = [(i, j) for i, j in sorted_table
-                    if not isinstance(i, _UndefinedStub)
-                    and not isinstance(j, _UndefinedStub)]
+    promotable_dtypes = [
+        (i, j) for i, j in promotable_dtypes
+        if not isinstance(i, _UndefinedStub)
+        and not isinstance(j, _UndefinedStub)
+    ]
 
 
 def mutually_promotable_dtypes(dtype_objs=dh.all_dtypes):
-    # sort for shrinking (sampled_from shrinks to the earlier elements in the
-    # list). Give pairs of the same dtypes first, then smaller dtypes,
-    # preferring float, then int, then unsigned int. Note, this might not
-    # always result in examples shrinking to these pairs because strategies
-    # that draw from dtypes might not draw the same example from different
-    # pairs (XXX: Can we redesign the strategies so that they can prefer
-    # shrinking dtypes over values?)
     return sampled_from(
-        [(i, j) for i, j in sorted_table if i in dtype_objs and j in dtype_objs]
+        [(i, j) for i, j in promotable_dtypes if i in dtype_objs and j in dtype_objs]
     )
 
 # shared() allows us to draw either the function or the function name and they
