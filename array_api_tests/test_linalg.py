@@ -13,6 +13,7 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 
 """
 
+import pytest
 from hypothesis import assume, given
 from hypothesis.strategies import (booleans, composite, none, tuples, integers,
                                    shared, sampled_from)
@@ -32,6 +33,10 @@ from .test_broadcasting import broadcast_shapes
 
 from . import _array_module
 from ._array_module import linalg
+
+
+pytestmark = [pytest.mark.xp_extension('linalg')]
+
 
 # Standin strategy for not yet implemented tests
 todo = none()

@@ -14,10 +14,10 @@ def pytest_addoption(parser):
     # Enable extensions
     parser.addoption(
         '--ext',
-        '--disable-extensions',
+        '--disable-extension',
         nargs='+',
         default=[],
-        help='disable testing for Array API extensions',
+        help='disable testing for Array API extension(s)',
     )
     # Hypothesis max examples
     # See https://github.com/HypothesisWorks/hypothesis/issues/2434
@@ -65,13 +65,18 @@ def xp_has_ext(ext: str) -> bool:
 
 
 def pytest_collection_modifyitems(config, items):
-    disabled_exts = config.getoption('--disable-extensions')
+    disabled_exts = config.getoption('--disable-extension')
     for item in items:
-        if 'xp_extension' in item.keywords:
-            ext = item.keywords['xp_extension'].args[0]
-            if ext in disabled_exts:
-                item.add_marker(
-                    mark.skip(reason=f'{ext} disabled in --disable-extensions')
-                )
-            elif not xp_has_ext(ext):
-                item.add_marker(mark.skip(reason=f'{ext} not found in array module'))
+        try:
+            ext_mark = next(
+                mark for mark in item.iter_markers() if mark.name == 'xp_extension'
+            )
+        except StopIteration:
+            continue
+        ext = ext_mark.args[0]
+        if ext in disabled_exts:
+            item.add_marker(
+                mark.skip(reason=f'{ext} disabled in --disable-extensions')
+            )
+        elif not xp_has_ext(ext):
+            item.add_marker(mark.skip(reason=f'{ext} not found in array module'))
