@@ -164,6 +164,7 @@ def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes)
         a[idx + (i, i)] = d[j]
     return a
 
+# TODO: Better name
 @composite
 def two_broadcastable_shapes(draw):
     """
