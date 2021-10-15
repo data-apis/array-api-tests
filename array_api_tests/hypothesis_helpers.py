@@ -147,10 +147,10 @@ def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
     return broadcast_to(eye(n, dtype=dtype), shape)
 
 @composite
-def invertible_matrices(draw, dtypes=xps.floating_dtypes()):
+def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes):
     # For now, just generate stacks of diagonal matrices.
     n = draw(integers(0, SQRT_MAX_ARRAY_SIZE),)
-    stack_shape = draw(shapes)
+    stack_shape = draw(stack_shapes)
     shape = stack_shape + (n, n)
     d = draw(xps.arrays(dtypes, shape=n*prod(stack_shape),
                         elements=dict(allow_nan=False, allow_infinity=False)))
