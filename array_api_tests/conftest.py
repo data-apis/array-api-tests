@@ -1,5 +1,10 @@
+from functools import lru_cache
+
 from hypothesis import settings
 from pytest import mark
+
+from . import _array_module as xp
+from ._array_module import _UndefinedStub
 
 
 settings.register_profile('xp_default', deadline=800)
@@ -9,10 +14,10 @@ def pytest_addoption(parser):
     # Enable extensions
     parser.addoption(
         '--ext',
-        '--extensions',
+        '--disable-extensions',
         nargs='+',
         default=[],
-        help='enable testing for Array API extensions',
+        help='disable testing for Array API extensions',
     )
     # Hypothesis max examples
     # See https://github.com/HypothesisWorks/hypothesis/issues/2434
@@ -51,10 +56,22 @@ def pytest_configure(config):
         settings.load_profile('xp_default')
 
 
+@lru_cache
+def xp_has_ext(ext: str) -> bool:
+    try:
+        return not isinstance(getattr(xp, ext), _UndefinedStub)
+    except AttributeError:
+        return False
+
+
 def pytest_collection_modifyitems(config, items):
-    exts = config.getoption('--extensions')
+    disabled_exts = config.getoption('--disable-extensions')
     for item in items:
         if 'xp_extension' in item.keywords:
             ext = item.keywords['xp_extension'].args[0]
-            if ext not in exts:
-                item.add_marker(mark.skip(reason=f'{ext} not enabled in --extensions'))
+            if ext in disabled_exts:
+                item.add_marker(
+                    mark.skip(reason=f'{ext} disabled in --disable-extensions')
+                )
+            elif not xp_has_ext(ext):
+                item.add_marker(mark.skip(reason=f'{ext} not found in array module'))

@@ -26,7 +26,18 @@ for n in function_stubs.__all__:
     if extension_module(n):
         extension_module_names.extend([f'{n}.{i}' for i in getattr(function_stubs, n).__all__])
 
-all_names = function_stubs.__all__ + extension_module_names
+
+params = []
+for name in function_stubs.__all__:
+    marks = []
+    if extension_module(name):
+        marks.append(pytest.mark.xp_extension(name))
+    params.append(pytest.param(name, marks=marks))
+for name in extension_module_names:
+    ext = name.split('.')[0]
+    mark = pytest.mark.xp_extension(ext)
+    params.append(pytest.param(name, marks=[mark]))
+
 
 def array_method(name):
     return stub_module(name) == 'array_object'
@@ -130,7 +141,7 @@ def example_argument(arg, func_name, dtype):
     else:
         raise RuntimeError(f"Don't know how to test argument {arg}. Please update test_signatures.py")
 
-@pytest.mark.parametrize('name', all_names)
+@pytest.mark.parametrize('name', params)
 def test_has_names(name):
     if extension_module(name):
         assert hasattr(mod, name), f'{mod_name} is missing the {name} extension'
@@ -146,7 +157,7 @@ def test_has_names(name):
     else:
         assert hasattr(mod, name), f"{mod_name} is missing the {function_category(name)} function {name}()"
 
-@pytest.mark.parametrize('name', all_names)
+@pytest.mark.parametrize('name', params)
 def test_function_positional_args(name):
     # Note: We can't actually test that positional arguments are
     # positional-only, as that would require knowing the argument name and
@@ -224,7 +235,7 @@ def test_function_positional_args(name):
             # NumPy ufuncs raise ValueError instead of TypeError
             raises((TypeError, ValueError), lambda: mod_func(*args[:n]), f"{name}() should not accept {n} positional arguments")
 
-@pytest.mark.parametrize('name', all_names)
+@pytest.mark.parametrize('name', params)
 def test_function_keyword_only_args(name):
     if extension_module(name):
         return
