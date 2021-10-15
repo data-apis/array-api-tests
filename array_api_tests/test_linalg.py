@@ -24,7 +24,8 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
                                  invertible_matrices, two_mutual_arrays,
-                                 mutually_promotable_dtypes, one_d_shapes)
+                                 mutually_promotable_dtypes, one_d_shapes,
+                                 two_mutually_broadcastable_shapes, SQRT_MAX_ARRAY_SIZE)
 from .pytest_helpers import raises
 
 from .test_broadcasting import broadcast_shapes
@@ -440,11 +441,38 @@ def test_slogdet(x):
     # TODO: Test this when we have tests for floating-point values.
     # assert all(abs(linalg.det(x) - sign*exp(logabsdet)) < eps)
 
-@given(
-    x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-)
+def solve_args():
+    """
+    Strategy for the x1 and x2 arguments to test_solve()
+
+    solve() takes x1, x2, where x1 is any stack of square invertible matrices
+    of shape (..., M, M), and x2 is either shape (..., M) or (..., M, K),
+    where the ... parts of x1 and x2 are broadcast compatible.
+    """
+    stack_shapes = shared(two_mutually_broadcastable_shapes)
+    # Don't worry about dtypes since all floating dtypes are type promotable
+    # with each other.
+    x1 = shared(invertible_matrices(stack_shapes=stack_shapes.map(lambda pair:
+                                                                  pair[0])))
+
+    @composite
+    def x2_shapes(draw):
+        end = draw(xps.array_shapes(min_dims=0, max_dims=1, min_side=0,
+                                    max_side=SQRT_MAX_ARRAY_SIZE))
+        return draw(stack_shapes)[1] + draw(x1).shape[-1:] + end
+
+    x2 = xps.arrays(dtype=xps.floating_dtypes(), shape=x2_shapes())
+    return x1, x2
+
+@given(*solve_args())
 def test_solve(x1, x2):
+    # TODO: solve() is currently ambiguous, in that some inputs can be
+    # interpreted in two different ways. For example, if x1 is shape (2, 2, 2)
+    # and x2 is shape (2, 2), should this be interpreted as x2 is (2,) stack
+    # of a (2,) vector, i.e., the result would be (2, 2, 2, 1) after
+    # broadcasting, or as a single stack of a 2x2 matrix, i.e., resulting in
+    # (2, 2, 2, 2).
+
     # res = linalg.solve(x1, x2)
     pass
 
