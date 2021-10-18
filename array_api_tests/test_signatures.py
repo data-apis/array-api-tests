@@ -160,9 +160,9 @@ def test_function_positional_args(name):
     dtype = None
     if (name.startswith('__i') and name not in ['__int__', '__invert__', '__index__']
         or name.startswith('__r') and name != '__rshift__'):
-        n = dh.op_to_func[name[:2] + name[3:]]
+        n = f'__{name[3:]}'
     else:
-        n = dh.op_to_func.get(name, name)
+        n = name
     in_dtypes = dh.func_in_dtypes.get(n, dh.float_dtypes)
     if bool in in_dtypes:
         dtype = bool

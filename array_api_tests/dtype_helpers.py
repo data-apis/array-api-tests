@@ -21,7 +21,6 @@ __all__ = [
     'dtype_signed',
     'func_in_dtypes',
     'func_out_categories',
-    'op_to_func',
     'binary_op_to_symbol',
     'unary_op_to_symbol',
     'inplace_op_to_symbol',
@@ -297,7 +296,7 @@ binary_op_to_symbol = {
 }
 
 
-op_to_func = {
+_op_to_func = {
     '__abs__': 'abs',
     '__add__': 'add',
     '__and__': 'bitwise_and',
@@ -324,7 +323,7 @@ op_to_func = {
 }
 
 
-for op, elwise_func in op_to_func.items():
+for op, elwise_func in _op_to_func.items():
     func_in_dtypes[op] = func_in_dtypes[elwise_func]
     func_out_categories[op] = func_out_categories[elwise_func]
 
