@@ -112,6 +112,26 @@ def test_func_promotion(func_name, in_dtypes, out_dtype, data):
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
+promotion_table_params: List[Tuple[Tuple[DT, DT], DT]] = []
+for (dtype1, dtype2), promoted_dtype in dh.promotion_table.items():
+    p = pytest.param(
+        (dtype1, dtype2),
+        promoted_dtype,
+        id=make_id('', (dtype1, dtype2), promoted_dtype),
+    )
+    promotion_table_params.append(p)
+
+
+@pytest.mark.parametrize('in_dtypes, out_dtype', promotion_table_params)
+@given(shapes=hh.mutually_broadcastable_shapes(3), data=st.data())
+def test_where(in_dtypes, out_dtype, shapes, data):
+    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
+    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
+    cond = data.draw(xps.arrays(dtype=xp.bool, shape=shapes[2]), label='condition')
+    out = xp.where(cond, x1, x2)
+    assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
+
+
 op_params: List[Tuple[str, str, Tuple[DT, ...], DT]] = []
 op_to_symbol = {**dh.unary_op_to_symbol, **dh.binary_op_to_symbol}
 for op, symbol in op_to_symbol.items():

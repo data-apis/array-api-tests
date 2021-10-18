@@ -163,6 +163,7 @@ dtype_signed = {
 
 
 func_in_dtypes = {
+    # elementwise
     'abs': numeric_dtypes,
     'acos': float_dtypes,
     'acosh': float_dtypes,
@@ -219,10 +220,13 @@ func_in_dtypes = {
     'tan': float_dtypes,
     'tanh': float_dtypes,
     'trunc': numeric_dtypes,
+    # searching
+    'where': all_dtypes,
 }
 
 
 func_returns_bool = {
+    # elementwise
     'abs': False,
     'acos': False,
     'acosh': False,
@@ -279,6 +283,8 @@ func_returns_bool = {
     'tan': False,
     'tanh': False,
     'trunc': False,
+    # searching
+    'where': False,
 }
 
 
