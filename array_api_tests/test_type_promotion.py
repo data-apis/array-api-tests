@@ -57,11 +57,10 @@ def make_id(
 def gen_func_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT]]:
     for func_name in elementwise_functions.__all__:
         valid_in_dtypes = dh.func_in_dtypes[func_name]
-        out_category = dh.func_out_categories[func_name]
         ndtypes = nargs(func_name)
         if ndtypes == 1:
             for in_dtype in valid_in_dtypes:
-                out_dtype = in_dtype if out_category == 'promoted' else xp.bool
+                out_dtype = xp.bool if dh.func_returns_bool[func_name] else in_dtype
                 yield pytest.param(
                     func_name,
                     (in_dtype,),
@@ -72,7 +71,7 @@ def gen_func_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT]]:
             for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
                 if in_dtype1 in valid_in_dtypes and in_dtype2 in valid_in_dtypes:
                     out_dtype = (
-                        promoted_dtype if out_category == 'promoted' else xp.bool
+                        xp.bool if dh.func_returns_bool[func_name] else promoted_dtype
                     )
                     yield pytest.param(
                         func_name,
@@ -117,11 +116,10 @@ def gen_op_params() -> Iterator[Tuple[str, str, Tuple[DT, ...], DT]]:
         if op == '__matmul__':
             continue
         valid_in_dtypes = dh.func_in_dtypes[op]
-        out_category = dh.func_out_categories[op]
         ndtypes = nargs(op)
         if ndtypes == 1:
             for in_dtype in valid_in_dtypes:
-                out_dtype = in_dtype if out_category == 'promoted' else xp.bool
+                out_dtype = xp.bool if dh.func_returns_bool[op] else in_dtype
                 yield pytest.param(
                     op,
                     f'{symbol}x',
@@ -132,9 +130,7 @@ def gen_op_params() -> Iterator[Tuple[str, str, Tuple[DT, ...], DT]]:
         else:
             for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
                 if in_dtype1 in valid_in_dtypes and in_dtype2 in valid_in_dtypes:
-                    out_dtype = (
-                        promoted_dtype if out_category == 'promoted' else xp.bool
-                    )
+                    out_dtype = xp.bool if dh.func_returns_bool[op] else promoted_dtype
                     yield pytest.param(
                         op,
                         f'x1 {symbol} x2',
@@ -222,9 +218,8 @@ def gen_op_scalar_params() -> Iterator[Tuple[str, str, DT, ScalarType, DT]]:
     for op, symbol in dh.binary_op_to_symbol.items():
         if op == '__matmul__':
             continue
-        out_category = dh.func_out_categories[op]
         for in_dtype in dh.func_in_dtypes[op]:
-            out_dtype = in_dtype if out_category == 'promoted' else xp.bool
+            out_dtype = xp.bool if dh.func_returns_bool[op] else in_dtype
             for in_stype in dh.dtype_to_scalars[in_dtype]:
                 yield pytest.param(
                     op,
