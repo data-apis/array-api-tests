@@ -2,7 +2,7 @@
 https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html
 """
 from collections import defaultdict
-from typing import Iterator, Tuple, Type, Union
+from typing import Tuple, Type, Union, List
 
 import pytest
 from hypothesis import assume, given, reject
@@ -54,36 +54,38 @@ def make_id(
     return f'{func_name}({f_args}) -> {f_out_dtype}'
 
 
-def gen_func_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT]]:
-    for func_name in elementwise_functions.__all__:
-        valid_in_dtypes = dh.func_in_dtypes[func_name]
-        ndtypes = nargs(func_name)
-        if ndtypes == 1:
-            for in_dtype in valid_in_dtypes:
-                out_dtype = xp.bool if dh.func_returns_bool[func_name] else in_dtype
-                yield pytest.param(
-                    func_name,
-                    (in_dtype,),
-                    out_dtype,
-                    id=make_id(func_name, (in_dtype,), out_dtype),
+func_params: List[Tuple[str, Tuple[DT, ...], DT]] = []
+for func_name in elementwise_functions.__all__:
+    valid_in_dtypes = dh.func_in_dtypes[func_name]
+    ndtypes = nargs(func_name)
+    if ndtypes == 1:
+        for in_dtype in valid_in_dtypes:
+            out_dtype = xp.bool if dh.func_returns_bool[func_name] else in_dtype
+            p = pytest.param(
+                func_name,
+                (in_dtype,),
+                out_dtype,
+                id=make_id(func_name, (in_dtype,), out_dtype),
+            )
+            func_params.append(p)
+    elif ndtypes == 2:
+        for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
+            if in_dtype1 in valid_in_dtypes and in_dtype2 in valid_in_dtypes:
+                out_dtype = (
+                    xp.bool if dh.func_returns_bool[func_name] else promoted_dtype
                 )
-        elif ndtypes == 2:
-            for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
-                if in_dtype1 in valid_in_dtypes and in_dtype2 in valid_in_dtypes:
-                    out_dtype = (
-                        xp.bool if dh.func_returns_bool[func_name] else promoted_dtype
-                    )
-                    yield pytest.param(
-                        func_name,
-                        (in_dtype1, in_dtype2),
-                        out_dtype,
-                        id=make_id(func_name, (in_dtype1, in_dtype2), out_dtype),
-                    )
-        else:
-            raise NotImplementedError()
+                p = pytest.param(
+                    func_name,
+                    (in_dtype1, in_dtype2),
+                    out_dtype,
+                    id=make_id(func_name, (in_dtype1, in_dtype2), out_dtype),
+                )
+                func_params.append(p)
+    else:
+        raise NotImplementedError()
 
 
-@pytest.mark.parametrize('func_name, in_dtypes, out_dtype', gen_func_params())
+@pytest.mark.parametrize('func_name, in_dtypes, out_dtype', func_params)
 @given(data=st.data())
 def test_func_promotion(func_name, in_dtypes, out_dtype, data):
     func = getattr(xp, func_name)
@@ -110,46 +112,49 @@ def test_func_promotion(func_name, in_dtypes, out_dtype, data):
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-def gen_op_params() -> Iterator[Tuple[str, str, Tuple[DT, ...], DT]]:
-    op_to_symbol = {**dh.unary_op_to_symbol, **dh.binary_op_to_symbol}
-    for op, symbol in op_to_symbol.items():
-        if op == '__matmul__':
-            continue
-        valid_in_dtypes = dh.func_in_dtypes[op]
-        ndtypes = nargs(op)
-        if ndtypes == 1:
-            for in_dtype in valid_in_dtypes:
-                out_dtype = xp.bool if dh.func_returns_bool[op] else in_dtype
-                yield pytest.param(
+op_params: List[Tuple[str, str, Tuple[DT, ...], DT]] = []
+op_to_symbol = {**dh.unary_op_to_symbol, **dh.binary_op_to_symbol}
+for op, symbol in op_to_symbol.items():
+    if op == '__matmul__':
+        continue
+    valid_in_dtypes = dh.func_in_dtypes[op]
+    ndtypes = nargs(op)
+    if ndtypes == 1:
+        for in_dtype in valid_in_dtypes:
+            out_dtype = xp.bool if dh.func_returns_bool[op] else in_dtype
+            p = pytest.param(
+                op,
+                f'{symbol}x',
+                (in_dtype,),
+                out_dtype,
+                id=make_id(op, (in_dtype,), out_dtype),
+            )
+            op_params.append(p)
+    else:
+        for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
+            if in_dtype1 in valid_in_dtypes and in_dtype2 in valid_in_dtypes:
+                out_dtype = xp.bool if dh.func_returns_bool[op] else promoted_dtype
+                p = pytest.param(
                     op,
-                    f'{symbol}x',
-                    (in_dtype,),
+                    f'x1 {symbol} x2',
+                    (in_dtype1, in_dtype2),
                     out_dtype,
-                    id=make_id(op, (in_dtype,), out_dtype),
+                    id=make_id(op, (in_dtype1, in_dtype2), out_dtype),
                 )
-        else:
-            for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
-                if in_dtype1 in valid_in_dtypes and in_dtype2 in valid_in_dtypes:
-                    out_dtype = xp.bool if dh.func_returns_bool[op] else promoted_dtype
-                    yield pytest.param(
-                        op,
-                        f'x1 {symbol} x2',
-                        (in_dtype1, in_dtype2),
-                        out_dtype,
-                        id=make_id(op, (in_dtype1, in_dtype2), out_dtype),
-                    )
-    # We generate params for abs seperately as it does not have an associated symbol
-    for in_dtype in dh.func_in_dtypes['__abs__']:
-        yield pytest.param(
-            '__abs__',
-            'abs(x)',
-            (in_dtype,),
-            in_dtype,
-            id=make_id('__abs__', (in_dtype,), in_dtype),
-        )
+                op_params.append(p)
+# We generate params for abs seperately as it does not have an associated symbol
+for in_dtype in dh.func_in_dtypes['__abs__']:
+    p = pytest.param(
+        '__abs__',
+        'abs(x)',
+        (in_dtype,),
+        in_dtype,
+        id=make_id('__abs__', (in_dtype,), in_dtype),
+    )
+    op_params.append(p)
 
 
-@pytest.mark.parametrize('op, expr, in_dtypes, out_dtype', gen_op_params())
+@pytest.mark.parametrize('op, expr, in_dtypes, out_dtype', op_params)
 @given(data=st.data())
 def test_op_promotion(op, expr, in_dtypes, out_dtype, data):
     x_filter = filters[op]
@@ -174,27 +179,28 @@ def test_op_promotion(op, expr, in_dtypes, out_dtype, data):
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-def gen_inplace_params() -> Iterator[Tuple[str, str, Tuple[DT, ...], DT]]:
-    for op, symbol in dh.inplace_op_to_symbol.items():
-        if op == '__imatmul__':
-            continue
-        valid_in_dtypes = dh.func_in_dtypes[op]
-        for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
-            if (
-                in_dtype1 == promoted_dtype
-                and in_dtype1 in valid_in_dtypes
-                and in_dtype2 in valid_in_dtypes
-            ):
-                yield pytest.param(
-                    op,
-                    f'x1 {symbol} x2',
-                    (in_dtype1, in_dtype2),
-                    promoted_dtype,
-                    id=make_id(op, (in_dtype1, in_dtype2), promoted_dtype),
-                )
+inplace_params: List[Tuple[str, str, Tuple[DT, ...], DT]] = []
+for op, symbol in dh.inplace_op_to_symbol.items():
+    if op == '__imatmul__':
+        continue
+    valid_in_dtypes = dh.func_in_dtypes[op]
+    for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
+        if (
+            in_dtype1 == promoted_dtype
+            and in_dtype1 in valid_in_dtypes
+            and in_dtype2 in valid_in_dtypes
+        ):
+            p = pytest.param(
+                op,
+                f'x1 {symbol} x2',
+                (in_dtype1, in_dtype2),
+                promoted_dtype,
+                id=make_id(op, (in_dtype1, in_dtype2), promoted_dtype),
+            )
+            inplace_params.append(p)
 
 
-@pytest.mark.parametrize('op, expr, in_dtypes, out_dtype', gen_inplace_params())
+@pytest.mark.parametrize('op, expr, in_dtypes, out_dtype', inplace_params)
 @given(shapes=hh.mutually_broadcastable_shapes(2), data=st.data())
 def test_inplace_op_promotion(op, expr, in_dtypes, out_dtype, shapes, data):
     assume(len(shapes[0]) >= len(shapes[1]))
@@ -214,26 +220,25 @@ def test_inplace_op_promotion(op, expr, in_dtypes, out_dtype, shapes, data):
     assert x1.dtype == out_dtype, f'{x1.dtype=!s}, but should be {out_dtype}'
 
 
-def gen_op_scalar_params() -> Iterator[Tuple[str, str, DT, ScalarType, DT]]:
-    for op, symbol in dh.binary_op_to_symbol.items():
-        if op == '__matmul__':
-            continue
-        for in_dtype in dh.func_in_dtypes[op]:
-            out_dtype = xp.bool if dh.func_returns_bool[op] else in_dtype
-            for in_stype in dh.dtype_to_scalars[in_dtype]:
-                yield pytest.param(
-                    op,
-                    f'x {symbol} s',
-                    in_dtype,
-                    in_stype,
-                    out_dtype,
-                    id=make_id(op, (in_dtype, in_stype), out_dtype),
-                )
+op_scalar_params: List[Tuple[str, str, DT, ScalarType, DT]] = []
+for op, symbol in dh.binary_op_to_symbol.items():
+    if op == '__matmul__':
+        continue
+    for in_dtype in dh.func_in_dtypes[op]:
+        out_dtype = xp.bool if dh.func_returns_bool[op] else in_dtype
+        for in_stype in dh.dtype_to_scalars[in_dtype]:
+            p = pytest.param(
+                op,
+                f'x {symbol} s',
+                in_dtype,
+                in_stype,
+                out_dtype,
+                id=make_id(op, (in_dtype, in_stype), out_dtype),
+            )
+            op_scalar_params.append(p)
 
 
-@pytest.mark.parametrize(
-    'op, expr, in_dtype, in_stype, out_dtype', gen_op_scalar_params()
-)
+@pytest.mark.parametrize('op, expr, in_dtype, in_stype, out_dtype', op_scalar_params)
 @given(data=st.data())
 def test_op_scalar_promotion(op, expr, in_dtype, in_stype, out_dtype, data):
     x_filter = filters[op]
@@ -249,22 +254,23 @@ def test_op_scalar_promotion(op, expr, in_dtype, in_stype, out_dtype, data):
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-def gen_inplace_scalar_params() -> Iterator[Tuple[str, str, DT, ScalarType]]:
-    for op, symbol in dh.inplace_op_to_symbol.items():
-        if op == '__imatmul__':
-            continue
-        for dtype in dh.func_in_dtypes[op]:
-            for in_stype in dh.dtype_to_scalars[dtype]:
-                yield pytest.param(
-                    op,
-                    f'x {symbol} s',
-                    dtype,
-                    in_stype,
-                    id=make_id(op, (dtype, in_stype), dtype),
-                )
+inplace_scalar_params: List[Tuple[str, str, DT, ScalarType]] = []
+for op, symbol in dh.inplace_op_to_symbol.items():
+    if op == '__imatmul__':
+        continue
+    for dtype in dh.func_in_dtypes[op]:
+        for in_stype in dh.dtype_to_scalars[dtype]:
+            p = pytest.param(
+                op,
+                f'x {symbol} s',
+                dtype,
+                in_stype,
+                id=make_id(op, (dtype, in_stype), dtype),
+            )
+            inplace_scalar_params.append(p)
 
 
-@pytest.mark.parametrize('op, expr, dtype, in_stype', gen_inplace_scalar_params())
+@pytest.mark.parametrize('op, expr, dtype, in_stype', inplace_scalar_params)
 @given(data=st.data())
 def test_inplace_op_scalar_promotion(op, expr, dtype, in_stype, data):
     x_filter = filters[op]
