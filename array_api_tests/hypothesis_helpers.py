@@ -120,11 +120,15 @@ shapes = xps.array_shapes(min_dims=0, min_side=0).filter(
 one_d_shapes = xps.array_shapes(min_dims=1, max_dims=1, min_side=0, max_side=SQRT_MAX_ARRAY_SIZE)
 
 # Matrix shapes assume stacks of matrices
-matrix_shapes = xps.array_shapes(min_dims=2, min_side=1).filter(
-    lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
-)
+@composite
+def matrix_shapes(draw, stack_shapes=shapes):
+    stack_shape = draw(stack_shapes)
+    mat_shape = draw(xps.array_shapes(max_dims=2, min_dims=2))
+    shape = stack_shape + mat_shape
+    assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
+    return shape
 
-square_matrix_shapes = matrix_shapes.filter(lambda shape: shape[-1] == shape[-2])
+square_matrix_shapes = matrix_shapes().filter(lambda shape: shape[-1] == shape[-2])
 
 def mutually_broadcastable_shapes(num_shapes: int) -> SearchStrategy[Tuple[Tuple]]:
     return (
@@ -161,10 +165,10 @@ def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
     return broadcast_to(eye(n, dtype=dtype), shape)
 
 @composite
-def invertible_matrices(draw, dtypes=xps.floating_dtypes()):
+def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes):
     # For now, just generate stacks of diagonal matrices.
     n = draw(integers(0, SQRT_MAX_ARRAY_SIZE),)
-    stack_shape = draw(shapes)
+    stack_shape = draw(stack_shapes)
     shape = stack_shape + (n, n)
     d = draw(xps.arrays(dtypes, shape=n*prod(stack_shape),
                         elements=dict(allow_nan=False, allow_infinity=False)))
@@ -178,6 +182,7 @@ def invertible_matrices(draw, dtypes=xps.floating_dtypes()):
         a[idx + (i, i)] = d[j]
     return a
 
+# TODO: Better name
 @composite
 def two_broadcastable_shapes(draw):
     """
