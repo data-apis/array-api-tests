@@ -87,7 +87,7 @@ def gen_func_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT]]:
 
 @pytest.mark.parametrize('func_name, in_dtypes, out_dtype', gen_func_params())
 @given(data=st.data())
-def test_func_returns_array_with_correct_dtype(func_name, in_dtypes, out_dtype, data):
+def test_func_promotion(func_name, in_dtypes, out_dtype, data):
     func = getattr(xp, func_name)
     x_filter = filters[func_name]
     if len(in_dtypes) == 1:
@@ -157,9 +157,7 @@ def gen_op_params() -> Iterator[Tuple[str, str, Tuple[DT, ...], DT]]:
 
 @pytest.mark.parametrize('op, expr, in_dtypes, out_dtype', gen_op_params())
 @given(data=st.data())
-def test_operator_returns_array_with_correct_dtype(
-    op, expr, in_dtypes, out_dtype, data
-):
+def test_op_promotion(op, expr, in_dtypes, out_dtype, data):
     x_filter = filters[op]
     if len(in_dtypes) == 1:
         x = data.draw(
@@ -205,9 +203,7 @@ def gen_inplace_params() -> Iterator[Tuple[str, str, Tuple[DT, ...], DT]]:
 
 @pytest.mark.parametrize('op, expr, in_dtypes, out_dtype', gen_inplace_params())
 @given(shapes=hh.mutually_broadcastable_shapes(2), data=st.data())
-def test_inplace_operator_returns_array_with_correct_dtype(
-    op, expr, in_dtypes, out_dtype, shapes, data
-):
+def test_inplace_op_promotion(op, expr, in_dtypes, out_dtype, shapes, data):
     assume(len(shapes[0]) >= len(shapes[1]))
     x_filter = filters[op]
     x1 = data.draw(
@@ -248,9 +244,7 @@ def gen_op_scalar_params() -> Iterator[Tuple[str, str, DT, ScalarType, DT]]:
     'op, expr, in_dtype, in_stype, out_dtype', gen_op_scalar_params()
 )
 @given(data=st.data())
-def test_binary_operator_promotes_python_scalars(
-    op, expr, in_dtype, in_stype, out_dtype, data
-):
+def test_op_scalar_promotion(op, expr, in_dtype, in_stype, out_dtype, data):
     x_filter = filters[op]
     kw = {k: in_stype is float for k in ('allow_nan', 'allow_infinity')}
     s = data.draw(xps.from_dtype(in_dtype, **kw).map(in_stype), label='scalar')
@@ -282,7 +276,7 @@ def gen_inplace_scalar_params() -> Iterator[Tuple[str, str, DT, ScalarType]]:
 
 @pytest.mark.parametrize('op, expr, dtype, in_stype', gen_inplace_scalar_params())
 @given(data=st.data())
-def test_inplace_operator_promotes_python_scalars(op, expr, dtype, in_stype, data):
+def test_inplace_op_scalar_promotion(op, expr, dtype, in_stype, data):
     x_filter = filters[op]
     kw = {k: in_stype is float for k in ('allow_nan', 'allow_infinity')}
     s = data.draw(xps.from_dtype(dtype, **kw).map(in_stype), label='scalar')
