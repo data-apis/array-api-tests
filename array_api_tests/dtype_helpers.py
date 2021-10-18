@@ -10,8 +10,9 @@ __all__ = [
     'float_dtypes',
     'numeric_dtypes',
     'all_dtypes',
+    'dtype_to_name',
     'bool_and_all_int_dtypes',
-    'dtypes_to_scalars',
+    'dtype_to_scalars',
     'is_int_dtype',
     'is_float_dtype',
     'dtype_ranges',
@@ -30,16 +31,25 @@ __all__ = [
 ]
 
 
-int_dtypes = (xp.int8, xp.int16, xp.int32, xp.int64)
-uint_dtypes = (xp.uint8, xp.uint16, xp.uint32, xp.uint64)
+_int_names = ('int8', 'int16', 'int32', 'int64')
+_uint_names = ('uint8', 'uint16', 'uint32', 'uint64')
+_float_names = ('float32', 'float64')
+_dtype_names = ('bool',) + _int_names + _uint_names + _float_names
+
+
+int_dtypes = tuple(getattr(xp, name) for name in _int_names)
+uint_dtypes = tuple(getattr(xp, name) for name in _uint_names)
+float_dtypes = tuple(getattr(xp, name) for name in _float_names)
 all_int_dtypes = int_dtypes + uint_dtypes
-float_dtypes = (xp.float32, xp.float64)
 numeric_dtypes = all_int_dtypes + float_dtypes
 all_dtypes = (xp.bool,) + numeric_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
 
 
-dtypes_to_scalars = {
+dtype_to_name = {getattr(xp, name): name for name in _dtype_names}
+
+
+dtype_to_scalars = {
     xp.bool: [bool],
     **{d: [int] for d in all_int_dtypes},
     **{d: [int, float] for d in float_dtypes},

@@ -2,7 +2,7 @@
 https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html
 """
 from collections import defaultdict
-from typing import Iterator, TypeVar, Tuple, Callable, Type, Union
+from typing import Iterator, Tuple, Callable, Type, Union
 
 import pytest
 from hypothesis import assume, given, reject
@@ -27,7 +27,8 @@ bitwise_shift_funcs = [
 ]
 
 
-DT = TypeVar('DT')
+DT = Type
+ScalarType = Union[Type[bool], Type[int], Type[float]]
 
 
 # We apply filters to xps.arrays() so we don't generate array elements that
@@ -36,6 +37,21 @@ filters = defaultdict(
     lambda: lambda _: True,
     {func: lambda x: ah.all(x > 0) for func in bitwise_shift_funcs},
 )
+
+
+def make_id(
+    func_name: str, in_dtypes: Tuple[Union[DT, ScalarType], ...], out_dtype: DT
+) -> str:
+    f_in_dtypes = []
+    for dtype in in_dtypes:
+        try:
+            f_in_dtypes.append(dh.dtype_to_name[dtype])
+        except KeyError:
+            # i.e. dtype is bool, int, or float
+            f_in_dtypes.append(dtype.__name__)
+    f_args = ', '.join(f_in_dtypes)
+    f_out_dtype = dh.dtype_to_name[out_dtype]
+    return f'{func_name}({f_args}) -> {f_out_dtype}'
 
 
 def gen_func_params() -> Iterator[Tuple[Callable, Tuple[DT, ...], DT, Callable]]:
@@ -53,7 +69,7 @@ def gen_func_params() -> Iterator[Tuple[Callable, Tuple[DT, ...], DT, Callable]]
                     (in_dtype,),
                     out_dtype,
                     filters[func_name],
-                    id=f'{func_name}({in_dtype}) -> {out_dtype}',
+                    id=make_id(func_name, (in_dtype,), out_dtype),
                 )
         elif ndtypes == 2:
             for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
@@ -66,7 +82,7 @@ def gen_func_params() -> Iterator[Tuple[Callable, Tuple[DT, ...], DT, Callable]]
                         (in_dtype1, in_dtype2),
                         out_dtype,
                         filters[func_name],
-                        id=f'{func_name}({in_dtype1}, {in_dtype2}) -> {out_dtype}',
+                        id=make_id(func_name, (in_dtype1, in_dtype2), out_dtype),
                     )
         else:
             raise NotImplementedError()
@@ -116,7 +132,7 @@ def gen_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
                     (in_dtype,),
                     out_dtype,
                     filters[op],
-                    id=f'{op}({in_dtype}) -> {out_dtype}',
+                    id=make_id(op, (in_dtype,), out_dtype),
                 )
         else:
             for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
@@ -129,7 +145,7 @@ def gen_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
                         (in_dtype1, in_dtype2),
                         out_dtype,
                         filters[op],
-                        id=f'{op}({in_dtype1}, {in_dtype2}) -> {out_dtype}',
+                        id=make_id(op, (in_dtype1, in_dtype2), out_dtype),
                     )
     # We generate params for abs seperately as it does not have an associated symbol
     for in_dtype in dh.category_to_dtypes[dh.op_in_categories['__abs__']]:
@@ -138,7 +154,7 @@ def gen_op_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
             (in_dtype,),
             in_dtype,
             filters['__abs__'],
-            id=f'__abs__({in_dtype}) -> {in_dtype}',
+            id=make_id('__abs__', (in_dtype,), in_dtype),
         )
 
 
@@ -185,7 +201,7 @@ def gen_inplace_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT, Callable]]:
                     (in_dtype1, in_dtype2),
                     promoted_dtype,
                     filters[op],
-                    id=f'{op}({in_dtype1}, {in_dtype2}) -> {promoted_dtype}',
+                    id=make_id(op, (in_dtype1, in_dtype2), promoted_dtype),
                 )
 
 
@@ -210,9 +226,6 @@ def test_inplace_operator_returns_array_with_correct_dtype(
     assert x1.dtype == out_dtype, f'{x1.dtype=!s}, but should be {out_dtype}'
 
 
-ScalarType = Union[Type[bool], Type[int], Type[float]]
-
-
 def gen_op_scalar_params() -> Iterator[Tuple[str, DT, ScalarType, DT, Callable]]:
     for op, symbol in dh.binary_op_to_symbol.items():
         if op == '__matmul__':
@@ -221,14 +234,14 @@ def gen_op_scalar_params() -> Iterator[Tuple[str, DT, ScalarType, DT, Callable]]
         out_category = dh.op_out_categories[op]
         for in_dtype in dh.category_to_dtypes[in_category]:
             out_dtype = in_dtype if out_category == 'promoted' else xp.bool
-            for in_stype in dh.dtypes_to_scalars[in_dtype]:
+            for in_stype in dh.dtype_to_scalars[in_dtype]:
                 yield pytest.param(
                     f'x {symbol} s',
                     in_dtype,
                     in_stype,
                     out_dtype,
                     filters[op],
-                    id=f'{op}({in_dtype}, {in_stype.__name__}) -> {out_dtype}',
+                    id=make_id(op, (in_dtype, in_stype), out_dtype),
                 )
 
 
@@ -257,13 +270,13 @@ def gen_inplace_scalar_params() -> Iterator[Tuple[str, DT, ScalarType, Callable]
             continue
         in_category = dh.op_in_categories[op]
         for dtype in dh.category_to_dtypes[in_category]:
-            for in_stype in dh.dtypes_to_scalars[dtype]:
+            for in_stype in dh.dtype_to_scalars[dtype]:
                 yield pytest.param(
                     f'x {symbol} s',
                     dtype,
                     in_stype,
                     filters[op],
-                    id=f'{op}({dtype}, {in_stype.__name__}) -> {dtype}',
+                    id=make_id(op, (dtype, in_stype), dtype),
                 )
 
 
