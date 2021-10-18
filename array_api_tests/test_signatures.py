@@ -4,7 +4,7 @@ import pytest
 
 from ._array_module import mod, mod_name, ones, eye, float64, bool, int64
 from .pytest_helpers import raises, doesnt_raise
-from .dtype_helpers import func_in_categories, op_to_func
+from . import dtype_helpers as dh
 
 from . import function_stubs
 
@@ -160,12 +160,13 @@ def test_function_positional_args(name):
     dtype = None
     if (name.startswith('__i') and name not in ['__int__', '__invert__', '__index__']
         or name.startswith('__r') and name != '__rshift__'):
-        n = op_to_func[name[:2] + name[3:]]
+        n = dh.op_to_func[name[:2] + name[3:]]
     else:
-        n = op_to_func.get(name, name)
-    if 'boolean' in func_in_categories.get(n, 'floating'):
+        n = dh.op_to_func.get(name, name)
+    in_dtypes = dh.func_in_dtypes.get(n, dh.float_dtypes)
+    if bool in in_dtypes:
         dtype = bool
-    elif 'integer' in func_in_categories.get(n, 'floating'):
+    elif all(d in in_dtypes for d in dh.all_int_dtypes):
         dtype = int64
 
     if array_method(name):

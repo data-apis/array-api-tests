@@ -16,14 +16,11 @@ __all__ = [
     'is_int_dtype',
     'is_float_dtype',
     'dtype_ranges',
-    'category_to_dtypes',
     'promotion_table',
     'dtype_nbits',
     'dtype_signed',
-    'func_in_categories',
+    'func_in_dtypes',
     'func_out_categories',
-    'op_in_categories',
-    'op_out_categories',
     'op_to_func',
     'binary_op_to_symbol',
     'unary_op_to_symbol',
@@ -85,16 +82,6 @@ dtype_ranges = {
     xp.uint16: MinMax(0, +65_535),
     xp.uint32: MinMax(0, +4_294_967_295),
     xp.uint64: MinMax(0, +18_446_744_073_709_551_615),
-}
-
-
-category_to_dtypes = {
-    'any': all_dtypes,
-    'boolean': (xp.bool,),
-    'floating': float_dtypes,
-    'integer': all_int_dtypes,
-    'integer_or_boolean': (xp.bool,) + uint_dtypes + int_dtypes,
-    'numeric': numeric_dtypes,
 }
 
 
@@ -160,63 +147,63 @@ dtype_signed = {
 }
 
 
-func_in_categories = {
-    'abs': 'numeric',
-    'acos': 'floating',
-    'acosh': 'floating',
-    'add': 'numeric',
-    'asin': 'floating',
-    'asinh': 'floating',
-    'atan': 'floating',
-    'atan2': 'floating',
-    'atanh': 'floating',
-    'bitwise_and': 'integer_or_boolean',
-    'bitwise_invert': 'integer_or_boolean',
-    'bitwise_left_shift': 'integer',
-    'bitwise_or': 'integer_or_boolean',
-    'bitwise_right_shift': 'integer',
-    'bitwise_xor': 'integer_or_boolean',
-    'ceil': 'numeric',
-    'cos': 'floating',
-    'cosh': 'floating',
-    'divide': 'floating',
-    'equal': 'any',
-    'exp': 'floating',
-    'expm1': 'floating',
-    'floor': 'numeric',
-    'floor_divide': 'numeric',
-    'greater': 'numeric',
-    'greater_equal': 'numeric',
-    'isfinite': 'numeric',
-    'isinf': 'numeric',
-    'isnan': 'numeric',
-    'less': 'numeric',
-    'less_equal': 'numeric',
-    'log': 'floating',
-    'logaddexp': 'floating',
-    'log10': 'floating',
-    'log1p': 'floating',
-    'log2': 'floating',
-    'logical_and': 'boolean',
-    'logical_not': 'boolean',
-    'logical_or': 'boolean',
-    'logical_xor': 'boolean',
-    'multiply': 'numeric',
-    'negative': 'numeric',
-    'not_equal': 'any',
-    'positive': 'numeric',
-    'pow': 'floating',
-    'remainder': 'numeric',
-    'round': 'numeric',
-    'sign': 'numeric',
-    'sin': 'floating',
-    'sinh': 'floating',
-    'sqrt': 'floating',
-    'square': 'numeric',
-    'subtract': 'numeric',
-    'tan': 'floating',
-    'tanh': 'floating',
-    'trunc': 'numeric',
+func_in_dtypes = {
+    'abs': numeric_dtypes,
+    'acos': float_dtypes,
+    'acosh': float_dtypes,
+    'add': numeric_dtypes,
+    'asin': float_dtypes,
+    'asinh': float_dtypes,
+    'atan': float_dtypes,
+    'atan2': float_dtypes,
+    'atanh': float_dtypes,
+    'bitwise_and': bool_and_all_int_dtypes,
+    'bitwise_invert': bool_and_all_int_dtypes,
+    'bitwise_left_shift': all_int_dtypes,
+    'bitwise_or': bool_and_all_int_dtypes,
+    'bitwise_right_shift': all_int_dtypes,
+    'bitwise_xor': bool_and_all_int_dtypes,
+    'ceil': numeric_dtypes,
+    'cos': float_dtypes,
+    'cosh': float_dtypes,
+    'divide': float_dtypes,
+    'equal': all_dtypes,
+    'exp': float_dtypes,
+    'expm1': float_dtypes,
+    'floor': numeric_dtypes,
+    'floor_divide': numeric_dtypes,
+    'greater': numeric_dtypes,
+    'greater_equal': numeric_dtypes,
+    'isfinite': numeric_dtypes,
+    'isinf': numeric_dtypes,
+    'isnan': numeric_dtypes,
+    'less': numeric_dtypes,
+    'less_equal': numeric_dtypes,
+    'log': float_dtypes,
+    'logaddexp': float_dtypes,
+    'log10': float_dtypes,
+    'log1p': float_dtypes,
+    'log2': float_dtypes,
+    'logical_and': (xp.bool,),
+    'logical_not': (xp.bool,),
+    'logical_or': (xp.bool,),
+    'logical_xor': (xp.bool,),
+    'multiply': numeric_dtypes,
+    'negative': numeric_dtypes,
+    'not_equal': all_dtypes,
+    'positive': numeric_dtypes,
+    'pow': float_dtypes,
+    'remainder': numeric_dtypes,
+    'round': numeric_dtypes,
+    'sign': numeric_dtypes,
+    'sin': float_dtypes,
+    'sinh': float_dtypes,
+    'sqrt': float_dtypes,
+    'square': numeric_dtypes,
+    'subtract': numeric_dtypes,
+    'tan': float_dtypes,
+    'tanh': float_dtypes,
+    'trunc': numeric_dtypes,
 }
 
 
@@ -337,18 +324,16 @@ op_to_func = {
 }
 
 
-op_in_categories = {}
-op_out_categories = {}
 for op, elwise_func in op_to_func.items():
-    op_in_categories[op] = func_in_categories[elwise_func]
-    op_out_categories[op] = func_out_categories[elwise_func]
+    func_in_dtypes[op] = func_in_dtypes[elwise_func]
+    func_out_categories[op] = func_out_categories[elwise_func]
 
 
 inplace_op_to_symbol = {}
 for op, symbol in binary_op_to_symbol.items():
-    if op == '__matmul__' or op_out_categories[op] == 'bool':
+    if op == '__matmul__' or func_out_categories[op] == 'bool':
         continue
     iop = f'__i{op[2:]}'
     inplace_op_to_symbol[iop] = f'{symbol}='
-    op_in_categories[iop] = op_in_categories[op]
-    op_out_categories[iop] = op_out_categories[op]
+    func_in_dtypes[iop] = func_in_dtypes[op]
+    func_out_categories[iop] = func_out_categories[op]

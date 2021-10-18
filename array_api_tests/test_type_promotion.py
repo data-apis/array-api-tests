@@ -56,9 +56,8 @@ def make_id(
 
 def gen_func_params() -> Iterator[Tuple[str, Tuple[DT, ...], DT]]:
     for func_name in elementwise_functions.__all__:
-        in_category = dh.func_in_categories[func_name]
+        valid_in_dtypes = dh.func_in_dtypes[func_name]
         out_category = dh.func_out_categories[func_name]
-        valid_in_dtypes = dh.category_to_dtypes[in_category]
         ndtypes = nargs(func_name)
         if ndtypes == 1:
             for in_dtype in valid_in_dtypes:
@@ -117,9 +116,8 @@ def gen_op_params() -> Iterator[Tuple[str, str, Tuple[DT, ...], DT]]:
     for op, symbol in op_to_symbol.items():
         if op == '__matmul__':
             continue
-        in_category = dh.op_in_categories[op]
-        out_category = dh.op_out_categories[op]
-        valid_in_dtypes = dh.category_to_dtypes[in_category]
+        valid_in_dtypes = dh.func_in_dtypes[op]
+        out_category = dh.func_out_categories[op]
         ndtypes = nargs(op)
         if ndtypes == 1:
             for in_dtype in valid_in_dtypes:
@@ -145,7 +143,7 @@ def gen_op_params() -> Iterator[Tuple[str, str, Tuple[DT, ...], DT]]:
                         id=make_id(op, (in_dtype1, in_dtype2), out_dtype),
                     )
     # We generate params for abs seperately as it does not have an associated symbol
-    for in_dtype in dh.category_to_dtypes[dh.op_in_categories['__abs__']]:
+    for in_dtype in dh.func_in_dtypes['__abs__']:
         yield pytest.param(
             '__abs__',
             'abs(x)',
@@ -184,8 +182,7 @@ def gen_inplace_params() -> Iterator[Tuple[str, str, Tuple[DT, ...], DT]]:
     for op, symbol in dh.inplace_op_to_symbol.items():
         if op == '__imatmul__':
             continue
-        in_category = dh.op_in_categories[op]
-        valid_in_dtypes = dh.category_to_dtypes[in_category]
+        valid_in_dtypes = dh.func_in_dtypes[op]
         for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
             if (
                 in_dtype1 == promoted_dtype
@@ -225,9 +222,8 @@ def gen_op_scalar_params() -> Iterator[Tuple[str, str, DT, ScalarType, DT]]:
     for op, symbol in dh.binary_op_to_symbol.items():
         if op == '__matmul__':
             continue
-        in_category = dh.op_in_categories[op]
-        out_category = dh.op_out_categories[op]
-        for in_dtype in dh.category_to_dtypes[in_category]:
+        out_category = dh.func_out_categories[op]
+        for in_dtype in dh.func_in_dtypes[op]:
             out_dtype = in_dtype if out_category == 'promoted' else xp.bool
             for in_stype in dh.dtype_to_scalars[in_dtype]:
                 yield pytest.param(
@@ -262,8 +258,7 @@ def gen_inplace_scalar_params() -> Iterator[Tuple[str, str, DT, ScalarType]]:
     for op, symbol in dh.inplace_op_to_symbol.items():
         if op == '__imatmul__':
             continue
-        in_category = dh.op_in_categories[op]
-        for dtype in dh.category_to_dtypes[in_category]:
+        for dtype in dh.func_in_dtypes[op]:
             for in_stype in dh.dtype_to_scalars[dtype]:
                 yield pytest.param(
                     op,
