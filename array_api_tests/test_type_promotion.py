@@ -61,6 +61,22 @@ def test_meshgrid(dtypes, kw, data):
         ), f'out[{i}]={out[i].dtype}, but should be {expected}'
 
 
+@given(
+    shape=hh.shapes(min_dims=1),
+    dtypes=multi_promotable_dtypes(allow_bool=False),
+    kw=hh.kwargs(axis=st.none() | st.just(0)),
+    data=st.data(),
+)
+def test_concat(shape, dtypes, kw, data):
+    arrays = []
+    for i, dtype in enumerate(dtypes, 1):
+        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
+        arrays.append(x)
+    out = xp.concat(arrays, **kw)
+    expected = dh.result_type(*dtypes)
+    assert out.dtype == expected, f'{out.dtype=!s}, but should be {expected}'
+
+
 bitwise_shift_funcs = [
     'bitwise_left_shift',
     'bitwise_right_shift',
@@ -132,7 +148,8 @@ def test_func_promotion(func_name, in_dtypes, out_dtype, data):
     x_filter = filters[func_name]
     if len(in_dtypes) == 1:
         x = data.draw(
-            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter), label='x'
+            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes()).filter(x_filter),
+            label='x',
         )
         out = func(x)
     else:
@@ -220,7 +237,8 @@ def test_op_promotion(op, expr, in_dtypes, out_dtype, data):
     x_filter = filters[op]
     if len(in_dtypes) == 1:
         x = data.draw(
-            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes).filter(x_filter), label='x'
+            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes()).filter(x_filter),
+            label='x',
         )
         out = eval(expr, {'x': x})
     else:
@@ -305,7 +323,7 @@ def test_op_scalar_promotion(op, expr, in_dtype, in_stype, out_dtype, data):
     kw = {k: in_stype is float for k in ('allow_nan', 'allow_infinity')}
     s = data.draw(xps.from_dtype(in_dtype, **kw).map(in_stype), label='scalar')
     x = data.draw(
-        xps.arrays(dtype=in_dtype, shape=hh.shapes).filter(x_filter), label='x'
+        xps.arrays(dtype=in_dtype, shape=hh.shapes()).filter(x_filter), label='x'
     )
     try:
         out = eval(expr, {'x': x, 's': s})
@@ -336,7 +354,9 @@ def test_inplace_op_scalar_promotion(op, expr, dtype, in_stype, data):
     x_filter = filters[op]
     kw = {k: in_stype is float for k in ('allow_nan', 'allow_infinity')}
     s = data.draw(xps.from_dtype(dtype, **kw).map(in_stype), label='scalar')
-    x = data.draw(xps.arrays(dtype=dtype, shape=hh.shapes).filter(x_filter), label='x')
+    x = data.draw(
+        xps.arrays(dtype=dtype, shape=hh.shapes()).filter(x_filter), label='x'
+    )
     locals_ = {'x': x, 's': s}
     try:
         exec(expr, locals_)

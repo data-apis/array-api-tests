@@ -113,15 +113,21 @@ def tuples(elements, *, min_size=0, max_size=None, unique_by=None, unique=False)
 
 # Use this to avoid memory errors with NumPy.
 # See https://github.com/numpy/numpy/issues/15753
-shapes = xps.array_shapes(min_dims=0, min_side=0).filter(
-    lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
-)
+def shapes(**kw):
+    if 'min_dims' not in kw.keys():
+        kw['min_dims'] = 0
+    if 'min_side' not in kw.keys():
+        kw['min_side'] = 0
+    return xps.array_shapes(**kw).filter(
+        lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
+    )
+
 
 one_d_shapes = xps.array_shapes(min_dims=1, max_dims=1, min_side=0, max_side=SQRT_MAX_ARRAY_SIZE)
 
 # Matrix shapes assume stacks of matrices
 @composite
-def matrix_shapes(draw, stack_shapes=shapes):
+def matrix_shapes(draw, stack_shapes=shapes()):
     stack_shape = draw(stack_shapes)
     mat_shape = draw(xps.array_shapes(max_dims=2, min_dims=2))
     shape = stack_shape + mat_shape
@@ -164,13 +170,13 @@ def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
     # using something like
     # https://github.com/scikit-learn/scikit-learn/blob/844b4be24/sklearn/datasets/_samples_generator.py#L1351.
     n = draw(integers(0))
-    shape = draw(shapes) + (n, n)
+    shape = draw(shapes()) + (n, n)
     assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
     dtype = draw(dtypes)
     return broadcast_to(eye(n, dtype=dtype), shape)
 
 @composite
-def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes):
+def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes()):
     # For now, just generate stacks of diagonal matrices.
     n = draw(integers(0, SQRT_MAX_ARRAY_SIZE),)
     stack_shape = draw(stack_shapes)

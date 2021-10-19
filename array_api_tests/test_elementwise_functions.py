@@ -49,7 +49,7 @@ def sanity_check(x1, x2):
     except ValueError:
         raise RuntimeError("Error in test generation (probably a bug in the test suite")
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_abs(x):
     if dh.is_int_dtype(x.dtype):
         minval = dh.dtype_ranges[x.dtype][0]
@@ -66,7 +66,7 @@ def test_abs(x):
     # abs(x) = x for x >= 0
     ah.assert_exactly_equal(a[ah.logical_not(less_zero)], x[ah.logical_not(less_zero)])
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_acos(x):
     a = xp.acos(x)
     ONE = ah.one(x.shape, x.dtype)
@@ -80,7 +80,7 @@ def test_acos(x):
     # nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_acosh(x):
     a = xp.acosh(x)
     ONE = ah.one(x.shape, x.dtype)
@@ -102,7 +102,7 @@ def test_add(x1, x2):
     ah.assert_exactly_equal(a, b)
     # TODO: Test that add is actually addition
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_asin(x):
     a = xp.asin(x)
     ONE = ah.one(x.shape, x.dtype)
@@ -113,7 +113,7 @@ def test_asin(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_asinh(x):
     a = xp.asinh(x)
     INFINITY = ah.infinity(x.shape, x.dtype)
@@ -123,7 +123,7 @@ def test_asinh(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_atan(x):
     a = xp.atan(x)
     INFINITY = ah.infinity(x.shape, x.dtype)
@@ -170,7 +170,7 @@ def test_atan2(x1, x2):
     ah.assert_exactly_equal(ah.logical_or(ah.logical_and(negx1, posx2),
                                     ah.logical_and(negx1, negx2)), nega)
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_atanh(x):
     a = xp.atanh(x)
     ONE = ah.one(x.shape, x.dtype)
@@ -230,7 +230,7 @@ def test_bitwise_left_shift(x1, x2):
         vals_shift = ah.int_to_dtype(vals_shift, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype])
         assert vals_shift == res
 
-@given(xps.arrays(dtype=hh.integer_or_boolean_dtypes, shape=hh.shapes))
+@given(xps.arrays(dtype=hh.integer_or_boolean_dtypes, shape=hh.shapes()))
 def test_bitwise_invert(x):
     out = xp.bitwise_invert(x)
     # Compare against the Python ~ operator.
@@ -322,7 +322,7 @@ def test_bitwise_xor(x1, x2):
             vals_xor = ah.int_to_dtype(vals_xor, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype])
             assert vals_xor == res
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_ceil(x):
     # This test is almost identical to test_floor()
     a = xp.ceil(x)
@@ -333,7 +333,7 @@ def test_ceil(x):
     integers = ah.isintegral(x)
     ah.assert_exactly_equal(a[integers], x[integers])
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_cos(x):
     a = xp.cos(x)
     ONE = ah.one(x.shape, x.dtype)
@@ -344,7 +344,7 @@ def test_cos(x):
     # to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_cosh(x):
     a = xp.cosh(x)
     INFINITY = ah.infinity(x.shape, x.dtype)
@@ -379,7 +379,7 @@ def test_equal(x1, x2):
 
     # First we broadcast the arrays so that they can be indexed uniformly.
     # TODO: it should be possible to skip this step if we instead generate
-    # indices to x1 and x2 that correspond to the broadcasted hh.shapes. This
+    # indices to x1 and x2 that correspond to the broadcasted shapes. This
     # would avoid the dependence in this test on broadcast_to().
     shape = broadcast_shapes(x1.shape, x2.shape)
     _x1 = xp.broadcast_to(x1, shape)
@@ -414,7 +414,7 @@ def test_equal(x1, x2):
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) == scalar_func(x2idx))
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_exp(x):
     a = xp.exp(x)
     INFINITY = ah.infinity(x.shape, x.dtype)
@@ -425,7 +425,7 @@ def test_exp(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_expm1(x):
     a = xp.expm1(x)
     INFINITY = ah.infinity(x.shape, x.dtype)
@@ -436,7 +436,7 @@ def test_expm1(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_floor(x):
     # This test is almost identical to test_ceil
     a = xp.floor(x)
@@ -529,7 +529,7 @@ def test_greater_equal(x1, x2):
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) >= scalar_func(x2idx))
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isfinite(x):
     a = ah.isfinite(x)
     TRUE = ah.true(x.shape)
@@ -545,7 +545,7 @@ def test_isfinite(x):
             s = float(x[idx])
             assert bool(a[idx]) == math.isfinite(s)
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isinf(x):
     a = xp.isinf(x)
     FALSE = ah.false(x.shape)
@@ -560,7 +560,7 @@ def test_isinf(x):
             s = float(x[idx])
             assert bool(a[idx]) == math.isinf(s)
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isnan(x):
     a = ah.isnan(x)
     FALSE = ah.false(x.shape)
@@ -633,7 +633,7 @@ def test_less_equal(x1, x2):
         assert aidx.shape == x1idx.shape == x2idx.shape
         assert bool(aidx) == (scalar_func(x1idx) <= scalar_func(x2idx))
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log(x):
     a = xp.log(x)
     INFINITY = ah.infinity(x.shape, x.dtype)
@@ -644,7 +644,7 @@ def test_log(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log1p(x):
     a = xp.log1p(x)
     INFINITY = ah.infinity(x.shape, x.dtype)
@@ -655,7 +655,7 @@ def test_log1p(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log2(x):
     a = xp.log2(x)
     INFINITY = ah.infinity(x.shape, x.dtype)
@@ -666,7 +666,7 @@ def test_log2(x):
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log10(x):
     a = xp.log10(x)
     INFINITY = ah.infinity(x.shape, x.dtype)
@@ -698,7 +698,7 @@ def test_logical_and(x1, x2):
     for idx in ah.ndindex(shape):
         assert a[idx] == (bool(_x1[idx]) and bool(_x2[idx]))
 
-@given(xps.arrays(dtype=xp.bool, shape=hh.shapes))
+@given(xps.arrays(dtype=xp.bool, shape=hh.shapes()))
 def test_logical_not(x):
     a = ah.logical_not(x)
 
@@ -740,7 +740,7 @@ def test_multiply(x1, x2):
     # multiply is commutative
     ah.assert_exactly_equal(a, b)
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_negative(x):
     out = ah.negative(x)
 
@@ -790,7 +790,7 @@ def test_not_equal(x1, x2):
         assert bool(aidx) == (scalar_func(x1idx) != scalar_func(x2idx))
 
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_positive(x):
     out = xp.positive(x)
     # Positive does nothing
@@ -817,7 +817,7 @@ def test_remainder(x1, x2):
     not_nan = ah.logical_not(ah.logical_or(ah.isnan(out), ah.isnan(x2)))
     ah.assert_same_sign(out[not_nan], x2[not_nan])
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes))
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_round(x):
     a = xp.round(x)
 

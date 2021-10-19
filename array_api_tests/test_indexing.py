@@ -58,8 +58,8 @@ def test_slicing(size, s):
     for i in range(len(sliced_list)):
         assert sliced_array[i] == sliced_list[i], "Slice index did not give the same elements as slicing an equivalent Python list"
 
-@given(shared(shapes, key='array_shapes'),
-       multiaxis_indices(shapes=shared(shapes, key='array_shapes')))
+@given(shared(shapes(), key='array_shapes'),
+       multiaxis_indices(shapes=shared(shapes(), key='array_shapes')))
 def test_multiaxis_indexing(shape, idx):
     # NOTE: Out of bounds indices (both integer and slices) are out of scope
     # for the spec. If you get a (valid) out of bounds error, it indicates a

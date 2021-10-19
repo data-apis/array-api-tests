@@ -105,7 +105,7 @@ def cross_args(draw, dtype_objects=dh.numeric_dtypes):
     in the drawn axis.
 
     """
-    shape = list(draw(shapes))
+    shape = list(draw(shapes()))
     size = len(shape)
     assume(size > 0)
 
@@ -297,7 +297,7 @@ def test_matmul(x1, x2):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
     kw=kwargs(axis=todo, keepdims=todo, ord=todo)
 )
 def test_matrix_norm(x, kw):
@@ -329,7 +329,7 @@ def test_matrix_power(x, n):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
     kw=kwargs(rtol=todo)
 )
 def test_matrix_rank(x, kw):
@@ -379,7 +379,7 @@ def test_outer(x1, x2):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
     kw=kwargs(rtol=todo)
 )
 def test_pinv(x, kw):
@@ -523,15 +523,15 @@ def test_svd(x, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
 )
 def test_svdvals(x):
     # res = linalg.svdvals(x)
     pass
 
 @given(
-    x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
+    x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
     kw=kwargs(axes=todo)
 )
 def test_tensordot(x1, x2, kw):
@@ -540,7 +540,7 @@ def test_tensordot(x1, x2, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
     kw=kwargs(offset=todo)
 )
 def test_trace(x, kw):
@@ -548,8 +548,8 @@ def test_trace(x, kw):
     pass
 
 @given(
-    x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
+    x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
     kw=kwargs(axis=todo)
 )
 def test_vecdot(x1, x2, kw):
@@ -558,7 +558,7 @@ def test_vecdot(x1, x2, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
     kw=kwargs(axis=todo, keepdims=todo, ord=todo)
 )
 def test_vector_norm(x, kw):

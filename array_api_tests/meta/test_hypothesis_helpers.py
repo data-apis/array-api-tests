@@ -32,7 +32,7 @@ def valid_shape(shape) -> bool:
     )
 
 
-@given(hh.shapes)
+@given(hh.shapes())
 def test_shapes(shape):
     assert valid_shape(shape)
 
