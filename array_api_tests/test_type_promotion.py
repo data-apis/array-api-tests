@@ -185,17 +185,17 @@ def test_func_promotion(func_name, in_dtypes, out_dtype, data):
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-promotion_table_params: List[Tuple[Tuple[DT, DT], DT]] = []
+promotion_params: List[Tuple[Tuple[DT, DT], DT]] = []
 for (dtype1, dtype2), promoted_dtype in dh.promotion_table.items():
     p = pytest.param(
         (dtype1, dtype2),
         promoted_dtype,
         id=make_id('', (dtype1, dtype2), promoted_dtype),
     )
-    promotion_table_params.append(p)
+    promotion_params.append(p)
 
 
-@pytest.mark.parametrize('in_dtypes, out_dtype', promotion_table_params)
+@pytest.mark.parametrize('in_dtypes, out_dtype', promotion_params)
 @given(shapes=hh.mutually_broadcastable_shapes(3), data=st.data())
 def test_where(in_dtypes, out_dtype, shapes, data):
     x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
@@ -205,15 +205,33 @@ def test_where(in_dtypes, out_dtype, shapes, data):
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-numeric_promotion_table_params = promotion_table_params[1:]
+numeric_promotion_params = promotion_params[1:]
 
 
-@pytest.mark.parametrize('in_dtypes, out_dtype', numeric_promotion_table_params)
+@pytest.mark.parametrize('in_dtypes, out_dtype', numeric_promotion_params)
 @given(shapes=hh.mutually_broadcastable_shapes(2, min_dims=1), data=st.data())
 def test_matmul(in_dtypes, out_dtype, shapes, data):
     x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
     x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
     out = xp.matmul(x1, x2)
+    assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
+
+
+@pytest.mark.parametrize('in_dtypes, out_dtype', numeric_promotion_params)
+@given(shapes=hh.mutually_broadcastable_shapes(2, min_dims=2), data=st.data())
+def test_tensordot(in_dtypes, out_dtype, shapes, data):
+    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
+    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
+    out = xp.tensordot(x1, x2)
+    assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
+
+
+@pytest.mark.parametrize('in_dtypes, out_dtype', numeric_promotion_params)
+@given(shapes=hh.mutually_broadcastable_shapes(2, min_dims=1), data=st.data())
+def test_vecdot(in_dtypes, out_dtype, shapes, data):
+    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
+    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
+    out = xp.vecdot(x1, x2)
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
