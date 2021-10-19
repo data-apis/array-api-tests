@@ -5,14 +5,12 @@ from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
                             zeros, ones, full, bool, int8, int16, int32,
                             int64, uint8, uint16, uint32, uint64, float32,
                             float64, nan, inf, pi, remainder, divide, isinf,
-                            negative, _integer_dtypes, _floating_dtypes,
-                            _numeric_dtypes, _boolean_dtypes, _dtypes,
-                            asarray)
-from . import _array_module
-
+                            negative, asarray)
 # These are exported here so that they can be included in the special cases
 # tests from this file.
 from ._array_module import logical_not, subtract, floor, ceil, where
+from . import dtype_helpers as dh
+
 
 __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'less_equal', 'greater', 'subtract', 'negative', 'floor', 'ceil',
@@ -25,9 +23,8 @@ __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'assert_isinf', 'positive_mathematical_sign',
            'assert_positive_mathematical_sign', 'negative_mathematical_sign',
            'assert_negative_mathematical_sign', 'same_sign',
-           'assert_same_sign', 'ndindex', 'promote_dtypes', 'float64',
-           'asarray', 'is_integer_dtype', 'is_float_dtype', 'dtype_ranges',
-           'full', 'true', 'false', 'isnan']
+           'assert_same_sign', 'ndindex', 'float64',
+           'asarray', 'full', 'true', 'false', 'isnan']
 
 def zero(shape, dtype):
     """
@@ -111,7 +108,7 @@ def isnegzero(x):
     # TODO: If copysign or signbit are added to the spec, use those instead.
     shape = x.shape
     dtype = x.dtype
-    if is_integer_dtype(dtype):
+    if dh.is_int_dtype(dtype):
         return false(shape)
     return equal(divide(one(shape, dtype), x), -infinity(shape, dtype))
 
@@ -122,7 +119,7 @@ def isposzero(x):
     # TODO: If copysign or signbit are added to the spec, use those instead.
     shape = x.shape
     dtype = x.dtype
-    if is_integer_dtype(dtype):
+    if dh.is_int_dtype(dtype):
         return true(shape)
     return equal(divide(one(shape, dtype), x), infinity(shape, dtype))
 
@@ -311,37 +308,6 @@ def same_sign(x, y):
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
 
-integer_dtype_objects = [getattr(_array_module, t) for t in _integer_dtypes]
-floating_dtype_objects = [getattr(_array_module, t) for t in _floating_dtypes]
-numeric_dtype_objects = [getattr(_array_module, t) for t in _numeric_dtypes]
-boolean_dtype_objects = [getattr(_array_module, t) for t in _boolean_dtypes]
-integer_or_boolean_dtype_objects = integer_dtype_objects + boolean_dtype_objects
-dtype_objects = [getattr(_array_module, t) for t in _dtypes]
-
-def is_integer_dtype(dtype):
-    if dtype is None:
-        return False
-    return dtype in [int8, int16, int32, int64, uint8, uint16, uint32, uint64]
-
-def is_float_dtype(dtype):
-    if dtype is None:
-        # numpy.dtype('float64') == None gives True
-        return False
-    # TODO: Return True even for floating point dtypes that aren't part of the
-    # spec, like np.float16
-    return dtype in [float32, float64]
-
-dtype_ranges = {
-    int8: [-128, +127],
-    int16: [-32_768, +32_767],
-    int32: [-2_147_483_648, +2_147_483_647],
-    int64: [-9_223_372_036_854_775_808, +9_223_372_036_854_775_807],
-    uint8: [0, +255],
-    uint16: [0, +65_535],
-    uint32: [0, +4_294_967_295],
-    uint64: [0, +18_446_744_073_709_551_615],
-}
-
 def int_to_dtype(x, n, signed):
     """
     Convert the Python integer x into an n bit signed or unsigned number.
@@ -363,22 +329,3 @@ def ndindex(shape):
 
     """
     return itertools.product(*[range(i) for i in shape])
-
-def promote_dtypes(dtype1, dtype2):
-    """
-    Special case of result_type() which uses the exact type promotion table
-    from the spec.
-    """
-    from .test_type_promotion import dtype_mapping, promotion_table
-
-    # Equivalent to this, but some libraries may not work properly with using
-    # dtype objects as dict keys
-    #
-    # d1, d2 = reverse_dtype_mapping[dtype1], reverse_dtype_mapping[dtype2]
-
-    d1 = [i for i in dtype_mapping if dtype_mapping[i] == dtype1][0]
-    d2 = [i for i in dtype_mapping if dtype_mapping[i] == dtype2][0]
-
-    if (d1, d2) not in promotion_table:
-        raise ValueError(f"{d1} and {d2} are not type promotable according to the spec (this may indicate a bug in the test suite).")
-    return dtype_mapping[promotion_table[d1, d2]]

@@ -17,9 +17,7 @@ from hypothesis import assume, given
 from hypothesis.strategies import (booleans, composite, none, tuples, integers,
                                    shared, sampled_from)
 
-from .array_helpers import (assert_exactly_equal, ndindex, asarray,
-                            numeric_dtype_objects, promote_dtypes, equal,
-                            zero, infinity)
+from .array_helpers import assert_exactly_equal, ndindex, asarray, equal, zero, infinity
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
@@ -27,6 +25,7 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  mutually_promotable_dtypes, one_d_shapes,
                                  two_mutually_broadcastable_shapes, SQRT_MAX_ARRAY_SIZE)
 from .pytest_helpers import raises
+from . import dtype_helpers as dh
 
 from .test_broadcasting import broadcast_shapes
 
@@ -94,7 +93,7 @@ def test_cholesky(x, kw):
 
 
 @composite
-def cross_args(draw, dtype_objects=numeric_dtype_objects):
+def cross_args(draw, dtype_objects=dh.numeric_dtypes):
     """
     cross() requires two arrays with a size 3 in the 'axis' dimension
 
@@ -135,7 +134,7 @@ def test_cross(x1_x2_kw):
 
     res = linalg.cross(x1, x2, **kw)
 
-    assert res.dtype == promote_dtypes(x1, x2), "cross() did not return the correct dtype"
+    assert res.dtype == dh.promotion_table[x1, x2], "cross() did not return the correct dtype"
     assert res.shape == shape, "cross() did not return the correct shape"
 
     # cross is too different from other functions to use _test_stacks, and it
@@ -254,7 +253,7 @@ def test_inv(x):
     # TODO: Test that the result is actually the inverse
 
 @given(
-    *two_mutual_arrays(numeric_dtype_objects)
+    *two_mutual_arrays(dh.numeric_dtypes)
 )
 def test_matmul(x1, x2):
     # TODO: Make this also test the @ operator
@@ -271,7 +270,7 @@ def test_matmul(x1, x2):
     else:
         res = linalg.matmul(x1, x2)
 
-    assert res.dtype == promote_dtypes(x1, x2), "matmul() did not return the correct dtype"
+    assert res.dtype == dh.promotion_table[x1, x2], "matmul() did not return the correct dtype"
 
     if len(x1.shape) == len(x2.shape) == 1:
         assert res.shape == ()
@@ -342,7 +341,7 @@ def test_matrix_transpose(x):
     _test_stacks(linalg.matrix_transpose, x, res=res, true_val=true_val)
 
 @given(
-    *two_mutual_arrays(dtype_objects=numeric_dtype_objects,
+    *two_mutual_arrays(dtype_objs=dh.numeric_dtypes,
                        two_shapes=tuples(one_d_shapes, one_d_shapes))
 )
 def test_outer(x1, x2):
@@ -352,7 +351,7 @@ def test_outer(x1, x2):
 
     shape = (x1.shape[0], x2.shape[0])
     assert res.shape == shape, "outer() did not return the correct shape"
-    assert res.dtype == promote_dtypes(x1, x2), "outer() did not return the correct dtype"
+    assert res.dtype == dh.promotion_table[x1, x2], "outer() did not return the correct dtype"
 
     if 0 in shape:
         true_res = _array_module.empty(shape, dtype=res.dtype)

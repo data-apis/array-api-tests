@@ -4,11 +4,11 @@ from ._array_module import (asarray, arange, ceil, empty, empty_like, eye, full,
                             full_like, equal, all, linspace, ones, ones_like,
                             zeros, zeros_like, isnan)
 from . import _array_module as xp
-from .array_helpers import (is_integer_dtype, dtype_ranges,
-                            assert_exactly_equal, isintegral, is_float_dtype)
+from .array_helpers import assert_exactly_equal, isintegral
 from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
                                  shapes, sizes, sqrt_sizes, shared_dtypes,
                                  scalars, kwargs)
+from . import dtype_helpers as dh
 from . import xps
 
 from hypothesis import assume, given
@@ -24,8 +24,8 @@ float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE,
                                                      and (abs(x) > 0.01 if isinstance(x, float) else True)),
        one_of(none(), numeric_dtypes))
 def test_arange(start, stop, step, dtype):
-    if dtype in dtype_ranges:
-        m, M = dtype_ranges[dtype]
+    if dtype in dh.dtype_ranges:
+        m, M = dh.dtype_ranges[dtype]
         if (not (m <= start <= M)
             or isinstance(stop, int) and not (m <= stop <= M)
             or isinstance(step, int) and not (m <= step <= M)):
@@ -33,7 +33,7 @@ def test_arange(start, stop, step, dtype):
 
     kwargs = {} if dtype is None else {'dtype': dtype}
 
-    all_int = (is_integer_dtype(dtype)
+    all_int = (dh.is_int_dtype(dtype)
                and isinstance(start, int)
                and (stop is None or isinstance(stop, int))
                and (step is None or isinstance(step, int)))
@@ -75,7 +75,7 @@ def test_empty(shape, kw):
     out = empty(shape, **kw)
     dtype = kw.get("dtype", None) or xp.float64
     if kw.get("dtype", None) is None:
-        assert is_float_dtype(out.dtype), f"empty() returned an array with dtype {out.dtype}, but should be the default float dtype"
+        assert dh.is_float_dtype(out.dtype), f"empty() returned an array with dtype {out.dtype}, but should be the default float dtype"
     else:
         assert out.dtype == dtype, f"{dtype=!s}, but empty() returned an array with dtype {out.dtype}"
     if isinstance(shape, int):
@@ -110,7 +110,7 @@ def test_eye(n_rows, n_cols, k, dtype):
     else:
         a = eye(n_rows, n_cols, **kwargs)
     if dtype is None:
-        assert is_float_dtype(a.dtype), "eye() should return an array with the default floating point dtype"
+        assert dh.is_float_dtype(a.dtype), "eye() should return an array with the default floating point dtype"
     else:
         assert a.dtype == dtype, "eye() did not produce the correct dtype"
 
@@ -152,7 +152,7 @@ def test_full(shape, fill_value, kw):
         dtype = xp.float64
     if kw.get("dtype", None) is None:
         if dtype == xp.float64:
-            assert is_float_dtype(out.dtype), f"full() returned an array with dtype {out.dtype}, but should be the default float dtype"
+            assert dh.is_float_dtype(out.dtype), f"full() returned an array with dtype {out.dtype}, but should be the default float dtype"
         elif dtype == xp.int64:
             assert out.dtype == xp.int32 or out.dtype == xp.int64, f"full() returned an array with dtype {out.dtype}, but should be the default integer dtype"
         else:
@@ -160,7 +160,7 @@ def test_full(shape, fill_value, kw):
     else:
         assert out.dtype == dtype
     assert out.shape == shape,  f"{shape=}, but full() returned an array with shape {out.shape}"
-    if is_float_dtype(out.dtype) and math.isnan(fill_value):
+    if dh.is_float_dtype(out.dtype) and math.isnan(fill_value):
         assert all(isnan(out)), "full() array did not equal the fill value"
     else:
         assert all(equal(out, asarray(fill_value, dtype=dtype))), "full() array did not equal the fill value"
@@ -186,7 +186,7 @@ def test_full_like(x, fill_value, kw):
     else:
         assert out.dtype == dtype, f"{dtype=!s}, but full_like() returned an array with dtype {out.dtype}"
     assert out.shape == x.shape, "{x.shape=}, but full_like() returned an array with shape {out.shape}"
-    if is_float_dtype(dtype) and math.isnan(fill_value):
+    if dh.is_float_dtype(dtype) and math.isnan(fill_value):
         assert all(isnan(out)), "full_like() array did not equal the fill value"
     else:
         assert all(equal(out, asarray(fill_value, dtype=dtype))), "full_like() array did not equal the fill value"
@@ -200,7 +200,7 @@ def test_full_like(x, fill_value, kw):
 def test_linspace(start, stop, num, dtype, endpoint):
     # Skip on int start or stop that cannot be exactly represented as a float,
     # since we do not have good approx_equal helpers yet.
-    if ((dtype is None or is_float_dtype(dtype))
+    if ((dtype is None or dh.is_float_dtype(dtype))
         and ((isinstance(start, int) and not isintegral(asarray(start, dtype=dtype)))
              or (isinstance(stop, int) and not isintegral(asarray(stop, dtype=dtype))))):
         assume(False)
@@ -210,7 +210,7 @@ def test_linspace(start, stop, num, dtype, endpoint):
     a = linspace(start, stop, num, **kwargs)
 
     if dtype is None:
-        assert is_float_dtype(a.dtype), "linspace() should return an array with the default floating point dtype"
+        assert dh.is_float_dtype(a.dtype), "linspace() should return an array with the default floating point dtype"
     else:
         assert a.dtype == dtype, "linspace() did not produce the correct dtype"
 
@@ -237,9 +237,9 @@ def test_linspace(start, stop, num, dtype, endpoint):
 
 
 def make_one(dtype):
-    if kwargs is None or is_float_dtype(dtype):
+    if kwargs is None or dh.is_float_dtype(dtype):
         return 1.0
-    elif is_integer_dtype(dtype):
+    elif dh.is_int_dtype(dtype):
         return 1
     else:
         return True
@@ -250,7 +250,7 @@ def test_ones(shape, kw):
     out = ones(shape, **kw)
     dtype = kw.get("dtype", None) or xp.float64
     if kw.get("dtype", None) is None:
-        assert is_float_dtype(out.dtype), f"ones() returned an array with dtype {out.dtype}, but should be the default float dtype"
+        assert dh.is_float_dtype(out.dtype), f"ones() returned an array with dtype {out.dtype}, but should be the default float dtype"
     else:
         assert out.dtype == dtype, f"{dtype=!s}, but ones() returned an array with dtype {out.dtype}"
     assert out.shape == shape, f"{shape=}, but empty() returned an array with shape {out.shape}"
@@ -273,9 +273,9 @@ def test_ones_like(x, kw):
 
 
 def make_zero(dtype):
-    if is_float_dtype(dtype):
+    if dh.is_float_dtype(dtype):
         return 0.0
-    elif is_integer_dtype(dtype):
+    elif dh.is_int_dtype(dtype):
         return 0
     else:
         return False
@@ -286,7 +286,7 @@ def test_zeros(shape, kw):
     out = zeros(shape, **kw)
     dtype = kw.get("dtype", None) or xp.float64
     if kw.get("dtype", None) is None:
-        assert is_float_dtype(out.dtype), "zeros() returned an array with dtype {out.dtype}, but should be the default float dtype"
+        assert dh.is_float_dtype(out.dtype), "zeros() returned an array with dtype {out.dtype}, but should be the default float dtype"
     else:
         assert out.dtype == dtype, f"{dtype=!s}, but zeros() returned an array with dtype {out.dtype}"
     assert out.shape == shape, "zeros() produced an array with incorrect shape"

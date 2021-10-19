@@ -2,18 +2,17 @@ from functools import reduce
 from operator import mul
 from math import sqrt
 import itertools
+from typing import Tuple
 
 from hypothesis import assume
 from hypothesis.strategies import (lists, integers, sampled_from,
                                    shared, floats, just, composite, one_of,
                                    none, booleans)
+from hypothesis.strategies._internal.strategies import SearchStrategy
 
 from .pytest_helpers import nargs
-from .array_helpers import (dtype_ranges, integer_dtype_objects,
-                            floating_dtype_objects, numeric_dtype_objects,
-                            boolean_dtype_objects,
-                            integer_or_boolean_dtype_objects, dtype_objects,
-                            ndindex)
+from .array_helpers import ndindex
+from . import dtype_helpers as dh
 from ._array_module import (full, float32, float64, bool as bool_dtype,
                             _UndefinedStub, eye, broadcast_to)
 from . import _array_module as xp
@@ -29,12 +28,12 @@ from .function_stubs import elementwise_functions
 # places in the tests.
 FILTER_UNDEFINED_DTYPES = True
 
-integer_dtypes = sampled_from(integer_dtype_objects)
-floating_dtypes = sampled_from(floating_dtype_objects)
-numeric_dtypes = sampled_from(numeric_dtype_objects)
-integer_or_boolean_dtypes = sampled_from(integer_or_boolean_dtype_objects)
-boolean_dtypes = sampled_from(boolean_dtype_objects)
-dtypes = sampled_from(dtype_objects)
+integer_dtypes = sampled_from(dh.all_int_dtypes)
+floating_dtypes = sampled_from(dh.float_dtypes)
+numeric_dtypes = sampled_from(dh.numeric_dtypes)
+integer_or_boolean_dtypes = sampled_from(dh.bool_and_all_int_dtypes)
+boolean_dtypes = just(xp.bool)
+dtypes = sampled_from(dh.all_dtypes)
 
 if FILTER_UNDEFINED_DTYPES:
     integer_dtypes = integer_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
@@ -48,32 +47,40 @@ if FILTER_UNDEFINED_DTYPES:
 shared_dtypes = shared(dtypes, key="dtype")
 shared_floating_dtypes = shared(floating_dtypes, key="dtype")
 
-# TODO: Importing things from test_type_promotion should be replaced by
-# something that won't cause a circular import. Right now we use @st.composite
-# only because it returns a lazy-evaluated strategy - in the future this method
-# should remove the composite wrapper, just returning sampled_from(dtype_pairs)
-# instead of drawing from it.
-@composite
-def mutually_promotable_dtypes(draw, dtype_objects=dtype_objects):
-    from .test_type_promotion import dtype_mapping, promotion_table
-    # sort for shrinking (sampled_from shrinks to the earlier elements in the
-    # list). Give pairs of the same dtypes first, then smaller dtypes,
-    # preferring float, then int, then unsigned int. Note, this might not
-    # always result in examples shrinking to these pairs because strategies
-    # that draw from dtypes might not draw the same example from different
-    # pairs (XXX: Can we redesign the strategies so that they can prefer
-    # shrinking dtypes over values?)
-    sorted_table = sorted(promotion_table)
-    sorted_table = sorted(
-        sorted_table, key=lambda ij: -1 if ij[0] == ij[1] else sorted_table.index(ij)
+_dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.float_dtypes]
+_sorted_dtypes = [d for category in _dtype_categories for d in category]
+
+def _dtypes_sorter(dtype_pair):
+    dtype1, dtype2 = dtype_pair
+    if dtype1 == dtype2:
+        return _sorted_dtypes.index(dtype1)
+    key = len(_sorted_dtypes)
+    rank1 = _sorted_dtypes.index(dtype1)
+    rank2 = _sorted_dtypes.index(dtype2)
+    for category in _dtype_categories:
+        if dtype1 in category and dtype2 in category:
+            break
+    else:
+        key += len(_sorted_dtypes) ** 2
+    key += 2 * (rank1 + rank2)
+    if rank1 > rank2:
+        key += 1
+    return key
+
+promotable_dtypes = sorted(dh.promotion_table.keys(), key=_dtypes_sorter)
+
+if FILTER_UNDEFINED_DTYPES:
+    promotable_dtypes = [
+        (i, j) for i, j in promotable_dtypes
+        if not isinstance(i, _UndefinedStub)
+        and not isinstance(j, _UndefinedStub)
+    ]
+
+
+def mutually_promotable_dtypes(dtype_objs=dh.all_dtypes):
+    return sampled_from(
+        [(i, j) for i, j in promotable_dtypes if i in dtype_objs and j in dtype_objs]
     )
-    dtype_pairs = [(dtype_mapping[i], dtype_mapping[j]) for i, j in sorted_table]
-    if FILTER_UNDEFINED_DTYPES:
-        dtype_pairs = [(i, j) for i, j in dtype_pairs
-                       if not isinstance(i, _UndefinedStub)
-                       and not isinstance(j, _UndefinedStub)]
-    dtype_pairs = [(i, j) for i, j in dtype_pairs if i in dtype_objects and j in dtype_objects]
-    return draw(sampled_from(dtype_pairs))
 
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
@@ -123,9 +130,16 @@ def matrix_shapes(draw, stack_shapes=shapes):
 
 square_matrix_shapes = matrix_shapes().filter(lambda shape: shape[-1] == shape[-2])
 
-two_mutually_broadcastable_shapes = xps.mutually_broadcastable_shapes(num_shapes=2)\
-    .map(lambda S: S.input_shapes)\
-    .filter(lambda S: all(prod(i for i in shape if i) < MAX_ARRAY_SIZE for shape in S))
+def mutually_broadcastable_shapes(num_shapes: int) -> SearchStrategy[Tuple[Tuple]]:
+    return (
+        xps.mutually_broadcastable_shapes(num_shapes)
+        .map(lambda BS: BS.input_shapes)
+        .filter(lambda shapes: all(
+            prod(i for i in s if i > 0) < MAX_ARRAY_SIZE for s in shapes
+        ))
+    )
+
+two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(2)
 
 # Note: This should become hermitian_matrices when complex dtypes are added
 @composite
@@ -196,8 +210,8 @@ def scalars(draw, dtypes, finite=False):
     dtypes should be one of the shared_* dtypes strategies.
     """
     dtype = draw(dtypes)
-    if dtype in dtype_ranges:
-        m, M = dtype_ranges[dtype]
+    if dtype in dh.dtype_ranges:
+        m, M = dh.dtype_ranges[dtype]
         return draw(integers(m, M))
     elif dtype == bool_dtype:
         return draw(booleans())
@@ -229,7 +243,7 @@ def integer_indices(draw, sizes):
     # Return either a Python integer or a 0-D array with some integer dtype
     idx = draw(python_integer_indices(sizes))
     dtype = draw(integer_dtypes)
-    m, M = dtype_ranges[dtype]
+    m, M = dh.dtype_ranges[dtype]
     if m <= idx <= M:
         return draw(one_of(just(idx),
                            just(full((), idx, dtype=dtype))))
@@ -298,9 +312,10 @@ def multiaxis_indices(draw, shapes):
     return tuple(res)
 
 
-def two_mutual_arrays(dtype_objects=dtype_objects,
-                      two_shapes=two_mutually_broadcastable_shapes):
-    mutual_dtypes = shared(mutually_promotable_dtypes(dtype_objects))
+def two_mutual_arrays(
+    dtype_objs=dh.all_dtypes, two_shapes=two_mutually_broadcastable_shapes
+):
+    mutual_dtypes = shared(mutually_promotable_dtypes(dtype_objs))
     mutual_shapes = shared(two_shapes)
     arrays1 = xps.arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[0]),

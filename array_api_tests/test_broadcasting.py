@@ -10,8 +10,7 @@ from hypothesis.strategies import data, sampled_from
 from .hypothesis_helpers import shapes, FILTER_UNDEFINED_DTYPES
 from .pytest_helpers import raises, doesnt_raise, nargs
 
-from .test_type_promotion import (elementwise_function_input_types,
-                                  input_types, dtype_mapping)
+from .dtype_helpers import func_in_dtypes
 from .function_stubs import elementwise_functions
 from . import _array_module
 from ._array_module import ones, _UndefinedStub
@@ -111,14 +110,14 @@ def test_broadcast_shapes_explicit_spec():
 @pytest.mark.parametrize('func_name', [i for i in
                                        elementwise_functions.__all__ if
                                        nargs(i) > 1])
-@given(shape1=shapes, shape2=shapes, dtype=data())
-def test_broadcasting_hypothesis(func_name, shape1, shape2, dtype):
+@given(shape1=shapes, shape2=shapes, data=data())
+def test_broadcasting_hypothesis(func_name, shape1, shape2, data):
     # Internal consistency checks
     assert nargs(func_name) == 2
 
-    dtype = dtype_mapping[dtype.draw(sampled_from(input_types[elementwise_function_input_types[func_name]]))]
-    if FILTER_UNDEFINED_DTYPES and isinstance(dtype, _UndefinedStub):
-        assume(False)
+    dtype = data.draw(sampled_from(func_in_dtypes[func_name]))
+    if FILTER_UNDEFINED_DTYPES:
+        assume(not isinstance(dtype, _UndefinedStub))
     func = getattr(_array_module, func_name)
 
     if isinstance(func, _array_module._UndefinedStub):
