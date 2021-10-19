@@ -325,7 +325,7 @@ def test_matrix_rank(x, kw):
     pass
 
 @given(
-    x=xps.arrays(dtype=dtypes, shape=matrix_shapes),
+    x=xps.arrays(dtype=dtypes, shape=matrix_shapes()),
 )
 def test_matrix_transpose(x):
     res = linalg.matrix_transpose(x)
