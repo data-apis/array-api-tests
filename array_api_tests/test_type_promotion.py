@@ -21,18 +21,44 @@ DT = Type
 ScalarType = Union[Type[bool], Type[int], Type[float]]
 
 
-multi_promotable_dtypes: st.SearchStrategy[Tuple[DT, ...]] = st.one_of(
-    st.lists(st.just(xp.bool), min_size=2),
-    st.lists(st.sampled_from(dh.all_int_dtypes), min_size=2).filter(
-        lambda l: not (xp.uint64 in l and any(d in dh.int_dtypes for d in l))
-    ),
-    st.lists(st.sampled_from(dh.float_dtypes), min_size=2),
-).map(tuple)
+def multi_promotable_dtypes(
+    allow_bool: bool = True,
+) -> st.SearchStrategy[Tuple[DT, ...]]:
+    strats = [
+        st.lists(st.sampled_from(dh.all_int_dtypes), min_size=2).filter(
+            lambda l: not (xp.uint64 in l and any(d in dh.int_dtypes for d in l))
+        ),
+        st.lists(st.sampled_from(dh.float_dtypes), min_size=2),
+    ]
+    if allow_bool:
+        strats.append(st.lists(st.just(xp.bool), min_size=2))
+    return st.one_of(strats).map(tuple)
 
 
-@given(multi_promotable_dtypes)
+@given(multi_promotable_dtypes())
 def test_result_type(dtypes):
-    assert xp.result_type(*dtypes) == dh.result_type(*dtypes)
+    out = xp.result_type(*dtypes)
+    expected = dh.result_type(*dtypes)
+    assert out == expected, f'{out=!s}, but should be {expected}'
+
+
+@given(
+    dtypes=multi_promotable_dtypes(allow_bool=False),
+    kw=hh.kwargs(indexing=st.sampled_from(['xy', 'ij'])),
+    data=st.data(),
+)
+def test_meshgrid(dtypes, kw, data):
+    arrays = []
+    shapes = data.draw(hh.mutually_broadcastable_shapes(len(dtypes)), label='shapes')
+    for i, (dtype, shape) in enumerate(zip(dtypes, shapes), 1):
+        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
+        arrays.append(x)
+    out = xp.meshgrid(*arrays, **kw)
+    expected = dh.result_type(*dtypes)
+    for i in range(len(out)):
+        assert (
+            out[i].dtype == expected
+        ), f'out[{i}]={out[i].dtype}, but should be {expected}'
 
 
 bitwise_shift_funcs = [
