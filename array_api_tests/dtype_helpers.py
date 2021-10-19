@@ -148,6 +148,15 @@ promotion_table = {
 }
 
 
+def result_type(*dtypes):
+    if len(dtypes) < 2:
+        raise ValueError()
+    result = promotion_table[dtypes[0], dtypes[1]]
+    for i in range(2, len(dtypes)):
+        result = promotion_table[result, dtypes[i]]
+    return result
+
+
 dtype_nbits = {
     **{d: 8 for d in [xp.int8, xp.uint8]},
     **{d: 16 for d in [xp.int16, xp.uint16]},

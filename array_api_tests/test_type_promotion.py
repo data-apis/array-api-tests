@@ -17,6 +17,24 @@ from .function_stubs import elementwise_functions
 from .pytest_helpers import nargs
 
 
+DT = Type
+ScalarType = Union[Type[bool], Type[int], Type[float]]
+
+
+multi_promotable_dtypes: st.SearchStrategy[Tuple[DT, ...]] = st.one_of(
+    st.lists(st.just(xp.bool), min_size=2),
+    st.lists(st.sampled_from(dh.all_int_dtypes), min_size=2).filter(
+        lambda l: not (xp.uint64 in l and any(d in dh.int_dtypes for d in l))
+    ),
+    st.lists(st.sampled_from(dh.float_dtypes), min_size=2),
+).map(tuple)
+
+
+@given(multi_promotable_dtypes)
+def test_result_type(dtypes):
+    assert xp.result_type(*dtypes) == dh.result_type(*dtypes)
+
+
 bitwise_shift_funcs = [
     'bitwise_left_shift',
     'bitwise_right_shift',
@@ -25,10 +43,6 @@ bitwise_shift_funcs = [
     '__ilshift__',
     '__irshift__',
 ]
-
-
-DT = Type
-ScalarType = Union[Type[bool], Type[int], Type[float]]
 
 
 # We apply filters to xps.arrays() so we don't generate array elements that
