@@ -130,6 +130,11 @@ def matrix_shapes(draw, stack_shapes=shapes):
 
 square_matrix_shapes = matrix_shapes().filter(lambda shape: shape[-1] == shape[-2])
 
+finite_matrices = xps.arrays(dtype=xps.floating_dtypes(),
+                             shape=matrix_shapes(),
+                             elements=dict(allow_nan=False,
+                                           allow_infinity=False))
+
 def mutually_broadcastable_shapes(num_shapes: int) -> SearchStrategy[Tuple[Tuple]]:
     return (
         xps.mutually_broadcastable_shapes(num_shapes)

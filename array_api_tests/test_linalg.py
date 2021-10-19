@@ -23,7 +23,8 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
                                  invertible_matrices, two_mutual_arrays,
                                  mutually_promotable_dtypes, one_d_shapes,
-                                 two_mutually_broadcastable_shapes, SQRT_MAX_ARRAY_SIZE)
+                                 two_mutually_broadcastable_shapes,
+                                 SQRT_MAX_ARRAY_SIZE, finite_matrices)
 from .pytest_helpers import raises
 from . import dtype_helpers as dh
 
@@ -476,12 +477,31 @@ def test_solve(x1, x2):
     pass
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    kw=kwargs(full_matrices=todo)
+    x=finite_matrices,
+    kw=kwargs(full_matrices=booleans())
 )
 def test_svd(x, kw):
-    # res = linalg.svd(x, **kw)
-    pass
+    res = linalg.svd(x, **kw)
+    full_matrices = kw.get('full_matrices', True)
+
+    *stack, M, N = x.shape
+    K = min(M, N)
+
+    _test_namedtuple(res, ['u', 's', 'vh'], 'svd')
+
+    u, s, vh = res
+
+    assert u.dtype == x.dtype, "svd().u did not return the correct dtype"
+    assert s.dtype == x.dtype, "svd().s did not return the correct dtype"
+    assert vh.dtype == x.dtype, "svd().vh did not return the correct dtype"
+
+    assert s.shape == (*stack, K)
+    if full_matrices:
+        assert u.shape == (*stack, M, M)
+        assert vh.shape == (*stack, N, N)
+    else:
+        assert u.shape == (*stack, M, K)
+        assert vh.shape == (*stack, K, N)
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
