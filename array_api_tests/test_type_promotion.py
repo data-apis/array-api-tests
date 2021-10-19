@@ -205,6 +205,18 @@ def test_where(in_dtypes, out_dtype, shapes, data):
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
+numeric_promotion_table_params = promotion_table_params[1:]
+
+
+@pytest.mark.parametrize('in_dtypes, out_dtype', numeric_promotion_table_params)
+@given(shapes=hh.mutually_broadcastable_shapes(2, min_dims=1), data=st.data())
+def test_matmul(in_dtypes, out_dtype, shapes, data):
+    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
+    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
+    out = xp.matmul(x1, x2)
+    assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
+
+
 op_params: List[Tuple[str, str, Tuple[DT, ...], DT]] = []
 op_to_symbol = {**dh.unary_op_to_symbol, **dh.binary_op_to_symbol}
 for op, symbol in op_to_symbol.items():

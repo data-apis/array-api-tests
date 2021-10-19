@@ -141,9 +141,11 @@ finite_matrices = xps.arrays(dtype=xps.floating_dtypes(),
                              elements=dict(allow_nan=False,
                                            allow_infinity=False))
 
-def mutually_broadcastable_shapes(num_shapes: int) -> SearchStrategy[Tuple[Tuple]]:
+def mutually_broadcastable_shapes(
+    num_shapes: int, **kw
+) -> SearchStrategy[Tuple[Tuple[int, ...], ...]]:
     return (
-        xps.mutually_broadcastable_shapes(num_shapes)
+        xps.mutually_broadcastable_shapes(num_shapes, **kw)
         .map(lambda BS: BS.input_shapes)
         .filter(lambda shapes: all(
             prod(i for i in s if i > 0) < MAX_ARRAY_SIZE for s in shapes
