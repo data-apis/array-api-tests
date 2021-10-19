@@ -77,6 +77,22 @@ def test_concat(shape, dtypes, kw, data):
     assert out.dtype == expected, f'{out.dtype=!s}, but should be {expected}'
 
 
+@given(
+    shape=hh.shapes(),
+    dtypes=multi_promotable_dtypes(),
+    kw=hh.kwargs(axis=st.just(0)),
+    data=st.data(),
+)
+def test_stack(shape, dtypes, kw, data):
+    arrays = []
+    for i, dtype in enumerate(dtypes, 1):
+        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
+        arrays.append(x)
+    out = xp.stack(arrays, **kw)
+    expected = dh.result_type(*dtypes)
+    assert out.dtype == expected, f'{out.dtype=!s}, but should be {expected}'
+
+
 bitwise_shift_funcs = [
     'bitwise_left_shift',
     'bitwise_right_shift',
