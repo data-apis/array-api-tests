@@ -265,11 +265,11 @@ def test_matmul(x1, x2):
         or len(x1.shape) >= 2 and len(x2.shape) >= 2 and x1.shape[-1] != x2.shape[-2]):
         # The spec doesn't specify what kind of exception is used here. Most
         # libraries will use a custom exception class.
-        raises(Exception, lambda: linalg.matmul(x1, x2),
+        raises(Exception, lambda: _array_module.matmul(x1, x2),
                "matmul did not raise an exception for invalid shapes")
         return
     else:
-        res = linalg.matmul(x1, x2)
+        res = _array_module.matmul(x1, x2)
 
     assert res.dtype == promote_dtypes(x1, x2), "matmul() did not return the correct dtype"
 
@@ -277,14 +277,14 @@ def test_matmul(x1, x2):
         assert res.shape == ()
     elif len(x1.shape) == 1:
         assert res.shape == x2.shape[:-2] + x2.shape[-1:]
-        _test_stacks(linalg.matmul, x1, x2, res=res, dims=1)
+        _test_stacks(_array_module.matmul, x1, x2, res=res, dims=1)
     elif len(x2.shape) == 1:
         assert res.shape == x1.shape[:-1]
-        _test_stacks(linalg.matmul, x1, x2, res=res, dims=1)
+        _test_stacks(_array_module.matmul, x1, x2, res=res, dims=1)
     else:
         stack_shape = broadcast_shapes(x1.shape[:-2], x2.shape[:-2])
         assert res.shape == stack_shape + (x1.shape[-2], x2.shape[-1])
-        _test_stacks(linalg.matmul, x1, x2, res=res)
+        _test_stacks(_array_module.matmul, x1, x2, res=res)
 
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
@@ -328,7 +328,7 @@ def test_matrix_rank(x, kw):
     x=xps.arrays(dtype=dtypes, shape=matrix_shapes()),
 )
 def test_matrix_transpose(x):
-    res = linalg.matrix_transpose(x)
+    res = _array_module.matrix_transpose(x)
     true_val = lambda a: _array_module.asarray([[a[i, j] for i in
                                                 range(a.shape[0])] for j in
                                                 range(a.shape[1])],
@@ -339,7 +339,7 @@ def test_matrix_transpose(x):
     assert res.shape == shape, "matrix_transpose() did not return the correct shape"
     assert res.dtype == x.dtype, "matrix_transpose() did not return the correct dtype"
 
-    _test_stacks(linalg.matrix_transpose, x, res=res, true_val=true_val)
+    _test_stacks(_array_module.matrix_transpose, x, res=res, true_val=true_val)
 
 @given(
     *two_mutual_arrays(dtype_objects=numeric_dtype_objects,
@@ -497,7 +497,7 @@ def test_svdvals(x):
     kw=kwargs(axes=todo)
 )
 def test_tensordot(x1, x2, kw):
-    # res = linalg.tensordot(x1, x2, **kw)
+    # res = _array_module.tensordot(x1, x2, **kw)
     pass
 
 @given(
@@ -514,7 +514,7 @@ def test_trace(x, kw):
     kw=kwargs(axis=todo)
 )
 def test_vecdot(x1, x2, kw):
-    # res = linalg.vecdot(x1, x2, **kw)
+    # res = _array_module.vecdot(x1, x2, **kw)
     pass
 
 @given(
