@@ -64,6 +64,20 @@ import numpy as array_module
   difficult to actually test, so they are not covered in the test suite (TODO:
   list what these are).
 
+## Configuring Tests
+
+The tests make heavy use of the
+[Hypothesis](https://hypothesis.readthedocs.io/en/latest/) testing library.
+Hypothesis generates random input values for the tests. You can configure how
+many values are generated and run using the `--max-examples` flag. The default
+`--max-examples` is 100. For example, `--max-examples 50` will only generate
+half as many examples and as a result, the test suite will run in about half
+the time. Setting `--max-examples` to a lower value can be useful when you
+want to have a faster test run. It can also be useful to set `--max-examples`
+to a large value to do a longer, more rigorous run of the tests. For example,
+`--max-examples 10000` will do a very rigorous check of the tests, but may
+take a few hours to run.
+
 ## Contributing
 
 ### Adding Tests
