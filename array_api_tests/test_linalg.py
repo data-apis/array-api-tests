@@ -271,7 +271,7 @@ def test_matmul(x1, x2):
     else:
         res = _array_module.matmul(x1, x2)
 
-    assert res.dtype == dh.promotion_table[x1, x2], "matmul() did not return the correct dtype"
+    assert res.dtype == dh.promotion_table[x1.dtype, x2.dtype], "matmul() did not return the correct dtype"
 
     if len(x1.shape) == len(x2.shape) == 1:
         assert res.shape == ()
