@@ -12,17 +12,17 @@ specification that are not yet tested here.
 
 To run the tests, first install the testing dependencies
 
-    pip install pytest hypothesis numpy
+    pip install pytest hypothesis
 
 or
 
-    conda install pytest hypothesis numpy
+    conda install pytest hypothesis
 
-as well as the array libraries that you want to test. (Note, in the future,
-NumPy will be removed as a dependency on the test suite). To run the tests,
-you need to set the array library that is to be tested. There are two ways to
-do this. One way is to set the `ARRAY_API_TESTS_MODULE` environment variable.
-For example
+as well as the array libraries that you want to test. 
+
+To run the tests, you need to set the array library that is to be tested. There
+are two ways to do this. One way is to set the `ARRAY_API_TESTS_MODULE`
+environment variable. For example
 
     ARRAY_API_TESTS_MODULE=numpy pytest
 
