@@ -10,7 +10,6 @@ from hypothesis import assume, given, reject
 from hypothesis import strategies as st
 
 from . import _array_module as xp
-from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import xps
@@ -127,11 +126,10 @@ bitwise_shift_funcs = [
 ]
 
 
-# We apply filters to xps.arrays() so we don't generate array elements that
-# are erroneous or undefined for a function/operator.
-filters = defaultdict(
-    lambda: lambda _: True,
-    {func: lambda x: ah.all(x > 0) for func in bitwise_shift_funcs},
+# We pass kwargs to the elements strategy used by xps.arrays() so that we don't
+# generate array elements that are erroneous or undefined for a function.
+func_elements = defaultdict(
+    lambda: None, {func: {'min_value': 1} for func in bitwise_shift_funcs}
 )
 
 
@@ -178,10 +176,10 @@ for func_name in elementwise_functions.__all__:
 @given(data=st.data())
 def test_func_promotion(func_name, in_dtypes, out_dtype, data):
     func = getattr(xp, func_name)
-    x_filter = filters[func_name]
+    elements = func_elements[func_name]
     if len(in_dtypes) == 1:
         x = data.draw(
-            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes()).filter(x_filter),
+            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes(), elements=elements),
             label='x',
         )
         out = func(x)
@@ -192,7 +190,7 @@ def test_func_promotion(func_name, in_dtypes, out_dtype, data):
         )
         for i, (dtype, shape) in enumerate(zip(in_dtypes, shapes), 1):
             x = data.draw(
-                xps.arrays(dtype=dtype, shape=shape).filter(x_filter), label=f'x{i}'
+                xps.arrays(dtype=dtype, shape=shape, elements=elements), label=f'x{i}'
             )
             arrays.append(x)
         try:
@@ -301,10 +299,10 @@ for in_dtype in dh.func_in_dtypes['__abs__']:
 @pytest.mark.parametrize('op, expr, in_dtypes, out_dtype', op_params)
 @given(data=st.data())
 def test_op_promotion(op, expr, in_dtypes, out_dtype, data):
-    x_filter = filters[op]
+    elements = func_elements[func_name]
     if len(in_dtypes) == 1:
         x = data.draw(
-            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes()).filter(x_filter),
+            xps.arrays(dtype=in_dtypes[0], shape=hh.shapes(), elements=elements),
             label='x',
         )
         out = eval(expr, {'x': x})
@@ -315,7 +313,7 @@ def test_op_promotion(op, expr, in_dtypes, out_dtype, data):
         )
         for i, (dtype, shape) in enumerate(zip(in_dtypes, shapes), 1):
             locals_[f'x{i}'] = data.draw(
-                xps.arrays(dtype=dtype, shape=shape).filter(x_filter), label=f'x{i}'
+                xps.arrays(dtype=dtype, shape=shape, elements=elements), label=f'x{i}'
             )
         try:
             out = eval(expr, locals_)
@@ -349,12 +347,12 @@ for op, symbol in dh.inplace_op_to_symbol.items():
 @given(shapes=hh.mutually_broadcastable_shapes(2), data=st.data())
 def test_inplace_op_promotion(op, expr, in_dtypes, out_dtype, shapes, data):
     assume(len(shapes[0]) >= len(shapes[1]))
-    x_filter = filters[op]
+    elements = func_elements[func_name]
     x1 = data.draw(
-        xps.arrays(dtype=in_dtypes[0], shape=shapes[0]).filter(x_filter), label='x1'
+        xps.arrays(dtype=in_dtypes[0], shape=shapes[0], elements=elements), label='x1'
     )
     x2 = data.draw(
-        xps.arrays(dtype=in_dtypes[1], shape=shapes[1]).filter(x_filter), label='x2'
+        xps.arrays(dtype=in_dtypes[1], shape=shapes[1], elements=elements), label='x2'
     )
     locals_ = {'x1': x1, 'x2': x2}
     try:
@@ -386,11 +384,11 @@ for op, symbol in dh.binary_op_to_symbol.items():
 @pytest.mark.parametrize('op, expr, in_dtype, in_stype, out_dtype', op_scalar_params)
 @given(data=st.data())
 def test_op_scalar_promotion(op, expr, in_dtype, in_stype, out_dtype, data):
-    x_filter = filters[op]
+    elements = func_elements[func_name]
     kw = {k: in_stype is float for k in ('allow_nan', 'allow_infinity')}
     s = data.draw(xps.from_dtype(in_dtype, **kw).map(in_stype), label='scalar')
     x = data.draw(
-        xps.arrays(dtype=in_dtype, shape=hh.shapes()).filter(x_filter), label='x'
+        xps.arrays(dtype=in_dtype, shape=hh.shapes(), elements=elements), label='x'
     )
     try:
         out = eval(expr, {'x': x, 's': s})
@@ -420,11 +418,11 @@ for op, symbol in dh.inplace_op_to_symbol.items():
 @pytest.mark.parametrize('op, expr, dtype, in_stype', inplace_scalar_params)
 @given(data=st.data())
 def test_inplace_op_scalar_promotion(op, expr, dtype, in_stype, data):
-    x_filter = filters[op]
+    elements = func_elements[func_name]
     kw = {k: in_stype is float for k in ('allow_nan', 'allow_infinity')}
     s = data.draw(xps.from_dtype(dtype, **kw).map(in_stype), label='scalar')
     x = data.draw(
-        xps.arrays(dtype=dtype, shape=hh.shapes()).filter(x_filter), label='x'
+        xps.arrays(dtype=dtype, shape=hh.shapes(), elements=elements), label='x'
     )
     locals_ = {'x': x, 's': s}
     try:
