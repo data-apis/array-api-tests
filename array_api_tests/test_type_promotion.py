@@ -19,6 +19,7 @@ from .pytest_helpers import nargs
 
 DT = Type
 ScalarType = Union[Type[bool], Type[int], Type[float]]
+Param = Tuple
 
 
 def multi_promotable_dtypes(
@@ -126,7 +127,7 @@ def make_id(
     return f'{func_name}({f_args}) -> {f_out_dtype}'
 
 
-func_params: List[Tuple[str, Tuple[DT, ...], DT]] = []
+func_params: List[Param[str, Tuple[DT, ...], DT]] = []
 for func_name in elementwise_functions.__all__:
     valid_in_dtypes = dh.func_in_dtypes[func_name]
     ndtypes = nargs(func_name)
@@ -185,7 +186,7 @@ def test_func_promotion(func_name, in_dtypes, out_dtype, data):
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-promotion_params: List[Tuple[Tuple[DT, DT], DT]] = []
+promotion_params: List[Param[Tuple[DT, DT], DT]] = []
 for (dtype1, dtype2), promoted_dtype in dh.promotion_table.items():
     p = pytest.param(
         (dtype1, dtype2),
@@ -235,7 +236,7 @@ def test_vecdot(in_dtypes, out_dtype, shapes, data):
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-op_params: List[Tuple[str, str, Tuple[DT, ...], DT]] = []
+op_params: List[Param[str, str, Tuple[DT, ...], DT]] = []
 op_to_symbol = {**dh.unary_op_to_symbol, **dh.binary_op_to_symbol}
 for op, symbol in op_to_symbol.items():
     if op == '__matmul__':
@@ -303,7 +304,7 @@ def test_op_promotion(op, expr, in_dtypes, out_dtype, data):
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-inplace_params: List[Tuple[str, str, Tuple[DT, ...], DT]] = []
+inplace_params: List[Param[str, str, Tuple[DT, ...], DT]] = []
 for op, symbol in dh.inplace_op_to_symbol.items():
     if op == '__imatmul__':
         continue
@@ -344,7 +345,7 @@ def test_inplace_op_promotion(op, expr, in_dtypes, out_dtype, shapes, data):
     assert x1.dtype == out_dtype, f'{x1.dtype=!s}, but should be {out_dtype}'
 
 
-op_scalar_params: List[Tuple[str, str, DT, ScalarType, DT]] = []
+op_scalar_params: List[Param[str, str, DT, ScalarType, DT]] = []
 for op, symbol in dh.binary_op_to_symbol.items():
     if op == '__matmul__':
         continue
@@ -378,7 +379,7 @@ def test_op_scalar_promotion(op, expr, in_dtype, in_stype, out_dtype, data):
     assert out.dtype == out_dtype, f'{out.dtype=!s}, but should be {out_dtype}'
 
 
-inplace_scalar_params: List[Tuple[str, str, DT, ScalarType]] = []
+inplace_scalar_params: List[Param[str, str, DT, ScalarType]] = []
 for op, symbol in dh.inplace_op_to_symbol.items():
     if op == '__imatmul__':
         continue
