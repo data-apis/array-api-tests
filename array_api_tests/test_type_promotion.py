@@ -46,13 +46,15 @@ def multi_promotable_dtypes(
     allow_bool: bool = True,
 ) -> st.SearchStrategy[Tuple[DT, ...]]:
     strats = [
+        st.lists(st.sampled_from(dh.uint_dtypes), min_size=2),
+        st.lists(st.sampled_from(dh.int_dtypes), min_size=2),
+        st.lists(st.sampled_from(dh.float_dtypes), min_size=2),
         st.lists(st.sampled_from(dh.all_int_dtypes), min_size=2).filter(
             lambda l: not (xp.uint64 in l and any(d in dh.int_dtypes for d in l))
         ),
-        st.lists(st.sampled_from(dh.float_dtypes), min_size=2),
     ]
     if allow_bool:
-        strats.append(st.lists(st.just(xp.bool), min_size=2))
+        strats.insert(0, st.lists(st.just(xp.bool), min_size=2))
     return st.one_of(strats).map(tuple)
 
 

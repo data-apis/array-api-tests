@@ -31,16 +31,16 @@ __all__ = [
 ]
 
 
-_int_names = ('int8', 'int16', 'int32', 'int64')
 _uint_names = ('uint8', 'uint16', 'uint32', 'uint64')
+_int_names = ('int8', 'int16', 'int32', 'int64')
 _float_names = ('float32', 'float64')
-_dtype_names = ('bool',) + _int_names + _uint_names + _float_names
+_dtype_names = ('bool',) + _uint_names + _int_names + _float_names
 
 
-int_dtypes = tuple(getattr(xp, name) for name in _int_names)
 uint_dtypes = tuple(getattr(xp, name) for name in _uint_names)
+int_dtypes = tuple(getattr(xp, name) for name in _int_names)
 float_dtypes = tuple(getattr(xp, name) for name in _float_names)
-all_int_dtypes = int_dtypes + uint_dtypes
+all_int_dtypes = uint_dtypes + int_dtypes
 numeric_dtypes = all_int_dtypes + float_dtypes
 all_dtypes = (xp.bool,) + numeric_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
