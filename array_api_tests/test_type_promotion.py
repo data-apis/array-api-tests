@@ -66,16 +66,15 @@ def test_result_type(dtypes):
 
 @given(
     dtypes=multi_promotable_dtypes(allow_bool=False),
-    kw=hh.kwargs(indexing=st.sampled_from(['xy', 'ij'])),
     data=st.data(),
 )
-def test_meshgrid(dtypes, kw, data):
+def test_meshgrid(dtypes, data):
     arrays = []
     shapes = data.draw(hh.mutually_broadcastable_shapes(len(dtypes)), label='shapes')
     for i, (dtype, shape) in enumerate(zip(dtypes, shapes), 1):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
         arrays.append(x)
-    out = xp.meshgrid(*arrays, **kw)
+    out = xp.meshgrid(*arrays)
     expected = dh.result_type(*dtypes)
     test_case = f'meshgrid({fmt_types(dtypes)})'
     for i, x in enumerate(out):
@@ -85,15 +84,14 @@ def test_meshgrid(dtypes, kw, data):
 @given(
     shape=hh.shapes(min_dims=1),
     dtypes=multi_promotable_dtypes(allow_bool=False),
-    kw=hh.kwargs(axis=st.none() | st.just(0)),
     data=st.data(),
 )
-def test_concat(shape, dtypes, kw, data):
+def test_concat(shape, dtypes, data):
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
         arrays.append(x)
-    out = xp.concat(arrays, **kw)
+    out = xp.concat(arrays)
     assert_dtype(
         f'concat({fmt_types(dtypes)})', 'out.dtype', out.dtype, dh.result_type(*dtypes)
     )
@@ -102,15 +100,14 @@ def test_concat(shape, dtypes, kw, data):
 @given(
     shape=hh.shapes(),
     dtypes=multi_promotable_dtypes(),
-    kw=hh.kwargs(axis=st.just(0)),
     data=st.data(),
 )
-def test_stack(shape, dtypes, kw, data):
+def test_stack(shape, dtypes, data):
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
         arrays.append(x)
-    out = xp.stack(arrays, **kw)
+    out = xp.stack(arrays)
     assert_dtype(
         f'stack({fmt_types(dtypes)})', 'out.dtype', out.dtype, dh.result_type(*dtypes)
     )
