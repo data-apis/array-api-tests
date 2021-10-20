@@ -8,7 +8,6 @@ from ._array_module import _UndefinedStub
 
 def pytest_addoption(parser):
     parser.addoption(
-        '--ext',
         '--disable-extension',
         nargs='+',
         default=[],
