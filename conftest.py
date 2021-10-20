@@ -77,7 +77,7 @@ xfails_path = Path(__file__).parent / 'xfails.txt'
 if xfails_path.exists():
     with open(xfails_path) as f:
         for line in f:
-            if line.startswith('test'):
+            if line.startswith('array_api_tests'):
                 id_ = line.strip('\n')
                 xfail_ids.append(id_)
 
