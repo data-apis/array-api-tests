@@ -114,10 +114,8 @@ def tuples(elements, *, min_size=0, max_size=None, unique_by=None, unique=False)
 # Use this to avoid memory errors with NumPy.
 # See https://github.com/numpy/numpy/issues/15753
 def shapes(**kw):
-    if 'min_dims' not in kw.keys():
-        kw['min_dims'] = 0
-    if 'min_side' not in kw.keys():
-        kw['min_side'] = 0
+    kw.setdefault('min_dims', 0)
+    kw.setdefault('min_side', 0)
     return xps.array_shapes(**kw).filter(
         lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
     )
