@@ -26,7 +26,7 @@ as well as the array libraries that you want to test.
 
 To run the tests, you need to set the array library that is to be tested. There
 are two ways to do this. One way is to set the `ARRAY_API_TESTS_MODULE`
-environment variable. For example
+environment variable. For example you can set it when running `pytest`
 
     ARRAY_API_TESTS_MODULE=numpy pytest
 
@@ -39,34 +39,20 @@ array_module = None
 
 to
 
-```
+```py
 import numpy as array_module
 ```
 
 (replacing `numpy` with the array module namespace to be tested).
 
-### Run pytest
-
-Simply run the `pytest` command to run the whole test suite.
-
-```bash
-pytest
-```
+### Specifying test cases
 
 The test suite tries to logically organise its tests so you can find specific
 test cases whilst developing something in particular. So to avoid running the
 rather slow complete suite, you can specify particular test cases like any other
 test suite.
 
-```bash
-pytest array_api_tests/test_creation_functions.py::test_zeros
-```
-
-By default, tests for the optional Array API extensions such as
-[`linalg`](https://data-apis.org/array-api/latest/extensions/linear_algebra_functions.html)
-will be skipped if not present in the specified array module. You can purposely
-skip testing extension(s) via the `--disable-extension` option, and likewise
-purposely test them via the `--enable-extension` option.
+    pytest array_api_tests/test_creation_functions.py::test_zeros
 
 ## Notes on Interpreting Errors
 
@@ -92,6 +78,12 @@ purposely test them via the `--enable-extension` option.
   list what these are).
 
 ## Configuring Tests
+
+By default, tests for the optional Array API extensions such as
+[`linalg`](https://data-apis.org/array-api/latest/extensions/linear_algebra_functions.html)
+will be skipped if not present in the specified array module. You can purposely
+skip testing extension(s) via the `--disable-extension` option, and likewise
+purposely test them via the `--enable-extension` option.
 
 The tests make heavy use of the
 [Hypothesis](https://hypothesis.readthedocs.io/en/latest/) testing library.
