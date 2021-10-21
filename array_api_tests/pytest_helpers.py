@@ -1,4 +1,5 @@
 from inspect import getfullargspec
+from typing import Tuple
 
 from . import dtype_helpers as dh
 from . import function_stubs
@@ -38,11 +39,21 @@ def doesnt_raise(function, message=''):
 def nargs(func_name):
     return len(getfullargspec(getattr(function_stubs, func_name)).args)
 
-def assert_dtype(test_case: str, result_name: str, dtype: DataType, expected: DataType):
+
+def assert_dtype(
+    func_name: str,
+    in_dtypes: Tuple[DataType, ...],
+    out_name: str,
+    out_dtype: DataType,
+    expected: DataType
+):
+    f_in_dtypes = dh.fmt_types(in_dtypes)
+    f_out_dtype = dh.dtype_to_name[out_dtype]
+    f_expected = dh.dtype_to_name[expected]
     msg = (
-        f'{result_name}={dh.dtype_to_name[dtype]}, '
-        f'but should be {dh.dtype_to_name[expected]} [{test_case}]'
+        f"{out_name}={f_out_dtype}, but should be {f_expected} "
+        f"[{func_name}({f_in_dtypes})]"
     )
-    assert dtype == expected, msg
+    assert out_dtype == expected, msg
 
 
