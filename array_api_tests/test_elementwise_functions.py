@@ -29,11 +29,11 @@ numeric_scalars = hh.array_scalars(hh.numeric_dtypes)
 integer_or_boolean_scalars = hh.array_scalars(hh.integer_or_boolean_dtypes)
 boolean_scalars = hh.array_scalars(hh.boolean_dtypes)
 
-two_integer_dtypes = hh.mutually_promotable_dtypes(dh.all_int_dtypes)
-two_floating_dtypes = hh.mutually_promotable_dtypes(dh.float_dtypes)
-two_numeric_dtypes = hh.mutually_promotable_dtypes(dh.numeric_dtypes)
-two_integer_or_boolean_dtypes = hh.mutually_promotable_dtypes(dh.bool_and_all_int_dtypes)
-two_boolean_dtypes = hh.mutually_promotable_dtypes((xp.bool,))
+two_integer_dtypes = hh.mutually_promotable_dtypes(dtypes=dh.all_int_dtypes)
+two_floating_dtypes = hh.mutually_promotable_dtypes(dtypes=dh.float_dtypes)
+two_numeric_dtypes = hh.mutually_promotable_dtypes(dtypes=dh.numeric_dtypes)
+two_integer_or_boolean_dtypes = hh.mutually_promotable_dtypes(dtypes=dh.bool_and_all_int_dtypes)
+two_boolean_dtypes = hh.mutually_promotable_dtypes(dtypes=(xp.bool,))
 two_any_dtypes = hh.mutually_promotable_dtypes()
 
 @st.composite

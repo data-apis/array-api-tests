@@ -14,7 +14,7 @@ from ..test_elementwise_functions import sanity_check
 UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in dh.all_dtypes)
 pytestmark = [pytest.mark.skipif(UNDEFINED_DTYPES, reason="undefined dtypes")]
 
-@given(hh.mutually_promotable_dtypes([xp.float32, xp.float64]))
+@given(hh.mutually_promotable_dtypes(dtypes=dh.float_dtypes))
 def test_mutually_promotable_dtypes(pairs):
     assert pairs in (
         (xp.float32, xp.float32),

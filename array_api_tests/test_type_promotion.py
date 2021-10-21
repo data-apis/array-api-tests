@@ -42,23 +42,7 @@ def assert_dtype(test_case: str, result_name: str, dtype: DT, expected: DT):
     assert dtype == expected, msg
 
 
-def multi_promotable_dtypes(
-    allow_bool: bool = True,
-) -> st.SearchStrategy[Tuple[DT, ...]]:
-    strats = [
-        st.lists(st.sampled_from(dh.uint_dtypes), min_size=2),
-        st.lists(st.sampled_from(dh.int_dtypes), min_size=2),
-        st.lists(st.sampled_from(dh.float_dtypes), min_size=2),
-        st.lists(st.sampled_from(dh.all_int_dtypes), min_size=2).filter(
-            lambda l: not (xp.uint64 in l and any(d in dh.int_dtypes for d in l))
-        ),
-    ]
-    if allow_bool:
-        strats.insert(0, st.lists(st.just(xp.bool), min_size=2))
-    return st.one_of(strats).map(tuple)
-
-
-@given(multi_promotable_dtypes())
+@given(hh.mutually_promotable_dtypes(None))
 def test_result_type(dtypes):
     out = xp.result_type(*dtypes)
     assert_dtype(
@@ -67,7 +51,7 @@ def test_result_type(dtypes):
 
 
 @given(
-    dtypes=multi_promotable_dtypes(allow_bool=False),
+    dtypes=hh.mutually_promotable_dtypes(None, dtypes=dh.numeric_dtypes),
     data=st.data(),
 )
 def test_meshgrid(dtypes, data):
@@ -85,7 +69,7 @@ def test_meshgrid(dtypes, data):
 
 @given(
     shape=hh.shapes(min_dims=1),
-    dtypes=multi_promotable_dtypes(allow_bool=False),
+    dtypes=hh.mutually_promotable_dtypes(None, dtypes=dh.numeric_dtypes),
     data=st.data(),
 )
 def test_concat(shape, dtypes, data):
@@ -101,7 +85,7 @@ def test_concat(shape, dtypes, data):
 
 @given(
     shape=hh.shapes(),
-    dtypes=multi_promotable_dtypes(),
+    dtypes=hh.mutually_promotable_dtypes(None),
     data=st.data(),
 )
 def test_stack(shape, dtypes, data):

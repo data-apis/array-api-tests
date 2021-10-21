@@ -113,7 +113,7 @@ def cross_args(draw, dtype_objects=dh.numeric_dtypes):
     axis = kw.get('axis', -1)
     shape[axis] = 3
 
-    mutual_dtypes = shared(mutually_promotable_dtypes(dtype_objects))
+    mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtype_objects))
     arrays1 = xps.arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[0]),
         shape=shape,
@@ -355,7 +355,7 @@ def test_matrix_transpose(x):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    *two_mutual_arrays(dtype_objs=dh.numeric_dtypes,
+    *two_mutual_arrays(dtypes=dh.numeric_dtypes,
                        two_shapes=tuples(one_d_shapes, one_d_shapes))
 )
 def test_outer(x1, x2):

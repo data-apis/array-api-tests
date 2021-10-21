@@ -2,13 +2,12 @@ from functools import reduce
 from operator import mul
 from math import sqrt
 import itertools
-from typing import Tuple
+from typing import Tuple, Optional
 
 from hypothesis import assume
 from hypothesis.strategies import (lists, integers, sampled_from,
                                    shared, floats, just, composite, one_of,
-                                   none, booleans)
-from hypothesis.strategies._internal.strategies import SearchStrategy
+                                   none, booleans, SearchStrategy)
 
 from .pytest_helpers import nargs
 from .array_helpers import ndindex
@@ -77,10 +76,34 @@ if FILTER_UNDEFINED_DTYPES:
     ]
 
 
-def mutually_promotable_dtypes(dtype_objs=dh.all_dtypes):
-    return sampled_from(
-        [(i, j) for i, j in promotable_dtypes if i in dtype_objs and j in dtype_objs]
-    )
+def mutually_promotable_dtypes(
+    max_size: Optional[int] = 2,
+    *,
+    dtypes=dh.all_dtypes,
+) -> SearchStrategy[Tuple]:
+    if max_size == 2:
+        return sampled_from(
+            [(i, j) for i, j in promotable_dtypes if i in dtypes and j in dtypes]
+        )
+    if isinstance(max_size, int) and max_size < 2:
+        raise ValueError(f'{max_size=} should be >=2')
+    strats = []
+    category_samples = {
+        category: [d for d in dtypes if d in category] for category in _dtype_categories
+    }
+    for samples in category_samples.values():
+        if len(samples) > 0:
+            strat = lists(sampled_from(samples), min_size=2, max_size=max_size)
+            strats.append(strat)
+    if len(category_samples[dh.uint_dtypes]) > 0 and len(category_samples[dh.int_dtypes]) > 0:
+        mixed_samples = category_samples[dh.uint_dtypes] + category_samples[dh.int_dtypes]
+        strat = lists(sampled_from(mixed_samples), min_size=2, max_size=max_size)
+        if xp.uint64 in mixed_samples:
+            strat = strat.filter(
+                lambda l: not (xp.uint64 in l and any(d in dh.int_dtypes for d in l))
+            )
+    return one_of(strats).map(tuple)
+
 
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
@@ -324,9 +347,9 @@ def multiaxis_indices(draw, shapes):
 
 
 def two_mutual_arrays(
-    dtype_objs=dh.all_dtypes, two_shapes=two_mutually_broadcastable_shapes
+    dtypes=dh.all_dtypes, two_shapes=two_mutually_broadcastable_shapes
 ):
-    mutual_dtypes = shared(mutually_promotable_dtypes(dtype_objs))
+    mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtypes))
     mutual_shapes = shared(two_shapes)
     arrays1 = xps.arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[0]),
