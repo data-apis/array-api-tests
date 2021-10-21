@@ -1,8 +1,10 @@
 from warnings import warn
-from typing import NamedTuple
+from functools import lru_cache
+from typing import NamedTuple, Tuple, Union
 
 from . import _array_module as xp
 from ._array_module import _UndefinedStub
+from .typing import DataType, ScalarType
 
 
 __all__ = [
@@ -28,6 +30,7 @@ __all__ = [
     'binary_op_to_symbol',
     'unary_op_to_symbol',
     'inplace_op_to_symbol',
+    'fmt_types',
 ]
 
 
@@ -367,3 +370,15 @@ for op, symbol in binary_op_to_symbol.items():
     inplace_op_to_symbol[iop] = f'{symbol}='
     func_in_dtypes[iop] = func_in_dtypes[op]
     func_returns_bool[iop] = func_returns_bool[op]
+
+
+@lru_cache
+def fmt_types(types: Tuple[Union[DataType, ScalarType], ...]) -> str:
+    f_types = []
+    for type_ in types:
+        try:
+            f_types.append(dtype_to_name[type_])
+        except KeyError:
+            # i.e. dtype is bool, int, or float
+            f_types.append(type_.__name__)
+    return ', '.join(f_types)

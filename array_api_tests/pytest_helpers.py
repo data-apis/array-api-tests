@@ -1,5 +1,9 @@
 from inspect import getfullargspec
+
+from . import dtype_helpers as dh
 from . import function_stubs
+from .typing import DataType
+
 
 def raises(exceptions, function, message=''):
     """
@@ -33,3 +37,12 @@ def doesnt_raise(function, message=''):
 
 def nargs(func_name):
     return len(getfullargspec(getattr(function_stubs, func_name)).args)
+
+def assert_dtype(test_case: str, result_name: str, dtype: DataType, expected: DataType):
+    msg = (
+        f'{result_name}={dh.dtype_to_name[dtype]}, '
+        f'but should be {dh.dtype_to_name[expected]} [{test_case}]'
+    )
+    assert dtype == expected, msg
+
+

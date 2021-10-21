@@ -2,8 +2,7 @@
 https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html
 """
 from collections import defaultdict
-from functools import lru_cache
-from typing import Tuple, Type, Union, List
+from typing import Tuple, Union, List
 
 import pytest
 from hypothesis import assume, given, reject
@@ -12,41 +11,17 @@ from hypothesis import strategies as st
 from . import _array_module as xp
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
+from . import pytest_helpers as ph
 from . import xps
+from .typing import DataType, ScalarType, Param
 from .function_stubs import elementwise_functions
-from .pytest_helpers import nargs
-
-
-DT = Type
-ScalarType = Union[Type[bool], Type[int], Type[float]]
-Param = Tuple
-
-
-@lru_cache
-def fmt_types(types: Tuple[Union[DT, ScalarType], ...]) -> str:
-    f_types = []
-    for type_ in types:
-        try:
-            f_types.append(dh.dtype_to_name[type_])
-        except KeyError:
-            # i.e. dtype is bool, int, or float
-            f_types.append(type_.__name__)
-    return ', '.join(f_types)
-
-
-def assert_dtype(test_case: str, result_name: str, dtype: DT, expected: DT):
-    msg = (
-        f'{result_name}={dh.dtype_to_name[dtype]}, '
-        f'but should be {dh.dtype_to_name[expected]} [{test_case}]'
-    )
-    assert dtype == expected, msg
 
 
 @given(hh.mutually_promotable_dtypes(None))
 def test_result_type(dtypes):
     out = xp.result_type(*dtypes)
-    assert_dtype(
-        f'result_type({fmt_types(dtypes)})', 'out', out, dh.result_type(*dtypes)
+    ph.assert_dtype(
+        f'result_type({dh.fmt_types(dtypes)})', 'out', out, dh.result_type(*dtypes)
     )
 
 
@@ -62,9 +37,9 @@ def test_meshgrid(dtypes, data):
         arrays.append(x)
     out = xp.meshgrid(*arrays)
     expected = dh.result_type(*dtypes)
-    test_case = f'meshgrid({fmt_types(dtypes)})'
+    test_case = f'meshgrid({dh.fmt_types(dtypes)})'
     for i, x in enumerate(out):
-        assert_dtype(test_case, f'out[{i}].dtype', x.dtype, expected)
+        ph.assert_dtype(test_case, f'out[{i}].dtype', x.dtype, expected)
 
 
 @given(
@@ -78,8 +53,11 @@ def test_concat(shape, dtypes, data):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
         arrays.append(x)
     out = xp.concat(arrays)
-    assert_dtype(
-        f'concat({fmt_types(dtypes)})', 'out.dtype', out.dtype, dh.result_type(*dtypes)
+    ph.assert_dtype(
+        f'concat({dh.fmt_types(dtypes)})',
+        'out.dtype',
+        out.dtype,
+        dh.result_type(*dtypes),
     )
 
 
@@ -94,8 +72,11 @@ def test_stack(shape, dtypes, data):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
         arrays.append(x)
     out = xp.stack(arrays)
-    assert_dtype(
-        f'stack({fmt_types(dtypes)})', 'out.dtype', out.dtype, dh.result_type(*dtypes)
+    ph.assert_dtype(
+        f'stack({dh.fmt_types(dtypes)})',
+        'out.dtype',
+        out.dtype,
+        dh.result_type(*dtypes),
     )
 
 
@@ -117,17 +98,19 @@ func_elements = defaultdict(
 
 
 def make_id(
-    func_name: str, in_dtypes: Tuple[Union[DT, ScalarType], ...], out_dtype: DT
+    func_name: str,
+    in_dtypes: Tuple[Union[DataType, ScalarType], ...],
+    out_dtype: DataType,
 ) -> str:
-    f_args = fmt_types(in_dtypes)
+    f_args = dh.fmt_types(in_dtypes)
     f_out_dtype = dh.dtype_to_name[out_dtype]
     return f'{func_name}({f_args}) -> {f_out_dtype}'
 
 
-func_params: List[Param[str, Tuple[DT, ...], DT]] = []
+func_params: List[Param[str, Tuple[DataType, ...], DataType]] = []
 for func_name in elementwise_functions.__all__:
     valid_in_dtypes = dh.func_in_dtypes[func_name]
-    ndtypes = nargs(func_name)
+    ndtypes = ph.nargs(func_name)
     if ndtypes == 1:
         for in_dtype in valid_in_dtypes:
             out_dtype = xp.bool if dh.func_returns_bool[func_name] else in_dtype
@@ -180,12 +163,12 @@ def test_func_promotion(func_name, in_dtypes, out_dtype, data):
             out = func(*arrays)
         except OverflowError:
             reject()
-    assert_dtype(
-        f'{func_name}({fmt_types(in_dtypes)})', 'out.dtype', out.dtype, out_dtype
+    ph.assert_dtype(
+        f'{func_name}({dh.fmt_types(in_dtypes)})', 'out.dtype', out.dtype, out_dtype
     )
 
 
-promotion_params: List[Param[Tuple[DT, DT], DT]] = []
+promotion_params: List[Param[Tuple[DataType, DataType], DataType]] = []
 for (dtype1, dtype2), promoted_dtype in dh.promotion_table.items():
     p = pytest.param(
         (dtype1, dtype2),
@@ -202,7 +185,9 @@ def test_where(in_dtypes, out_dtype, shapes, data):
     x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
     cond = data.draw(xps.arrays(dtype=xp.bool, shape=shapes[2]), label='condition')
     out = xp.where(cond, x1, x2)
-    assert_dtype(f'where({fmt_types(in_dtypes)})', 'out.dtype', out.dtype, out_dtype)
+    ph.assert_dtype(
+        f'where({dh.fmt_types(in_dtypes)})', 'out.dtype', out.dtype, out_dtype
+    )
 
 
 numeric_promotion_params = promotion_params[1:]
@@ -214,8 +199,8 @@ def test_tensordot(in_dtypes, out_dtype, shapes, data):
     x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
     x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
     out = xp.tensordot(x1, x2)
-    assert_dtype(
-        f'tensordot({fmt_types(in_dtypes)})', 'out.dtype', out.dtype, out_dtype
+    ph.assert_dtype(
+        f'tensordot({dh.fmt_types(in_dtypes)})', 'out.dtype', out.dtype, out_dtype
     )
 
 
@@ -225,16 +210,18 @@ def test_vecdot(in_dtypes, out_dtype, shapes, data):
     x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
     x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
     out = xp.vecdot(x1, x2)
-    assert_dtype(f'vecdot({fmt_types(in_dtypes)})', 'out.dtype', out.dtype, out_dtype)
+    ph.assert_dtype(
+        f'vecdot({dh.fmt_types(in_dtypes)})', 'out.dtype', out.dtype, out_dtype
+    )
 
 
-op_params: List[Param[str, str, Tuple[DT, ...], DT]] = []
+op_params: List[Param[str, str, Tuple[DataType, ...], DataType]] = []
 op_to_symbol = {**dh.unary_op_to_symbol, **dh.binary_op_to_symbol}
 for op, symbol in op_to_symbol.items():
     if op == '__matmul__':
         continue
     valid_in_dtypes = dh.func_in_dtypes[op]
-    ndtypes = nargs(op)
+    ndtypes = ph.nargs(op)
     if ndtypes == 1:
         for in_dtype in valid_in_dtypes:
             out_dtype = xp.bool if dh.func_returns_bool[op] else in_dtype
@@ -293,10 +280,12 @@ def test_op_promotion(op, expr, in_dtypes, out_dtype, data):
             out = eval(expr, locals_)
         except OverflowError:
             reject()
-    assert_dtype(f'{op}({fmt_types(in_dtypes)})', 'out.dtype', out.dtype, out_dtype)
+    ph.assert_dtype(
+        f'{op}({dh.fmt_types(in_dtypes)})', 'out.dtype', out.dtype, out_dtype
+    )
 
 
-inplace_params: List[Param[str, str, Tuple[DT, ...], DT]] = []
+inplace_params: List[Param[str, str, Tuple[DataType, ...], DataType]] = []
 for op, symbol in dh.inplace_op_to_symbol.items():
     if op == '__imatmul__':
         continue
@@ -334,10 +323,10 @@ def test_inplace_op_promotion(op, expr, in_dtypes, out_dtype, shapes, data):
     except OverflowError:
         reject()
     x1 = locals_['x1']
-    assert_dtype(f'{op}({fmt_types(in_dtypes)})', 'x1.dtype', x1.dtype, out_dtype)
+    ph.assert_dtype(f'{op}({dh.fmt_types(in_dtypes)})', 'x1.dtype', x1.dtype, out_dtype)
 
 
-op_scalar_params: List[Param[str, str, DT, ScalarType, DT]] = []
+op_scalar_params: List[Param[str, str, DataType, ScalarType, DataType]] = []
 for op, symbol in dh.binary_op_to_symbol.items():
     if op == '__matmul__':
         continue
@@ -368,12 +357,12 @@ def test_op_scalar_promotion(op, expr, in_dtype, in_stype, out_dtype, data):
         out = eval(expr, {'x': x, 's': s})
     except OverflowError:
         reject()
-    assert_dtype(
-        f'{op}({fmt_types((in_dtype, in_stype))})', 'out.dtype', out.dtype, out_dtype
+    ph.assert_dtype(
+        f'{op}({dh.fmt_types((in_dtype, in_stype))})', 'out.dtype', out.dtype, out_dtype
     )
 
 
-inplace_scalar_params: List[Param[str, str, DT, ScalarType]] = []
+inplace_scalar_params: List[Param[str, str, DataType, ScalarType]] = []
 for op, symbol in dh.inplace_op_to_symbol.items():
     if op == '__imatmul__':
         continue
@@ -405,7 +394,9 @@ def test_inplace_op_scalar_promotion(op, expr, dtype, in_stype, data):
         reject()
     x = locals_['x']
     assert x.dtype == dtype, f'{x.dtype=!s}, but should be {dtype}'
-    assert_dtype(f'{op}({fmt_types((dtype, in_stype))})', 'x.dtype', x.dtype, dtype)
+    ph.assert_dtype(
+        f'{op}({dh.fmt_types((dtype, in_stype))})', 'x.dtype', x.dtype, dtype
+    )
 
 
 if __name__ == '__main__':
