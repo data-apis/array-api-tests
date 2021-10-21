@@ -26,8 +26,8 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  mutually_promotable_dtypes, one_d_shapes,
                                  two_mutually_broadcastable_shapes,
                                  SQRT_MAX_ARRAY_SIZE, finite_matrices)
-from .pytest_helpers import raises
 from . import dtype_helpers as dh
+from . import pytest_helpers as ph
 
 from .test_broadcasting import broadcast_shapes
 
@@ -274,13 +274,19 @@ def test_matmul(x1, x2):
         or len(x1.shape) >= 2 and len(x2.shape) >= 2 and x1.shape[-1] != x2.shape[-2]):
         # The spec doesn't specify what kind of exception is used here. Most
         # libraries will use a custom exception class.
-        raises(Exception, lambda: _array_module.matmul(x1, x2),
+        ph.raises(Exception, lambda: _array_module.matmul(x1, x2),
                "matmul did not raise an exception for invalid shapes")
         return
     else:
         res = _array_module.matmul(x1, x2)
 
-    assert res.dtype == dh.promotion_table[x1.dtype, x2.dtype], "matmul() did not return the correct dtype"
+    ph.assert_dtype(
+        "matmul",
+        (x1.dtype, x2.dtype),
+        "out.dtype",
+        res.dtype,
+        dh.promotion_table[x1.dtype, x2.dtype],
+    )
 
     if len(x1.shape) == len(x2.shape) == 1:
         assert res.shape == ()
