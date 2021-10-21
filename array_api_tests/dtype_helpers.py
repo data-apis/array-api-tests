@@ -1,6 +1,8 @@
+from warnings import warn
 from typing import NamedTuple
 
 from . import _array_module as xp
+from ._array_module import _UndefinedStub
 
 
 __all__ = [
@@ -16,6 +18,8 @@ __all__ = [
     'is_int_dtype',
     'is_float_dtype',
     'dtype_ranges',
+    'default_int',
+    'default_float',
     'promotion_table',
     'dtype_nbits',
     'dtype_signed',
@@ -82,6 +86,18 @@ dtype_ranges = {
     xp.uint32: MinMax(0, +4_294_967_295),
     xp.uint64: MinMax(0, +18_446_744_073_709_551_615),
 }
+
+
+if isinstance(xp.asarray, _UndefinedStub):
+    default_int = xp.int32
+    default_float = xp.float32
+    warn(
+        'array module does not have attribute asarray. '
+        'default int is assumed int32, default float is assumed float32'
+    )
+else:
+    default_int = xp.asarray(int()).dtype
+    default_float = xp.asarray(float()).dtype
 
 
 _numeric_promotions = {
