@@ -37,19 +37,10 @@ jobs:
         array_api_tests/test_signatures.py::test_function_positional_args[__dlpack__]
         array_api_tests/test_signatures.py::test_function_positional_args[__dlpack_device__]
         array_api_tests/test_signatures.py::test_function_positional_args[from_dlpack]
+        array_api_tests/test_signatures.py::test_function_positional_args[to_device]
         array_api_tests/test_signatures.py::test_function_keyword_only_args[__dlpack__]
-        # Updates to the spec since the last change to numpy.array_api
-        # These will fail until NumPy is updated
-        array_api_tests/test_signatures.py::test_has_names[__index__]
-        array_api_tests/test_signatures.py::test_has_names[to_device]
-        array_api_tests/test_signatures.py::test_has_names[mT]
-        array_api_tests/test_signatures.py::test_has_names[tril]
-        array_api_tests/test_signatures.py::test_has_names[triu]
-        array_api_tests/test_signatures.py::test_has_names[matrix_transpose]
-        array_api_tests/test_signatures.py::test_has_names[permute_dims]
-        array_api_tests/test_signatures.py::test_function_positional_args[__index__]
-        array_api_tests/test_signatures.py::test_function_keyword_only_args[prod]
-        array_api_tests/test_signatures.py::test_function_keyword_only_args[sum]
+        # floor_divide has an issue related to https://github.com/data-apis/array-api/issues/264
+        array_api_tests/test_elementwise_functions.py::test_floor_divide
 
         EOF
 
