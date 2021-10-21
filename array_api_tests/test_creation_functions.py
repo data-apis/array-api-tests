@@ -12,7 +12,7 @@ from . import dtype_helpers as dh
 from . import xps
 
 from hypothesis import assume, given
-from hypothesis.strategies import integers, floats, one_of, none, booleans, just, shared, composite
+from hypothesis.strategies import integers, floats, one_of, none, booleans, just, shared, composite, SearchStrategy
 
 
 int_range = integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
@@ -128,10 +128,20 @@ def test_eye(n_rows, n_cols, k, dtype):
                 assert a[i, j] == 0, "eye() did not produce a 0 off the diagonal"
 
 
+default_unsafe_dtypes = [xp.uint64]
+if dh.default_int == xp.int32:
+    default_unsafe_dtypes.extend([xp.uint32, xp.int64])
+if dh.default_float == xp.float32:
+    default_unsafe_dtypes.append(xp.float64)
+default_safe_scalar_dtypes: SearchStrategy = xps.scalar_dtypes().filter(
+    lambda d: d not in default_unsafe_dtypes
+)
+
+
 @composite
 def full_fill_values(draw):
     kw = draw(shared(kwargs(dtype=none() | xps.scalar_dtypes()), key="full_kw"))
-    dtype = kw.get("dtype", None) or draw(xps.scalar_dtypes())
+    dtype = kw.get("dtype", None) or draw(default_safe_scalar_dtypes)
     return draw(xps.from_dtype(dtype))
 
 
