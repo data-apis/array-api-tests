@@ -9,7 +9,6 @@ from .. import array_helpers as ah
 from .. import dtype_helpers as dh
 from .. import hypothesis_helpers as hh
 from ..test_broadcasting import broadcast_shapes
-from ..test_elementwise_functions import sanity_check
 
 UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in dh.all_dtypes)
 pytestmark = [pytest.mark.skipif(UNDEFINED_DTYPES, reason="undefined dtypes")]
@@ -52,7 +51,7 @@ def test_two_broadcastable_shapes(pair):
 
 @given(*hh.two_mutual_arrays())
 def test_two_mutual_arrays(x1, x2):
-    sanity_check(x1, x2)
+    assert (x1.dtype, x2.dtype) in dh.promotion_table.keys()
     assert broadcast_shapes(x1.shape, x2.shape) in (x1.shape, x2.shape)
 
 

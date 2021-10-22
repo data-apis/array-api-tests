@@ -42,13 +42,6 @@ def two_array_scalars(draw, dtype1, dtype2):
     # hh.mutually_promotable_dtypes())
     return draw(hh.array_scalars(st.just(dtype1))), draw(hh.array_scalars(st.just(dtype2)))
 
-# TODO: refactor this into dtype_helpers.py, see https://github.com/data-apis/array-api-tests/pull/26
-def sanity_check(x1, x2):
-    try:
-        dh.promotion_table[x1.dtype, x2.dtype]
-    except ValueError:
-        raise RuntimeError("Error in test generation (probably a bug in the test suite")
-
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_abs(x):
     if dh.is_int_dtype(x.dtype):
@@ -94,7 +87,6 @@ def test_acosh(x):
 
 @given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_add(x1, x2):
-    sanity_check(x1, x2)
     a = xp.add(x1, x2)
 
     b = xp.add(x2, x1)
@@ -136,7 +128,6 @@ def test_atan(x):
 
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_atan2(x1, x2):
-    sanity_check(x1, x2)
     a = xp.atan2(x1, x2)
     INFINITY1 = ah.infinity(x1.shape, x1.dtype)
     INFINITY2 = ah.infinity(x2.shape, x2.dtype)
@@ -183,7 +174,6 @@ def test_atanh(x):
 
 @given(*hh.two_mutual_arrays(dh.bool_and_all_int_dtypes))
 def test_bitwise_and(x1, x2):
-    sanity_check(x1, x2)
     out = xp.bitwise_and(x1, x2)
 
     # TODO: generate indices without broadcasting arrays (see test_equal comment)
@@ -210,7 +200,6 @@ def test_bitwise_and(x1, x2):
 
 @given(*hh.two_mutual_arrays(dh.all_int_dtypes))
 def test_bitwise_left_shift(x1, x2):
-    sanity_check(x1, x2)
     assume(not ah.any(ah.isnegative(x2)))
     out = xp.bitwise_left_shift(x1, x2)
 
@@ -249,7 +238,6 @@ def test_bitwise_invert(x):
 
 @given(*hh.two_mutual_arrays(dh.bool_and_all_int_dtypes))
 def test_bitwise_or(x1, x2):
-    sanity_check(x1, x2)
     out = xp.bitwise_or(x1, x2)
 
     # TODO: generate indices without broadcasting arrays (see test_equal comment)
@@ -276,7 +264,6 @@ def test_bitwise_or(x1, x2):
 
 @given(*hh.two_mutual_arrays(dh.all_int_dtypes))
 def test_bitwise_right_shift(x1, x2):
-    sanity_check(x1, x2)
     assume(not ah.any(ah.isnegative(x2)))
     out = xp.bitwise_right_shift(x1, x2)
 
@@ -297,7 +284,6 @@ def test_bitwise_right_shift(x1, x2):
 
 @given(*hh.two_mutual_arrays(dh.bool_and_all_int_dtypes))
 def test_bitwise_xor(x1, x2):
-    sanity_check(x1, x2)
     out = xp.bitwise_xor(x1, x2)
 
     # TODO: generate indices without broadcasting arrays (see test_equal comment)
@@ -356,7 +342,6 @@ def test_cosh(x):
 
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_divide(x1, x2):
-    sanity_check(x1, x2)
     xp.divide(x1, x2)
     # There isn't much we can test here. The spec doesn't require any behavior
     # beyond the special cases, and indeed, there aren't many mathematical
@@ -367,7 +352,6 @@ def test_divide(x1, x2):
 
 @given(*hh.two_mutual_arrays())
 def test_equal(x1, x2):
-    sanity_check(x1, x2)
     a = ah.equal(x1, x2)
     # NOTE: ah.assert_exactly_equal() itself uses ah.equal(), so we must be careful
     # not to use it here. Otherwise, the test would be circular and
@@ -449,7 +433,6 @@ def test_floor(x):
 
 @given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_floor_divide(x1, x2):
-    sanity_check(x1, x2)
     if dh.is_int_dtype(x1.dtype):
         # The spec does not specify the behavior for division by 0 for integer
         # dtypes. A library may choose to raise an exception in this case, so
@@ -473,7 +456,6 @@ def test_floor_divide(x1, x2):
 
 @given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_greater(x1, x2):
-    sanity_check(x1, x2)
     a = xp.greater(x1, x2)
 
     # See the comments in test_equal() for a description of how this test
@@ -502,7 +484,6 @@ def test_greater(x1, x2):
 
 @given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_greater_equal(x1, x2):
-    sanity_check(x1, x2)
     a = xp.greater_equal(x1, x2)
 
     # See the comments in test_equal() for a description of how this test
@@ -577,7 +558,6 @@ def test_isnan(x):
 
 @given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_less(x1, x2):
-    sanity_check(x1, x2)
     a = ah.less(x1, x2)
 
     # See the comments in test_equal() for a description of how this test
@@ -606,7 +586,6 @@ def test_less(x1, x2):
 
 @given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_less_equal(x1, x2):
-    sanity_check(x1, x2)
     a = ah.less_equal(x1, x2)
 
     # See the comments in test_equal() for a description of how this test
@@ -679,7 +658,6 @@ def test_log10(x):
 
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_logaddexp(x1, x2):
-    sanity_check(x1, x2)
     xp.logaddexp(x1, x2)
     # The spec doesn't require any behavior for this function. We could test
     # that this is indeed an approximation of log(exp(x1) + exp(x2)), but we
@@ -687,7 +665,6 @@ def test_logaddexp(x1, x2):
 
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_and(x1, x2):
-    sanity_check(x1, x2)
     a = ah.logical_and(x1, x2)
 
     # See the comments in test_equal
@@ -707,7 +684,6 @@ def test_logical_not(x):
 
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_or(x1, x2):
-    sanity_check(x1, x2)
     a = ah.logical_or(x1, x2)
 
     # See the comments in test_equal
@@ -720,7 +696,6 @@ def test_logical_or(x1, x2):
 
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_xor(x1, x2):
-    sanity_check(x1, x2)
     a = xp.logical_xor(x1, x2)
 
     # See the comments in test_equal
@@ -733,7 +708,6 @@ def test_logical_xor(x1, x2):
 
 @given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_multiply(x1, x2):
-    sanity_check(x1, x2)
     a = xp.multiply(x1, x2)
 
     b = xp.multiply(x2, x1)
@@ -762,7 +736,6 @@ def test_negative(x):
 
 @given(*hh.two_mutual_arrays())
 def test_not_equal(x1, x2):
-    sanity_check(x1, x2)
     a = xp.not_equal(x1, x2)
 
     # See the comments in test_equal() for a description of how this test
@@ -798,7 +771,6 @@ def test_positive(x):
 
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_pow(x1, x2):
-    sanity_check(x1, x2)
     xp.pow(x1, x2)
     # There isn't much we can test here. The spec doesn't require any behavior
     # beyond the special cases, and indeed, there aren't many mathematical
@@ -809,7 +781,6 @@ def test_pow(x1, x2):
 @given(*hh.two_mutual_arrays(dh.numeric_dtypes))
 def test_remainder(x1, x2):
     assume(len(x1.shape) <= len(x2.shape)) # TODO: rework same sign testing below to remove this
-    sanity_check(x1, x2)
     out = xp.remainder(x1, x2)
 
     # out and x2 should have the same sign.
@@ -868,7 +839,6 @@ def test_sqrt(x):
 @given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
 def test_subtract(args):
     x1, x2 = args
-    sanity_check(x1, x2)
     # a = xp.subtract(x1, x2)
 
 @given(floating_scalars)
