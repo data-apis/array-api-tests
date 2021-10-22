@@ -2,7 +2,7 @@ from functools import reduce
 from operator import mul
 from math import sqrt
 import itertools
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 
 from hypothesis import assume
 from hypothesis.strategies import (lists, integers, sampled_from,
@@ -11,6 +11,7 @@ from hypothesis.strategies import (lists, integers, sampled_from,
 
 from .pytest_helpers import nargs
 from .array_helpers import ndindex
+from .typing import DataType, Shape
 from . import dtype_helpers as dh
 from ._array_module import (full, float32, float64, bool as bool_dtype,
                             _UndefinedStub, eye, broadcast_to)
@@ -49,7 +50,7 @@ shared_floating_dtypes = shared(floating_dtypes, key="dtype")
 _dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.float_dtypes]
 _sorted_dtypes = [d for category in _dtype_categories for d in category]
 
-def _dtypes_sorter(dtype_pair):
+def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):
     dtype1, dtype2 = dtype_pair
     if dtype1 == dtype2:
         return _sorted_dtypes.index(dtype1)
@@ -66,7 +67,7 @@ def _dtypes_sorter(dtype_pair):
         key += 1
     return key
 
-promotable_dtypes = sorted(dh.promotion_table.keys(), key=_dtypes_sorter)
+promotable_dtypes: List[Tuple[DataType, DataType]] = sorted(dh.promotion_table.keys(), key=_dtypes_sorter)
 
 if FILTER_UNDEFINED_DTYPES:
     promotable_dtypes = [
@@ -79,8 +80,8 @@ if FILTER_UNDEFINED_DTYPES:
 def mutually_promotable_dtypes(
     max_size: Optional[int] = 2,
     *,
-    dtypes=dh.all_dtypes,
-) -> SearchStrategy[Tuple]:
+    dtypes: Tuple[DataType, ...] = dh.all_dtypes,
+) -> SearchStrategy[Tuple[DataType, ...]]:
     if max_size == 2:
         return sampled_from(
             [(i, j) for i, j in promotable_dtypes if i in dtypes and j in dtypes]
@@ -164,7 +165,7 @@ finite_matrices = xps.arrays(dtype=xps.floating_dtypes(),
 
 def mutually_broadcastable_shapes(
     num_shapes: int, **kw
-) -> SearchStrategy[Tuple[Tuple[int, ...], ...]]:
+) -> SearchStrategy[Tuple[Shape, ...]]:
     return (
         xps.mutually_broadcastable_shapes(num_shapes, **kw)
         .map(lambda BS: BS.input_shapes)
@@ -347,8 +348,9 @@ def multiaxis_indices(draw, shapes):
 
 
 def two_mutual_arrays(
-    dtypes=dh.all_dtypes, two_shapes=two_mutually_broadcastable_shapes
-):
+    dtypes: Tuple[DataType, ...] = dh.all_dtypes,
+    two_shapes: SearchStrategy[Tuple[Shape, Shape]] = two_mutually_broadcastable_shapes,
+) -> SearchStrategy:
     mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtypes))
     mutual_shapes = shared(two_shapes)
     arrays1 = xps.arrays(
