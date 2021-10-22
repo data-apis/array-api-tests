@@ -20,7 +20,7 @@ from .function_stubs import elementwise_functions
 @given(hh.mutually_promotable_dtypes(None))
 def test_result_type(dtypes):
     out = xp.result_type(*dtypes)
-    ph.assert_dtype('result_type', dtypes, 'out', out, dh.result_type(*dtypes))
+    ph.assert_dtype('result_type', dtypes, out, out_name='out')
 
 
 @given(
@@ -34,9 +34,8 @@ def test_meshgrid(dtypes, data):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
         arrays.append(x)
     out = xp.meshgrid(*arrays)
-    expected = dh.result_type(*dtypes)
     for i, x in enumerate(out):
-        ph.assert_dtype('meshgrid', dtypes, f'out[{i}].dtype', x.dtype, expected)
+        ph.assert_dtype('meshgrid', dtypes, x.dtype, out_name=f'out[{i}].dtype')
 
 
 @given(
@@ -50,7 +49,7 @@ def test_concat(shape, dtypes, data):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
         arrays.append(x)
     out = xp.concat(arrays)
-    ph.assert_dtype('concat', dtypes, 'out.dtype', out.dtype, dh.result_type(*dtypes))
+    ph.assert_dtype('concat', dtypes, out.dtype)
 
 
 @given(
@@ -64,7 +63,7 @@ def test_stack(shape, dtypes, data):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
         arrays.append(x)
     out = xp.stack(arrays)
-    ph.assert_dtype('stack', dtypes, 'out.dtype', out.dtype, dh.result_type(*dtypes))
+    ph.assert_dtype('stack', dtypes, out.dtype)
 
 
 bitwise_shift_funcs = [
@@ -150,7 +149,7 @@ def test_func_promotion(func_name, in_dtypes, out_dtype, data):
             out = func(*arrays)
         except OverflowError:
             reject()
-    ph.assert_dtype(func_name, in_dtypes, 'out.dtype', out.dtype, out_dtype)
+    ph.assert_dtype(func_name, in_dtypes, out.dtype, out_dtype)
 
 
 promotion_params: List[Param[Tuple[DataType, DataType], DataType]] = []
@@ -170,7 +169,7 @@ def test_where(in_dtypes, out_dtype, shapes, data):
     x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
     cond = data.draw(xps.arrays(dtype=xp.bool, shape=shapes[2]), label='condition')
     out = xp.where(cond, x1, x2)
-    ph.assert_dtype('where', in_dtypes, 'out.dtype', out.dtype, out_dtype)
+    ph.assert_dtype('where', in_dtypes, out.dtype, out_dtype)
 
 
 numeric_promotion_params = promotion_params[1:]
@@ -182,7 +181,7 @@ def test_tensordot(in_dtypes, out_dtype, shapes, data):
     x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
     x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
     out = xp.tensordot(x1, x2)
-    ph.assert_dtype('tensordot', in_dtypes, 'out.dtype', out.dtype, out_dtype)
+    ph.assert_dtype('tensordot', in_dtypes, out.dtype, out_dtype)
 
 
 @pytest.mark.parametrize('in_dtypes, out_dtype', numeric_promotion_params)
@@ -191,7 +190,7 @@ def test_vecdot(in_dtypes, out_dtype, shapes, data):
     x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
     x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
     out = xp.vecdot(x1, x2)
-    ph.assert_dtype('vecdot', in_dtypes, 'out.dtype', out.dtype, out_dtype)
+    ph.assert_dtype('vecdot', in_dtypes, out.dtype, out_dtype)
 
 
 op_params: List[Param[str, str, Tuple[DataType, ...], DataType]] = []
@@ -259,7 +258,7 @@ def test_op_promotion(op, expr, in_dtypes, out_dtype, data):
             out = eval(expr, locals_)
         except OverflowError:
             reject()
-    ph.assert_dtype(op, in_dtypes, 'out.dtype', out.dtype, out_dtype)
+    ph.assert_dtype(op, in_dtypes, out.dtype, out_dtype)
 
 
 inplace_params: List[Param[str, str, Tuple[DataType, ...], DataType]] = []
@@ -300,7 +299,7 @@ def test_inplace_op_promotion(op, expr, in_dtypes, out_dtype, shapes, data):
     except OverflowError:
         reject()
     x1 = locals_['x1']
-    ph.assert_dtype(op, in_dtypes, 'x1.dtype', x1.dtype, out_dtype)
+    ph.assert_dtype(op, in_dtypes, x1.dtype, out_dtype, out_name='x1.dtype')
 
 
 op_scalar_params: List[Param[str, str, DataType, ScalarType, DataType]] = []
@@ -334,7 +333,7 @@ def test_op_scalar_promotion(op, expr, in_dtype, in_stype, out_dtype, data):
         out = eval(expr, {'x': x, 's': s})
     except OverflowError:
         reject()
-    ph.assert_dtype(op, (in_dtype, in_stype), 'out.dtype', out.dtype, out_dtype)
+    ph.assert_dtype(op, (in_dtype, in_stype), out.dtype, out_dtype)
 
 
 inplace_scalar_params: List[Param[str, str, DataType, ScalarType]] = []
@@ -369,7 +368,7 @@ def test_inplace_op_scalar_promotion(op, expr, dtype, in_stype, data):
         reject()
     x = locals_['x']
     assert x.dtype == dtype, f'{x.dtype=!s}, but should be {dtype}'
-    ph.assert_dtype(op, (dtype, in_stype), 'x.dtype', x.dtype, dtype)
+    ph.assert_dtype(op, (dtype, in_stype), x.dtype, dtype, out_name='x.dtype')
 
 
 if __name__ == '__main__':
