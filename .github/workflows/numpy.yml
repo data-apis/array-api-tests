@@ -22,41 +22,26 @@ jobs:
         python -m pip install git+https://github.com/numpy/numpy
         python -m pip install -r requirements.txt
     - name: Run the test suite
+      env:
+        ARRAY_API_TESTS_MODULE: numpy.array_api
       run: |
         # Mark some known issues as XFAIL
-        cat << EOF >> conftest.py
+        cat << EOF >> xfails.txt
 
-        names_to_be_xfailed = (
-            # https://github.com/numpy/numpy/issues/18881
-            "array_api_tests/test_creation_functions.py::test_linspace",
-            # einsum is not yet completed in the spec
-            "array_api_tests/test_signatures.py::test_has_names[einsum]",
-            # The linalg extension is not yet implemented in NumPy
-            "array_api_tests/test_signatures.py::test_has_names[linalg]",
-            # dlpack support is not yet implemented in NumPy. https://github.com/numpy/numpy/pull/19083
-            "array_api_tests/test_signatures.py::test_function_positional_args[__dlpack__]",
-            "array_api_tests/test_signatures.py::test_function_positional_args[__dlpack_device__]",
-            "array_api_tests/test_signatures.py::test_function_positional_args[from_dlpack]",
-            "array_api_tests/test_signatures.py::test_function_keyword_only_args[__dlpack__]",
+        # https://github.com/numpy/numpy/issues/18881
+        array_api_tests/test_creation_functions.py::test_linspace
+        # einsum is not yet completed in the spec
+        array_api_tests/test_signatures.py::test_has_names[einsum]
+        # dlpack support is not yet implemented in NumPy
+        # See https://github.com/numpy/numpy/pull/19083
+        array_api_tests/test_signatures.py::test_function_positional_args[__dlpack__]
+        array_api_tests/test_signatures.py::test_function_positional_args[__dlpack_device__]
+        array_api_tests/test_signatures.py::test_function_positional_args[from_dlpack]
+        array_api_tests/test_signatures.py::test_function_positional_args[to_device]
+        array_api_tests/test_signatures.py::test_function_keyword_only_args[__dlpack__]
+        # floor_divide has an issue related to https://github.com/data-apis/array-api/issues/264
+        array_api_tests/test_elementwise_functions.py::test_floor_divide
 
-            # Updates to the spec since the last change to numpy.array_api.
-            # These will fail until NumPy is updated.
-            "array_api_tests/test_signatures.py::test_has_names[__index__]",
-            "array_api_tests/test_signatures.py::test_has_names[to_device]",
-            "array_api_tests/test_signatures.py::test_has_names[mT]",
-            "array_api_tests/test_signatures.py::test_has_names[tril]",
-            "array_api_tests/test_signatures.py::test_has_names[triu]",
-            "array_api_tests/test_signatures.py::test_has_names[matrix_transpose]",
-            "array_api_tests/test_signatures.py::test_has_names[permute_dims]",
-            "array_api_tests/test_signatures.py::test_function_positional_args[__index__]",
-            "array_api_tests/test_signatures.py::test_function_keyword_only_args[prod]",
-            "array_api_tests/test_signatures.py::test_function_keyword_only_args[sum]",
-        )
-
-        def pytest_collection_modifyitems(config, items):
-            for item in items:
-                if item.nodeid in names_to_be_xfailed:
-                    item.add_marker("xfail")
         EOF
 
-        ARRAY_API_TESTS_MODULE=numpy.array_api pytest -v -rxXfE
+        pytest -v -rxXfE

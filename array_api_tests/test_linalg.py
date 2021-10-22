@@ -13,6 +13,7 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 
 """
 
+import pytest
 from hypothesis import assume, given
 from hypothesis.strategies import (booleans, composite, none, tuples, integers,
                                    shared, sampled_from)
@@ -32,6 +33,7 @@ from .test_broadcasting import broadcast_shapes
 
 from . import _array_module
 from ._array_module import linalg
+
 
 # Standin strategy for not yet implemented tests
 todo = none()
@@ -74,6 +76,7 @@ def _test_namedtuple(res, fields, func_name):
         assert hasattr(res, field), f"{func_name}() result namedtuple doesn't have the '{field}' field"
         assert res[i] is getattr(res, field), f"{func_name}() result namedtuple '{field}' field is not in position {i}"
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=positive_definite_matrices(),
     kw=kwargs(upper=booleans())
@@ -121,6 +124,7 @@ def cross_args(draw, dtype_objects=dh.numeric_dtypes):
     )
     return draw(arrays1), draw(arrays2), kw
 
+@pytest.mark.xp_extension('linalg')
 @given(
     cross_args()
 )
@@ -159,6 +163,7 @@ def test_cross(x1_x2_kw):
             ], dtype=res.dtype)
         assert_exactly_equal(res_stack, exact_cross)
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
 )
@@ -172,6 +177,7 @@ def test_det(x):
 
     # TODO: Test that res actually corresponds to the determinant of x
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=xps.arrays(dtype=dtypes, shape=matrix_shapes),
     # offset may produce an overflow if it is too large. Supporting offsets
@@ -206,6 +212,7 @@ def test_diagonal(x, kw):
 
     _test_stacks(linalg.diagonal, x, **kw, res=res, dims=1, true_val=true_diag)
 
+@pytest.mark.xp_extension('linalg')
 @given(x=symmetric_matrices(finite=True))
 def test_eigh(x):
     res = linalg.eigh(x)
@@ -229,6 +236,7 @@ def test_eigh(x):
     # TODO: Test that res actually corresponds to the eigenvalues and
     # eigenvectors of x
 
+@pytest.mark.xp_extension('linalg')
 @given(x=symmetric_matrices(finite=True))
 def test_eigvalsh(x):
     res = linalg.eigvalsh(x)
@@ -242,6 +250,7 @@ def test_eigvalsh(x):
 
     # TODO: Test that res actually corresponds to the eigenvalues of x
 
+@pytest.mark.xp_extension('linalg')
 @given(x=invertible_matrices())
 def test_inv(x):
     res = linalg.inv(x)
@@ -286,6 +295,7 @@ def test_matmul(x1, x2):
         assert res.shape == stack_shape + (x1.shape[-2], x2.shape[-1])
         _test_stacks(_array_module.matmul, x1, x2, res=res)
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
     kw=kwargs(axis=todo, keepdims=todo, ord=todo)
@@ -295,6 +305,7 @@ def test_matrix_norm(x, kw):
     pass
 
 matrix_power_n = shared(integers(-1000, 1000), key='matrix_power n')
+@pytest.mark.xp_extension('linalg')
 @given(
     # Generate any square matrix if n >= 0 but only invertible matrices if n < 0
     x=matrix_power_n.flatmap(lambda n: invertible_matrices() if n < 0 else
@@ -316,6 +327,7 @@ def test_matrix_power(x, n):
     func = lambda x: linalg.matrix_power(x, n)
     _test_stacks(func, x, res=res, true_val=true_val)
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
     kw=kwargs(rtol=todo)
@@ -341,6 +353,7 @@ def test_matrix_transpose(x):
 
     _test_stacks(_array_module.matrix_transpose, x, res=res, true_val=true_val)
 
+@pytest.mark.xp_extension('linalg')
 @given(
     *two_mutual_arrays(dtype_objs=dh.numeric_dtypes,
                        two_shapes=tuples(one_d_shapes, one_d_shapes))
@@ -364,6 +377,7 @@ def test_outer(x1, x2):
 
     assert_exactly_equal(res, true_res)
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
     kw=kwargs(rtol=todo)
@@ -372,6 +386,7 @@ def test_pinv(x, kw):
     # res = linalg.pinv(x, **kw)
     pass
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=matrix_shapes),
     kw=kwargs(mode=sampled_from(['reduced', 'complete']))
@@ -407,6 +422,7 @@ def test_qr(x, kw):
     # Check that r is upper-triangular.
     assert_exactly_equal(r, _array_module.triu(r))
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
 )
@@ -464,6 +480,7 @@ def solve_args():
     x2 = xps.arrays(dtype=xps.floating_dtypes(), shape=x2_shapes())
     return x1, x2
 
+@pytest.mark.xp_extension('linalg')
 @given(*solve_args())
 def test_solve(x1, x2):
     # TODO: solve() is currently ambiguous, in that some inputs can be
@@ -476,6 +493,7 @@ def test_solve(x1, x2):
     # res = linalg.solve(x1, x2)
     pass
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=finite_matrices,
     kw=kwargs(full_matrices=booleans())
@@ -503,6 +521,7 @@ def test_svd(x, kw):
         assert u.shape == (*stack, M, K)
         assert vh.shape == (*stack, K, N)
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
 )
@@ -519,6 +538,7 @@ def test_tensordot(x1, x2, kw):
     # res = _array_module.tensordot(x1, x2, **kw)
     pass
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
     kw=kwargs(offset=todo)
@@ -536,6 +556,7 @@ def test_vecdot(x1, x2, kw):
     # res = _array_module.vecdot(x1, x2, **kw)
     pass
 
+@pytest.mark.xp_extension('linalg')
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
     kw=kwargs(axis=todo, keepdims=todo, ord=todo)
