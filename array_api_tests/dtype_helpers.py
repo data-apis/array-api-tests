@@ -151,9 +151,11 @@ promotion_table = {
 }
 
 
-def result_type(*dtypes):
-    if len(dtypes) < 2:
+def result_type(*dtypes: DataType):
+    if len(dtypes) == 0:
         raise ValueError()
+    elif len(dtypes) == 1:
+        return dtypes[0]
     result = promotion_table[dtypes[0], dtypes[1]]
     for i in range(2, len(dtypes)):
         result = promotion_table[result, dtypes[i]]
