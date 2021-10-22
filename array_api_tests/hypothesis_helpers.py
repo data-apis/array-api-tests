@@ -260,7 +260,7 @@ def slices(draw, sizes):
     # The spec does not specify out of bounds behavior.
     max_step_size = draw(integers(1, max(1, size)))
     step = draw(one_of(integers(-max_step_size, -1), integers(1, max_step_size), none()))
-    start = draw(one_of(integers(-size, max(0, size-1)), none()))
+    start = draw(one_of(integers(-size, size), none()))
     if step is None or step > 0:
         stop = draw(one_of(integers(-size, size)), none())
     else:
