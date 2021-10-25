@@ -16,6 +16,16 @@ from . import xps
 from hypothesis import assume, given, strategies as st
 
 
+# Testing xp.arange() requires bounding the start/stop/step arguments to only
+# test argument combinations compliant with the Array API, as well as to not
+# produce arrays with sizes not supproted by an array module.
+#
+# We first make sure generated integers can be represented by an array module's
+# default integer type, as even if a float array should be produced a module
+# might represent integer arguments as 0d arrays.
+#
+# This means that float arguments also need to be bound, so that they do not
+# require any integer arguments to be outside the representable bounds.
 int_min, int_max = dh.dtype_ranges[dh.default_int]
 float_min = float(int_min * (MAX_ARRAY_SIZE - 1))
 float_max = float(int_max * (MAX_ARRAY_SIZE - 1))
@@ -29,14 +39,18 @@ def reals(min_value=None, max_value=None) -> st.SearchStrategy[Union[int, float]
         round_ = math.floor
     int_min_value = int_min if min_value is None else max(round_(min_value), int_min)
     int_max_value = int_max if max_value is None else min(round_(max_value), int_max)
-
-    float_min_value = float_min if min_value is None else max(min_value, float_min)
-    float_max_value = float_max if max_value is None else min(max_value, float_max)
-
     return st.one_of(
         st.integers(int_min_value, int_max_value),
-        st.floats(float_min_value, float_max_value, allow_nan=False, allow_infinity=False)
+        # We do not assign float bounds to the floats() strategy, instead opting
+        # to filter out-of-bound values. Passing such min/max values will modify
+        # test case reduction behaviour so that simple bugs will become harder
+        # for users to identify. Hypothesis plans to improve floats() behaviour
+        # in https://github.com/HypothesisWorks/hypothesis/issues/2907
+        st.floats(min_value, max_value, allow_nan=False, allow_infinity=False).filter(
+            lambda n: float_min <= n <= float_max
+        )
     )
+
 
 @given(start=reals(), dtype=st.none() | numeric_dtypes, data=st.data())
 def test_arange(start, dtype, data):
@@ -52,11 +66,13 @@ def test_arange(start, dtype, data):
     tol = abs(_stop - _start) / (MAX_ARRAY_SIZE - 1)
     assume(-tol > int_min)
     assume(tol < int_max)
-    if _stop - _start > 0:
-        step_strat = reals(min_value=tol).filter(lambda n: n != 0)
-    else:
-        step_strat = reals(max_value=-tol).filter(lambda n: n != 0)
-    step = data.draw(step_strat, label="step")
+    step = data.draw(
+        st.one_of(
+            reals(min_value=tol).filter(lambda n: n != 0),
+            reals(max_value=-tol).filter(lambda n: n != 0)
+        ),
+        label="step"
+    )
 
     all_int = all(arg is None or isinstance(arg, int) for arg in [start, stop, step])
 
@@ -74,14 +90,19 @@ def test_arange(start, dtype, data):
         assume(m <= _stop <= M)
         assume(m <= step <= M)
 
-    if step > 0:
-        condition = lambda x: x < _stop
+    pos_range = _stop > _start
+    pos_step = step > 0
+    if _start != _stop and pos_range == pos_step:
+        if pos_step:
+            condition = lambda x: x <= _stop
+        else:
+            condition = lambda x: x >= _stop
+        scalar_type = int if dh.is_int_dtype(_dtype) else float
+        elements = list(scalar_type(n) for n in takewhile(condition, count(_start, step)))
     else:
-        condition = lambda x: x > _stop
-    scalar_type = int if dh.is_int_dtype(_dtype) else float
-    elements = list(scalar_type(n) for n in takewhile(condition, count(_start, step)))
+        elements = []
     size = len(elements)
-    assert size < MAX_ARRAY_SIZE, f"{size=}, should be below {MAX_ARRAY_SIZE=}"
+    assert size <= MAX_ARRAY_SIZE, f"{size=}, should be no more than {MAX_ARRAY_SIZE=}"
 
     out = arange(start, stop=stop, step=step, dtype=dtype)
 
