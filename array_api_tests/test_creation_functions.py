@@ -123,6 +123,10 @@ def test_arange(start, dtype, data):
         #
         assert out.size in (size - 1, size, size + 1)
     assume(out.size == size)
+    if dh.is_int_dtype(_dtype):
+        ah.assert_exactly_equal(out, ah.asarray(elements, dtype=_dtype))
+    else:
+        pass # TODO: either emulate array module behaviour or assert a rough equals
 
 @given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
 def test_empty(shape, kw):
