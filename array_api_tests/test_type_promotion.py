@@ -17,6 +17,10 @@ from .typing import DataType, ScalarType, Param
 from .function_stubs import elementwise_functions
 
 
+# TODO: move tests not covering elementwise funcs/ops into standalone tests
+# result_type, meshgrid, concat, stack, where, tensordor, vecdot
+
+
 @given(hh.mutually_promotable_dtypes(None))
 def test_result_type(dtypes):
     out = xp.result_type(*dtypes)
