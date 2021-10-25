@@ -54,7 +54,8 @@ def reals(min_value=None, max_value=None) -> st.SearchStrategy[Union[int, float]
 
 @given(start=reals(), dtype=st.none() | numeric_dtypes, data=st.data())
 def test_arange(start, dtype, data):
-    if data.draw(st.booleans(), label="stop is None"):
+    stop = data.draw(reals() | st.none(), label="stop")
+    if stop is None:
         _start = 0
         _stop = start
         stop = None
