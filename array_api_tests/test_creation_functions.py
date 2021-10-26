@@ -50,7 +50,7 @@ def assert_kw_dtype(
 
 # Testing xp.arange() requires bounding the start/stop/step arguments to only
 # test argument combinations compliant with the Array API, as well as to not
-# produce arrays with hh.sizes not supproted by an array module.
+# produce arrays with sizes not supproted by an array module.
 #
 # We first make sure generated integers can be represented by an array module's
 # default integer type, as even if a float array should be produced a module
@@ -189,35 +189,28 @@ def test_empty_like(x, kw):
     assert out.shape == x.shape, f"{x.shape=}, but empty_like() returned an array with shape {out.shape}"
 
 
-# TODO: Use this method for ah.all optional arguments
-optional_marker = object()
-
-@given(hh.sqrt_sizes, st.one_of(st.just(optional_marker), st.none(), hh.sqrt_sizes), st.one_of(st.none(), st.integers()), hh.numeric_dtypes)
-def test_eye(n_rows, n_cols, k, dtype):
-    kwargs = {k: v for k, v in {'k': k, 'dtype': dtype}.items() if v
-              is not None}
-    if n_cols is optional_marker:
-        a = xp.eye(n_rows, **kwargs)
-        n_cols = None
+@given(
+    n_rows=hh.sqrt_sizes,
+    n_cols=st.none() | hh.sqrt_sizes,
+    kw=hh.kwargs(
+        k=st.integers(),
+        dtype=xps.numeric_dtypes(),
+    )
+)
+def test_eye(n_rows, n_cols, kw):
+    out = xp.eye(n_rows, n_cols, **kw)
+    if kw.get("dtype", None) is None:
+        assert_default_float("eye", out.dtype)
     else:
-        a = xp.eye(n_rows, n_cols, **kwargs)
-    if dtype is None:
-        assert_default_float("arange", a.dtype)
-    else:
-        assert_kw_dtype("empty", dtype, a.dtype)
-
-    if n_cols is None:
-        n_cols = n_rows
-    assert a.shape == (n_rows, n_cols), "eye() produced an array with incorrect shape"
-
-    if k is None:
-        k = 0
+        assert_kw_dtype("eye", kw["dtype"], out.dtype)
+    _n_cols = n_rows if n_cols is None else n_cols
+    assert out.shape == (n_rows, _n_cols), "eye() produced an array with incorrect shape"
     for i in range(n_rows):
-        for j in range(n_cols):
-            if j - i == k:
-                assert a[i, j] == 1, "eye() did not produce a 1 on the diagonal"
+        for j in range(_n_cols):
+            if j - i == kw.get("k", 0):
+                assert out[i, j] == 1, f"out[{i}, {j}]={out[i, j]}, should be 1 [eye()]"
             else:
-                assert a[i, j] == 0, "eye() did not produce a 0 off the diagonal"
+                assert out[i, j] == 0, f"out[{i}, {j}]={out[i, j]}, should be 0 [eye()]"
 
 
 default_unsafe_dtypes = [xp.uint64]
