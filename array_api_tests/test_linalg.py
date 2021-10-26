@@ -513,13 +513,17 @@ def test_svd(x, kw):
     assert s.dtype == x.dtype, "svd().s did not return the correct dtype"
     assert vh.dtype == x.dtype, "svd().vh did not return the correct dtype"
 
-    assert s.shape == (*stack, K)
     if full_matrices:
         assert u.shape == (*stack, M, M)
         assert vh.shape == (*stack, N, N)
     else:
         assert u.shape == (*stack, M, K)
         assert vh.shape == (*stack, K, N)
+    assert s.shape == (*stack, K)
+
+    # The values of s must be sorted from largest to smallest
+    if K >= 1:
+        assert _array_module.all(s[..., :-1] >= s[..., 1:])
 
 @pytest.mark.xp_extension('linalg')
 @given(
