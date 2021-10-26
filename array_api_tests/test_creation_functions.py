@@ -51,13 +51,9 @@ def assert_shape(func_name: str, out_shape: Shape, expected: Union[int, Shape], 
     assert out_shape == expected, msg
 
 
-
 def assert_fill(func_name: str, fill: float, dtype: DataType, out: Array, **kw):
     f_kw = ", ".join(f"{k}={v}" for k, v in kw.items())
-    msg = (
-        f"out not filled with {fill} [{func_name}({f_kw})]\n"
-        f"{out=}"
-    )
+    msg = f"out not filled with {fill} [{func_name}({f_kw})]\n" f"{out=}"
     if math.isnan(fill):
         assert ah.all(ah.isnan(out)), msg
     else:
@@ -96,7 +92,7 @@ def reals(min_value=None, max_value=None) -> st.SearchStrategy[Union[int, float]
         # in https://github.com/HypothesisWorks/hypothesis/issues/2907
         st.floats(min_value, max_value, allow_nan=False, allow_infinity=False).filter(
             lambda n: float_min <= n <= float_max
-        )
+        ),
     )
 
 
@@ -118,9 +114,9 @@ def test_arange(start, dtype, data):
     step = data.draw(
         st.one_of(
             reals(min_value=tol).filter(lambda n: n != 0),
-            reals(max_value=-tol).filter(lambda n: n != 0)
+            reals(max_value=-tol).filter(lambda n: n != 0),
         ),
-        label="step"
+        label="step",
     )
 
     all_int = all(arg is None or isinstance(arg, int) for arg in [start, stop, step])
@@ -147,11 +143,15 @@ def test_arange(start, dtype, data):
         else:
             condition = lambda x: x >= _stop
         scalar_type = int if dh.is_int_dtype(_dtype) else float
-        elements = list(scalar_type(n) for n in takewhile(condition, count(_start, step)))
+        elements = list(
+            scalar_type(n) for n in takewhile(condition, count(_start, step))
+        )
     else:
         elements = []
     size = len(elements)
-    assert size <= hh.MAX_ARRAY_SIZE, f"{size=}, should be no more than {hh.MAX_ARRAY_SIZE=}"
+    assert (
+        size <= hh.MAX_ARRAY_SIZE
+    ), f"{size=}, should be no more than {hh.MAX_ARRAY_SIZE=}"
 
     out = xp.arange(start, stop=stop, step=step, dtype=dtype)
 
@@ -178,7 +178,8 @@ def test_arange(start, dtype, data):
     if dh.is_int_dtype(_dtype):
         ah.assert_exactly_equal(out, ah.asarray(elements, dtype=_dtype))
     else:
-        pass # TODO: either emulate array module behaviour or assert a rough equals
+        pass  # TODO: either emulate array module behaviour or assert a rough equals
+
 
 @given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
 def test_empty(shape, kw):
@@ -192,7 +193,7 @@ def test_empty(shape, kw):
 
 @given(
     x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
-    kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes())
+    kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
 )
 def test_empty_like(x, kw):
     out = xp.empty_like(x, **kw)
@@ -209,7 +210,7 @@ def test_empty_like(x, kw):
     kw=hh.kwargs(
         k=st.integers(),
         dtype=xps.numeric_dtypes(),
-    )
+    ),
 )
 def test_eye(n_rows, n_cols, kw):
     out = xp.eye(n_rows, n_cols, **kw)
@@ -237,10 +238,11 @@ default_safe_dtypes: st.SearchStrategy = xps.scalar_dtypes().filter(
 )
 
 
-
 @st.composite
 def full_fill_values(draw) -> st.SearchStrategy[float]:
-    kw = draw(st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_kw"))
+    kw = draw(
+        st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_kw")
+    )
     dtype = kw.get("dtype", None) or draw(default_safe_dtypes)
     return draw(xps.from_dtype(dtype))
 
@@ -262,7 +264,7 @@ def test_full(shape, fill_value, kw):
         dtype = dh.default_float
     if kw.get("dtype", None) is None:
         if isinstance(fill_value, bool):
-            pass # TODO
+            pass  # TODO
         elif isinstance(fill_value, int):
             assert_default_int("full", out.dtype)
         else:
@@ -275,7 +277,9 @@ def test_full(shape, fill_value, kw):
 
 @st.composite
 def full_like_fill_values(draw):
-    kw = draw(st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_like_kw"))
+    kw = draw(
+        st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_like_kw")
+    )
     dtype = kw.get("dtype", None) or draw(hh.shared_dtypes)
     return draw(xps.from_dtype(dtype))
 
@@ -295,6 +299,7 @@ def test_full_like(x, fill_value, kw):
     assert_shape("full_like", out.shape, x.shape)
     assert_fill("full_like", fill_value, dtype, out, fill_value=fill_value)
 
+
 finite_kw = {"allow_nan": False, "allow_infinity": False}
 
 
@@ -303,10 +308,7 @@ def int_stops(draw, start: int, min_gap: int, m: int, M: int):
     sign = draw(st.booleans().map(int))
     max_gap = abs(M - m)
     max_int = math.floor(math.sqrt(max_gap))
-    gap = draw(
-        st.just(0),
-        st.integers(1, max_int).map(lambda n: min_gap ** n)
-    )
+    gap = draw(st.just(0) | st.integers(1, max_int).map(lambda n: min_gap ** n))
     stop = start + sign * gap
     assume(m <= stop <= M)
     return stop
