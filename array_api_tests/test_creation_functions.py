@@ -1,4 +1,3 @@
-from array_api_tests.typing import DataType
 import math
 from typing import Union
 from itertools import takewhile, count
@@ -11,6 +10,7 @@ from . import hypothesis_helpers as hh
 from . import dtype_helpers as dh
 from . import pytest_helpers as ph
 from . import xps
+from .typing import Shape, DataType
 
 
 def assert_default_float(func_name: str, dtype: DataType):
@@ -45,6 +45,19 @@ def assert_kw_dtype(
         f"[{func_name}(dtype={f_kw_dtype})]"
     )
     assert out_dtype == kw_dtype, msg
+
+
+def assert_shape(
+    func_name: str,
+    out_shape: Shape,
+    expected: Union[int, Shape],
+    **kw,
+):
+    f_kw = ", ".join(f"{k}={v}" for k, v in kw.items())
+    msg = f"out.shape={out_shape}, but should be {expected} [{func_name}({f_kw})]"
+    if isinstance(expected, int):
+        expected = (expected,)
+    assert out_shape == expected, msg
 
 
 
@@ -171,9 +184,7 @@ def test_empty(shape, kw):
         assert_default_float("empty", out.dtype)
     else:
         assert_kw_dtype("empty", kw["dtype"], out.dtype)
-    if isinstance(shape, int):
-        shape = (shape,)
-    assert out.shape == shape, f"{shape=}, but empty() returned an array with shape {out.shape}"
+    assert_shape("empty", out.shape, shape, shape=shape)
 
 
 @given(
@@ -186,7 +197,7 @@ def test_empty_like(x, kw):
         ph.assert_dtype("empty_like", (x.dtype,), out.dtype)
     else:
         assert_kw_dtype("empty_like", kw["dtype"], out.dtype)
-    assert out.shape == x.shape, f"{x.shape=}, but empty_like() returned an array with shape {out.shape}"
+    assert_shape("empty_like", out.shape, x.shape)
 
 
 @given(
@@ -204,7 +215,7 @@ def test_eye(n_rows, n_cols, kw):
     else:
         assert_kw_dtype("eye", kw["dtype"], out.dtype)
     _n_cols = n_rows if n_cols is None else n_cols
-    assert out.shape == (n_rows, _n_cols), "eye() produced an array with incorrect shape"
+    assert_shape("eye", out.shape, (n_rows, _n_cols), n_rows=n_rows, n_cols=n_cols)
     for i in range(n_rows):
         for j in range(_n_cols):
             if j - i == kw.get("k", 0):
@@ -254,7 +265,7 @@ def test_full(shape, fill_value, kw):
             assert_default_float("full", out.dtype)
     else:
         assert_kw_dtype("full", kw["dtype"], out.dtype)
-    assert out.shape == shape,  f"{shape=}, but full() returned an array with shape {out.shape}"
+    assert_shape("full", out.shape, shape, shape=shape)
     if dh.is_float_dtype(out.dtype) and math.isnan(fill_value):
         assert ah.all(ah.isnan(out)), "full() array did not equal the fill value"
     else:
@@ -280,7 +291,8 @@ def test_full_like(x, fill_value, kw):
         ph.assert_dtype("full_like", (x.dtype,), out.dtype)
     else:
         assert_kw_dtype("full_like", kw["dtype"], out.dtype)
-    assert out.shape == x.shape, "{x.shape=}, but full_like() returned an array with shape {out.shape}"
+
+    assert_shape("full_like", out.shape, x.shape)
     if dh.is_float_dtype(dtype) and math.isnan(fill_value):
         assert ah.all(ah.isnan(out)), "full_like() array did not equal the fill value"
     else:
@@ -309,7 +321,7 @@ def test_linspace(start, stop, num, dtype, endpoint):
     else:
         assert_kw_dtype("linspace", dtype, a.dtype)
 
-    assert a.shape == (num,), "linspace() did not return an array with the correct shape"
+    assert_shape("linspace", a.shape, num, start=stop, stop=stop, num=num)
 
     if endpoint in [None, True]:
         if num > 1:
@@ -347,7 +359,7 @@ def test_ones(shape, kw):
         assert_default_float("ones", out.dtype)
     else:
         assert_kw_dtype("ones", kw["dtype"], out.dtype)
-    assert out.shape == shape, f"{shape=}, but empty() returned an array with shape {out.shape}"
+    assert_shape("ones", out.shape, shape, shape=shape)
     dtype = kw.get("dtype", None) or dh.default_float
     assert ah.all(ah.equal(out, ah.asarray(make_one(dtype), dtype=dtype))), "ones() array did not equal 1"
 
@@ -362,7 +374,7 @@ def test_ones_like(x, kw):
         ph.assert_dtype("ones_like", (x.dtype,), out.dtype)
     else:
         assert_kw_dtype("ones_like", kw["dtype"], out.dtype)
-    assert out.shape == x.shape, "{x.shape=}, but ones_like() returned an array with shape {out.shape}"
+    assert_shape("ones_like", out.shape, x.shape)
     dtype = kw.get("dtype", None) or x.dtype
     assert ah.all(ah.equal(out, ah.asarray(make_one(dtype), dtype=dtype))), "ones_like() array elements did not equal 1"
 
@@ -383,7 +395,7 @@ def test_zeros(shape, kw):
         assert_default_float("zeros", out.dtype)
     else:
         assert_kw_dtype("zeros", kw["dtype"], out.dtype)
-    assert out.shape == shape, "zeros() produced an array with incorrect shape"
+    assert_shape("zeros", out.shape, shape, shape=shape)
     dtype = kw.get("dtype", None) or dh.default_float
     assert ah.all(ah.equal(out, ah.asarray(make_zero(dtype), dtype=dtype))), "zeros() array did not equal 0"
 
@@ -398,7 +410,6 @@ def test_zeros_like(x, kw):
         ph.assert_dtype("zeros_like", (x.dtype,), out.dtype)
     else:
         assert_kw_dtype("zeros_like", kw["dtype"], out.dtype)
-    assert out.shape == x.shape, "{x.shape=}, but xp.zeros_like() returned an array with shape {out.shape}"
+    assert_shape("zeros_like", out.shape, x.shape)
     dtype = kw.get("dtype", None) or x.dtype
     assert ah.all(ah.equal(out, ah.asarray(make_zero(dtype), dtype=out.dtype))), "xp.zeros_like() array elements did not ah.all xp.equal 0"
-
