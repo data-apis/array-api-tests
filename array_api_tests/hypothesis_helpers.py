@@ -2,16 +2,16 @@ from functools import reduce
 from operator import mul
 from math import sqrt
 import itertools
-from typing import Tuple
+from typing import Tuple, Optional, List
 
 from hypothesis import assume
 from hypothesis.strategies import (lists, integers, sampled_from,
                                    shared, floats, just, composite, one_of,
-                                   none, booleans)
-from hypothesis.strategies._internal.strategies import SearchStrategy
+                                   none, booleans, SearchStrategy)
 
 from .pytest_helpers import nargs
 from .array_helpers import ndindex
+from .typing import DataType, Shape
 from . import dtype_helpers as dh
 from ._array_module import (full, float32, float64, bool as bool_dtype,
                             _UndefinedStub, eye, broadcast_to)
@@ -50,7 +50,7 @@ shared_floating_dtypes = shared(floating_dtypes, key="dtype")
 _dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.float_dtypes]
 _sorted_dtypes = [d for category in _dtype_categories for d in category]
 
-def _dtypes_sorter(dtype_pair):
+def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):
     dtype1, dtype2 = dtype_pair
     if dtype1 == dtype2:
         return _sorted_dtypes.index(dtype1)
@@ -67,7 +67,7 @@ def _dtypes_sorter(dtype_pair):
         key += 1
     return key
 
-promotable_dtypes = sorted(dh.promotion_table.keys(), key=_dtypes_sorter)
+promotable_dtypes: List[Tuple[DataType, DataType]] = sorted(dh.promotion_table.keys(), key=_dtypes_sorter)
 
 if FILTER_UNDEFINED_DTYPES:
     promotable_dtypes = [
@@ -77,10 +77,34 @@ if FILTER_UNDEFINED_DTYPES:
     ]
 
 
-def mutually_promotable_dtypes(dtype_objs=dh.all_dtypes):
-    return sampled_from(
-        [(i, j) for i, j in promotable_dtypes if i in dtype_objs and j in dtype_objs]
-    )
+def mutually_promotable_dtypes(
+    max_size: Optional[int] = 2,
+    *,
+    dtypes: Tuple[DataType, ...] = dh.all_dtypes,
+) -> SearchStrategy[Tuple[DataType, ...]]:
+    if max_size == 2:
+        return sampled_from(
+            [(i, j) for i, j in promotable_dtypes if i in dtypes and j in dtypes]
+        )
+    if isinstance(max_size, int) and max_size < 2:
+        raise ValueError(f'{max_size=} should be >=2')
+    strats = []
+    category_samples = {
+        category: [d for d in dtypes if d in category] for category in _dtype_categories
+    }
+    for samples in category_samples.values():
+        if len(samples) > 0:
+            strat = lists(sampled_from(samples), min_size=2, max_size=max_size)
+            strats.append(strat)
+    if len(category_samples[dh.uint_dtypes]) > 0 and len(category_samples[dh.int_dtypes]) > 0:
+        mixed_samples = category_samples[dh.uint_dtypes] + category_samples[dh.int_dtypes]
+        strat = lists(sampled_from(mixed_samples), min_size=2, max_size=max_size)
+        if xp.uint64 in mixed_samples:
+            strat = strat.filter(
+                lambda l: not (xp.uint64 in l and any(d in dh.int_dtypes for d in l))
+            )
+    return one_of(strats).map(tuple)
+
 
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
@@ -113,15 +137,19 @@ def tuples(elements, *, min_size=0, max_size=None, unique_by=None, unique=False)
 
 # Use this to avoid memory errors with NumPy.
 # See https://github.com/numpy/numpy/issues/15753
-shapes = xps.array_shapes(min_dims=0, min_side=0).filter(
-    lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
-)
+def shapes(**kw):
+    kw.setdefault('min_dims', 0)
+    kw.setdefault('min_side', 0)
+    return xps.array_shapes(**kw).filter(
+        lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
+    )
+
 
 one_d_shapes = xps.array_shapes(min_dims=1, max_dims=1, min_side=0, max_side=SQRT_MAX_ARRAY_SIZE)
 
 # Matrix shapes assume stacks of matrices
 @composite
-def matrix_shapes(draw, stack_shapes=shapes):
+def matrix_shapes(draw, stack_shapes=shapes()):
     stack_shape = draw(stack_shapes)
     mat_shape = draw(xps.array_shapes(max_dims=2, min_dims=2))
     shape = stack_shape + mat_shape
@@ -135,9 +163,11 @@ finite_matrices = xps.arrays(dtype=xps.floating_dtypes(),
                              elements=dict(allow_nan=False,
                                            allow_infinity=False))
 
-def mutually_broadcastable_shapes(num_shapes: int) -> SearchStrategy[Tuple[Tuple]]:
+def mutually_broadcastable_shapes(
+    num_shapes: int, **kw
+) -> SearchStrategy[Tuple[Shape, ...]]:
     return (
-        xps.mutually_broadcastable_shapes(num_shapes)
+        xps.mutually_broadcastable_shapes(num_shapes, **kw)
         .map(lambda BS: BS.input_shapes)
         .filter(lambda shapes: all(
             prod(i for i in s if i > 0) < MAX_ARRAY_SIZE for s in shapes
@@ -164,13 +194,13 @@ def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
     # using something like
     # https://github.com/scikit-learn/scikit-learn/blob/844b4be24/sklearn/datasets/_samples_generator.py#L1351.
     n = draw(integers(0))
-    shape = draw(shapes) + (n, n)
+    shape = draw(shapes()) + (n, n)
     assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
     dtype = draw(dtypes)
     return broadcast_to(eye(n, dtype=dtype), shape)
 
 @composite
-def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes):
+def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes()):
     # For now, just generate stacks of diagonal matrices.
     n = draw(integers(0, SQRT_MAX_ARRAY_SIZE),)
     stack_shape = draw(stack_shapes)
@@ -318,9 +348,10 @@ def multiaxis_indices(draw, shapes):
 
 
 def two_mutual_arrays(
-    dtype_objs=dh.all_dtypes, two_shapes=two_mutually_broadcastable_shapes
-):
-    mutual_dtypes = shared(mutually_promotable_dtypes(dtype_objs))
+    dtypes: Tuple[DataType, ...] = dh.all_dtypes,
+    two_shapes: SearchStrategy[Tuple[Shape, Shape]] = two_mutually_broadcastable_shapes,
+) -> SearchStrategy:
+    mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtypes))
     mutual_shapes = shared(two_shapes)
     arrays1 = xps.arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[0]),

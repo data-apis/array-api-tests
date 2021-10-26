@@ -102,5 +102,6 @@ def pytest_collection_modifyitems(config, items):
         except StopIteration:
             pass
         # workflow xfail_ids
-        if item.nodeid in xfail_ids:
-            item.add_marker(mark.xfail(reason='xfails.txt'))
+        for id_ in xfail_ids:
+            if item.nodeid.startswith(id_):
+                item.add_marker(mark.xfail(reason='xfails.txt'))

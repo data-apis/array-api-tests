@@ -1,8 +1,10 @@
 from warnings import warn
-from typing import NamedTuple
+from functools import lru_cache
+from typing import NamedTuple, Tuple, Union
 
 from . import _array_module as xp
 from ._array_module import _UndefinedStub
+from .typing import DataType, ScalarType
 
 
 __all__ = [
@@ -28,19 +30,20 @@ __all__ = [
     'binary_op_to_symbol',
     'unary_op_to_symbol',
     'inplace_op_to_symbol',
+    'fmt_types',
 ]
 
 
-_int_names = ('int8', 'int16', 'int32', 'int64')
 _uint_names = ('uint8', 'uint16', 'uint32', 'uint64')
+_int_names = ('int8', 'int16', 'int32', 'int64')
 _float_names = ('float32', 'float64')
-_dtype_names = ('bool',) + _int_names + _uint_names + _float_names
+_dtype_names = ('bool',) + _uint_names + _int_names + _float_names
 
 
-int_dtypes = tuple(getattr(xp, name) for name in _int_names)
 uint_dtypes = tuple(getattr(xp, name) for name in _uint_names)
+int_dtypes = tuple(getattr(xp, name) for name in _int_names)
 float_dtypes = tuple(getattr(xp, name) for name in _float_names)
-all_int_dtypes = int_dtypes + uint_dtypes
+all_int_dtypes = uint_dtypes + int_dtypes
 numeric_dtypes = all_int_dtypes + float_dtypes
 all_dtypes = (xp.bool,) + numeric_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
@@ -148,6 +151,17 @@ promotion_table = {
 }
 
 
+def result_type(*dtypes: DataType):
+    if len(dtypes) == 0:
+        raise ValueError()
+    elif len(dtypes) == 1:
+        return dtypes[0]
+    result = promotion_table[dtypes[0], dtypes[1]]
+    for i in range(2, len(dtypes)):
+        result = promotion_table[result, dtypes[i]]
+    return result
+
+
 dtype_nbits = {
     **{d: 8 for d in [xp.int8, xp.uint8]},
     **{d: 16 for d in [xp.int16, xp.uint16]},
@@ -163,6 +177,7 @@ dtype_signed = {
 
 
 func_in_dtypes = {
+    # elementwise
     'abs': numeric_dtypes,
     'acos': float_dtypes,
     'acosh': float_dtypes,
@@ -219,10 +234,13 @@ func_in_dtypes = {
     'tan': float_dtypes,
     'tanh': float_dtypes,
     'trunc': numeric_dtypes,
+    # searching
+    'where': all_dtypes,
 }
 
 
 func_returns_bool = {
+    # elementwise
     'abs': False,
     'acos': False,
     'acosh': False,
@@ -279,6 +297,8 @@ func_returns_bool = {
     'tan': False,
     'tanh': False,
     'trunc': False,
+    # searching
+    'where': False,
 }
 
 
@@ -352,3 +372,15 @@ for op, symbol in binary_op_to_symbol.items():
     inplace_op_to_symbol[iop] = f'{symbol}='
     func_in_dtypes[iop] = func_in_dtypes[op]
     func_returns_bool[iop] = func_returns_bool[op]
+
+
+@lru_cache
+def fmt_types(types: Tuple[Union[DataType, ScalarType], ...]) -> str:
+    f_types = []
+    for type_ in types:
+        try:
+            f_types.append(dtype_to_name[type_])
+        except KeyError:
+            # i.e. dtype is bool, int, or float
+            f_types.append(type_.__name__)
+    return ', '.join(f_types)
