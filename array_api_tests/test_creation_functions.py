@@ -299,48 +299,69 @@ def test_full_like(x, fill_value, kw):
         assert ah.all(ah.equal(out, ah.asarray(fill_value, dtype=dtype))), "full_like() array did not equal the fill value"
 
 
-@given(hh.scalars(hh.shared_dtypes, finite=True),
-       hh.scalars(hh.shared_dtypes, finite=True),
-       hh.sizes,
-       st.one_of(st.none(), hh.shared_dtypes),
-       st.one_of(st.none(), st.booleans()),)
-def test_linspace(start, stop, num, dtype, endpoint):
-    # Skip on int start or stop that cannot be exactly represented as a float,
-    # since we do not have good approx_equal helpers yet.
-    if ((dtype is None or dh.is_float_dtype(dtype))
-        and ((isinstance(start, int) and not ah.isintegral(xp.asarray(start, dtype=dtype)))
-             or (isinstance(stop, int) and not ah.isintegral(xp.asarray(stop, dtype=dtype))))):
-        assume(False)
+finite_kw = {"allow_nan": False, "allow_infinity": False}
 
-    kwargs = {k: v for k, v in {'dtype': dtype, 'endpoint': endpoint}.items()
-              if v is not None}
-    a = xp.linspace(start, stop, num, **kwargs)
 
-    if dtype is None:
-        assert_default_float("linspace", a.dtype)
+@st.composite
+def int_stops(draw, start: int, min_gap: int, m: int, M: int):
+    sign = draw(st.booleans().map(int))
+    max_gap = abs(M - m)
+    max_int = math.floor(math.sqrt(max_gap))
+    gap = draw(
+        st.just(0),
+        st.integers(1, max_int).map(lambda n: min_gap ** n)
+    )
+    stop = start + sign * gap
+    assume(m <= stop <= M)
+    return stop
+
+
+@given(
+    num=hh.sizes,
+    dtype=st.none() | xps.numeric_dtypes(),
+    endpoint=st.booleans(),
+    data=st.data(),
+)
+def test_linspace(num, dtype, endpoint, data):
+    _dtype = dh.default_float if dtype is None else dtype
+
+    start = data.draw(xps.from_dtype(_dtype, **finite_kw), label="start")
+    if dh.is_float_dtype(_dtype):
+        stop = data.draw(xps.from_dtype(_dtype, **finite_kw), label="stop")
+        # avoid overflow errors
+        delta = ah.asarray(stop - start, dtype=_dtype)
+        assume(not ah.isnan(delta))
     else:
-        assert_kw_dtype("linspace", dtype, a.dtype)
+        if num == 0:
+            stop = start
+        else:
+            min_gap = num
+            if endpoint:
+                min_gap += 1
+            m, M = dh.dtype_ranges[_dtype]
+            stop = data.draw(int_stops(start, min_gap, m, M), label="stop")
 
-    assert_shape("linspace", a.shape, num, start=stop, stop=stop, num=num)
+    out = xp.linspace(start, stop, num, dtype=dtype, endpoint=endpoint)
 
-    if endpoint in [None, True]:
+    assert_shape("linspace", out.shape, num, start=stop, stop=stop, num=num)
+
+    if endpoint:
         if num > 1:
-            assert ah.all(ah.equal(a[-1], ah.asarray(stop, dtype=a.dtype))), "linspace() produced an array that does not include the endpoint"
+            assert ah.equal(
+                out[-1], ah.asarray(stop, dtype=out.dtype)
+            ), f"out[-1]={out[-1]}, but should be {stop=} [linspace()]"
     else:
-        # linspace(..., num, endpoint=False) is the same as the first num
-        # elements of linspace(..., num+1, endpoint=True)
-        b = xp.linspace(start, stop, num + 1, **{**kwargs, 'endpoint': True})
-        ah.assert_exactly_equal(b[:-1], a)
+        # linspace(..., num, endpoint=True) should return an array equivalent to
+        # the first num elements when endpoint=False
+        expected = xp.linspace(start, stop, num + 1, dtype=dtype, endpoint=True)
+        expected = expected[:-1]
+        ah.assert_exactly_equal(out, expected)
 
     if num > 0:
-        # We need to cast start to dtype
-        assert ah.all(ah.equal(a[0], ah.asarray(start, dtype=a.dtype))), "xp.linspace() produced an array that does not start with the start"
-
-        # TODO: This requires an assert_approx_equal function
-
-        # n = num - 1 if endpoint in [None, True] else num
-        # for i in range(1, num):
-        #     assert ah.all(ah.equal(a[i], ah.full((), i*(stop - start)/n + start, dtype=dtype))), f"linspace() produced an array with an incorrect value at index {i}"
+        assert ah.equal(
+            out[0], ah.asarray(start, dtype=out.dtype)
+        ), f"out[0]={out[0]}, but should be {start=} [linspace()]"
+        # TODO: array assertions ala test_arange
 
 
 def make_one(dtype):
