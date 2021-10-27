@@ -10,7 +10,7 @@ from . import hypothesis_helpers as hh
 from . import dtype_helpers as dh
 from . import pytest_helpers as ph
 from . import xps
-from .typing import Shape, DataType, Array
+from .typing import Shape, DataType, Array, Scalar
 
 
 def assert_default_float(func_name: str, dtype: DataType):
@@ -43,7 +43,9 @@ def assert_kw_dtype(func_name: str, kw_dtype: DataType, out_dtype: DataType):
     assert out_dtype == kw_dtype, msg
 
 
-def assert_shape(func_name: str, out_shape: Shape, expected: Union[int, Shape], **kw):
+def assert_shape(
+    func_name: str, out_shape: Shape, expected: Union[int, Shape], /, **kw
+):
     f_kw = ", ".join(f"{k}={v}" for k, v in kw.items())
     msg = f"out.shape={out_shape}, but should be {expected} [{func_name}({f_kw})]"
     if isinstance(expected, int):
@@ -51,13 +53,15 @@ def assert_shape(func_name: str, out_shape: Shape, expected: Union[int, Shape], 
     assert out_shape == expected, msg
 
 
-def assert_fill(func_name: str, fill: float, dtype: DataType, out: Array, **kw):
+def assert_fill(
+    func_name: str, fill_value: Scalar, dtype: DataType, out: Array, /, **kw
+):
     f_kw = ", ".join(f"{k}={v}" for k, v in kw.items())
-    msg = f"out not filled with {fill} [{func_name}({f_kw})]\n" f"{out=}"
-    if math.isnan(fill):
+    msg = f"out not filled with {fill_value} [{func_name}({f_kw})]\n" f"{out=}"
+    if math.isnan(fill_value):
         assert ah.all(ah.isnan(out)), msg
     else:
-        assert ah.all(ah.equal(out, ah.asarray(fill, dtype=dtype))), msg
+        assert ah.all(ah.equal(out, ah.asarray(fill_value, dtype=dtype))), msg
 
 
 # Testing xp.arange() requires bounding the start/stop/step arguments to only
@@ -375,7 +379,7 @@ def test_linspace(num, dtype, endpoint, data):
         # TODO: array assertions ala test_arange
 
 
-def make_one(dtype: DataType) -> Union[bool, float]:
+def make_one(dtype: DataType) -> Scalar:
     if dtype is None or dh.is_float_dtype(dtype):
         return 1.0
     elif dh.is_int_dtype(dtype):
@@ -411,7 +415,7 @@ def test_ones_like(x, kw):
     assert_fill("ones_like", make_one(dtype), dtype, out)
 
 
-def make_zero(dtype: DataType) -> Union[bool, float]:
+def make_zero(dtype: DataType) -> Scalar:
     if dtype is None or dh.is_float_dtype(dtype):
         return 0.0
     elif dh.is_int_dtype(dtype):
