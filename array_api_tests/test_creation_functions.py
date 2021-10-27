@@ -225,12 +225,14 @@ def test_arange(dtype, data):
         #     [0.0, 0.33, 0.66, 1.0, 1.33, 1.66]
         #
         assert math.floor(math.sqrt(size)) <= out.size <= math.ceil(size ** 2)
-
     assume(out.size == size)
     if dh.is_int_dtype(_dtype):
         ah.assert_exactly_equal(out, ah.asarray(list(r), dtype=_dtype))
     else:
-        pass  # TODO: either emulate array module behaviour or assert a rough equals
+        if out.size > 0:
+            assert ah.equal(
+                out[0], ah.asarray(_start, dtype=out.dtype)
+            ), f"out[0]={out[0]}, but should be {_start} [linspace({start=}, {stop=})]"
 
 
 @given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
@@ -357,15 +359,21 @@ def test_full_like(x, fill_value, kw):
 finite_kw = {"allow_nan": False, "allow_infinity": False}
 
 
-@st.composite
-def int_stops(draw, start: int, min_gap: int, m: int, M: int):
-    sign = draw(st.booleans().map(int))
-    max_gap = abs(M - m)
-    max_int = math.floor(math.sqrt(max_gap))
-    gap = draw(st.just(0) | st.integers(1, max_int).map(lambda n: min_gap ** n))
-    stop = start + sign * gap
-    assume(m <= stop <= M)
-    return stop
+def int_stops(
+    start: int, num, dtype: DataType, endpoint: bool
+) -> st.SearchStrategy[int]:
+    min_gap = num
+    if endpoint:
+        min_gap += 1
+    m, M = dh.dtype_ranges[dtype]
+    max_pos_gap = M - start
+    max_neg_gap = start - m
+    max_pos_mul = max_pos_gap // min_gap
+    max_neg_mul = max_neg_gap // min_gap
+    return st.one_of(
+        st.integers(0, max_pos_mul).map(lambda n: start + min_gap * n),
+        st.integers(0, max_neg_mul).map(lambda n: start - min_gap * n),
+    )
 
 
 @given(
@@ -381,17 +389,13 @@ def test_linspace(num, dtype, endpoint, data):
     if dh.is_float_dtype(_dtype):
         stop = data.draw(xps.from_dtype(_dtype, **finite_kw), label="stop")
         # avoid overflow errors
-        delta = ah.asarray(stop - start, dtype=_dtype)
-        assume(not ah.isnan(delta))
+        assume(not ah.isnan(ah.asarray(stop - start, dtype=_dtype)))
+        assume(not ah.isnan(ah.asarray(start - stop, dtype=_dtype)))
     else:
         if num == 0:
             stop = start
         else:
-            min_gap = num
-            if endpoint:
-                min_gap += 1
-            m, M = dh.dtype_ranges[_dtype]
-            stop = data.draw(int_stops(start, min_gap, m, M), label="stop")
+            stop = data.draw(int_stops(start, num, _dtype, endpoint), label="stop")
 
     kw = data.draw(
         specified_kwargs(
@@ -403,7 +407,10 @@ def test_linspace(num, dtype, endpoint, data):
     out = xp.linspace(start, stop, num, **kw)
 
     assert_shape("linspace", out.shape, num, start=stop, stop=stop, num=num)
-
+    if num > 0:
+        assert ah.equal(
+            out[0], ah.asarray(start, dtype=out.dtype)
+        ), f"out[0]={out[0]}, but should be {start=} [linspace({stop=}, {num=})]"
     if endpoint:
         if num > 1:
             assert ah.equal(
@@ -415,13 +422,9 @@ def test_linspace(num, dtype, endpoint, data):
         expected = xp.linspace(start, stop, num + 1, dtype=dtype, endpoint=True)
         expected = expected[:-1]
         ah.assert_exactly_equal(out, expected)
-
-    if num > 0:
-        assert ah.equal(
-            out[0], ah.asarray(start, dtype=out.dtype)
-        ), f"out[0]={out[0]}, but should be {start=} [linspace({stop=}, {num=})]"
-
-    # TODO: array assertions ala test_arange
+    assert (
+        out.size == num
+    ), f"{out.size=}, but should be {num=} [linspace({start=}, {stop=})]"
 
 
 def make_one(dtype: DataType) -> Scalar:
