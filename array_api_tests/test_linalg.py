@@ -531,11 +531,24 @@ def test_svd(x, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
+    x=finite_matrices,
 )
 def test_svdvals(x):
-    # res = linalg.svdvals(x)
-    pass
+    res = linalg.svdvals(x)
+
+    *stack, M, N = x.shape
+    K = min(M, N)
+
+    assert res.dtype == x.dtype, "svdvals() did not return the correct dtype"
+    assert res.shape == (*stack, K), "svdvals() did not return the correct shape"
+
+    # SVD values must be sorted from largest to smallest
+    assert _array_module.all(res[..., :-1] >= res[..., 1:]), "svdvals() values are not sorted from largest to smallest"
+
+    _test_stacks(linalg.svdvals, x, dims=1, res=res)
+
+    # TODO: Check that svdvals() is the same as svd().s.
+
 
 @given(
     x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
