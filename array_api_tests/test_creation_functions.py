@@ -111,7 +111,10 @@ def test_arange(dtype, data):
         _start = start
         _stop = stop
 
-    tol = max(abs(_stop - _start) / (hh.MAX_ARRAY_SIZE - 1), 0.01)
+    # tol is the minimum tolerance for step values, used to avoid scenarios
+    # where xp.arange() produces arrays that would be over MAX_ARRAY_SIZE.
+    tol = max(abs(_stop - _start) / (math.sqrt(hh.MAX_ARRAY_SIZE)), 0.01)
+    assert tol != 0, "tol must not equal 0"  # sanity check
     assume(-tol > int_min)
     assume(tol < int_max)
     if dtype is None or dh.is_float_dtype(dtype):
@@ -124,7 +127,7 @@ def test_arange(dtype, data):
         step_max = max(math.ceil(tol), 1)
         step_strats.append(xps.from_dtype(dtype, min_value=step_max))
         step = data.draw(st.one_of(step_strats), label="step")
-    assert step != 0, f"{step=} must not equal 0"  # sanity check
+    assert step != 0, "step must not equal 0"  # sanity check
 
     all_int = all(arg is None or isinstance(arg, int) for arg in [start, stop, step])
 
@@ -147,9 +150,9 @@ def test_arange(dtype, data):
     pos_step = step > 0
     if _start != _stop and pos_range == pos_step:
         if pos_step:
-            condition = lambda x: x <= _stop
+            condition = lambda x: x < _stop
         else:
-            condition = lambda x: x >= _stop
+            condition = lambda x: x > _stop
         scalar_type = int if dh.is_int_dtype(_dtype) else float
         elements = list(
             scalar_type(n) for n in takewhile(condition, count(_start, step))
@@ -159,7 +162,7 @@ def test_arange(dtype, data):
     size = len(elements)
     assert (
         size <= hh.MAX_ARRAY_SIZE
-    ), f"{size=} should be no more than {hh.MAX_ARRAY_SIZE=}"  # sanity check
+    ), f"{size=} should be no more than {hh.MAX_ARRAY_SIZE}"  # sanity check
 
     out = xp.arange(start, stop=stop, step=step, dtype=dtype)
 
@@ -181,7 +184,7 @@ def test_arange(dtype, data):
         #     >>> xp.arange(2, step=0.3333333333333333)
         #     [0.0, 0.33, 0.66, 1.0, 1.33, 1.66]
         #
-        assert out.size in (size - 1, size, size + 1)
+        assert math.floor(math.sqrt(size)) <= out.size <= math.ceil(size ** 2)
     assume(out.size == size)
     if dh.is_int_dtype(_dtype):
         ah.assert_exactly_equal(out, ah.asarray(elements, dtype=_dtype))
