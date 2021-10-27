@@ -228,7 +228,7 @@ def test_arange(dtype, data):
         #     [0.0, 0.33, 0.66, 1.0, 1.33, 1.66]
         #
         min_size = math.floor(size * 0.9)
-        max_size = math.ceil(size * 1.1)
+        max_size = max(math.ceil(size * 1.1), 1)
         assert (
             min_size <= out.size <= max_size
         ), f"{out.size=}, but should be roughly {size} {f_func}"
