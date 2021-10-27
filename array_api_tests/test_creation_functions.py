@@ -1,6 +1,6 @@
 import math
-from typing import Union, Any, Tuple
-from itertools import takewhile, count
+from typing import Union, Any, Tuple, NamedTuple, Iterator
+from itertools import count
 
 from hypothesis import assume, given, strategies as st
 
@@ -77,6 +77,31 @@ def assert_fill(
         assert ah.all(ah.isnan(out)), msg
     else:
         assert ah.all(ah.equal(out, ah.asarray(fill_value, dtype=dtype))), msg
+
+
+class frange(NamedTuple):
+    start: float
+    stop: float
+    step: float
+
+    def __iter__(self) -> Iterator[float]:
+        pos_range = self.stop > self.start
+        pos_step = self.step > 0
+        if pos_step != pos_range:
+            return
+        if pos_range:
+            for n in count(self.start, self.step):
+                if n >= self.stop:
+                    break
+                yield n
+        else:
+            for n in count(self.start, self.step):
+                if n <= self.stop:
+                    break
+                yield n
+
+    def __len__(self) -> int:
+        return max(math.ceil((self.stop - self.start) / self.step), 0)
 
 
 # Testing xp.arange() requires bounding the start/stop/step arguments to only
@@ -165,20 +190,8 @@ def test_arange(dtype, data):
         assert m <= _stop <= M
         assert m <= step <= M
 
-    pos_range = _stop > _start
-    pos_step = step > 0
-    if _start != _stop and pos_range == pos_step:
-        if pos_step:
-            condition = lambda x: x < _stop
-        else:
-            condition = lambda x: x > _stop
-        scalar_type = int if dh.is_int_dtype(_dtype) else float
-        elements = list(
-            scalar_type(n) for n in takewhile(condition, count(_start, step))
-        )
-    else:
-        elements = []
-    size = len(elements)
+    r = frange(_start, _stop, step)
+    size = len(r)
     assert (
         size <= hh.MAX_ARRAY_SIZE
     ), f"{size=} should be no more than {hh.MAX_ARRAY_SIZE}"  # sanity check
@@ -200,8 +213,8 @@ def test_arange(dtype, data):
             assert_default_float("arange", out.dtype)
     else:
         assert out.dtype == dtype
-    assert out.ndim == 1
-    if dh.is_int_dtype(step):
+    assert out.ndim == 1, f"{out.ndim=}, should be 1 [linspace()]"
+    if dh.is_int_dtype(_dtype):
         assert out.size == size
     else:
         # We check size is roughly as expected to avoid edge cases e.g.
@@ -212,9 +225,10 @@ def test_arange(dtype, data):
         #     [0.0, 0.33, 0.66, 1.0, 1.33, 1.66]
         #
         assert math.floor(math.sqrt(size)) <= out.size <= math.ceil(size ** 2)
+
     assume(out.size == size)
     if dh.is_int_dtype(_dtype):
-        ah.assert_exactly_equal(out, ah.asarray(elements, dtype=_dtype))
+        ah.assert_exactly_equal(out, ah.asarray(list(r), dtype=_dtype))
     else:
         pass  # TODO: either emulate array module behaviour or assert a rough equals
 
