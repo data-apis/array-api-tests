@@ -59,12 +59,14 @@ def assert_kw_dtype(func_name: str, kw_dtype: DataType, out_dtype: DataType):
 
 
 def assert_shape(
-    func_name: str, out_shape: Shape, expected: Union[int, Shape], /, **kw
+    func_name: str, out_shape: Union[int, Shape], expected: Union[int, Shape], /, **kw
 ):
-    f_kw = ", ".join(f"{k}={v}" for k, v in kw.items())
-    msg = f"out.shape={out_shape}, but should be {expected} [{func_name}({f_kw})]"
+    if isinstance(out_shape, int):
+        out_shape = (out_shape,)
     if isinstance(expected, int):
         expected = (expected,)
+    f_kw = ", ".join(f"{k}={v}" for k, v in kw.items())
+    msg = f"out.shape={out_shape}, but should be {expected} [{func_name}({f_kw})]"
     assert out_shape == expected, msg
 
 
@@ -183,7 +185,7 @@ def test_arange(dtype, data):
     else:
         _dtype = dtype
 
-    # sanity check
+    # sanity checks
     if dh.is_int_dtype(_dtype):
         m, M = dh.dtype_ranges[_dtype]
         assert m <= _start <= M
@@ -213,9 +215,10 @@ def test_arange(dtype, data):
             assert_default_float("arange", out.dtype)
     else:
         assert out.dtype == dtype
-    assert out.ndim == 1, f"{out.ndim=}, should be 1 [linspace()]"
+    assert out.ndim == 1, f"{out.ndim=}, but should be 1 [linspace()]"
+    f_func = f"[linspace({start=}, {stop=}, {step=})]"
     if dh.is_int_dtype(_dtype):
-        assert out.size == size
+        assert out.size == size, f"{out.size=}, but should be {size} {f_func}"
     else:
         # We check size is roughly as expected to avoid edge cases e.g.
         #
@@ -224,7 +227,11 @@ def test_arange(dtype, data):
         #     >>> xp.arange(2, step=0.3333333333333333)
         #     [0.0, 0.33, 0.66, 1.0, 1.33, 1.66]
         #
-        assert math.floor(math.sqrt(size)) <= out.size <= math.ceil(size ** 2)
+        min_size = math.floor(size * 0.9)
+        max_size = math.ceil(size * 1.1)
+        assert (
+            min_size <= out.size <= max_size
+        ), f"{out.size=}, but should be roughly {size} {f_func}"
     assume(out.size == size)
     if dh.is_int_dtype(_dtype):
         ah.assert_exactly_equal(out, ah.asarray(list(r), dtype=_dtype))
@@ -407,24 +414,22 @@ def test_linspace(num, dtype, endpoint, data):
     out = xp.linspace(start, stop, num, **kw)
 
     assert_shape("linspace", out.shape, num, start=stop, stop=stop, num=num)
+    f_func = f"[linspace({start=}, {stop=}, {num=})]"
     if num > 0:
         assert ah.equal(
             out[0], ah.asarray(start, dtype=out.dtype)
-        ), f"out[0]={out[0]}, but should be {start=} [linspace({stop=}, {num=})]"
+        ), f"out[0]={out[0]}, but should be {start} {f_func}"
     if endpoint:
         if num > 1:
             assert ah.equal(
                 out[-1], ah.asarray(stop, dtype=out.dtype)
-            ), f"out[-1]={out[-1]}, but should be {stop=} [linspace({start=}, {num=})]"
+            ), f"out[-1]={out[-1]}, but should be {stop} {f_func}"
     else:
         # linspace(..., num, endpoint=True) should return an array equivalent to
         # the first num elements when endpoint=False
         expected = xp.linspace(start, stop, num + 1, dtype=dtype, endpoint=True)
         expected = expected[:-1]
         ah.assert_exactly_equal(out, expected)
-    assert (
-        out.size == num
-    ), f"{out.size=}, but should be {num=} [linspace({start=}, {stop=})]"
 
 
 def make_one(dtype: DataType) -> Scalar:
