@@ -179,7 +179,7 @@ def test_det(x):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=dtypes, shape=matrix_shapes),
+    x=xps.arrays(dtype=dtypes, shape=matrix_shapes()),
     # offset may produce an overflow if it is too large. Supporting offsets
     # that are way larger than the array shape isn't very important.
     kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
@@ -388,7 +388,7 @@ def test_pinv(x, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=matrix_shapes),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=matrix_shapes()),
     kw=kwargs(mode=sampled_from(['reduced', 'complete']))
 )
 def test_qr(x, kw):
