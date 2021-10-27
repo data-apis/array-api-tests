@@ -41,6 +41,12 @@ jobs:
         array_api_tests/test_signatures.py::test_function_keyword_only_args[__dlpack__]
         # floor_divide has an issue related to https://github.com/data-apis/array-api/issues/264
         array_api_tests/test_elementwise_functions.py::test_floor_divide
+        # mesgrid doesn't return all arrays as the promoted dtype
+        array_api_tests/test_type_promotion.py::test_meshgrid
+        # https://github.com/numpy/numpy/pull/20066#issuecomment-947056094
+        array_api_tests/test_type_promotion.py::test_where
+        # shape mismatches are not handled
+        array_api_tests/test_type_promotion.py::test_tensordot
 
         EOF
 

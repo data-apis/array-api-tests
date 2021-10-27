@@ -110,7 +110,7 @@ def test_broadcast_shapes_explicit_spec():
 @pytest.mark.parametrize('func_name', [i for i in
                                        elementwise_functions.__all__ if
                                        nargs(i) > 1])
-@given(shape1=shapes, shape2=shapes, data=data())
+@given(shape1=shapes(), shape2=shapes(), data=data())
 def test_broadcasting_hypothesis(func_name, shape1, shape2, data):
     # Internal consistency checks
     assert nargs(func_name) == 2

@@ -70,7 +70,7 @@ def test_arange(start, stop, step, dtype):
                  or step < 0 and stop <= start)):
             assert a.size == ceil(asarray((stop-start)/step)), "arange() produced an array of the incorrect size"
 
-@given(shapes, kwargs(dtype=none() | shared_dtypes))
+@given(shapes(), kwargs(dtype=none() | shared_dtypes))
 def test_empty(shape, kw):
     out = empty(shape, **kw)
     dtype = kw.get("dtype", None) or xp.float64
@@ -84,7 +84,7 @@ def test_empty(shape, kw):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shapes),
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shapes()),
     kw=kwargs(dtype=none() | xps.scalar_dtypes())
 )
 def test_empty_like(x, kw):
@@ -146,7 +146,7 @@ def full_fill_values(draw):
 
 
 @given(
-    shape=shapes,
+    shape=shapes(),
     fill_value=full_fill_values(),
     kw=shared(kwargs(dtype=none() | xps.scalar_dtypes()), key="full_kw"),
 )
@@ -184,7 +184,7 @@ def full_like_fill_values(draw):
 
 
 @given(
-    x=xps.arrays(dtype=shared_dtypes, shape=shapes),
+    x=xps.arrays(dtype=shared_dtypes, shape=shapes()),
     fill_value=full_like_fill_values(),
     kw=shared(kwargs(dtype=none() | xps.scalar_dtypes()), key="full_like_kw"),
 )
@@ -255,7 +255,7 @@ def make_one(dtype):
         return True
 
 
-@given(shapes, kwargs(dtype=none() | xps.scalar_dtypes()))
+@given(shapes(), kwargs(dtype=none() | xps.scalar_dtypes()))
 def test_ones(shape, kw):
     out = ones(shape, **kw)
     dtype = kw.get("dtype", None) or xp.float64
@@ -268,7 +268,7 @@ def test_ones(shape, kw):
 
 
 @given(
-    x=xps.arrays(dtype=dtypes, shape=shapes),
+    x=xps.arrays(dtype=dtypes, shape=shapes()),
     kw=kwargs(dtype=none() | xps.scalar_dtypes()),
 )
 def test_ones_like(x, kw):
@@ -291,7 +291,7 @@ def make_zero(dtype):
         return False
 
 
-@given(shapes, kwargs(dtype=none() | xps.scalar_dtypes()))
+@given(shapes(), kwargs(dtype=none() | xps.scalar_dtypes()))
 def test_zeros(shape, kw):
     out = zeros(shape, **kw)
     dtype = kw.get("dtype", None) or xp.float64
@@ -304,7 +304,7 @@ def test_zeros(shape, kw):
 
 
 @given(
-    x=xps.arrays(dtype=dtypes, shape=shapes),
+    x=xps.arrays(dtype=dtypes, shape=shapes()),
     kw=kwargs(dtype=none() | xps.scalar_dtypes()),
 )
 def test_zeros_like(x, kw):
