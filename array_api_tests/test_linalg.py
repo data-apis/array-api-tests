@@ -525,6 +525,10 @@ def test_svd(x, kw):
     if K >= 1:
         assert _array_module.all(s[..., :-1] >= s[..., 1:]), "svd().s values are not sorted from largest to smallest"
 
+    _test_stacks(lambda x: linalg.svd(x, **kw).u, x, res=u)
+    _test_stacks(lambda x: linalg.svd(x, **kw).s, x, dims=1, res=s)
+    _test_stacks(lambda x: linalg.svd(x, **kw).vh, x, res=vh)
+
 @pytest.mark.xp_extension('linalg')
 @given(
     x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
