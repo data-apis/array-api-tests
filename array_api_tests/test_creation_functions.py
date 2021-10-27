@@ -231,12 +231,14 @@ def test_eye(n_rows, n_cols, kw):
         assert_kw_dtype("eye", kw["dtype"], out.dtype)
     _n_cols = n_rows if n_cols is None else n_cols
     assert_shape("eye", out.shape, (n_rows, _n_cols), n_rows=n_rows, n_cols=n_cols)
+    f_func = f"[eye({n_rows=}, {n_cols=})]"
     for i in range(n_rows):
         for j in range(_n_cols):
+            f_indexed_out = f"out[{i}, {j}]={out[i, j]}"
             if j - i == kw.get("k", 0):
-                assert out[i, j] == 1, f"out[{i}, {j}]={out[i, j]}, should be 1 [eye()]"
+                assert out[i, j] == 1, f"{f_indexed_out}, should be 1 {f_func}"
             else:
-                assert out[i, j] == 0, f"out[{i}, {j}]={out[i, j]}, should be 0 [eye()]"
+                assert out[i, j] == 0, f"{f_indexed_out}, should be 0 {f_func}"
 
 
 default_unsafe_dtypes = [xp.uint64]
