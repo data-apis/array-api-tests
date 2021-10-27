@@ -96,28 +96,35 @@ def reals(min_value=None, max_value=None) -> st.SearchStrategy[Union[int, float]
     )
 
 
-@given(start=reals(), dtype=st.none() | hh.numeric_dtypes, data=st.data())
-def test_arange(start, dtype, data):
-    stop = data.draw(reals() | st.none(), label="stop")
+@given(dtype=st.none() | hh.numeric_dtypes, data=st.data())
+def test_arange(dtype, data):
+    if dtype is None or dh.is_float_dtype(dtype):
+        start = data.draw(reals(), label="start")
+        stop = data.draw(reals() | st.none(), label="stop")
+    else:
+        start = data.draw(xps.from_dtype(dtype), label="start")
+        stop = data.draw(xps.from_dtype(dtype), label="stop")
     if stop is None:
         _start = 0
         _stop = start
-        stop = None
     else:
         _start = start
-        _stop = data.draw(reals(), label="stop")
-        stop = _stop
+        _stop = stop
 
-    tol = abs(_stop - _start) / (hh.MAX_ARRAY_SIZE - 1)
+    tol = max(abs(_stop - _start) / (hh.MAX_ARRAY_SIZE - 1), 0.01)
     assume(-tol > int_min)
     assume(tol < int_max)
-    step = data.draw(
-        st.one_of(
-            reals(min_value=tol).filter(lambda n: n != 0),
-            reals(max_value=-tol).filter(lambda n: n != 0),
-        ),
-        label="step",
-    )
+    if dtype is None or dh.is_float_dtype(dtype):
+        step = data.draw(reals(min_value=tol) | reals(max_value=-tol), label="step")
+    else:
+        step_strats = []
+        if dtype in dh.int_dtypes:
+            step_min = min(math.floor(-tol), -1)
+            step_strats.append(xps.from_dtype(dtype, max_value=step_min))
+        step_max = max(math.ceil(tol), 1)
+        step_strats.append(xps.from_dtype(dtype, min_value=step_max))
+        step = data.draw(st.one_of(step_strats), label="step")
+    assert step != 0, f"{step=} must not equal 0"  # sanity check
 
     all_int = all(arg is None or isinstance(arg, int) for arg in [start, stop, step])
 
@@ -129,11 +136,12 @@ def test_arange(start, dtype, data):
     else:
         _dtype = dtype
 
+    # sanity check
     if dh.is_int_dtype(_dtype):
         m, M = dh.dtype_ranges[_dtype]
-        assume(m <= _start <= M)
-        assume(m <= _stop <= M)
-        assume(m <= step <= M)
+        assert m <= _start <= M
+        assert m <= _stop <= M
+        assert m <= step <= M
 
     pos_range = _stop > _start
     pos_step = step > 0
@@ -151,7 +159,7 @@ def test_arange(start, dtype, data):
     size = len(elements)
     assert (
         size <= hh.MAX_ARRAY_SIZE
-    ), f"{size=}, should be no more than {hh.MAX_ARRAY_SIZE=}"
+    ), f"{size=} should be no more than {hh.MAX_ARRAY_SIZE=}"  # sanity check
 
     out = xp.arange(start, stop=stop, step=step, dtype=dtype)
 
