@@ -56,7 +56,7 @@ def _test_stacks(f, *args, res=None, dims=2, true_val=None, **kw):
     for _idx in ndindex(shape[:-2]):
         idx = _idx + (slice(None),)*dims
         res_stack = res[idx]
-        x_stacks = [x[idx] for x in args]
+        x_stacks = [x[_idx + (...,)] for x in args]
         decomp_res_stack = f(*x_stacks, **kw)
         assert_exactly_equal(res_stack, decomp_res_stack)
         if true_val:
