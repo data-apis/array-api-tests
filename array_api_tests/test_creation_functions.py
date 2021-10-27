@@ -1,5 +1,5 @@
 import math
-from typing import Union
+from typing import Union, Any, Tuple
 from itertools import takewhile, count
 
 from hypothesis import assume, given, strategies as st
@@ -11,6 +11,21 @@ from . import dtype_helpers as dh
 from . import pytest_helpers as ph
 from . import xps
 from .typing import Shape, DataType, Array, Scalar
+
+
+@st.composite
+def specified_kwargs(draw, *keys_values_defaults: Tuple[str, Any, Any]):
+    """Generates valid kwargs given expected defaults.
+
+    When we can't realistically use hh.kwargs() and thus test whether xp infact
+    defaults correctly, this strategy lets us remove generated arguments if they
+    are of the default value anyway.
+    """
+    kw = {}
+    for key, value, default in keys_values_defaults:
+        if value is not default or draw(st.booleans()):
+            kw[key] = value
+    return kw
 
 
 def assert_default_float(func_name: str, dtype: DataType):
@@ -168,7 +183,15 @@ def test_arange(dtype, data):
         size <= hh.MAX_ARRAY_SIZE
     ), f"{size=} should be no more than {hh.MAX_ARRAY_SIZE}"  # sanity check
 
-    out = xp.arange(start, stop=stop, step=step, dtype=dtype)
+    kw = data.draw(
+        specified_kwargs(
+            ("stop", stop, None),
+            ("step", step, None),
+            ("dtype", dtype, None),
+        ),
+        label="kw",
+    )
+    out = xp.arange(start, **kw)
 
     if dtype is None:
         if all_int:
@@ -356,7 +379,14 @@ def test_linspace(num, dtype, endpoint, data):
             m, M = dh.dtype_ranges[_dtype]
             stop = data.draw(int_stops(start, min_gap, m, M), label="stop")
 
-    out = xp.linspace(start, stop, num, dtype=dtype, endpoint=endpoint)
+    kw = data.draw(
+        specified_kwargs(
+            ("dtype", dtype, None),
+            ("endpoint", endpoint, True),
+        ),
+        label="kw",
+    )
+    out = xp.linspace(start, stop, num, **kw)
 
     assert_shape("linspace", out.shape, num, start=stop, stop=stop, num=num)
 
@@ -364,7 +394,7 @@ def test_linspace(num, dtype, endpoint, data):
         if num > 1:
             assert ah.equal(
                 out[-1], ah.asarray(stop, dtype=out.dtype)
-            ), f"out[-1]={out[-1]}, but should be {stop=} [linspace()]"
+            ), f"out[-1]={out[-1]}, but should be {stop=} [linspace({start=}, {num=})]"
     else:
         # linspace(..., num, endpoint=True) should return an array equivalent to
         # the first num elements when endpoint=False
@@ -375,8 +405,9 @@ def test_linspace(num, dtype, endpoint, data):
     if num > 0:
         assert ah.equal(
             out[0], ah.asarray(start, dtype=out.dtype)
-        ), f"out[0]={out[0]}, but should be {start=} [linspace()]"
-        # TODO: array assertions ala test_arange
+        ), f"out[0]={out[0]}, but should be {start=} [linspace({stop=}, {num=})]"
+
+    # TODO: array assertions ala test_arange
 
 
 def make_one(dtype: DataType) -> Scalar:
