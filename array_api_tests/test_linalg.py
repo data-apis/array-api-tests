@@ -561,12 +561,43 @@ def test_tensordot(x1, x2, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
-    kw=kwargs(offset=todo)
+    x=xps.arrays(dtype=xps.numeric_dtypes(), shape=matrix_shapes()),
+    # offset may produce an overflow if it is too large. Supporting offsets
+    # that are way larger than the array shape isn't very important.
+    kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
 )
 def test_trace(x, kw):
-    # res = linalg.trace(x, **kw)
-    pass
+    res = linalg.trace(x, **kw)
+
+    # TODO: trace() should promote in some cases. See
+    # https://github.com/data-apis/array-api/issues/202. See also the dtype
+    # argument to sum() below.
+
+    # assert res.dtype == x.dtype, "trace() returned the wrong dtype"
+
+    n, m = x.shape[-2:]
+    offset = kw.get('offset', 0)
+    assert res.shape == x.shape[:-2], "trace() returned the wrong shape"
+
+    def true_trace(x_stack):
+        # Note: the spec does not specify that offset must be within the
+        # bounds of the matrix. A large offset should just produce a size 0
+        # diagonal in the last dimension (trace 0). See test_diagonal().
+        if offset < 0:
+            diag_size = min(n, m, max(n + offset, 0))
+        elif offset == 0:
+            diag_size = min(n, m)
+        else:
+            diag_size = min(n, m, max(m - offset, 0))
+
+        if offset >= 0:
+            x_stack_diag = [x_stack[i, i + offset] for i in range(diag_size)]
+        else:
+            x_stack_diag = [x_stack[i - offset, i] for i in range(diag_size)]
+        return _array_module.sum(asarray(x_stack_diag, dtype=x.dtype), dtype=x.dtype)
+
+    _test_stacks(linalg.trace, x, **kw, res=res, dims=0, true_val=true_trace)
+
 
 @given(
     x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes),
