@@ -1,16 +1,17 @@
 import math
-from typing import Union, Any, Tuple, NamedTuple, Iterator
 from itertools import count
+from typing import Any, Iterator, NamedTuple, Tuple, Union
 
-from hypothesis import assume, given, strategies as st
+from hypothesis import assume, given
+from hypothesis import strategies as st
 
 from . import _array_module as xp
 from . import array_helpers as ah
-from . import hypothesis_helpers as hh
 from . import dtype_helpers as dh
+from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
-from .typing import Shape, DataType, Array, Scalar
+from .typing import DataType, Scalar
 
 
 @st.composite
@@ -26,59 +27,6 @@ def specified_kwargs(draw, *keys_values_defaults: Tuple[str, Any, Any]):
         if value is not default or draw(st.booleans()):
             kw[key] = value
     return kw
-
-
-def assert_default_float(func_name: str, dtype: DataType):
-    f_dtype = dh.dtype_to_name[dtype]
-    f_default = dh.dtype_to_name[dh.default_float]
-    msg = (
-        f"out.dtype={f_dtype}, should be default "
-        f"floating-point dtype {f_default} [{func_name}()]"
-    )
-    assert dtype == dh.default_float, msg
-
-
-def assert_default_int(func_name: str, dtype: DataType):
-    f_dtype = dh.dtype_to_name[dtype]
-    f_default = dh.dtype_to_name[dh.default_int]
-    msg = (
-        f"out.dtype={f_dtype}, should be default "
-        f"integer dtype {f_default} [{func_name}()]"
-    )
-    assert dtype == dh.default_int, msg
-
-
-def assert_kw_dtype(func_name: str, kw_dtype: DataType, out_dtype: DataType):
-    f_kw_dtype = dh.dtype_to_name[kw_dtype]
-    f_out_dtype = dh.dtype_to_name[out_dtype]
-    msg = (
-        f"out.dtype={f_out_dtype}, but should be {f_kw_dtype} "
-        f"[{func_name}(dtype={f_kw_dtype})]"
-    )
-    assert out_dtype == kw_dtype, msg
-
-
-def assert_shape(
-    func_name: str, out_shape: Union[int, Shape], expected: Union[int, Shape], /, **kw
-):
-    if isinstance(out_shape, int):
-        out_shape = (out_shape,)
-    if isinstance(expected, int):
-        expected = (expected,)
-    f_kw = ", ".join(f"{k}={v}" for k, v in kw.items())
-    msg = f"out.shape={out_shape}, but should be {expected} [{func_name}({f_kw})]"
-    assert out_shape == expected, msg
-
-
-def assert_fill(
-    func_name: str, fill_value: Scalar, dtype: DataType, out: Array, /, **kw
-):
-    f_kw = ", ".join(f"{k}={v}" for k, v in kw.items())
-    msg = f"out not filled with {fill_value} [{func_name}({f_kw})]\n" f"{out=}"
-    if math.isnan(fill_value):
-        assert ah.all(ah.isnan(out)), msg
-    else:
-        assert ah.all(ah.equal(out, ah.asarray(fill_value, dtype=dtype))), msg
 
 
 class frange(NamedTuple):
@@ -210,9 +158,9 @@ def test_arange(dtype, data):
 
     if dtype is None:
         if all_int:
-            assert_default_int("arange", out.dtype)
+            ph.assert_default_int("arange", out.dtype)
         else:
-            assert_default_float("arange", out.dtype)
+            ph.assert_default_float("arange", out.dtype)
     else:
         assert out.dtype == dtype
     assert out.ndim == 1, f"{out.ndim=}, but should be 1 [linspace()]"
@@ -253,10 +201,10 @@ def test_arange(dtype, data):
 def test_empty(shape, kw):
     out = xp.empty(shape, **kw)
     if kw.get("dtype", None) is None:
-        assert_default_float("empty", out.dtype)
+        ph.assert_default_float("empty", out.dtype)
     else:
-        assert_kw_dtype("empty", kw["dtype"], out.dtype)
-    assert_shape("empty", out.shape, shape, shape=shape)
+        ph.assert_kw_dtype("empty", kw["dtype"], out.dtype)
+    ph.assert_shape("empty", out.shape, shape, shape=shape)
 
 
 @given(
@@ -268,8 +216,8 @@ def test_empty_like(x, kw):
     if kw.get("dtype", None) is None:
         ph.assert_dtype("empty_like", (x.dtype,), out.dtype)
     else:
-        assert_kw_dtype("empty_like", kw["dtype"], out.dtype)
-    assert_shape("empty_like", out.shape, x.shape)
+        ph.assert_kw_dtype("empty_like", kw["dtype"], out.dtype)
+    ph.assert_shape("empty_like", out.shape, x.shape)
 
 
 @given(
@@ -283,11 +231,11 @@ def test_empty_like(x, kw):
 def test_eye(n_rows, n_cols, kw):
     out = xp.eye(n_rows, n_cols, **kw)
     if kw.get("dtype", None) is None:
-        assert_default_float("eye", out.dtype)
+        ph.assert_default_float("eye", out.dtype)
     else:
-        assert_kw_dtype("eye", kw["dtype"], out.dtype)
+        ph.assert_kw_dtype("eye", kw["dtype"], out.dtype)
     _n_cols = n_rows if n_cols is None else n_cols
-    assert_shape("eye", out.shape, (n_rows, _n_cols), n_rows=n_rows, n_cols=n_cols)
+    ph.assert_shape("eye", out.shape, (n_rows, _n_cols), n_rows=n_rows, n_cols=n_cols)
     f_func = f"[eye({n_rows=}, {n_cols=})]"
     for i in range(n_rows):
         for j in range(_n_cols):
@@ -336,13 +284,13 @@ def test_full(shape, fill_value, kw):
         if isinstance(fill_value, bool):
             pass  # TODO
         elif isinstance(fill_value, int):
-            assert_default_int("full", out.dtype)
+            ph.assert_default_int("full", out.dtype)
         else:
-            assert_default_float("full", out.dtype)
+            ph.assert_default_float("full", out.dtype)
     else:
-        assert_kw_dtype("full", kw["dtype"], out.dtype)
-    assert_shape("full", out.shape, shape, shape=shape)
-    assert_fill("full", fill_value, dtype, out, fill_value=fill_value)
+        ph.assert_kw_dtype("full", kw["dtype"], out.dtype)
+    ph.assert_shape("full", out.shape, shape, shape=shape)
+    ph.assert_fill("full", fill_value, dtype, out, fill_value=fill_value)
 
 
 @st.composite
@@ -365,9 +313,9 @@ def test_full_like(x, fill_value, kw):
     if kw.get("dtype", None) is None:
         ph.assert_dtype("full_like", (x.dtype,), out.dtype)
     else:
-        assert_kw_dtype("full_like", kw["dtype"], out.dtype)
-    assert_shape("full_like", out.shape, x.shape)
-    assert_fill("full_like", fill_value, dtype, out, fill_value=fill_value)
+        ph.assert_kw_dtype("full_like", kw["dtype"], out.dtype)
+    ph.assert_shape("full_like", out.shape, x.shape)
+    ph.assert_fill("full_like", fill_value, dtype, out, fill_value=fill_value)
 
 
 finite_kw = {"allow_nan": False, "allow_infinity": False}
@@ -420,7 +368,7 @@ def test_linspace(num, dtype, endpoint, data):
     )
     out = xp.linspace(start, stop, num, **kw)
 
-    assert_shape("linspace", out.shape, num, start=stop, stop=stop, num=num)
+    ph.assert_shape("linspace", out.shape, num, start=stop, stop=stop, num=num)
     f_func = f"[linspace({start=}, {stop=}, {num=})]"
     if num > 0:
         assert ah.equal(
@@ -452,12 +400,12 @@ def make_one(dtype: DataType) -> Scalar:
 def test_ones(shape, kw):
     out = xp.ones(shape, **kw)
     if kw.get("dtype", None) is None:
-        assert_default_float("ones", out.dtype)
+        ph.assert_default_float("ones", out.dtype)
     else:
-        assert_kw_dtype("ones", kw["dtype"], out.dtype)
-    assert_shape("ones", out.shape, shape, shape=shape)
+        ph.assert_kw_dtype("ones", kw["dtype"], out.dtype)
+    ph.assert_shape("ones", out.shape, shape, shape=shape)
     dtype = kw.get("dtype", None) or dh.default_float
-    assert_fill("ones", make_one(dtype), dtype, out)
+    ph.assert_fill("ones", make_one(dtype), dtype, out)
 
 
 @given(
@@ -469,10 +417,10 @@ def test_ones_like(x, kw):
     if kw.get("dtype", None) is None:
         ph.assert_dtype("ones_like", (x.dtype,), out.dtype)
     else:
-        assert_kw_dtype("ones_like", kw["dtype"], out.dtype)
-    assert_shape("ones_like", out.shape, x.shape)
+        ph.assert_kw_dtype("ones_like", kw["dtype"], out.dtype)
+    ph.assert_shape("ones_like", out.shape, x.shape)
     dtype = kw.get("dtype", None) or x.dtype
-    assert_fill("ones_like", make_one(dtype), dtype, out)
+    ph.assert_fill("ones_like", make_one(dtype), dtype, out)
 
 
 def make_zero(dtype: DataType) -> Scalar:
@@ -488,12 +436,12 @@ def make_zero(dtype: DataType) -> Scalar:
 def test_zeros(shape, kw):
     out = xp.zeros(shape, **kw)
     if kw.get("dtype", None) is None:
-        assert_default_float("zeros", out.dtype)
+        ph.assert_default_float("zeros", out.dtype)
     else:
-        assert_kw_dtype("zeros", kw["dtype"], out.dtype)
-    assert_shape("zeros", out.shape, shape, shape=shape)
+        ph.assert_kw_dtype("zeros", kw["dtype"], out.dtype)
+    ph.assert_shape("zeros", out.shape, shape, shape=shape)
     dtype = kw.get("dtype", None) or dh.default_float
-    assert_fill("zeros", make_zero(dtype), dtype, out)
+    ph.assert_fill("zeros", make_zero(dtype), dtype, out)
 
 
 @given(
@@ -505,7 +453,7 @@ def test_zeros_like(x, kw):
     if kw.get("dtype", None) is None:
         ph.assert_dtype("zeros_like", (x.dtype,), out.dtype)
     else:
-        assert_kw_dtype("zeros_like", kw["dtype"], out.dtype)
-    assert_shape("zeros_like", out.shape, x.shape)
+        ph.assert_kw_dtype("zeros_like", kw["dtype"], out.dtype)
+    ph.assert_shape("zeros_like", out.shape, x.shape)
     dtype = kw.get("dtype", None) or x.dtype
-    assert_fill("zeros_like", make_zero(dtype), dtype, out)
+    ph.assert_fill("zeros_like", make_zero(dtype), dtype, out)
