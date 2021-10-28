@@ -12,35 +12,16 @@ special_cases/
 import math
 
 from hypothesis import assume, given
-from hypothesis import strategies as st
 
 from . import _array_module as xp
 from . import array_helpers as ah
-from . import hypothesis_helpers as hh
 from . import dtype_helpers as dh
+from . import hypothesis_helpers as hh
 from . import xps
 # We might as well use this implementation rather than requiring
 # mod.broadcast_shapes(). See test_equal() and others.
 from .test_broadcasting import broadcast_shapes
 
-# integer_scalars = hh.array_scalars(integer_dtypes)
-floating_scalars = hh.array_scalars(hh.floating_dtypes)
-numeric_scalars = hh.array_scalars(hh.numeric_dtypes)
-integer_or_boolean_scalars = hh.array_scalars(hh.integer_or_boolean_dtypes)
-boolean_scalars = hh.array_scalars(hh.boolean_dtypes)
-
-two_integer_dtypes = hh.mutually_promotable_dtypes(dtypes=dh.all_int_dtypes)
-two_floating_dtypes = hh.mutually_promotable_dtypes(dtypes=dh.float_dtypes)
-two_numeric_dtypes = hh.mutually_promotable_dtypes(dtypes=dh.numeric_dtypes)
-two_integer_or_boolean_dtypes = hh.mutually_promotable_dtypes(dtypes=dh.bool_and_all_int_dtypes)
-two_boolean_dtypes = hh.mutually_promotable_dtypes(dtypes=(xp.bool,))
-two_any_dtypes = hh.mutually_promotable_dtypes()
-
-@st.composite
-def two_array_scalars(draw, dtype1, dtype2):
-    # two_dtypes should be a strategy that returns two dtypes (like
-    # hh.mutually_promotable_dtypes())
-    return draw(hh.array_scalars(st.just(dtype1))), draw(hh.array_scalars(st.just(dtype2)))
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_abs(x):
@@ -811,44 +792,44 @@ def test_round(x):
     ah.assert_exactly_equal(a[round_down], floor[round_down])
     ah.assert_exactly_equal(a[round_up], ceil[round_up])
 
-@given(numeric_scalars)
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_sign(x):
-    # a = xp.sign(x)
+    # out = xp.sign(x)
     pass
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_sin(x):
-    # a = xp.sin(x)
+    # out = xp.sin(x)
     pass
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_sinh(x):
-    # a = xp.sinh(x)
+    # out = xp.sinh(x)
     pass
 
-@given(numeric_scalars)
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_square(x):
-    # a = xp.square(x)
+    # out = xp.square(x)
     pass
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_sqrt(x):
-    # a = xp.sqrt(x)
+    # out = xp.sqrt(x)
     pass
 
-@given(two_numeric_dtypes.flatmap(lambda i: two_array_scalars(*i)))
-def test_subtract(args):
-    x1, x2 = args
-    # a = xp.subtract(x1, x2)
+@given(*hh.two_mutual_arrays(dh.numeric_dtypes))
+def test_subtract(x1, x2):
+    # out = xp.subtract(x1, x2)
+    pass
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_tan(x):
-    # a = xp.tan(x)
+    # out = xp.tan(x)
     pass
 
-@given(floating_scalars)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_tanh(x):
-    # a = xp.tanh(x)
+    # out = xp.tanh(x)
     pass
 
 @given(xps.arrays(dtype=hh.numeric_dtypes, shape=xps.array_shapes()))
