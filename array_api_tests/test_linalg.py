@@ -112,6 +112,7 @@ def cross_args(draw, dtype_objects=dh.numeric_dtypes):
     kw = draw(kwargs(axis=integers(-size, size-1)))
     axis = kw.get('axis', -1)
     shape[axis] = 3
+    shape = tuple(shape)
 
     mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtype_objects))
     arrays1 = xps.arrays(
@@ -139,7 +140,7 @@ def test_cross(x1_x2_kw):
 
     res = linalg.cross(x1, x2, **kw)
 
-    assert res.dtype == dh.promotion_table[x1, x2], "cross() did not return the correct dtype"
+    assert res.dtype == dh.result_type(x1.dtype, x2.dtype), "cross() did not return the correct dtype"
     assert res.shape == shape, "cross() did not return the correct shape"
 
     # cross is too different from other functions to use _test_stacks, and it
@@ -365,7 +366,7 @@ def test_outer(x1, x2):
 
     shape = (x1.shape[0], x2.shape[0])
     assert res.shape == shape, "outer() did not return the correct shape"
-    assert res.dtype == dh.promotion_table[x1, x2], "outer() did not return the correct dtype"
+    assert res.dtype == dh.result_type(x1.dtype, x2.dtype), "outer() did not return the correct dtype"
 
     if 0 in shape:
         true_res = _array_module.empty(shape, dtype=res.dtype)
