@@ -4,6 +4,7 @@ import pytest
 from hypothesis import given, strategies as st, settings
 
 from .. import _array_module as xp
+from .. import xps
 from .._array_module import _UndefinedStub
 from .. import array_helpers as ah
 from .. import dtype_helpers as dh
@@ -75,6 +76,37 @@ def test_kwargs():
     c_results = [kw for kw in results if "c" in kw]
     assert len(c_results) > 0
     assert all(isinstance(kw["c"], str) for kw in c_results)
+
+
+def test_specified_kwargs():
+    results = []
+
+    @given(n=st.integers(0, 10), d=st.none() | xps.scalar_dtypes(), data=st.data())
+    @settings(max_examples=100)
+    def run(n, d, data):
+        kw = data.draw(
+            hh.specified_kwargs(
+                hh.KVD("n", n, 0),
+                hh.KVD("d", d, None),
+            ),
+            label="kw",
+        )
+        results.append(kw)
+    run()
+
+    assert all(isinstance(kw, dict) for kw in results)
+
+    assert any(len(kw) == 0 for kw in results)
+
+    assert any("n" not in kw.keys() for kw in results)
+    assert any("n" in kw.keys() and kw["n"] == 0 for kw in results)
+    assert any("n" in kw.keys() and kw["n"] != 0 for kw in results)
+
+    assert any("d" not in kw.keys() for kw in results)
+    assert any("d" in kw.keys() and kw["d"] is None for kw in results)
+    assert any("d" in kw.keys() and kw["d"] is xp.float64 for kw in results)
+
+
 
 @given(m=hh.symmetric_matrices(hh.shared_floating_dtypes,
                                      finite=st.shared(st.booleans(), key='finite')),

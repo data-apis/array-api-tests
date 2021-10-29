@@ -1,6 +1,6 @@
 import math
 from itertools import count
-from typing import Any, Iterator, NamedTuple, Tuple, Union
+from typing import Iterator, NamedTuple, Union
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
@@ -12,21 +12,6 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
 from .typing import DataType, Scalar
-
-
-@st.composite
-def specified_kwargs(draw, *keys_values_defaults: Tuple[str, Any, Any]):
-    """Generates valid kwargs given expected defaults.
-
-    When we can't realistically use hh.kwargs() and thus test whether xp infact
-    defaults correctly, this strategy lets us remove generated arguments if they
-    are of the default value anyway.
-    """
-    kw = {}
-    for key, value, default in keys_values_defaults:
-        if value is not default or draw(st.booleans()):
-            kw[key] = value
-    return kw
 
 
 class frange(NamedTuple):
@@ -147,10 +132,10 @@ def test_arange(dtype, data):
     ), f"{size=} should be no more than {hh.MAX_ARRAY_SIZE}"  # sanity check
 
     kw = data.draw(
-        specified_kwargs(
-            ("stop", stop, None),
-            ("step", step, None),
-            ("dtype", dtype, None),
+        hh.specified_kwargs(
+            hh.KVD("stop", stop, None),
+            hh.KVD("step", step, None),
+            hh.KVD("dtype", dtype, None),
         ),
         label="kw",
     )
@@ -360,9 +345,9 @@ def test_linspace(num, dtype, endpoint, data):
             stop = data.draw(int_stops(start, num, _dtype, endpoint), label="stop")
 
     kw = data.draw(
-        specified_kwargs(
-            ("dtype", dtype, None),
-            ("endpoint", endpoint, True),
+        hh.specified_kwargs(
+            hh.KVD("dtype", dtype, None),
+            hh.KVD("endpoint", endpoint, True),
         ),
         label="kw",
     )
