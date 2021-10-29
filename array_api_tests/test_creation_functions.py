@@ -164,7 +164,7 @@ def test_arange(dtype, data):
     else:
         assert out.dtype == dtype
     assert out.ndim == 1, f"{out.ndim=}, but should be 1 [linspace()]"
-    f_func = f"[linspace({start=}, {stop=}, {step=})]"
+    f_func = f"[arange({start=}, {stop=}, {step=})]"
     # We check size is roughly as expected to avoid edge cases e.g.
     #
     #     >>> xp.arange(2, step=0.333333333333333)
@@ -194,7 +194,7 @@ def test_arange(dtype, data):
         if out.size > 0:
             assert ah.equal(
                 out[0], ah.asarray(_start, dtype=out.dtype)
-            ), f"out[0]={out[0]}, but should be {_start} [linspace({start=}, {stop=})]"
+            ), f"out[0]={out[0]}, but should be {_start} [arange({start=}, {stop=})]"
 
 
 @given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
