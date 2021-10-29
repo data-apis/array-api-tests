@@ -131,15 +131,16 @@ def test_arange(dtype, data):
         size <= hh.MAX_ARRAY_SIZE
     ), f"{size=} should be no more than {hh.MAX_ARRAY_SIZE}"  # sanity check
 
-    kw = data.draw(
-        hh.specified_kwargs(
-            hh.KVD("stop", stop, None),
-            hh.KVD("step", step, None),
-            hh.KVD("dtype", dtype, None),
-        ),
-        label="kw",
-    )
-    out = xp.arange(start, **kw)
+    args_samples = [(start, stop), (start, stop, step)]
+    if stop is None:
+        args_samples.insert(0, (start,))
+    args = data.draw(st.sampled_from(args_samples), label="args")
+    kvds = [hh.KVD("dtype", dtype, None)]
+    if len(args) != 3:
+        kvds.insert(0, hh.KVD("step", step, 1))
+    kwargs = data.draw(hh.specified_kwargs(*kvds), label="kwargs")
+
+    out = xp.arange(*args, **kwargs)
 
     if dtype is None:
         if all_int:
@@ -148,8 +149,11 @@ def test_arange(dtype, data):
             ph.assert_default_float("arange", out.dtype)
     else:
         ph.assert_dtype("arange", (out.dtype,), dtype)
-    assert out.ndim == 1, f"{out.ndim=}, but should be 1 [linspace()]"
-    f_func = f"[arange({start}, {stop}, {step})]"
+    f_sig = ", ".join(str(n) for n in args)
+    if len(kwargs) > 0:
+        f_sig += f", {ph.fmt_kw(kwargs)}"
+    f_func = f"[arange({f_sig})]"
+    assert out.ndim == 1, f"{out.ndim=}, but should be 1 [{f_func}]"
     # We check size is roughly as expected to avoid edge cases e.g.
     #
     #     >>> xp.arange(2, step=0.333333333333333)

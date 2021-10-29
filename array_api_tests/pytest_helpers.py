@@ -11,6 +11,7 @@ __all__ = [
     "raises",
     "doesnt_raise",
     "nargs",
+    "fmt_kw",
     "assert_dtype",
     "assert_kw_dtype",
     "assert_default_float",
@@ -58,7 +59,7 @@ def nargs(func_name):
     return len(getfullargspec(getattr(function_stubs, func_name)).args)
 
 
-def _fmt_kw(kw: Dict[str, Any]) -> str:
+def fmt_kw(kw: Dict[str, Any]) -> str:
     return ", ".join(f"{k}={v}" for k, v in kw.items())
 
 
@@ -120,7 +121,7 @@ def assert_shape(
     if isinstance(expected, int):
         expected = (expected,)
     msg = (
-        f"out.shape={out_shape}, but should be {expected} [{func_name}({_fmt_kw(kw)})]"
+        f"out.shape={out_shape}, but should be {expected} [{func_name}({fmt_kw(kw)})]"
     )
     assert out_shape == expected, msg
 
@@ -128,7 +129,7 @@ def assert_shape(
 def assert_fill(
     func_name: str, fill_value: Scalar, dtype: DataType, out: Array, /, **kw
 ):
-    msg = f"out not filled with {fill_value} [{func_name}({_fmt_kw(kw)})]\n{out=}"
+    msg = f"out not filled with {fill_value} [{func_name}({fmt_kw(kw)})]\n{out=}"
     if math.isnan(fill_value):
         assert ah.all(ah.isnan(out)), msg
     else:
