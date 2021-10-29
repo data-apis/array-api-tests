@@ -341,7 +341,6 @@ _op_to_func = {
     '__ge__': 'greater_equal',
     '__gt__': 'greater',
     '__le__': 'less_equal',
-    '__lshift__': 'bitwise_left_shift',
     '__lt__': 'less',
     # '__matmul__': 'matmul',  # TODO: support matmul
     '__mod__': 'remainder',
@@ -349,6 +348,7 @@ _op_to_func = {
     '__ne__': 'not_equal',
     '__or__': 'bitwise_or',
     '__pow__': 'pow',
+    '__lshift__': 'bitwise_left_shift',
     '__rshift__': 'bitwise_right_shift',
     '__sub__': 'subtract',
     '__truediv__': 'divide',
