@@ -1,131 +1,238 @@
 import math
-
-from ._array_module import (asarray, arange, ceil, empty, empty_like, eye, full,
-                            full_like, equal, all, linspace, ones, ones_like,
-                            zeros, zeros_like, isnan)
-from . import _array_module as xp
-from .array_helpers import assert_exactly_equal, isintegral
-from .hypothesis_helpers import (numeric_dtypes, dtypes, MAX_ARRAY_SIZE,
-                                 shapes, sizes, sqrt_sizes, shared_dtypes,
-                                 scalars, kwargs)
-from . import dtype_helpers as dh
-from . import xps
+from itertools import count
+from typing import Iterator, NamedTuple, Union
 
 from hypothesis import assume, given
-from hypothesis.strategies import integers, floats, one_of, none, booleans, just, shared, composite, SearchStrategy
+from hypothesis import strategies as st
+
+from . import _array_module as xp
+from . import array_helpers as ah
+from . import dtype_helpers as dh
+from . import hypothesis_helpers as hh
+from . import pytest_helpers as ph
+from . import xps
+from .typing import DataType, Scalar
 
 
-int_range = integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE)
-float_range = floats(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE,
-                     allow_nan=False)
-@given(one_of(int_range, float_range),
-       one_of(none(), int_range, float_range),
-       one_of(none(), int_range, float_range).filter(lambda x: x != 0
-                                                     and (abs(x) > 0.01 if isinstance(x, float) else True)),
-       one_of(none(), numeric_dtypes))
-def test_arange(start, stop, step, dtype):
-    if dtype in dh.dtype_ranges:
-        m, M = dh.dtype_ranges[dtype]
-        if (not (m <= start <= M)
-            or isinstance(stop, int) and not (m <= stop <= M)
-            or isinstance(step, int) and not (m <= step <= M)):
-            assume(False)
+class frange(NamedTuple):
+    start: float
+    stop: float
+    step: float
 
-    kwargs = {} if dtype is None else {'dtype': dtype}
+    def __iter__(self) -> Iterator[float]:
+        pos_range = self.stop > self.start
+        pos_step = self.step > 0
+        if pos_step != pos_range:
+            return
+        if pos_range:
+            for n in count(self.start, self.step):
+                if n >= self.stop:
+                    break
+                yield n
+        else:
+            for n in count(self.start, self.step):
+                if n <= self.stop:
+                    break
+                yield n
 
-    all_int = (dh.is_int_dtype(dtype)
-               and isinstance(start, int)
-               and (stop is None or isinstance(stop, int))
-               and (step is None or isinstance(step, int)))
+    def __len__(self) -> int:
+        return max(math.ceil((self.stop - self.start) / self.step), 0)
 
+
+# Testing xp.arange() requires bounding the start/stop/step arguments to only
+# test argument combinations compliant with the Array API, as well as to not
+# produce arrays with sizes not supproted by an array module.
+#
+# We first make sure generated integers can be represented by an array module's
+# default integer type, as even if a float array should be produced a module
+# might represent integer arguments as 0d arrays.
+#
+# This means that float arguments also need to be bound, so that they do not
+# require any integer arguments to be outside the representable bounds.
+int_min, int_max = dh.dtype_ranges[dh.default_int]
+float_min = float(int_min * (hh.MAX_ARRAY_SIZE - 1))
+float_max = float(int_max * (hh.MAX_ARRAY_SIZE - 1))
+
+
+def reals(min_value=None, max_value=None) -> st.SearchStrategy[Union[int, float]]:
+    round_ = int
+    if min_value is not None and min_value > 0:
+        round_ = math.ceil
+    elif max_value is not None and max_value < 0:
+        round_ = math.floor
+    int_min_value = int_min if min_value is None else max(round_(min_value), int_min)
+    int_max_value = int_max if max_value is None else min(round_(max_value), int_max)
+    return st.one_of(
+        st.integers(int_min_value, int_max_value),
+        # We do not assign float bounds to the floats() strategy, instead opting
+        # to filter out-of-bound values. Passing such min/max values will modify
+        # test case reduction behaviour so that simple bugs will become harder
+        # for users to identify. Hypothesis plans to improve floats() behaviour
+        # in https://github.com/HypothesisWorks/hypothesis/issues/2907
+        st.floats(min_value, max_value, allow_nan=False, allow_infinity=False).filter(
+            lambda n: float_min <= n <= float_max
+        ),
+    )
+
+
+@given(dtype=st.none() | hh.numeric_dtypes, data=st.data())
+def test_arange(dtype, data):
+    if dtype is None or dh.is_float_dtype(dtype):
+        start = data.draw(reals(), label="start")
+        stop = data.draw(reals() | st.none(), label="stop")
+    else:
+        start = data.draw(xps.from_dtype(dtype), label="start")
+        stop = data.draw(xps.from_dtype(dtype), label="stop")
     if stop is None:
-        # NB: "start" is really the stop
-        # step is ignored in this case
-        a = arange(start, **kwargs)
-        if all_int:
-            r = range(start)
-    elif step is None:
-        a = arange(start, stop, **kwargs)
-        if all_int:
-            r = range(start, stop)
+        _start = 0
+        _stop = start
     else:
-        a = arange(start, stop, step, **kwargs)
-        if all_int:
-            r = range(start, stop, step)
-    if dtype is None:
-        # TODO: What is the correct dtype of a?
-        pass
-    else:
-        assert a.dtype == dtype, "arange() produced an incorrect dtype"
-    assert a.ndim == 1, "arange() should return a 1-dimensional array"
-    if all_int:
-        assert a.shape == (len(r),), "arange() produced incorrect shape"
-        if len(r) <= MAX_ARRAY_SIZE:
-            assert list(a) == list(r), "arange() produced incorrect values"
-    else:
-        # This is already implied by the len(r) test above
-        if (stop is not None
-            and step is not None
-            and (step > 0 and stop >= start
-                 or step < 0 and stop <= start)):
-            assert a.size == ceil(asarray((stop-start)/step)), "arange() produced an array of the incorrect size"
+        _start = start
+        _stop = stop
 
-@given(shapes(), kwargs(dtype=none() | shared_dtypes))
-def test_empty(shape, kw):
-    out = empty(shape, **kw)
-    dtype = kw.get("dtype", None) or xp.float64
-    if kw.get("dtype", None) is None:
-        assert dh.is_float_dtype(out.dtype), f"empty() returned an array with dtype {out.dtype}, but should be the default float dtype"
+    # tol is the minimum tolerance for step values, used to avoid scenarios
+    # where xp.arange() produces arrays that would be over MAX_ARRAY_SIZE.
+    tol = max(abs(_stop - _start) / (math.sqrt(hh.MAX_ARRAY_SIZE)), 0.01)
+    assert tol != 0, "tol must not equal 0"  # sanity check
+    assume(-tol > int_min)
+    assume(tol < int_max)
+    if dtype is None or dh.is_float_dtype(dtype):
+        step = data.draw(reals(min_value=tol) | reals(max_value=-tol), label="step")
     else:
-        assert out.dtype == dtype, f"{dtype=!s}, but empty() returned an array with dtype {out.dtype}"
-    if isinstance(shape, int):
-        shape = (shape,)
-    assert out.shape == shape, f"{shape=}, but empty() returned an array with shape {out.shape}"
+        step_strats = []
+        if dtype in dh.int_dtypes:
+            step_min = min(math.floor(-tol), -1)
+            step_strats.append(xps.from_dtype(dtype, max_value=step_min))
+        step_max = max(math.ceil(tol), 1)
+        step_strats.append(xps.from_dtype(dtype, min_value=step_max))
+        step = data.draw(st.one_of(step_strats), label="step")
+    assert step != 0, "step must not equal 0"  # sanity check
+
+    all_int = all(arg is None or isinstance(arg, int) for arg in [start, stop, step])
+
+    if dtype is None:
+        if all_int:
+            _dtype = dh.default_int
+        else:
+            _dtype = dh.default_float
+    else:
+        _dtype = dtype
+
+    # sanity checks
+    if dh.is_int_dtype(_dtype):
+        m, M = dh.dtype_ranges[_dtype]
+        assert m <= _start <= M
+        assert m <= _stop <= M
+        assert m <= step <= M
+
+    r = frange(_start, _stop, step)
+    size = len(r)
+    assert (
+        size <= hh.MAX_ARRAY_SIZE
+    ), f"{size=} should be no more than {hh.MAX_ARRAY_SIZE}"  # sanity check
+
+    args_samples = [(start, stop), (start, stop, step)]
+    if stop is None:
+        args_samples.insert(0, (start,))
+    args = data.draw(st.sampled_from(args_samples), label="args")
+    kvds = [hh.KVD("dtype", dtype, None)]
+    if len(args) != 3:
+        kvds.insert(0, hh.KVD("step", step, 1))
+    kwargs = data.draw(hh.specified_kwargs(*kvds), label="kwargs")
+
+    out = xp.arange(*args, **kwargs)
+
+    if dtype is None:
+        if all_int:
+            ph.assert_default_int("arange", out.dtype)
+        else:
+            ph.assert_default_float("arange", out.dtype)
+    else:
+        ph.assert_dtype("arange", (out.dtype,), dtype)
+    f_sig = ", ".join(str(n) for n in args)
+    if len(kwargs) > 0:
+        f_sig += f", {ph.fmt_kw(kwargs)}"
+    f_func = f"[arange({f_sig})]"
+    assert out.ndim == 1, f"{out.ndim=}, but should be 1 [{f_func}]"
+    # We check size is roughly as expected to avoid edge cases e.g.
+    #
+    #     >>> xp.arange(2, step=0.333333333333333)
+    #     [0.0, 0.33, 0.66, 1.0, 1.33, 1.66, 2.0]
+    #     >>> xp.arange(2, step=0.3333333333333333)
+    #     [0.0, 0.33, 0.66, 1.0, 1.33, 1.66]
+    #
+    #     >>> start, stop, step = 0, 108086391056891901, 1080863910568919
+    #     >>> x = xp.arange(start, stop, step, dtype=xp.uint64)
+    #     >>> x.size
+    #     100
+    #     >>> r = range(start, stop, step)
+    #     >>> len(r)
+    #     101
+    #
+    min_size = math.floor(size * 0.9)
+    max_size = max(math.ceil(size * 1.1), 1)
+    assert (
+        min_size <= out.size <= max_size
+    ), f"{out.size=}, but should be roughly {size} {f_func}"
+    if dh.is_int_dtype(_dtype):
+        elements = list(r)
+        assume(out.size == len(elements))
+        ah.assert_exactly_equal(out, ah.asarray(elements, dtype=_dtype))
+    else:
+        assume(out.size == size)
+        if out.size > 0:
+            assert ah.equal(
+                out[0], ah.asarray(_start, dtype=out.dtype)
+            ), f"out[0]={out[0]}, but should be {_start} {f_func}"
+
+
+@given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
+def test_empty(shape, kw):
+    out = xp.empty(shape, **kw)
+    if kw.get("dtype", None) is None:
+        ph.assert_default_float("empty", out.dtype)
+    else:
+        ph.assert_kw_dtype("empty", kw["dtype"], out.dtype)
+    ph.assert_shape("empty", out.shape, shape, shape=shape)
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shapes()),
-    kw=kwargs(dtype=none() | xps.scalar_dtypes())
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
+    kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
 )
 def test_empty_like(x, kw):
-    out = empty_like(x, **kw)
-    dtype = kw.get("dtype", None) or x.dtype
+    out = xp.empty_like(x, **kw)
     if kw.get("dtype", None) is None:
-        assert out.dtype == x.dtype, f"{x.dtype=!s}, but empty_like() returned an array with dtype {out.dtype}"
+        ph.assert_dtype("empty_like", (x.dtype,), out.dtype)
     else:
-        assert out.dtype == dtype, f"{dtype=!s}, but empty_like() returned an array with dtype {out.dtype}"
-    assert out.shape == x.shape, f"{x.shape=}, but empty_like() returned an array with shape {out.shape}"
+        ph.assert_kw_dtype("empty_like", kw["dtype"], out.dtype)
+    ph.assert_shape("empty_like", out.shape, x.shape)
 
 
-# TODO: Use this method for all optional arguments
-optional_marker = object()
-
-@given(sqrt_sizes, one_of(just(optional_marker), none(), sqrt_sizes), one_of(none(), integers()), numeric_dtypes)
-def test_eye(n_rows, n_cols, k, dtype):
-    kwargs = {k: v for k, v in {'k': k, 'dtype': dtype}.items() if v
-              is not None}
-    if n_cols is optional_marker:
-        a = eye(n_rows, **kwargs)
-        n_cols = None
+@given(
+    n_rows=hh.sqrt_sizes,
+    n_cols=st.none() | hh.sqrt_sizes,
+    kw=hh.kwargs(
+        k=st.integers(),
+        dtype=xps.numeric_dtypes(),
+    ),
+)
+def test_eye(n_rows, n_cols, kw):
+    out = xp.eye(n_rows, n_cols, **kw)
+    if kw.get("dtype", None) is None:
+        ph.assert_default_float("eye", out.dtype)
     else:
-        a = eye(n_rows, n_cols, **kwargs)
-    if dtype is None:
-        assert dh.is_float_dtype(a.dtype), "eye() should return an array with the default floating point dtype"
-    else:
-        assert a.dtype == dtype, "eye() did not produce the correct dtype"
-
-    if n_cols is None:
-        n_cols = n_rows
-    assert a.shape == (n_rows, n_cols), "eye() produced an array with incorrect shape"
-
-    if k is None:
-        k = 0
+        ph.assert_kw_dtype("eye", kw["dtype"], out.dtype)
+    _n_cols = n_rows if n_cols is None else n_cols
+    ph.assert_shape("eye", out.shape, (n_rows, _n_cols), n_rows=n_rows, n_cols=n_cols)
+    f_func = f"[eye({n_rows=}, {n_cols=})]"
     for i in range(n_rows):
-        for j in range(n_cols):
-            if j - i == k:
-                assert a[i, j] == 1, "eye() did not produce a 1 on the diagonal"
+        for j in range(_n_cols):
+            f_indexed_out = f"out[{i}, {j}]={out[i, j]}"
+            if j - i == kw.get("k", 0):
+                assert out[i, j] == 1, f"{f_indexed_out}, should be 1 {f_func}"
             else:
-                assert a[i, j] == 0, "eye() did not produce a 0 off the diagonal"
+                assert out[i, j] == 0, f"{f_indexed_out}, should be 0 {f_func}"
 
 
 default_unsafe_dtypes = [xp.uint64]
@@ -133,121 +240,148 @@ if dh.default_int == xp.int32:
     default_unsafe_dtypes.extend([xp.uint32, xp.int64])
 if dh.default_float == xp.float32:
     default_unsafe_dtypes.append(xp.float64)
-default_safe_scalar_dtypes: SearchStrategy = xps.scalar_dtypes().filter(
+default_safe_dtypes: st.SearchStrategy = xps.scalar_dtypes().filter(
     lambda d: d not in default_unsafe_dtypes
 )
 
 
-@composite
-def full_fill_values(draw):
-    kw = draw(shared(kwargs(dtype=none() | xps.scalar_dtypes()), key="full_kw"))
-    dtype = kw.get("dtype", None) or draw(default_safe_scalar_dtypes)
+@st.composite
+def full_fill_values(draw) -> st.SearchStrategy[float]:
+    kw = draw(
+        st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_kw")
+    )
+    dtype = kw.get("dtype", None) or draw(default_safe_dtypes)
     return draw(xps.from_dtype(dtype))
 
 
 @given(
-    shape=shapes(),
+    shape=hh.shapes(),
     fill_value=full_fill_values(),
-    kw=shared(kwargs(dtype=none() | xps.scalar_dtypes()), key="full_kw"),
+    kw=st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_kw"),
 )
 def test_full(shape, fill_value, kw):
-    out = full(shape, fill_value, **kw)
+    out = xp.full(shape, fill_value, **kw)
     if kw.get("dtype", None):
         dtype = kw["dtype"]
     elif isinstance(fill_value, bool):
         dtype = xp.bool
     elif isinstance(fill_value, int):
-        dtype = xp.int64
+        dtype = dh.default_int
     else:
-        dtype = xp.float64
+        dtype = dh.default_float
     if kw.get("dtype", None) is None:
-        if dtype == xp.float64:
-            assert dh.is_float_dtype(out.dtype), f"full() returned an array with dtype {out.dtype}, but should be the default float dtype"
-        elif dtype == xp.int64:
-            assert out.dtype == xp.int32 or out.dtype == xp.int64, f"full() returned an array with dtype {out.dtype}, but should be the default integer dtype"
+        if isinstance(fill_value, bool):
+            pass  # TODO
+        elif isinstance(fill_value, int):
+            ph.assert_default_int("full", out.dtype)
         else:
-            assert out.dtype == xp.bool, f"full() returned an array with dtype {out.dtype}, but should be the bool dtype"
+            ph.assert_default_float("full", out.dtype)
     else:
-        assert out.dtype == dtype
-    assert out.shape == shape,  f"{shape=}, but full() returned an array with shape {out.shape}"
-    if dh.is_float_dtype(out.dtype) and math.isnan(fill_value):
-        assert all(isnan(out)), "full() array did not equal the fill value"
-    else:
-        assert all(equal(out, asarray(fill_value, dtype=dtype))), "full() array did not equal the fill value"
+        ph.assert_kw_dtype("full", kw["dtype"], out.dtype)
+    ph.assert_shape("full", out.shape, shape, shape=shape)
+    ph.assert_fill("full", fill_value, dtype, out, fill_value=fill_value)
 
 
-@composite
+@st.composite
 def full_like_fill_values(draw):
-    kw = draw(shared(kwargs(dtype=none() | xps.scalar_dtypes()), key="full_like_kw"))
-    dtype = kw.get("dtype", None) or draw(shared_dtypes)
+    kw = draw(
+        st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_like_kw")
+    )
+    dtype = kw.get("dtype", None) or draw(hh.shared_dtypes)
     return draw(xps.from_dtype(dtype))
 
 
 @given(
-    x=xps.arrays(dtype=shared_dtypes, shape=shapes()),
+    x=xps.arrays(dtype=hh.shared_dtypes, shape=hh.shapes()),
     fill_value=full_like_fill_values(),
-    kw=shared(kwargs(dtype=none() | xps.scalar_dtypes()), key="full_like_kw"),
+    kw=st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_like_kw"),
 )
 def test_full_like(x, fill_value, kw):
-    out = full_like(x, fill_value, **kw)
+    out = xp.full_like(x, fill_value, **kw)
     dtype = kw.get("dtype", None) or x.dtype
     if kw.get("dtype", None) is None:
-        assert out.dtype == x.dtype, f"{x.dtype=!s}, but full_like() returned an array with dtype {out.dtype}"
+        ph.assert_dtype("full_like", (x.dtype,), out.dtype)
     else:
-        assert out.dtype == dtype, f"{dtype=!s}, but full_like() returned an array with dtype {out.dtype}"
-    assert out.shape == x.shape, "{x.shape=}, but full_like() returned an array with shape {out.shape}"
-    if dh.is_float_dtype(dtype) and math.isnan(fill_value):
-        assert all(isnan(out)), "full_like() array did not equal the fill value"
+        ph.assert_kw_dtype("full_like", kw["dtype"], out.dtype)
+    ph.assert_shape("full_like", out.shape, x.shape)
+    ph.assert_fill("full_like", fill_value, dtype, out, fill_value=fill_value)
+
+
+finite_kw = {"allow_nan": False, "allow_infinity": False}
+
+
+def int_stops(
+    start: int, num, dtype: DataType, endpoint: bool
+) -> st.SearchStrategy[int]:
+    min_gap = num
+    if endpoint:
+        min_gap += 1
+    m, M = dh.dtype_ranges[dtype]
+    max_pos_gap = M - start
+    max_neg_gap = start - m
+    max_pos_mul = max_pos_gap // min_gap
+    max_neg_mul = max_neg_gap // min_gap
+    return st.one_of(
+        st.integers(0, max_pos_mul).map(lambda n: start + min_gap * n),
+        st.integers(0, max_neg_mul).map(lambda n: start - min_gap * n),
+    )
+
+
+@given(
+    num=hh.sizes,
+    dtype=st.none() | xps.numeric_dtypes(),
+    endpoint=st.booleans(),
+    data=st.data(),
+)
+def test_linspace(num, dtype, endpoint, data):
+    _dtype = dh.default_float if dtype is None else dtype
+
+    start = data.draw(xps.from_dtype(_dtype, **finite_kw), label="start")
+    if dh.is_float_dtype(_dtype):
+        stop = data.draw(xps.from_dtype(_dtype, **finite_kw), label="stop")
+        # avoid overflow errors
+        assume(not ah.isnan(ah.asarray(stop - start, dtype=_dtype)))
+        assume(not ah.isnan(ah.asarray(start - stop, dtype=_dtype)))
     else:
-        assert all(equal(out, asarray(fill_value, dtype=dtype))), "full_like() array did not equal the fill value"
+        if num == 0:
+            stop = start
+        else:
+            stop = data.draw(int_stops(start, num, _dtype, endpoint), label="stop")
 
-
-@given(scalars(shared_dtypes, finite=True),
-       scalars(shared_dtypes, finite=True),
-       sizes,
-       one_of(none(), shared_dtypes),
-       one_of(none(), booleans()),)
-def test_linspace(start, stop, num, dtype, endpoint):
-    # Skip on int start or stop that cannot be exactly represented as a float,
-    # since we do not have good approx_equal helpers yet.
-    if ((dtype is None or dh.is_float_dtype(dtype))
-        and ((isinstance(start, int) and not isintegral(asarray(start, dtype=dtype)))
-             or (isinstance(stop, int) and not isintegral(asarray(stop, dtype=dtype))))):
-        assume(False)
-
-    kwargs = {k: v for k, v in {'dtype': dtype, 'endpoint': endpoint}.items()
-              if v is not None}
-    a = linspace(start, stop, num, **kwargs)
+    kw = data.draw(
+        hh.specified_kwargs(
+            hh.KVD("dtype", dtype, None),
+            hh.KVD("endpoint", endpoint, True),
+        ),
+        label="kw",
+    )
+    out = xp.linspace(start, stop, num, **kw)
 
     if dtype is None:
-        assert dh.is_float_dtype(a.dtype), "linspace() should return an array with the default floating point dtype"
+        ph.assert_default_float("linspace", out.dtype)
     else:
-        assert a.dtype == dtype, "linspace() did not produce the correct dtype"
-
-    assert a.shape == (num,), "linspace() did not return an array with the correct shape"
-
-    if endpoint in [None, True]:
-        if num > 1:
-            assert all(equal(a[-1], full((), stop, dtype=a.dtype))), "linspace() produced an array that does not include the endpoint"
-    else:
-        # linspace(..., num, endpoint=False) is the same as the first num
-        # elements of linspace(..., num+1, endpoint=True)
-        b = linspace(start, stop, num + 1, **{**kwargs, 'endpoint': True})
-        assert_exactly_equal(b[:-1], a)
-
+        ph.assert_dtype("linspace", (out.dtype,), dtype)
+    ph.assert_shape("linspace", out.shape, num, start=stop, stop=stop, num=num)
+    f_func = f"[linspace({start}, {stop}, {num})]"
     if num > 0:
-        # We need to cast start to dtype
-        assert all(equal(a[0], full((), start, dtype=a.dtype))), "linspace() produced an array that does not start with the start"
+        assert ah.equal(
+            out[0], ah.asarray(start, dtype=out.dtype)
+        ), f"out[0]={out[0]}, but should be {start} {f_func}"
+    if endpoint:
+        if num > 1:
+            assert ah.equal(
+                out[-1], ah.asarray(stop, dtype=out.dtype)
+            ), f"out[-1]={out[-1]}, but should be {stop} {f_func}"
+    else:
+        # linspace(..., num, endpoint=True) should return an array equivalent to
+        # the first num elements when endpoint=False
+        expected = xp.linspace(start, stop, num + 1, dtype=dtype, endpoint=True)
+        expected = expected[:-1]
+        ah.assert_exactly_equal(out, expected)
 
-        # TODO: This requires an assert_approx_equal function
 
-        # n = num - 1 if endpoint in [None, True] else num
-        # for i in range(1, num):
-        #     assert all(equal(a[i], full((), i*(stop - start)/n + start, dtype=dtype))), f"linspace() produced an array with an incorrect value at index {i}"
-
-
-def make_one(dtype):
-    if kwargs is None or dh.is_float_dtype(dtype):
+def make_one(dtype: DataType) -> Scalar:
+    if dtype is None or dh.is_float_dtype(dtype):
         return 1.0
     elif dh.is_int_dtype(dtype):
         return 1
@@ -255,35 +389,35 @@ def make_one(dtype):
         return True
 
 
-@given(shapes(), kwargs(dtype=none() | xps.scalar_dtypes()))
+@given(hh.shapes(), hh.kwargs(dtype=st.none() | xps.scalar_dtypes()))
 def test_ones(shape, kw):
-    out = ones(shape, **kw)
-    dtype = kw.get("dtype", None) or xp.float64
+    out = xp.ones(shape, **kw)
     if kw.get("dtype", None) is None:
-        assert dh.is_float_dtype(out.dtype), f"ones() returned an array with dtype {out.dtype}, but should be the default float dtype"
+        ph.assert_default_float("ones", out.dtype)
     else:
-        assert out.dtype == dtype, f"{dtype=!s}, but ones() returned an array with dtype {out.dtype}"
-    assert out.shape == shape, f"{shape=}, but empty() returned an array with shape {out.shape}"
-    assert all(equal(out, full((), make_one(dtype), dtype=dtype))), "ones() array did not equal 1"
+        ph.assert_kw_dtype("ones", kw["dtype"], out.dtype)
+    ph.assert_shape("ones", out.shape, shape, shape=shape)
+    dtype = kw.get("dtype", None) or dh.default_float
+    ph.assert_fill("ones", make_one(dtype), dtype, out)
 
 
 @given(
-    x=xps.arrays(dtype=dtypes, shape=shapes()),
-    kw=kwargs(dtype=none() | xps.scalar_dtypes()),
+    x=xps.arrays(dtype=hh.dtypes, shape=hh.shapes()),
+    kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
 )
 def test_ones_like(x, kw):
-    out = ones_like(x, **kw)
-    dtype = kw.get("dtype", None) or x.dtype
+    out = xp.ones_like(x, **kw)
     if kw.get("dtype", None) is None:
-        assert out.dtype == x.dtype, f"{x.dtype=!s}, but ones_like() returned an array with dtype {out.dtype}"
+        ph.assert_dtype("ones_like", (x.dtype,), out.dtype)
     else:
-        assert out.dtype == dtype, f"{dtype=!s}, but ones_like() returned an array with dtype {out.dtype}"
-    assert out.shape == x.shape, "{x.shape=}, but ones_like() returned an array with shape {out.shape}"
-    assert all(equal(out, full((), make_one(dtype), dtype=dtype))), "ones_like() array elements did not equal 1"
+        ph.assert_kw_dtype("ones_like", kw["dtype"], out.dtype)
+    ph.assert_shape("ones_like", out.shape, x.shape)
+    dtype = kw.get("dtype", None) or x.dtype
+    ph.assert_fill("ones_like", make_one(dtype), dtype, out)
 
 
-def make_zero(dtype):
-    if dh.is_float_dtype(dtype):
+def make_zero(dtype: DataType) -> Scalar:
+    if dtype is None or dh.is_float_dtype(dtype):
         return 0.0
     elif dh.is_int_dtype(dtype):
         return 0
@@ -291,29 +425,28 @@ def make_zero(dtype):
         return False
 
 
-@given(shapes(), kwargs(dtype=none() | xps.scalar_dtypes()))
+@given(hh.shapes(), hh.kwargs(dtype=st.none() | xps.scalar_dtypes()))
 def test_zeros(shape, kw):
-    out = zeros(shape, **kw)
-    dtype = kw.get("dtype", None) or xp.float64
+    out = xp.zeros(shape, **kw)
     if kw.get("dtype", None) is None:
-        assert dh.is_float_dtype(out.dtype), "zeros() returned an array with dtype {out.dtype}, but should be the default float dtype"
+        ph.assert_default_float("zeros", out.dtype)
     else:
-        assert out.dtype == dtype, f"{dtype=!s}, but zeros() returned an array with dtype {out.dtype}"
-    assert out.shape == shape, "zeros() produced an array with incorrect shape"
-    assert all(equal(out, full((), make_zero(dtype), dtype=dtype))), "zeros() array did not equal 0"
+        ph.assert_kw_dtype("zeros", kw["dtype"], out.dtype)
+    ph.assert_shape("zeros", out.shape, shape, shape=shape)
+    dtype = kw.get("dtype", None) or dh.default_float
+    ph.assert_fill("zeros", make_zero(dtype), dtype, out)
 
 
 @given(
-    x=xps.arrays(dtype=dtypes, shape=shapes()),
-    kw=kwargs(dtype=none() | xps.scalar_dtypes()),
+    x=xps.arrays(dtype=hh.dtypes, shape=hh.shapes()),
+    kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
 )
 def test_zeros_like(x, kw):
-    out = zeros_like(x, **kw)
-    dtype = kw.get("dtype", None) or x.dtype
+    out = xp.zeros_like(x, **kw)
     if kw.get("dtype", None) is None:
-        assert out.dtype == x.dtype, f"{x.dtype=!s}, but zeros_like() returned an array with dtype {out.dtype}"
+        ph.assert_dtype("zeros_like", (x.dtype,), out.dtype)
     else:
-        assert out.dtype == dtype, f"{dtype=!s}, but zeros_like() returned an array with dtype {out.dtype}"
-    assert out.shape == x.shape, "{x.shape=}, but zeros_like() returned an array with shape {out.shape}"
-    assert all(equal(out, full((), make_zero(dtype), dtype=out.dtype))), "zeros_like() array elements did not all equal 0"
-
+        ph.assert_kw_dtype("zeros_like", kw["dtype"], out.dtype)
+    ph.assert_shape("zeros_like", out.shape, x.shape)
+    dtype = kw.get("dtype", None) or x.dtype
+    ph.assert_fill("zeros_like", make_zero(dtype), dtype, out)

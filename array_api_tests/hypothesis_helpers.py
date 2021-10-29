@@ -1,25 +1,24 @@
-from functools import reduce
-from operator import mul
-from math import sqrt
 import itertools
-from typing import Tuple, Optional, List
+from functools import reduce
+from math import sqrt
+from operator import mul
+from typing import Any, List, NamedTuple, Optional, Tuple
 
 from hypothesis import assume
-from hypothesis.strategies import (lists, integers, sampled_from,
-                                   shared, floats, just, composite, one_of,
-                                   none, booleans, SearchStrategy)
+from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
+                                   integers, just, lists, none, one_of,
+                                   sampled_from, shared)
 
-from .pytest_helpers import nargs
-from .array_helpers import ndindex
-from .typing import DataType, Shape
-from . import dtype_helpers as dh
-from ._array_module import (full, float32, float64, bool as bool_dtype,
-                            _UndefinedStub, eye, broadcast_to)
 from . import _array_module as xp
+from . import dtype_helpers as dh
 from . import xps
-
+from ._array_module import _UndefinedStub
+from ._array_module import bool as bool_dtype
+from ._array_module import broadcast_to, eye, float32, float64, full
+from .array_helpers import ndindex
 from .function_stubs import elementwise_functions
-
+from .pytest_helpers import nargs
+from .typing import DataType, Shape
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
 # If no compatible dtype is implemented for a given test, the test will fail
@@ -382,3 +381,24 @@ def kwargs(draw, **kw):
         if draw(booleans()):
             result[k] = draw(strat)
     return result
+
+
+class KVD(NamedTuple):
+    keyword: str
+    value: Any
+    default: Any
+
+
+@composite
+def specified_kwargs(draw, *keys_values_defaults: KVD):
+    """Generates valid kwargs given expected defaults.
+
+    When we can't realistically use hh.kwargs() and thus test whether xp infact
+    defaults correctly, this strategy lets us remove generated arguments if they
+    are of the default value anyway.
+    """
+    kw = {}
+    for keyword, value, default in keys_values_defaults:
+        if value is not default or draw(booleans()):
+            kw[keyword] = value
+    return kw
