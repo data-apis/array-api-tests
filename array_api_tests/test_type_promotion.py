@@ -1,6 +1,7 @@
 """
 https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html
 """
+import math
 from collections import defaultdict
 from typing import Tuple, Union, List
 
@@ -24,22 +25,30 @@ from .function_stubs import elementwise_functions
 @given(hh.mutually_promotable_dtypes(None))
 def test_result_type(dtypes):
     out = xp.result_type(*dtypes)
-    ph.assert_dtype('result_type', dtypes, out, out_name='out')
+    ph.assert_dtype("result_type", dtypes, out, out_name="out")
 
 
+# The number and size of generated arrays is arbitrarily limited to prevent
+# meshgrid() running out of memory.
 @given(
-    dtypes=hh.mutually_promotable_dtypes(None, dtypes=dh.numeric_dtypes),
+    dtypes=hh.mutually_promotable_dtypes(5, dtypes=dh.numeric_dtypes),
     data=st.data(),
 )
 def test_meshgrid(dtypes, data):
     arrays = []
-    shapes = data.draw(hh.mutually_broadcastable_shapes(len(dtypes)), label='shapes')
+    shapes = data.draw(
+        hh.mutually_broadcastable_shapes(
+            len(dtypes), min_dims=1, max_dims=1, max_side=5
+        ),
+        label="shapes",
+    )
     for i, (dtype, shape) in enumerate(zip(dtypes, shapes), 1):
-        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
+        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
         arrays.append(x)
+    assert math.prod(x.size for x in arrays) <= hh.MAX_ARRAY_SIZE  # sanity check
     out = xp.meshgrid(*arrays)
     for i, x in enumerate(out):
-        ph.assert_dtype('meshgrid', dtypes, x.dtype, out_name=f'out[{i}].dtype')
+        ph.assert_dtype("meshgrid", dtypes, x.dtype, out_name=f"out[{i}].dtype")
 
 
 @given(
@@ -50,10 +59,10 @@ def test_meshgrid(dtypes, data):
 def test_concat(shape, dtypes, data):
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
-        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
+        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
         arrays.append(x)
     out = xp.concat(arrays)
-    ph.assert_dtype('concat', dtypes, out.dtype)
+    ph.assert_dtype("concat", dtypes, out.dtype)
 
 
 @given(
@@ -64,26 +73,26 @@ def test_concat(shape, dtypes, data):
 def test_stack(shape, dtypes, data):
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
-        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f'x{i}')
+        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
         arrays.append(x)
     out = xp.stack(arrays)
-    ph.assert_dtype('stack', dtypes, out.dtype)
+    ph.assert_dtype("stack", dtypes, out.dtype)
 
 
 bitwise_shift_funcs = [
-    'bitwise_left_shift',
-    'bitwise_right_shift',
-    '__lshift__',
-    '__rshift__',
-    '__ilshift__',
-    '__irshift__',
+    "bitwise_left_shift",
+    "bitwise_right_shift",
+    "__lshift__",
+    "__rshift__",
+    "__ilshift__",
+    "__irshift__",
 ]
 
 
 # We pass kwargs to the elements strategy used by xps.arrays() so that we don't
 # generate array elements that are erroneous or undefined for a function.
 func_elements = defaultdict(
-    lambda: None, {func: {'min_value': 1} for func in bitwise_shift_funcs}
+    lambda: None, {func: {"min_value": 1} for func in bitwise_shift_funcs}
 )
 
 
@@ -94,7 +103,7 @@ def make_id(
 ) -> str:
     f_args = dh.fmt_types(in_dtypes)
     f_out_dtype = dh.dtype_to_name[out_dtype]
-    return f'{func_name}({f_args}) -> {f_out_dtype}'
+    return f"{func_name}({f_args}) -> {f_out_dtype}"
 
 
 func_params: List[Param[str, Tuple[DataType, ...], DataType]] = []
@@ -128,7 +137,7 @@ for func_name in elementwise_functions.__all__:
         raise NotImplementedError()
 
 
-@pytest.mark.parametrize('func_name, in_dtypes, out_dtype', func_params)
+@pytest.mark.parametrize("func_name, in_dtypes, out_dtype", func_params)
 @given(data=st.data())
 def test_func_promotion(func_name, in_dtypes, out_dtype, data):
     func = getattr(xp, func_name)
@@ -136,17 +145,17 @@ def test_func_promotion(func_name, in_dtypes, out_dtype, data):
     if len(in_dtypes) == 1:
         x = data.draw(
             xps.arrays(dtype=in_dtypes[0], shape=hh.shapes(), elements=elements),
-            label='x',
+            label="x",
         )
         out = func(x)
     else:
         arrays = []
         shapes = data.draw(
-            hh.mutually_broadcastable_shapes(len(in_dtypes)), label='shapes'
+            hh.mutually_broadcastable_shapes(len(in_dtypes)), label="shapes"
         )
         for i, (dtype, shape) in enumerate(zip(in_dtypes, shapes), 1):
             x = data.draw(
-                xps.arrays(dtype=dtype, shape=shape, elements=elements), label=f'x{i}'
+                xps.arrays(dtype=dtype, shape=shape, elements=elements), label=f"x{i}"
             )
             arrays.append(x)
         try:
@@ -161,46 +170,46 @@ for (dtype1, dtype2), promoted_dtype in dh.promotion_table.items():
     p = pytest.param(
         (dtype1, dtype2),
         promoted_dtype,
-        id=make_id('', (dtype1, dtype2), promoted_dtype),
+        id=make_id("", (dtype1, dtype2), promoted_dtype),
     )
     promotion_params.append(p)
 
 
-@pytest.mark.parametrize('in_dtypes, out_dtype', promotion_params)
+@pytest.mark.parametrize("in_dtypes, out_dtype", promotion_params)
 @given(shapes=hh.mutually_broadcastable_shapes(3), data=st.data())
 def test_where(in_dtypes, out_dtype, shapes, data):
-    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
-    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
-    cond = data.draw(xps.arrays(dtype=xp.bool, shape=shapes[2]), label='condition')
+    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label="x1")
+    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label="x2")
+    cond = data.draw(xps.arrays(dtype=xp.bool, shape=shapes[2]), label="condition")
     out = xp.where(cond, x1, x2)
-    ph.assert_dtype('where', in_dtypes, out.dtype, out_dtype)
+    ph.assert_dtype("where", in_dtypes, out.dtype, out_dtype)
 
 
 numeric_promotion_params = promotion_params[1:]
 
 
-@pytest.mark.parametrize('in_dtypes, out_dtype', numeric_promotion_params)
+@pytest.mark.parametrize("in_dtypes, out_dtype", numeric_promotion_params)
 @given(shapes=hh.mutually_broadcastable_shapes(2, min_dims=2), data=st.data())
 def test_tensordot(in_dtypes, out_dtype, shapes, data):
-    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
-    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
+    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label="x1")
+    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label="x2")
     out = xp.tensordot(x1, x2)
-    ph.assert_dtype('tensordot', in_dtypes, out.dtype, out_dtype)
+    ph.assert_dtype("tensordot", in_dtypes, out.dtype, out_dtype)
 
 
-@pytest.mark.parametrize('in_dtypes, out_dtype', numeric_promotion_params)
+@pytest.mark.parametrize("in_dtypes, out_dtype", numeric_promotion_params)
 @given(shapes=hh.mutually_broadcastable_shapes(2, min_dims=1), data=st.data())
 def test_vecdot(in_dtypes, out_dtype, shapes, data):
-    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label='x1')
-    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label='x2')
+    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label="x1")
+    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label="x2")
     out = xp.vecdot(x1, x2)
-    ph.assert_dtype('vecdot', in_dtypes, out.dtype, out_dtype)
+    ph.assert_dtype("vecdot", in_dtypes, out.dtype, out_dtype)
 
 
 op_params: List[Param[str, str, Tuple[DataType, ...], DataType]] = []
 op_to_symbol = {**dh.unary_op_to_symbol, **dh.binary_op_to_symbol}
 for op, symbol in op_to_symbol.items():
-    if op == '__matmul__':
+    if op == "__matmul__":
         continue
     valid_in_dtypes = dh.func_in_dtypes[op]
     ndtypes = ph.nargs(op)
@@ -209,7 +218,7 @@ for op, symbol in op_to_symbol.items():
             out_dtype = xp.bool if dh.func_returns_bool[op] else in_dtype
             p = pytest.param(
                 op,
-                f'{symbol}x',
+                f"{symbol}x",
                 (in_dtype,),
                 out_dtype,
                 id=make_id(op, (in_dtype,), out_dtype),
@@ -221,42 +230,42 @@ for op, symbol in op_to_symbol.items():
                 out_dtype = xp.bool if dh.func_returns_bool[op] else promoted_dtype
                 p = pytest.param(
                     op,
-                    f'x1 {symbol} x2',
+                    f"x1 {symbol} x2",
                     (in_dtype1, in_dtype2),
                     out_dtype,
                     id=make_id(op, (in_dtype1, in_dtype2), out_dtype),
                 )
                 op_params.append(p)
 # We generate params for abs seperately as it does not have an associated symbol
-for in_dtype in dh.func_in_dtypes['__abs__']:
+for in_dtype in dh.func_in_dtypes["__abs__"]:
     p = pytest.param(
-        '__abs__',
-        'abs(x)',
+        "__abs__",
+        "abs(x)",
         (in_dtype,),
         in_dtype,
-        id=make_id('__abs__', (in_dtype,), in_dtype),
+        id=make_id("__abs__", (in_dtype,), in_dtype),
     )
     op_params.append(p)
 
 
-@pytest.mark.parametrize('op, expr, in_dtypes, out_dtype', op_params)
+@pytest.mark.parametrize("op, expr, in_dtypes, out_dtype", op_params)
 @given(data=st.data())
 def test_op_promotion(op, expr, in_dtypes, out_dtype, data):
     elements = func_elements[func_name]
     if len(in_dtypes) == 1:
         x = data.draw(
             xps.arrays(dtype=in_dtypes[0], shape=hh.shapes(), elements=elements),
-            label='x',
+            label="x",
         )
-        out = eval(expr, {'x': x})
+        out = eval(expr, {"x": x})
     else:
         locals_ = {}
         shapes = data.draw(
-            hh.mutually_broadcastable_shapes(len(in_dtypes)), label='shapes'
+            hh.mutually_broadcastable_shapes(len(in_dtypes)), label="shapes"
         )
         for i, (dtype, shape) in enumerate(zip(in_dtypes, shapes), 1):
-            locals_[f'x{i}'] = data.draw(
-                xps.arrays(dtype=dtype, shape=shape, elements=elements), label=f'x{i}'
+            locals_[f"x{i}"] = data.draw(
+                xps.arrays(dtype=dtype, shape=shape, elements=elements), label=f"x{i}"
             )
         try:
             out = eval(expr, locals_)
@@ -267,7 +276,7 @@ def test_op_promotion(op, expr, in_dtypes, out_dtype, data):
 
 inplace_params: List[Param[str, str, Tuple[DataType, ...], DataType]] = []
 for op, symbol in dh.inplace_op_to_symbol.items():
-    if op == '__imatmul__':
+    if op == "__imatmul__":
         continue
     valid_in_dtypes = dh.func_in_dtypes[op]
     for (in_dtype1, in_dtype2), promoted_dtype in dh.promotion_table.items():
@@ -278,7 +287,7 @@ for op, symbol in dh.inplace_op_to_symbol.items():
         ):
             p = pytest.param(
                 op,
-                f'x1 {symbol} x2',
+                f"x1 {symbol} x2",
                 (in_dtype1, in_dtype2),
                 promoted_dtype,
                 id=make_id(op, (in_dtype1, in_dtype2), promoted_dtype),
@@ -286,36 +295,36 @@ for op, symbol in dh.inplace_op_to_symbol.items():
             inplace_params.append(p)
 
 
-@pytest.mark.parametrize('op, expr, in_dtypes, out_dtype', inplace_params)
+@pytest.mark.parametrize("op, expr, in_dtypes, out_dtype", inplace_params)
 @given(shapes=hh.mutually_broadcastable_shapes(2), data=st.data())
 def test_inplace_op_promotion(op, expr, in_dtypes, out_dtype, shapes, data):
     assume(len(shapes[0]) >= len(shapes[1]))
     elements = func_elements[func_name]
     x1 = data.draw(
-        xps.arrays(dtype=in_dtypes[0], shape=shapes[0], elements=elements), label='x1'
+        xps.arrays(dtype=in_dtypes[0], shape=shapes[0], elements=elements), label="x1"
     )
     x2 = data.draw(
-        xps.arrays(dtype=in_dtypes[1], shape=shapes[1], elements=elements), label='x2'
+        xps.arrays(dtype=in_dtypes[1], shape=shapes[1], elements=elements), label="x2"
     )
-    locals_ = {'x1': x1, 'x2': x2}
+    locals_ = {"x1": x1, "x2": x2}
     try:
         exec(expr, locals_)
     except OverflowError:
         reject()
-    x1 = locals_['x1']
-    ph.assert_dtype(op, in_dtypes, x1.dtype, out_dtype, out_name='x1.dtype')
+    x1 = locals_["x1"]
+    ph.assert_dtype(op, in_dtypes, x1.dtype, out_dtype, out_name="x1.dtype")
 
 
 op_scalar_params: List[Param[str, str, DataType, ScalarType, DataType]] = []
 for op, symbol in dh.binary_op_to_symbol.items():
-    if op == '__matmul__':
+    if op == "__matmul__":
         continue
     for in_dtype in dh.func_in_dtypes[op]:
         out_dtype = xp.bool if dh.func_returns_bool[op] else in_dtype
         for in_stype in dh.dtype_to_scalars[in_dtype]:
             p = pytest.param(
                 op,
-                f'x {symbol} s',
+                f"x {symbol} s",
                 in_dtype,
                 in_stype,
                 out_dtype,
@@ -324,17 +333,17 @@ for op, symbol in dh.binary_op_to_symbol.items():
             op_scalar_params.append(p)
 
 
-@pytest.mark.parametrize('op, expr, in_dtype, in_stype, out_dtype', op_scalar_params)
+@pytest.mark.parametrize("op, expr, in_dtype, in_stype, out_dtype", op_scalar_params)
 @given(data=st.data())
 def test_op_scalar_promotion(op, expr, in_dtype, in_stype, out_dtype, data):
     elements = func_elements[func_name]
-    kw = {k: in_stype is float for k in ('allow_nan', 'allow_infinity')}
-    s = data.draw(xps.from_dtype(in_dtype, **kw).map(in_stype), label='scalar')
+    kw = {k: in_stype is float for k in ("allow_nan", "allow_infinity")}
+    s = data.draw(xps.from_dtype(in_dtype, **kw).map(in_stype), label="scalar")
     x = data.draw(
-        xps.arrays(dtype=in_dtype, shape=hh.shapes(), elements=elements), label='x'
+        xps.arrays(dtype=in_dtype, shape=hh.shapes(), elements=elements), label="x"
     )
     try:
-        out = eval(expr, {'x': x, 's': s})
+        out = eval(expr, {"x": x, "s": s})
     except OverflowError:
         reject()
     ph.assert_dtype(op, (in_dtype, in_stype), out.dtype, out_dtype)
@@ -342,13 +351,13 @@ def test_op_scalar_promotion(op, expr, in_dtype, in_stype, out_dtype, data):
 
 inplace_scalar_params: List[Param[str, str, DataType, ScalarType]] = []
 for op, symbol in dh.inplace_op_to_symbol.items():
-    if op == '__imatmul__':
+    if op == "__imatmul__":
         continue
     for dtype in dh.func_in_dtypes[op]:
         for in_stype in dh.dtype_to_scalars[dtype]:
             p = pytest.param(
                 op,
-                f'x {symbol} s',
+                f"x {symbol} s",
                 dtype,
                 in_stype,
                 id=make_id(op, (dtype, in_stype), dtype),
@@ -356,25 +365,25 @@ for op, symbol in dh.inplace_op_to_symbol.items():
             inplace_scalar_params.append(p)
 
 
-@pytest.mark.parametrize('op, expr, dtype, in_stype', inplace_scalar_params)
+@pytest.mark.parametrize("op, expr, dtype, in_stype", inplace_scalar_params)
 @given(data=st.data())
 def test_inplace_op_scalar_promotion(op, expr, dtype, in_stype, data):
     elements = func_elements[func_name]
-    kw = {k: in_stype is float for k in ('allow_nan', 'allow_infinity')}
-    s = data.draw(xps.from_dtype(dtype, **kw).map(in_stype), label='scalar')
+    kw = {k: in_stype is float for k in ("allow_nan", "allow_infinity")}
+    s = data.draw(xps.from_dtype(dtype, **kw).map(in_stype), label="scalar")
     x = data.draw(
-        xps.arrays(dtype=dtype, shape=hh.shapes(), elements=elements), label='x'
+        xps.arrays(dtype=dtype, shape=hh.shapes(), elements=elements), label="x"
     )
-    locals_ = {'x': x, 's': s}
+    locals_ = {"x": x, "s": s}
     try:
         exec(expr, locals_)
     except OverflowError:
         reject()
-    x = locals_['x']
-    assert x.dtype == dtype, f'{x.dtype=!s}, but should be {dtype}'
-    ph.assert_dtype(op, (dtype, in_stype), x.dtype, dtype, out_name='x.dtype')
+    x = locals_["x"]
+    assert x.dtype == dtype, f"{x.dtype=!s}, but should be {dtype}"
+    ph.assert_dtype(op, (dtype, in_stype), x.dtype, dtype, out_name="x.dtype")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     for (i, j), p in dh.promotion_table.items():
-        print(f'({i}, {j}) -> {p}')
+        print(f"({i}, {j}) -> {p}")
