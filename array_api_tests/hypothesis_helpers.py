@@ -2,7 +2,7 @@ import itertools
 from functools import reduce
 from math import sqrt
 from operator import mul
-from typing import Any, List, NamedTuple, Optional, Tuple
+from typing import Any, List, NamedTuple, Optional, Tuple, Sequence
 
 from hypothesis import assume
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
@@ -68,19 +68,14 @@ def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):
 
 promotable_dtypes: List[Tuple[DataType, DataType]] = sorted(dh.promotion_table.keys(), key=_dtypes_sorter)
 
-if FILTER_UNDEFINED_DTYPES:
-    promotable_dtypes = [
-        (i, j) for i, j in promotable_dtypes
-        if not isinstance(i, _UndefinedStub)
-        and not isinstance(j, _UndefinedStub)
-    ]
-
-
 def mutually_promotable_dtypes(
     max_size: Optional[int] = 2,
     *,
-    dtypes: Tuple[DataType, ...] = dh.all_dtypes,
+    dtypes: Sequence[DataType] = dh.all_dtypes,
 ) -> SearchStrategy[Tuple[DataType, ...]]:
+    if FILTER_UNDEFINED_DTYPES:
+        dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
+        assert len(dtypes) > 0, "all dtypes undefined"  # sanity check
     if max_size == 2:
         return sampled_from(
             [(i, j) for i, j in promotable_dtypes if i in dtypes and j in dtypes]
@@ -347,7 +342,7 @@ def multiaxis_indices(draw, shapes):
 
 
 def two_mutual_arrays(
-    dtypes: Tuple[DataType, ...] = dh.all_dtypes,
+    dtypes: Sequence[DataType] = dh.all_dtypes,
     two_shapes: SearchStrategy[Tuple[Shape, Shape]] = two_mutually_broadcastable_shapes,
 ) -> SearchStrategy:
     mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtypes))

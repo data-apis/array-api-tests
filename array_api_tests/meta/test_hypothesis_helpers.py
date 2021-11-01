@@ -15,12 +15,26 @@ UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in dh.all_dtypes)
 pytestmark = [pytest.mark.skipif(UNDEFINED_DTYPES, reason="undefined dtypes")]
 
 @given(hh.mutually_promotable_dtypes(dtypes=dh.float_dtypes))
-def test_mutually_promotable_dtypes(pairs):
-    assert pairs in (
+def test_mutually_promotable_dtypes(pair):
+    assert pair in (
         (xp.float32, xp.float32),
         (xp.float32, xp.float64),
         (xp.float64, xp.float32),
         (xp.float64, xp.float64),
+    )
+
+
+@given(
+    hh.mutually_promotable_dtypes(
+        dtypes=[xp.uint8, _UndefinedStub("uint16"), xp.uint32]
+    )
+)
+def test_partial_mutually_promotable_dtypes(pair):
+    assert pair in (
+        (xp.uint8, xp.uint8),
+        (xp.uint8, xp.uint32),
+        (xp.uint32, xp.uint8),
+        (xp.uint32, xp.uint32),
     )
 
 
