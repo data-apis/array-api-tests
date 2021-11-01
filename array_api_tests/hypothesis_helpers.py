@@ -18,7 +18,7 @@ from ._array_module import broadcast_to, eye, float32, float64, full
 from .array_helpers import ndindex
 from .function_stubs import elementwise_functions
 from .pytest_helpers import nargs
-from .typing import DataType, Shape, Array
+from .typing import Array, DataType, Shape
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
 # If no compatible dtype is implemented for a given test, the test will fail
