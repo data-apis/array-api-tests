@@ -25,7 +25,7 @@ from .function_stubs import elementwise_functions
 @given(hh.mutually_promotable_dtypes(None))
 def test_result_type(dtypes):
     out = xp.result_type(*dtypes)
-    ph.assert_dtype("result_type", dtypes, out, out_name="out")
+    ph.assert_dtype("result_type", dtypes, out, repr_name="out")
 
 
 # The number and size of generated arrays is arbitrarily limited to prevent
@@ -48,7 +48,7 @@ def test_meshgrid(dtypes, data):
     assert math.prod(x.size for x in arrays) <= hh.MAX_ARRAY_SIZE  # sanity check
     out = xp.meshgrid(*arrays)
     for i, x in enumerate(out):
-        ph.assert_dtype("meshgrid", dtypes, x.dtype, out_name=f"out[{i}].dtype")
+        ph.assert_dtype("meshgrid", dtypes, x.dtype, repr_name=f"out[{i}].dtype")
 
 
 @given(
@@ -312,7 +312,7 @@ def test_inplace_op_promotion(op, expr, in_dtypes, out_dtype, shapes, data):
     except OverflowError:
         reject()
     x1 = locals_["x1"]
-    ph.assert_dtype(op, in_dtypes, x1.dtype, out_dtype, out_name="x1.dtype")
+    ph.assert_dtype(op, in_dtypes, x1.dtype, out_dtype, repr_name="x1.dtype")
 
 
 op_scalar_params: List[Param[str, str, DataType, ScalarType, DataType]] = []
@@ -381,7 +381,7 @@ def test_inplace_op_scalar_promotion(op, expr, dtype, in_stype, data):
         reject()
     x = locals_["x"]
     assert x.dtype == dtype, f"{x.dtype=!s}, but should be {dtype}"
-    ph.assert_dtype(op, (dtype, in_stype), x.dtype, dtype, out_name="x.dtype")
+    ph.assert_dtype(op, (dtype, in_stype), x.dtype, dtype, repr_name="x.dtype")
 
 
 if __name__ == "__main__":

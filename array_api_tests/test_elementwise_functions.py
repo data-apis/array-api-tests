@@ -358,7 +358,7 @@ def test_bitwise_and(
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(func_name, res.shape, shape, out_name=f"{res_name}.shape")
+        ph.assert_shape(func_name, res.shape, shape, repr_name=f"{res_name}.shape")
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
 
@@ -409,7 +409,7 @@ def test_bitwise_left_shift(
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
         ph.assert_shape(
-            "bitwise_left_shift", res.shape, shape, out_name=f"{res_name}.shape"
+            "bitwise_left_shift", res.shape, shape, repr_name=f"{res_name}.shape"
         )
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
@@ -477,7 +477,7 @@ def test_bitwise_or(
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape("bitwise_or", res.shape, shape, out_name=f"{res_name}.shape")
+        ph.assert_shape("bitwise_or", res.shape, shape, repr_name=f"{res_name}.shape")
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
 
@@ -528,7 +528,7 @@ def test_bitwise_right_shift(
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
         ph.assert_shape(
-            "bitwise_right_shift", res.shape, shape, out_name=f"{res_name}.shape"
+            "bitwise_right_shift", res.shape, shape, repr_name=f"{res_name}.shape"
         )
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
@@ -568,7 +568,7 @@ def test_bitwise_xor(
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape("bitwise_xor", res.shape, shape, out_name=f"{res_name}.shape")
+        ph.assert_shape("bitwise_xor", res.shape, shape, repr_name=f"{res_name}.shape")
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
 
