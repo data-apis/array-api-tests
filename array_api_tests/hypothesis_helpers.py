@@ -18,7 +18,7 @@ from ._array_module import broadcast_to, eye, float32, float64, full
 from .array_helpers import ndindex
 from .function_stubs import elementwise_functions
 from .pytest_helpers import nargs
-from .typing import DataType, Shape
+from .typing import DataType, Shape, Array
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
 # If no compatible dtype is implemented for a given test, the test will fail
@@ -344,7 +344,9 @@ def multiaxis_indices(draw, shapes):
 def two_mutual_arrays(
     dtypes: Sequence[DataType] = dh.all_dtypes,
     two_shapes: SearchStrategy[Tuple[Shape, Shape]] = two_mutually_broadcastable_shapes,
-) -> SearchStrategy:
+) -> Tuple[SearchStrategy[Array], SearchStrategy[Array]]:
+    if not isinstance(dtypes, Sequence):
+        raise TypeError(f"{dtypes=} not a sequence")
     mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtypes))
     mutual_shapes = shared(two_shapes)
     arrays1 = xps.arrays(

@@ -70,6 +70,11 @@ def test_two_mutual_arrays(x1, x2):
     assert broadcast_shapes(x1.shape, x2.shape) in (x1.shape, x2.shape)
 
 
+def test_two_mutual_arrays_raises_on_bad_dtypes():
+    with pytest.raises(TypeError):
+        hh.two_mutual_arrays(dtypes=xps.scalar_dtypes())
+
+
 def test_kwargs():
     results = []
 
