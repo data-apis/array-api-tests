@@ -114,14 +114,19 @@ def assert_default_int(func_name: str, dtype: DataType):
 
 
 def assert_shape(
-    func_name: str, out_shape: Union[int, Shape], expected: Union[int, Shape], /, **kw
+    func_name: str,
+    out_shape: Union[int, Shape],
+    expected: Union[int, Shape],
+    /,
+    out_name="out.shape",
+    **kw,
 ):
     if isinstance(out_shape, int):
         out_shape = (out_shape,)
     if isinstance(expected, int):
         expected = (expected,)
     msg = (
-        f"out.shape={out_shape}, but should be {expected} [{func_name}({fmt_kw(kw)})]"
+        f"{out_name}={out_shape}, but should be {expected} [{func_name}({fmt_kw(kw)})]"
     )
     assert out_shape == expected, msg
 
