@@ -10,6 +10,7 @@ special_cases/
 """
 
 import math
+from enum import Enum, auto
 from typing import Callable, List, Sequence, Union
 
 import pytest
@@ -24,7 +25,6 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
 from .typing import Array, DataType, Param, Scalar
-
 
 # We might as well use this implementation rather than xp.broadcast_shapes()
 from .test_broadcasting import broadcast_shapes
@@ -74,17 +74,32 @@ BinaryParam = Param[
 ]
 
 
+class FuncType(Enum):
+    FUNC = auto()
+    OP = auto()
+    IOP = auto()
+
+    @classmethod
+    def from_name(cls, name: str):
+        if name in dh.binary_op_to_symbol.keys():
+            return cls.OP
+        elif name in dh.inplace_op_to_symbol.keys():
+            return cls.IOP
+        else:
+            return cls.FUNC
+
+
 def _make_binary_param(
     func_name: str, right_is_scalar: bool, dtypes: Sequence[DataType]
 ) -> BinaryParam:
-    if func_name in dh.binary_op_to_symbol.keys():
-        func_type = "op"
-    elif func_name in dh.inplace_op_to_symbol.keys():
-        func_type = "iop"
-    else:
-        func_type = "func"
+    func_type = FuncType.from_name(func_name)
 
-    left_sym, right_sym = ("x", "s") if right_is_scalar else ("x1", "x2")
+    if right_is_scalar:
+        left_sym = "x"
+        right_sym = "s"
+    else:
+        left_sym = "x1"
+        right_sym = "x2"
 
     dtypes_strat = st.sampled_from(dtypes)
     shared_dtypes = st.shared(dtypes_strat)
@@ -92,20 +107,20 @@ def _make_binary_param(
         left_strat = xps.arrays(dtype=shared_dtypes, shape=hh.shapes())
         right_strat = shared_dtypes.flatmap(lambda d: xps.from_dtype(d, **finite_kw))
     else:
-        if func_type == "iop":
+        if func_type is FuncType.IOP:
             shared_shapes = st.shared(hh.shapes())
             left_strat = xps.arrays(dtype=shared_dtypes, shape=shared_shapes)
             right_strat = xps.arrays(dtype=shared_dtypes, shape=shared_shapes)
         else:
             left_strat, right_strat = hh.two_mutual_arrays(dtypes)
 
-    if func_type == "func":
+    if func_type is FuncType.FUNC:
         func = getattr(xp, func_name)
     else:
         op_sym = all_op_to_symbol[func_name]
         expr = f"{left_sym} {op_sym} {right_sym}"
 
-        if func_type == "op":
+        if func_type is FuncType.OP:
 
             def func(l: Array, r: Union[Scalar, Array]) -> Array:
                 locals_ = {}
@@ -124,7 +139,7 @@ def _make_binary_param(
 
         func.__name__ = func_name  # for repr
 
-    if func_type == "iop":
+    if func_type is FuncType.IOP:
         res_name = left_sym
     else:
         res_name = "out"
