@@ -19,6 +19,7 @@ __all__ = [
     'dtype_to_scalars',
     'is_int_dtype',
     'is_float_dtype',
+    'get_scalar_type',
     'dtype_ranges',
     'default_int',
     'default_float',
@@ -73,6 +74,15 @@ def is_float_dtype(dtype):
         return False
     # TODO: Return True for float dtypes that aren't part of the spec e.g. np.float16
     return dtype in float_dtypes
+
+
+def get_scalar_type(dtype: DataType) -> ScalarType:
+    if is_int_dtype(dtype):
+        return int
+    elif is_float_dtype(dtype):
+        return float
+    else:
+        return bool
 
 
 class MinMax(NamedTuple):

@@ -709,19 +709,13 @@ def test_equal(
         _left = ah.asarray(_left, dtype=promoted_dtype)
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
-        if dh.is_int_dtype(promoted_dtype):
-            scalar_func = int
-        elif dh.is_float_dtype(promoted_dtype):
-            scalar_func = float
-        else:
-            scalar_func = bool
-
+        scalar_type = dh.get_scalar_type(promoted_dtype)
         for idx in ah.ndindex(shape):
             x1_idx = _left[idx]
             x2_idx = _right[idx]
             out_idx = out[idx]
             assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_func(x1_idx) == scalar_func(x2_idx))
+            assert bool(out_idx) == (scalar_type(x1_idx) == scalar_type(x2_idx))
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -840,18 +834,13 @@ def test_greater(
         _left = ah.asarray(_left, dtype=promoted_dtype)
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
-        if dh.is_int_dtype(promoted_dtype):
-            scalar_func = int
-        elif dh.is_float_dtype(promoted_dtype):
-            scalar_func = float
-        else:
-            scalar_func = bool
+        scalar_type = dh.get_scalar_type(promoted_dtype)
         for idx in ah.ndindex(shape):
             out_idx = out[idx]
             x1_idx = _left[idx]
             x2_idx = _right[idx]
             assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_func(x1_idx) > scalar_func(x2_idx))
+            assert bool(out_idx) == (scalar_type(x1_idx) > scalar_type(x2_idx))
 
 
 @pytest.mark.parametrize(
@@ -886,18 +875,13 @@ def test_greater_equal(
         _left = ah.asarray(_left, dtype=promoted_dtype)
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
-        if dh.is_int_dtype(promoted_dtype):
-            scalar_func = int
-        elif dh.is_float_dtype(promoted_dtype):
-            scalar_func = float
-        else:
-            scalar_func = bool
+        scalar_type = dh.get_scalar_type(promoted_dtype)
         for idx in ah.ndindex(shape):
             out_idx = out[idx]
             x1_idx = _left[idx]
             x2_idx = _right[idx]
             assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_func(x1_idx) >= scalar_func(x2_idx))
+            assert bool(out_idx) == (scalar_type(x1_idx) >= scalar_type(x2_idx))
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -983,19 +967,13 @@ def test_less(
         _left = ah.asarray(_left, dtype=promoted_dtype)
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
-        if dh.is_int_dtype(promoted_dtype):
-            scalar_func = int
-        elif dh.is_float_dtype(promoted_dtype):
-            scalar_func = float
-        else:
-            scalar_func = bool
-
+        scalar_type = dh.get_scalar_type(promoted_dtype)
         for idx in ah.ndindex(shape):
             x1_idx = _left[idx]
             x2_idx = _right[idx]
             out_idx = out[idx]
             assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_func(x1_idx) < scalar_func(x2_idx))
+            assert bool(out_idx) == (scalar_type(x1_idx) < scalar_type(x2_idx))
 
 
 @pytest.mark.parametrize(
@@ -1030,19 +1008,13 @@ def test_less_equal(
         _left = ah.asarray(_left, dtype=promoted_dtype)
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
-        if dh.is_int_dtype(promoted_dtype):
-            scalar_func = int
-        elif dh.is_float_dtype(promoted_dtype):
-            scalar_func = float
-        else:
-            scalar_func = bool
-
+        scalar_type = dh.get_scalar_type(promoted_dtype)
         for idx in ah.ndindex(shape):
             x1_idx = _left[idx]
             x2_idx = _right[idx]
             out_idx = out[idx]
             assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_func(x1_idx) <= scalar_func(x2_idx))
+            assert bool(out_idx) == (scalar_type(x1_idx) <= scalar_type(x2_idx))
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -1241,19 +1213,13 @@ def test_not_equal(
         _left = ah.asarray(_left, dtype=promoted_dtype)
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
-        if dh.is_int_dtype(promoted_dtype):
-            scalar_func = int
-        elif dh.is_float_dtype(promoted_dtype):
-            scalar_func = float
-        else:
-            scalar_func = bool
-
+        scalar_type = dh.get_scalar_type(promoted_dtype)
         for idx in ah.ndindex(shape):
             out_idx = out[idx]
             x1_idx = _left[idx]
             x2_idx = _right[idx]
             assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_func(x1_idx) != scalar_func(x2_idx))
+            assert bool(out_idx) == (scalar_type(x1_idx) != scalar_type(x2_idx))
 
 
 @pytest.mark.parametrize(
