@@ -29,7 +29,24 @@ from .typing import Array, DataType, Param, Scalar
 # We might as well use this implementation rather than xp.broadcast_shapes()
 from .test_broadcasting import broadcast_shapes
 
+
+# When appropiate, this module tests operators alongside their respective
+# elementwise methods. We do this by parametrizing a generalised test method
+# with every relevant method and operator.
+#
+# Notable arguments in the parameter:
+# - The function object, which for operator test cases is a wrapper that allows
+#   test logic to be generalised.
+# - The argument strategies, which can be used to draw arguments for the test
+#   case. They may require additional filtering for certain test cases.
+# - right_is_scalar (binary parameters), which denotes if the right argument is
+#   a scalar in a test case. This can be used to appropiately adjust draw
+#   filtering and test logic.
+
+
 func_to_op = {v: k for k, v in dh.op_to_func.items()}
+all_op_to_symbol = {**dh.binary_op_to_symbol, **dh.inplace_op_to_symbol}
+finite_kw = {"allow_nan": False, "allow_infinity": False}
 
 unary_argnames = ("func_name", "func", "strat")
 UnaryParam = Param[str, Callable[[Array], Array], st.SearchStrategy[Array]]
@@ -47,9 +64,6 @@ def make_unary_params(
         pytest.param(op_name, op, strat, id=op_name),
     ]
 
-
-all_op_to_symbol = {**dh.binary_op_to_symbol, **dh.inplace_op_to_symbol}
-finite_kw = {"allow_nan": False, "allow_infinity": False}
 
 binary_argnames = (
     "func_name",
