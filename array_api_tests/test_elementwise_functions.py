@@ -175,7 +175,7 @@ def test_abs(func_name, func, strat, data):
         )
         x = x[mask]
     out = func(x)
-    ph.assert_shape("abs", out.shape, x.shape)
+    ph.assert_shape(func_name, out.shape, x.shape)
     assert ah.all(
         ah.logical_not(ah.negative_mathematical_sign(out))
     ), f"out elements not all positively signed [{func_name}()]\n{out=}"
@@ -376,11 +376,12 @@ def test_bitwise_and(
                 s_left = int(_left[idx])
                 s_right = int(_right[idx])
                 s_res = int(res[idx])
-                vals_and = s_left & s_right
-                vals_and = ah.int_to_dtype(
-                    vals_and, dh.dtype_nbits[res.dtype], dh.dtype_signed[res.dtype]
+                s_and = ah.int_to_dtype(
+                    s_left & s_right,
+                    dh.dtype_nbits[res.dtype],
+                    dh.dtype_signed[res.dtype],
                 )
-                assert vals_and == s_res
+                assert s_and == s_res
 
 
 @pytest.mark.parametrize(
@@ -410,9 +411,7 @@ def test_bitwise_left_shift(
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(
-            "bitwise_left_shift", res.shape, shape, repr_name=f"{res_name}.shape"
-        )
+        ph.assert_shape(func_name, res.shape, shape, repr_name=f"{res_name}.shape")
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
 
@@ -421,12 +420,13 @@ def test_bitwise_left_shift(
             s_left = int(_left[idx])
             s_right = int(_right[idx])
             s_res = int(res[idx])
-            # We avoid shifting very large ints
-            vals_shift = s_left << s_right if s_right < dh.dtype_nbits[res.dtype] else 0
-            vals_shift = ah.int_to_dtype(
-                vals_shift, dh.dtype_nbits[res.dtype], dh.dtype_signed[res.dtype]
+            s_shift = ah.int_to_dtype(
+                # We avoid shifting very large ints
+                s_left << s_right if s_right < dh.dtype_nbits[res.dtype] else 0,
+                dh.dtype_nbits[res.dtype],
+                dh.dtype_signed[res.dtype],
             )
-            assert vals_shift == s_res
+            assert s_shift == s_res
 
 
 @pytest.mark.parametrize(
@@ -438,7 +438,7 @@ def test_bitwise_invert(func_name, func, strat, data):
 
     out = func(x)
 
-    ph.assert_shape("bitwise_invert", out.shape, x.shape)
+    ph.assert_shape(func_name, out.shape, x.shape)
     # Compare against the Python ~ operator.
     if out.dtype == xp.bool:
         for idx in ah.ndindex(out.shape):
@@ -449,11 +449,10 @@ def test_bitwise_invert(func_name, func, strat, data):
         for idx in ah.ndindex(out.shape):
             s_x = int(x[idx])
             s_out = int(out[idx])
-            s_x_invert = ~s_x
-            s_x_invert = ah.int_to_dtype(
-                s_x_invert, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype]
+            s_invert = ah.int_to_dtype(
+                ~s_x, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype]
             )
-            assert s_x_invert == s_out
+            assert s_invert == s_out
 
 
 @pytest.mark.parametrize(
@@ -479,7 +478,7 @@ def test_bitwise_or(
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape("bitwise_or", res.shape, shape, repr_name=f"{res_name}.shape")
+        ph.assert_shape(func_name, res.shape, shape, repr_name=f"{res_name}.shape")
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
 
@@ -495,11 +494,12 @@ def test_bitwise_or(
                 s_left = int(_left[idx])
                 s_right = int(_right[idx])
                 s_res = int(res[idx])
-                vals_or = s_left | s_right
-                vals_or = ah.int_to_dtype(
-                    vals_or, dh.dtype_nbits[res.dtype], dh.dtype_signed[res.dtype]
+                s_or = ah.int_to_dtype(
+                    s_left | s_right,
+                    dh.dtype_nbits[res.dtype],
+                    dh.dtype_signed[res.dtype],
                 )
-                assert vals_or == s_res
+                assert s_or == s_res
 
 
 @pytest.mark.parametrize(
@@ -540,11 +540,10 @@ def test_bitwise_right_shift(
             s_left = int(_left[idx])
             s_right = int(_right[idx])
             s_res = int(res[idx])
-            vals_shift = s_left >> s_right
-            vals_shift = ah.int_to_dtype(
-                vals_shift, dh.dtype_nbits[res.dtype], dh.dtype_signed[res.dtype]
+            s_shift = ah.int_to_dtype(
+                s_left >> s_right, dh.dtype_nbits[res.dtype], dh.dtype_signed[res.dtype]
             )
-            assert vals_shift == s_res
+            assert s_shift == s_res
 
 
 @pytest.mark.parametrize(
@@ -570,7 +569,7 @@ def test_bitwise_xor(
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape("bitwise_xor", res.shape, shape, repr_name=f"{res_name}.shape")
+        ph.assert_shape(func_name, res.shape, shape, repr_name=f"{res_name}.shape")
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
 
@@ -586,11 +585,12 @@ def test_bitwise_xor(
                 s_left = int(_left[idx])
                 s_right = int(_right[idx])
                 s_res = int(res[idx])
-                vals_xor = s_left ^ s_right
-                vals_xor = ah.int_to_dtype(
-                    vals_xor, dh.dtype_nbits[res.dtype], dh.dtype_signed[res.dtype]
+                s_xor = ah.int_to_dtype(
+                    s_left ^ s_right,
+                    dh.dtype_nbits[res.dtype],
+                    dh.dtype_signed[res.dtype],
                 )
-                assert vals_xor == s_res
+                assert s_xor == s_res
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -1205,7 +1205,7 @@ def test_not_equal(
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
 
         shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape("not_equal", out.shape, shape)
+        ph.assert_shape(func_name, out.shape, shape)
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
 
