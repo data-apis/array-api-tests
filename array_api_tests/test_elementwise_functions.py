@@ -35,18 +35,16 @@ unary_argnames = ("func_name", "func", "strat")
 UnaryParam = Param[str, Callable[[Array], Array], st.SearchStrategy[Array]]
 
 
-def make_unary_params(func_name: str, dtypes: Sequence[DataType]) -> List[UnaryParam]:
+def make_unary_params(
+    elwise_func_name: str, dtypes: Sequence[DataType]
+) -> List[UnaryParam]:
     strat = xps.arrays(dtype=st.sampled_from(dtypes), shape=hh.shapes())
-
-    func = getattr(xp, func_name)
-    op = func_to_op[func_name]
-
-    def op_func(x: Array) -> Array:
-        return getattr(x, op)()
-
+    func = getattr(xp, elwise_func_name)
+    op_name = func_to_op[elwise_func_name]
+    op = lambda x: getattr(x, op_name)()
     return [
-        pytest.param(func_name, func, strat, id=func_name),
-        pytest.param(op, op_func, strat, id=op),
+        pytest.param(elwise_func_name, func, strat, id=elwise_func_name),
+        pytest.param(op_name, op, strat, id=op_name),
     ]
 
 
@@ -79,101 +77,90 @@ class FuncType(Enum):
     OP = auto()
     IOP = auto()
 
-    @classmethod
-    def from_name(cls, name: str):
-        if name in dh.binary_op_to_symbol.keys():
-            return cls.OP
-        elif name in dh.inplace_op_to_symbol.keys():
-            return cls.IOP
-        else:
-            return cls.FUNC
 
-
-def _make_binary_param(
-    func_name: str, right_is_scalar: bool, dtypes: Sequence[DataType]
-) -> BinaryParam:
-    func_type = FuncType.from_name(func_name)
-
-    if right_is_scalar:
-        left_sym = "x"
-        right_sym = "s"
-    else:
-        left_sym = "x1"
-        right_sym = "x2"
-
+def make_binary_params(
+    elwise_func_name: str, dtypes: Sequence[DataType]
+) -> List[BinaryParam]:
     dtypes_strat = st.sampled_from(dtypes)
-    shared_dtypes = st.shared(dtypes_strat)
-    if right_is_scalar:
-        left_strat = xps.arrays(dtype=shared_dtypes, shape=hh.shapes())
-        right_strat = shared_dtypes.flatmap(lambda d: xps.from_dtype(d, **finite_kw))
-    else:
+
+    def make_param(
+        func_name: str, func_type: FuncType, right_is_scalar: bool
+    ) -> BinaryParam:
+        if right_is_scalar:
+            left_sym = "x"
+            right_sym = "s"
+        else:
+            left_sym = "x1"
+            right_sym = "x2"
+
+        shared_dtypes = st.shared(dtypes_strat)
+        if right_is_scalar:
+            left_strat = xps.arrays(dtype=shared_dtypes, shape=hh.shapes())
+            right_strat = shared_dtypes.flatmap(
+                lambda d: xps.from_dtype(d, **finite_kw)
+            )
+        else:
+            if func_type is FuncType.IOP:
+                shared_shapes = st.shared(hh.shapes())
+                left_strat = xps.arrays(dtype=shared_dtypes, shape=shared_shapes)
+                right_strat = xps.arrays(dtype=shared_dtypes, shape=shared_shapes)
+            else:
+                left_strat, right_strat = hh.two_mutual_arrays(dtypes)
+
+        if func_type is FuncType.FUNC:
+            func = getattr(xp, func_name)
+        else:
+            op_sym = all_op_to_symbol[func_name]
+            expr = f"{left_sym} {op_sym} {right_sym}"
+            if func_type is FuncType.OP:
+
+                def func(l: Array, r: Union[Scalar, Array]) -> Array:
+                    locals_ = {}
+                    locals_[left_sym] = l
+                    locals_[right_sym] = r
+                    return eval(expr, locals_)
+
+            else:
+
+                def func(l: Array, r: Union[Scalar, Array]) -> Array:
+                    locals_ = {}
+                    locals_[left_sym] = ah.asarray(
+                        l, copy=True
+                    )  # prevents left mutating
+                    locals_[right_sym] = r
+                    exec(expr, locals_)
+                    return locals_[left_sym]
+
+            func.__name__ = func_name  # for repr
+
         if func_type is FuncType.IOP:
-            shared_shapes = st.shared(hh.shapes())
-            left_strat = xps.arrays(dtype=shared_dtypes, shape=shared_shapes)
-            right_strat = xps.arrays(dtype=shared_dtypes, shape=shared_shapes)
+            res_name = left_sym
         else:
-            left_strat, right_strat = hh.two_mutual_arrays(dtypes)
+            res_name = "out"
 
-    if func_type is FuncType.FUNC:
-        func = getattr(xp, func_name)
-    else:
-        op_sym = all_op_to_symbol[func_name]
-        expr = f"{left_sym} {op_sym} {right_sym}"
+        return pytest.param(
+            func_name,
+            func,
+            left_sym,
+            left_strat,
+            right_sym,
+            right_strat,
+            right_is_scalar,
+            res_name,
+            id=f"{func_name}({left_sym}, {right_sym})",
+        )
 
-        if func_type is FuncType.OP:
-
-            def func(l: Array, r: Union[Scalar, Array]) -> Array:
-                locals_ = {}
-                locals_[left_sym] = l
-                locals_[right_sym] = r
-                return eval(expr, locals_)
-
-        else:
-
-            def func(l: Array, r: Union[Scalar, Array]) -> Array:
-                locals_ = {}
-                locals_[left_sym] = ah.asarray(l, copy=True)  # prevents left mutating
-                locals_[right_sym] = r
-                exec(expr, locals_)
-                return locals_[left_sym]
-
-        func.__name__ = func_name  # for repr
-
-    if func_type is FuncType.IOP:
-        res_name = left_sym
-    else:
-        res_name = "out"
-
-    f_id = func_name
-    if right_is_scalar:
-        f_id += "(x, s)"
-    else:
-        f_id += "(x1, x2)"
-
-    return pytest.param(
-        func_name,
-        func,
-        left_sym,
-        left_strat,
-        right_sym,
-        right_strat,
-        right_is_scalar,
-        res_name,
-        id=f_id,
-    )
-
-
-def make_binary_params(func_name: str, dtypes: Sequence[DataType]) -> List[BinaryParam]:
-    op = func_to_op[func_name]
+    op_name = func_to_op[elwise_func_name]
     params = [
-        _make_binary_param(func_name, False, dtypes),
-        _make_binary_param(op, False, dtypes),
-        _make_binary_param(op, True, dtypes),
+        make_param(elwise_func_name, FuncType.FUNC, False),
+        make_param(op_name, FuncType.OP, False),
+        make_param(op_name, FuncType.OP, True),
     ]
-    iop = f"__i{op[2:]}"
-    if iop in dh.inplace_op_to_symbol.keys():
-        params.append(_make_binary_param(iop, False, dtypes))
-        params.append(_make_binary_param(iop, True, dtypes))
+    iop_name = f"__i{op_name[2:]}"
+    if iop_name in dh.inplace_op_to_symbol.keys():
+        params.append(make_param(iop_name, FuncType.IOP, False))
+        params.append(make_param(iop_name, FuncType.IOP, True))
+
     return params
 
 
