@@ -115,12 +115,6 @@ def __le__(self: array, other: Union[int, float, array], /) -> array:
     """
     pass
 
-def __len__(self, /):
-    """
-    Note: __len__ is a method of the array object.
-    """
-    pass
-
 def __lshift__(self: array, other: Union[int, array], /) -> array:
     """
     Note: __lshift__ is a method of the array object.
@@ -211,7 +205,7 @@ def __xor__(self: array, other: Union[int, bool, array], /) -> array:
     """
     pass
 
-def to_device(self: array, device: device, /) -> array:
+def to_device(self: array, device: device, /, *, stream: Optional[Union[int, Any]] = None) -> array:
     """
     Note: to_device is a method of the array object.
     """
@@ -386,12 +380,12 @@ mT: array = None
 ndim: int = None
 
 # Note: shape is an attribute of the array object.
-shape: Union[Tuple[int, ...], shape] = None
+shape: Tuple[Optional[int], ...] = None
 
 # Note: size is an attribute of the array object.
-size: int = None
+size: Optional[int] = None
 
 # Note: T is an attribute of the array object.
 T: array = None
 
-__all__ = ['__abs__', '__add__', '__and__', '__array_namespace__', '__bool__', '__dlpack__', '__dlpack_device__', '__eq__', '__float__', '__floordiv__', '__ge__', '__getitem__', '__gt__', '__index__', '__int__', '__invert__', '__le__', '__len__', '__lshift__', '__lt__', '__matmul__', '__mod__', '__mul__', '__ne__', '__neg__', '__or__', '__pos__', '__pow__', '__rshift__', '__setitem__', '__sub__', '__truediv__', '__xor__', 'to_device', '__iadd__', '__radd__', '__iand__', '__rand__', '__ifloordiv__', '__rfloordiv__', '__ilshift__', '__rlshift__', '__imatmul__', '__rmatmul__', '__imod__', '__rmod__', '__imul__', '__rmul__', '__ior__', '__ror__', '__ipow__', '__rpow__', '__irshift__', '__rrshift__', '__isub__', '__rsub__', '__itruediv__', '__rtruediv__', '__ixor__', '__rxor__', 'dtype', 'device', 'mT', 'ndim', 'shape', 'size', 'T']
+__all__ = ['__abs__', '__add__', '__and__', '__array_namespace__', '__bool__', '__dlpack__', '__dlpack_device__', '__eq__', '__float__', '__floordiv__', '__ge__', '__getitem__', '__gt__', '__index__', '__int__', '__invert__', '__le__', '__lshift__', '__lt__', '__matmul__', '__mod__', '__mul__', '__ne__', '__neg__', '__or__', '__pos__', '__pow__', '__rshift__', '__setitem__', '__sub__', '__truediv__', '__xor__', 'to_device', '__iadd__', '__radd__', '__iand__', '__rand__', '__ifloordiv__', '__rfloordiv__', '__ilshift__', '__rlshift__', '__imatmul__', '__rmatmul__', '__imod__', '__rmod__', '__imul__', '__rmul__', '__ior__', '__ror__', '__ipow__', '__rpow__', '__irshift__', '__rrshift__', '__isub__', '__rsub__', '__itruediv__', '__rtruediv__', '__ixor__', '__rxor__', 'dtype', 'device', 'mT', 'ndim', 'shape', 'size', 'T']

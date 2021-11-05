@@ -12,6 +12,9 @@ from __future__ import annotations
 
 from ._types import List, Tuple, Union, array, dtype, finfo_object, iinfo_object
 
+def astype(x: array, dtype: dtype, /, *, copy: bool = True) -> array:
+    pass
+
 def broadcast_arrays(*arrays: array) -> List[array]:
     pass
 
@@ -30,4 +33,4 @@ def iinfo(type: Union[dtype, array], /) -> iinfo_object:
 def result_type(*arrays_and_dtypes: Union[array, dtype]) -> dtype:
     pass
 
-__all__ = ['broadcast_arrays', 'broadcast_to', 'can_cast', 'finfo', 'iinfo', 'result_type']
+__all__ = ['astype', 'broadcast_arrays', 'broadcast_to', 'can_cast', 'finfo', 'iinfo', 'result_type']

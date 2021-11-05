@@ -10,9 +10,15 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/set_fu
 
 from __future__ import annotations
 
-from ._types import Tuple, Union, array
+from ._types import Tuple, array
 
-def unique(x: array, /, *, return_counts: bool = False, return_index: bool = False, return_inverse: bool = False) -> Union[array, Tuple[array, ...]]:
+def unique_all(x: array, /) -> Tuple[array, array, array, array]:
     pass
 
-__all__ = ['unique']
+def unique_inverse(x: array, /) -> Tuple[array, array]:
+    pass
+
+def unique_values(x: array, /) -> array:
+    pass
+
+__all__ = ['unique_all', 'unique_inverse', 'unique_values']

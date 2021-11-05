@@ -10,13 +10,13 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/creati
 
 from __future__ import annotations
 
-from ._types import (List, NestedSequence, Optional, SupportsBufferProtocol, SupportsDLPack, Tuple,
-                     Union, array, device, dtype)
+from ._types import (List, NestedSequence, Optional, SupportsBufferProtocol, Tuple, Union, array,
+                     device, dtype)
 
 def arange(start: Union[int, float], /, stop: Optional[Union[int, float]] = None, step: Union[int, float] = 1, *, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:
     pass
 
-def asarray(obj: Union[array, bool, int, float, NestedSequence[bool|int|float], SupportsDLPack, SupportsBufferProtocol], /, *, dtype: Optional[dtype] = None, device: Optional[device] = None, copy: Optional[bool] = None) -> array:
+def asarray(obj: Union[array, bool, int, float, NestedSequence[bool|int|float], SupportsBufferProtocol], /, *, dtype: Optional[dtype] = None, device: Optional[device] = None, copy: Optional[bool] = None) -> array:
     pass
 
 def empty(shape: Union[int, Tuple[int, ...]], *, dtype: Optional[dtype] = None, device: Optional[device] = None) -> array:

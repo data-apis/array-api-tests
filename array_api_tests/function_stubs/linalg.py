@@ -65,7 +65,7 @@ def slogdet(x: array, /) -> Tuple[array, array]:
 def solve(x1: array, x2: array, /) -> array:
     pass
 
-def svd(x: array, /, *, full_matrices: bool = True) -> Tuple[array, array, array]:
+def svd(x: array, /, *, full_matrices: bool = True) -> Union[array, Tuple[array, ...]]:
     pass
 
 def svdvals(x: array, /) -> array:
