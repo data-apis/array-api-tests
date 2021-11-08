@@ -206,7 +206,7 @@ def test_function_positional_args(name):
     mod_func = getattr(_mod, name)
     argspec = inspect.getfullargspec(stub_func)
     func_args = argspec.args
-    if name.startswith('__'):
+    if func_args[:1] == ['self']:
         func_args = func_args[1:]
     nargs = [len(func_args)]
     if argspec.defaults:
@@ -259,7 +259,7 @@ def test_function_keyword_only_args(name):
     mod_func = getattr(_mod, name)
     argspec = inspect.getfullargspec(stub_func)
     args = argspec.args
-    if name.startswith('__'):
+    if args[:1] == ['self']:
         args = args[1:]
     kwonlyargs = argspec.kwonlyargs
     kwonlydefaults = argspec.kwonlydefaults or {}
