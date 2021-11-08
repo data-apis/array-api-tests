@@ -9,12 +9,11 @@ not modify it directly.
 
 from operator import itruediv
 
-from ..array_helpers import (NaN, assert_exactly_equal, assert_negative_mathematical_sign,
+from ..array_helpers import (NaN, asarray, assert_exactly_equal, assert_negative_mathematical_sign,
                              assert_positive_mathematical_sign, exactly_equal, greater, infinity,
                              isfinite, isnegative, ispositive, less, logical_and, logical_not,
                              logical_or, non_zero, same_sign, zero)
 from ..hypothesis_helpers import numeric_arrays
-from .. import _array_module as xp
 
 from hypothesis import given
 
@@ -27,7 +26,7 @@ def test_itruediv_special_cases_two_args_either(arg1, arg2):
         -   If either `x1_i` or `x2_i` is `NaN`, the result is `NaN`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_or(exactly_equal(arg1, NaN(arg1.shape, arg1.dtype)), exactly_equal(arg2, NaN(arg1.shape, arg1.dtype)))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
@@ -41,7 +40,7 @@ def test_itruediv_special_cases_two_args_either__either_1(arg1, arg2):
         -   If `x1_i` is either `+infinity` or `-infinity` and `x2_i` is either `+infinity` or `-infinity`, the result is `NaN`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype))), logical_or(exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype))))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
@@ -55,7 +54,7 @@ def test_itruediv_special_cases_two_args_either__either_2(arg1, arg2):
         -   If `x1_i` is either `+0` or `-0` and `x2_i` is either `+0` or `-0`, the result is `NaN`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(logical_or(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg1, -zero(arg1.shape, arg1.dtype))), logical_or(exactly_equal(arg2, zero(arg2.shape, arg2.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype))))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
@@ -69,7 +68,7 @@ def test_itruediv_special_cases_two_args_equal__greater_1(arg1, arg2):
         -   If `x1_i` is `+0` and `x2_i` is greater than `0`, the result is `+0`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), greater(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
@@ -83,7 +82,7 @@ def test_itruediv_special_cases_two_args_equal__greater_2(arg1, arg2):
         -   If `x1_i` is `-0` and `x2_i` is greater than `0`, the result is `-0`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(exactly_equal(arg1, -zero(arg1.shape, arg1.dtype)), greater(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
@@ -97,7 +96,7 @@ def test_itruediv_special_cases_two_args_equal__less_1(arg1, arg2):
         -   If `x1_i` is `+0` and `x2_i` is less than `0`, the result is `-0`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), less(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
@@ -111,7 +110,7 @@ def test_itruediv_special_cases_two_args_equal__less_2(arg1, arg2):
         -   If `x1_i` is `-0` and `x2_i` is less than `0`, the result is `+0`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(exactly_equal(arg1, -zero(arg1.shape, arg1.dtype)), less(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
@@ -125,7 +124,7 @@ def test_itruediv_special_cases_two_args_greater__equal_1(arg1, arg2):
         -   If `x1_i` is greater than `0` and `x2_i` is `+0`, the result is `+infinity`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(greater(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
@@ -139,7 +138,7 @@ def test_itruediv_special_cases_two_args_greater__equal_2(arg1, arg2):
         -   If `x1_i` is greater than `0` and `x2_i` is `-0`, the result is `-infinity`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(greater(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
@@ -153,7 +152,7 @@ def test_itruediv_special_cases_two_args_less__equal_1(arg1, arg2):
         -   If `x1_i` is less than `0` and `x2_i` is `+0`, the result is `-infinity`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(less(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
@@ -167,7 +166,7 @@ def test_itruediv_special_cases_two_args_less__equal_2(arg1, arg2):
         -   If `x1_i` is less than `0` and `x2_i` is `-0`, the result is `+infinity`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(less(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
@@ -181,7 +180,7 @@ def test_itruediv_special_cases_two_args_equal__equal_1(arg1, arg2):
         -   If `x1_i` is `+infinity` and `x2_i` is a positive (i.e., greater than `0`) finite number, the result is `+infinity`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), logical_and(isfinite(arg2), ispositive(arg2)))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
@@ -195,7 +194,7 @@ def test_itruediv_special_cases_two_args_equal__equal_2(arg1, arg2):
         -   If `x1_i` is `+infinity` and `x2_i` is a negative (i.e., less than `0`) finite number, the result is `-infinity`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), logical_and(isfinite(arg2), isnegative(arg2)))
     assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
@@ -209,7 +208,7 @@ def test_itruediv_special_cases_two_args_equal__equal_3(arg1, arg2):
         -   If `x1_i` is `-infinity` and `x2_i` is a positive (i.e., greater than `0`) finite number, the result is `-infinity`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), logical_and(isfinite(arg2), ispositive(arg2)))
     assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
@@ -223,7 +222,7 @@ def test_itruediv_special_cases_two_args_equal__equal_4(arg1, arg2):
         -   If `x1_i` is `-infinity` and `x2_i` is a negative (i.e., less than `0`) finite number, the result is `+infinity`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), logical_and(isfinite(arg2), isnegative(arg2)))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
@@ -237,7 +236,7 @@ def test_itruediv_special_cases_two_args_equal__equal_5(arg1, arg2):
         -   If `x1_i` is a positive (i.e., greater than `0`) finite number and `x2_i` is `+infinity`, the result is `+0`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(logical_and(isfinite(arg1), ispositive(arg1)), exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
@@ -251,7 +250,7 @@ def test_itruediv_special_cases_two_args_equal__equal_6(arg1, arg2):
         -   If `x1_i` is a positive (i.e., greater than `0`) finite number and `x2_i` is `-infinity`, the result is `-0`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(logical_and(isfinite(arg1), ispositive(arg1)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
@@ -265,7 +264,7 @@ def test_itruediv_special_cases_two_args_equal__equal_7(arg1, arg2):
         -   If `x1_i` is a negative (i.e., less than `0`) finite number and `x2_i` is `+infinity`, the result is `-0`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(logical_and(isfinite(arg1), isnegative(arg1)), exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
@@ -279,7 +278,7 @@ def test_itruediv_special_cases_two_args_equal__equal_8(arg1, arg2):
         -   If `x1_i` is a negative (i.e., less than `0`) finite number and `x2_i` is `-infinity`, the result is `+0`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(logical_and(isfinite(arg1), isnegative(arg1)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
@@ -293,7 +292,7 @@ def test_itruediv_special_cases_two_args_same_sign_both(arg1, arg2):
         -   If `x1_i` and `x2_i` have the same mathematical sign and are both nonzero finite numbers, the result has a positive mathematical sign.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(same_sign(arg1, arg2), logical_and(logical_and(isfinite(arg1), non_zero(arg1)), logical_and(isfinite(arg2), non_zero(arg2))))
     assert_positive_mathematical_sign(res[mask])
@@ -307,7 +306,7 @@ def test_itruediv_special_cases_two_args_different_signs_both(arg1, arg2):
         -   If `x1_i` and `x2_i` have different mathematical signs and are both nonzero finite numbers, the result has a negative mathematical sign.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     itruediv(res, arg2)
     mask = logical_and(logical_not(same_sign(arg1, arg2)), logical_and(logical_and(isfinite(arg1), non_zero(arg1)), logical_and(isfinite(arg2), non_zero(arg2))))
     assert_negative_mathematical_sign(res[mask])

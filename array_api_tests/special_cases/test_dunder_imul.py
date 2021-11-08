@@ -9,12 +9,11 @@ not modify it directly.
 
 from operator import imul
 
-from ..array_helpers import (NaN, assert_exactly_equal, assert_isinf,
+from ..array_helpers import (NaN, asarray, assert_exactly_equal, assert_isinf,
                              assert_negative_mathematical_sign, assert_positive_mathematical_sign,
                              exactly_equal, infinity, isfinite, logical_and, logical_not,
                              logical_or, non_zero, same_sign, zero)
 from ..hypothesis_helpers import numeric_arrays
-from .. import _array_module as xp
 
 from hypothesis import given
 
@@ -27,7 +26,7 @@ def test_imul_special_cases_two_args_either(arg1, arg2):
         -   If either `x1_i` or `x2_i` is `NaN`, the result is `NaN`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     imul(res, arg2)
     mask = logical_or(exactly_equal(arg1, NaN(arg1.shape, arg1.dtype)), exactly_equal(arg2, NaN(arg1.shape, arg1.dtype)))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
@@ -41,7 +40,7 @@ def test_imul_special_cases_two_args_either__either_1(arg1, arg2):
         -   If `x1_i` is either `+infinity` or `-infinity` and `x2_i` is either `+0` or `-0`, the result is `NaN`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     imul(res, arg2)
     mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype))), logical_or(exactly_equal(arg2, zero(arg2.shape, arg2.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype))))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
@@ -55,7 +54,7 @@ def test_imul_special_cases_two_args_either__either_2(arg1, arg2):
         -   If `x1_i` is either `+0` or `-0` and `x2_i` is either `+infinity` or `-infinity`, the result is `NaN`.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     imul(res, arg2)
     mask = logical_and(logical_or(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg1, -zero(arg1.shape, arg1.dtype))), logical_or(exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype))))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
@@ -69,7 +68,7 @@ def test_imul_special_cases_two_args_either__either_3(arg1, arg2):
         -   If `x1_i` is either `+infinity` or `-infinity` and `x2_i` is either `+infinity` or `-infinity`, the result is a signed infinity with the mathematical sign determined by the rule already stated above.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     imul(res, arg2)
     mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype))), logical_or(exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype))))
     assert_isinf(res[mask])
@@ -83,7 +82,7 @@ def test_imul_special_cases_two_args_same_sign_except(arg1, arg2):
         -   If `x1_i` and `x2_i` have the same mathematical sign, the result has a positive mathematical sign, unless the result is `NaN`. If the result is `NaN`, the "sign" of `NaN` is implementation-defined.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     imul(res, arg2)
     mask = logical_and(same_sign(arg1, arg2), logical_not(exactly_equal(res, NaN(res.shape, res.dtype))))
     assert_positive_mathematical_sign(res[mask])
@@ -97,7 +96,7 @@ def test_imul_special_cases_two_args_different_signs_except(arg1, arg2):
         -   If `x1_i` and `x2_i` have different mathematical signs, the result has a negative mathematical sign, unless the result is `NaN`. If the result is `NaN`, the "sign" of `NaN` is implementation-defined.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     imul(res, arg2)
     mask = logical_and(logical_not(same_sign(arg1, arg2)), logical_not(exactly_equal(res, NaN(res.shape, res.dtype))))
     assert_negative_mathematical_sign(res[mask])
@@ -111,7 +110,7 @@ def test_imul_special_cases_two_args_either__equal(arg1, arg2):
         -   If `x1_i` is either `+infinity` or `-infinity` and `x2_i` is a nonzero finite number, the result is a signed infinity with the mathematical sign determined by the rule already stated above.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     imul(res, arg2)
     mask = logical_and(logical_or(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype))), logical_and(isfinite(arg2), non_zero(arg2)))
     assert_isinf(res[mask])
@@ -125,7 +124,7 @@ def test_imul_special_cases_two_args_equal__either(arg1, arg2):
         -   If `x1_i` is a nonzero finite number and `x2_i` is either `+infinity` or `-infinity`, the result is a signed infinity with the mathematical sign determined by the rule already stated above.
 
     """
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     imul(res, arg2)
     mask = logical_and(logical_and(isfinite(arg1), non_zero(arg1)), logical_or(exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype))))
     assert_isinf(res[mask])

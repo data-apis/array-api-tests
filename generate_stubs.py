@@ -160,7 +160,6 @@ from operator import {operator}
 
 from ..array_helpers import *
 from ..hypothesis_helpers import numeric_arrays
-from .. import _array_module as xp
 
 from hypothesis import given
 
@@ -603,7 +602,7 @@ IOP_TWO_ARGS_TEMPLATE = """
 {decorator}
 def test_{op}_special_cases_{test_name_extra}(arg1, arg2):
     {doc}
-    res = xp.asarray(arg1, copy=True)
+    res = asarray(arg1, copy=True)
     {op}(res, arg2)
     mask = {mask}
     {assertion}
