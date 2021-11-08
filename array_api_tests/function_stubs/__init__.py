@@ -41,9 +41,9 @@ from .searching_functions import argmax, argmin, nonzero, where
 
 __all__ += ['argmax', 'argmin', 'nonzero', 'where']
 
-from .set_functions import unique_all, unique_inverse, unique_values
+from .set_functions import unique_all, unique_counts, unique_inverse, unique_values
 
-__all__ += ['unique_all', 'unique_inverse', 'unique_values']
+__all__ += ['unique_all', 'unique_counts', 'unique_inverse', 'unique_values']
 
 from .sorting_functions import argsort, sort
 
