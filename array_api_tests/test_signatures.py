@@ -71,8 +71,11 @@ def example_argument(arg, func_name, dtype):
         copy=True,
         correction=1.0,
         descending=True,
-        # TODO: Update this to be non-default
-        device=None,
+        # TODO: This will only work on the NumPy implementation. The exact
+        # value of the device keyword will vary across implementations, so we
+        # need some way to infer it or for libraries to specify a list of
+        # valid devices.
+        device='cpu',
         dtype=float64,
         endpoint=False,
         fill_value=1.0,
@@ -103,6 +106,8 @@ def example_argument(arg, func_name, dtype):
         start=0,
         step=2,
         stop=1,
+        # TODO: Update this to be non-default. See the comment on "device" above.
+        stream=None,
         to=float64,
         type=float64,
         upper=True,
