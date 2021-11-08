@@ -20,7 +20,7 @@ from hypothesis import given
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___imul___special_cases_two_args_either(arg1, arg2):
+def test_imul_special_cases_two_args_either(arg1, arg2):
     """
     Special case test for `__imul__(self, other, /)`:
 
@@ -34,7 +34,7 @@ def test___imul___special_cases_two_args_either(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___imul___special_cases_two_args_either__either_1(arg1, arg2):
+def test_imul_special_cases_two_args_either__either_1(arg1, arg2):
     """
     Special case test for `__imul__(self, other, /)`:
 
@@ -48,7 +48,7 @@ def test___imul___special_cases_two_args_either__either_1(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___imul___special_cases_two_args_either__either_2(arg1, arg2):
+def test_imul_special_cases_two_args_either__either_2(arg1, arg2):
     """
     Special case test for `__imul__(self, other, /)`:
 
@@ -62,7 +62,7 @@ def test___imul___special_cases_two_args_either__either_2(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___imul___special_cases_two_args_either__either_3(arg1, arg2):
+def test_imul_special_cases_two_args_either__either_3(arg1, arg2):
     """
     Special case test for `__imul__(self, other, /)`:
 
@@ -76,7 +76,7 @@ def test___imul___special_cases_two_args_either__either_3(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___imul___special_cases_two_args_same_sign_except(arg1, arg2):
+def test_imul_special_cases_two_args_same_sign_except(arg1, arg2):
     """
     Special case test for `__imul__(self, other, /)`:
 
@@ -90,7 +90,7 @@ def test___imul___special_cases_two_args_same_sign_except(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___imul___special_cases_two_args_different_signs_except(arg1, arg2):
+def test_imul_special_cases_two_args_different_signs_except(arg1, arg2):
     """
     Special case test for `__imul__(self, other, /)`:
 
@@ -104,7 +104,7 @@ def test___imul___special_cases_two_args_different_signs_except(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___imul___special_cases_two_args_either__equal(arg1, arg2):
+def test_imul_special_cases_two_args_either__equal(arg1, arg2):
     """
     Special case test for `__imul__(self, other, /)`:
 
@@ -118,7 +118,7 @@ def test___imul___special_cases_two_args_either__equal(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___imul___special_cases_two_args_equal__either(arg1, arg2):
+def test_imul_special_cases_two_args_equal__either(arg1, arg2):
     """
     Special case test for `__imul__(self, other, /)`:
 

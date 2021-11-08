@@ -15,7 +15,7 @@ from hypothesis import given
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_either(arg1, arg2):
+def test_add_special_cases_two_args_either(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -28,7 +28,7 @@ def test___add___special_cases_two_args_either(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_1(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_1(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -41,7 +41,7 @@ def test___add___special_cases_two_args_equal__equal_1(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_2(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_2(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -54,7 +54,7 @@ def test___add___special_cases_two_args_equal__equal_2(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_3(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_3(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -67,7 +67,7 @@ def test___add___special_cases_two_args_equal__equal_3(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_4(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_4(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -80,7 +80,7 @@ def test___add___special_cases_two_args_equal__equal_4(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_5(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_5(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -93,7 +93,7 @@ def test___add___special_cases_two_args_equal__equal_5(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_6(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_6(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -106,7 +106,7 @@ def test___add___special_cases_two_args_equal__equal_6(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_7(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_7(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -119,7 +119,7 @@ def test___add___special_cases_two_args_equal__equal_7(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_8(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_8(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -132,7 +132,7 @@ def test___add___special_cases_two_args_equal__equal_8(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_9(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_9(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -145,7 +145,7 @@ def test___add___special_cases_two_args_equal__equal_9(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_10(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_10(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -158,7 +158,7 @@ def test___add___special_cases_two_args_equal__equal_10(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_11(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_11(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -171,7 +171,7 @@ def test___add___special_cases_two_args_equal__equal_11(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_12(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_12(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -184,7 +184,7 @@ def test___add___special_cases_two_args_equal__equal_12(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_13(arg1, arg2):
+def test_add_special_cases_two_args_equal__equal_13(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -197,7 +197,7 @@ def test___add___special_cases_two_args_equal__equal_13(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_either__equal(arg1, arg2):
+def test_add_special_cases_two_args_either__equal(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 
@@ -210,7 +210,7 @@ def test___add___special_cases_two_args_either__equal(arg1, arg2):
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__either(arg1, arg2):
+def test_add_special_cases_two_args_equal__either(arg1, arg2):
     """
     Special case test for `__add__(self, other, /)`:
 

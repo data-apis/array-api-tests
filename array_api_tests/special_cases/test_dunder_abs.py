@@ -14,7 +14,7 @@ from hypothesis import given
 
 
 @given(numeric_arrays)
-def test___abs___special_cases_one_arg_equal_1(arg1):
+def test_abs_special_cases_one_arg_equal_1(arg1):
     """
     Special case test for `__abs__(self, /)`:
 
@@ -27,7 +27,7 @@ def test___abs___special_cases_one_arg_equal_1(arg1):
 
 
 @given(numeric_arrays)
-def test___abs___special_cases_one_arg_equal_2(arg1):
+def test_abs_special_cases_one_arg_equal_2(arg1):
     """
     Special case test for `__abs__(self, /)`:
 
@@ -40,7 +40,7 @@ def test___abs___special_cases_one_arg_equal_2(arg1):
 
 
 @given(numeric_arrays)
-def test___abs___special_cases_one_arg_equal_3(arg1):
+def test_abs_special_cases_one_arg_equal_3(arg1):
     """
     Special case test for `__abs__(self, /)`:
 
