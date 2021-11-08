@@ -361,7 +361,11 @@ def {annotated_sig}:{doc}
                         with open(py_path, 'w') as f:
                             f.write(code)
         elif filename == 'array_object.md':
-            special_cases = parse_op_special_cases(text, verbose=args.verbose)
+            special_cases = parse_special_cases(text, verbose=args.verbose)
+            for name in IN_PLACE_OPERATOR_RE.findall(text):
+                op = f"__{name}__"
+                iop = f"__i{name}__"
+                special_cases[iop] = special_cases[op]
             for func in special_cases:
                 py_path = os.path.join('array_api_tests', 'special_cases', f'test_{func}.py')
                 tests = []
@@ -974,45 +978,13 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
 def parse_special_cases(spec_text, verbose=False) -> Dict[str, DefaultDict[str, List[regex.Match]]]:
     special_cases = {}
     in_block = False
-    for line in spec_text.splitlines():
-        m = FUNCTION_HEADER_RE.match(line)
-        if m:
-            name = m.group(1)
-            special_cases[name] = defaultdict(list)
-            continue
-        if line == '#### Special Cases':
-            in_block = True
-            continue
-        elif line.startswith('#'):
-            in_block = False
-            continue
-        if in_block:
-            if '- ' not in line:
-                continue
-            for typ, reg in SPECIAL_CASE_REGEXS.items():
-                m = reg.match(line)
-                if m:
-                    if verbose:
-                        print(f"Matched {typ} for {name}: {m.groups()}")
-                    special_cases[name][typ].append(m)
-                    break
-            else:
-                raise ValueError(f"Unrecognized special case string for '{name}':\n{line}")
-
-    return special_cases
-
-def parse_op_special_cases(spec_text, verbose=False) -> Dict[str, DefaultDict[str, List[regex.Match]]]:
-    special_cases = {}
-    in_block = False
     name = None
     for line in spec_text.splitlines():
-        m = METHOD_HEADER_RE.match(line)
-        if m:
-            name = m.group(1)
-            if name in OPS:
-                special_cases[name] = defaultdict(list)
-            else:
-                name = None
+        func_m = FUNCTION_HEADER_RE.match(line)
+        meth_m = METHOD_HEADER_RE.match(line)
+        if func_m or meth_m:
+            name = func_m.group(1) if func_m else meth_m.group(1)
+            special_cases[name] = defaultdict(list)
             continue
         if line == '#### Special Cases':
             in_block = True
@@ -1032,12 +1004,6 @@ def parse_op_special_cases(spec_text, verbose=False) -> Dict[str, DefaultDict[st
                     break
             else:
                 raise ValueError(f"Unrecognized special case string for '{name}':\n{line}")
-    for line in spec_text.splitlines():
-        for name in IN_PLACE_OPERATOR_RE.findall(spec_text):
-            op = f"__{name}__"
-            iop = f"__i{name}__"
-            special_cases[iop] = special_cases[op]
-            continue
 
     return special_cases
 
