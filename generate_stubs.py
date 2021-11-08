@@ -638,44 +638,43 @@ REMAINING_TEMPLATE = """# TODO: Implement REMAINING test for:
 """
 
 def generate_special_case_test(func, typ, m, test_name_extra, sigs):
-    is_op = func.startswith("__")
     doc = f'''"""
     Special case test for `{sigs[func]}`:
 
         {m.group(0)}
 
     """'''
-    if is_op:
-        if typ.startswith("ONE_ARG"):
-            decorator = "@given(numeric_arrays)"
-            if typ == "ONE_ARG_EQUAL":
-                value1, result = m.groups()
-                value1 = parse_value(value1, 'arg1')
-                mask = get_mask("exactly_equal", "arg1", value1)
-            elif typ == "ONE_ARG_GREATER":
-                value1, result = m.groups()
-                value1 = parse_value(value1, 'arg1')
-                mask = get_mask("greater", "arg1", value1)
-            elif typ == "ONE_ARG_LESS":
-                value1, result = m.groups()
-                value1 = parse_value(value1, 'arg1')
-                mask = get_mask("less", "arg1", value1)
-            elif typ == "ONE_ARG_EITHER":
-                value1, value2, result = m.groups()
-                value1 = parse_value(value1, 'arg1')
-                value2 = parse_value(value2, 'arg1')
-                mask1 = get_mask("exactly_equal", "arg1", value1)
-                mask2 = get_mask("exactly_equal", "arg1", value2)
-                mask = f"logical_or({mask1}, {mask2})"
-            elif typ == "ONE_ARG_ALREADY_INTEGER_VALUED":
-                result, = m.groups()
-                mask = parse_value("integer", "arg1")
-            elif typ == "ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE":
-                result, = m.groups()
-                mask = "logical_and(not_equal(floor(arg1), ceil(arg1)), equal(subtract(arg1, floor(arg1)), subtract(ceil(arg1), arg1)))"
-            else:
-                raise ValueError(f"Unrecognized special value type {typ}")
-            assertion = get_assert("exactly_equal", result)
+    if typ.startswith("ONE_ARG"):
+        decorator = "@given(numeric_arrays)"
+        if typ == "ONE_ARG_EQUAL":
+            value1, result = m.groups()
+            value1 = parse_value(value1, 'arg1')
+            mask = get_mask("exactly_equal", "arg1", value1)
+        elif typ == "ONE_ARG_GREATER":
+            value1, result = m.groups()
+            value1 = parse_value(value1, 'arg1')
+            mask = get_mask("greater", "arg1", value1)
+        elif typ == "ONE_ARG_LESS":
+            value1, result = m.groups()
+            value1 = parse_value(value1, 'arg1')
+            mask = get_mask("less", "arg1", value1)
+        elif typ == "ONE_ARG_EITHER":
+            value1, value2, result = m.groups()
+            value1 = parse_value(value1, 'arg1')
+            value2 = parse_value(value2, 'arg1')
+            mask1 = get_mask("exactly_equal", "arg1", value1)
+            mask2 = get_mask("exactly_equal", "arg1", value2)
+            mask = f"logical_or({mask1}, {mask2})"
+        elif typ == "ONE_ARG_ALREADY_INTEGER_VALUED":
+            result, = m.groups()
+            mask = parse_value("integer", "arg1")
+        elif typ == "ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE":
+            result, = m.groups()
+            mask = "logical_and(not_equal(floor(arg1), ceil(arg1)), equal(subtract(arg1, floor(arg1)), subtract(ceil(arg1), arg1)))"
+        else:
+            raise ValueError(f"Unrecognized special value type {typ}")
+        assertion = get_assert("exactly_equal", result)
+        if func in OPS:
             return OP_ONE_ARG_TEMPLATE.format(
                 decorator=decorator,
                 func=func,
@@ -684,169 +683,7 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
                 mask=mask,
                 assertion=assertion,
             )
-
-        elif typ.startswith("TWO_ARGS"):
-            decorator = "@given(numeric_arrays, numeric_arrays)"
-            if typ in [
-                    "TWO_ARGS_EQUAL__EQUAL",
-                    "TWO_ARGS_GREATER__EQUAL",
-                    "TWO_ARGS_LESS__EQUAL",
-                    "TWO_ARGS_EQUAL__GREATER",
-                    "TWO_ARGS_EQUAL__LESS",
-                    "TWO_ARGS_EQUAL__NOTEQUAL",
-                    "TWO_ARGS_NOTEQUAL__EQUAL",
-                    "TWO_ARGS_ABSEQUAL__EQUAL",
-                    "TWO_ARGS_ABSGREATER__EQUAL",
-                    "TWO_ARGS_ABSLESS__EQUAL",
-                    "TWO_ARGS_GREATER_EQUAL__EQUAL",
-                    "TWO_ARGS_LESS_EQUAL__EQUAL",
-                    "TWO_ARGS_EQUAL__LESS_EQUAL",
-                    "TWO_ARGS_EQUAL__LESS_NOTEQUAL",
-                    "TWO_ARGS_EQUAL__GREATER_EQUAL",
-                    "TWO_ARGS_EQUAL__GREATER_NOTEQUAL",
-                    "TWO_ARGS_LESS_EQUAL__EQUAL_NOTEQUAL",
-                    "TWO_ARGS_EITHER__EQUAL",
-                    "TWO_ARGS_EQUAL__EITHER",
-                    "TWO_ARGS_EITHER__EITHER",
-            ]:
-                arg1typs, arg2typs = [i.split('_') for i in typ[len("TWO_ARGS_"):].split("__")]
-                if arg1typs == ["EITHER"]:
-                    arg1typs = ["EITHER_EQUAL", "EITHER_EQUAL"]
-                if arg2typs == ["EITHER"]:
-                    arg2typs = ["EITHER_EQUAL", "EITHER_EQUAL"]
-                *values, result = m.groups()
-                if len(values) != len(arg1typs) + len(arg2typs):
-                    raise RuntimeError(f"Unexpected number of parsed values for {typ}: len({values}) != len({arg1typs}) + len({arg2typs})")
-                arg1values, arg2values = values[:len(arg1typs)], values[len(arg1typs):]
-                arg1values = [parse_value(value, 'arg1') for value in arg1values]
-                arg2values = [parse_value(value, 'arg2') for value in arg2values]
-
-                tomask = lambda t: t.lower().replace("either_equal", "equal").replace("equal", "exactly_equal")
-                value1masks = [get_mask(tomask(t), 'arg1', v) for t, v in
-                            zip(arg1typs, arg1values)]
-                value2masks = [get_mask(tomask(t), 'arg2', v) for t, v in
-                            zip(arg2typs, arg2values)]
-                if len(value1masks) > 1:
-                    if arg1typs[0] == "EITHER_EQUAL":
-                        mask1 = f"logical_or({value1masks[0]}, {value1masks[1]})"
-                    else:
-                        mask1 = f"logical_and({value1masks[0]}, {value1masks[1]})"
-                else:
-                    mask1 = value1masks[0]
-                if len(value2masks) > 1:
-                    if arg2typs[0] == "EITHER_EQUAL":
-                        mask2 = f"logical_or({value2masks[0]}, {value2masks[1]})"
-                    else:
-                        mask2 = f"logical_and({value2masks[0]}, {value2masks[1]})"
-                else:
-                    mask2 = value2masks[0]
-
-                mask = f"logical_and({mask1}, {mask2})"
-                assertion = get_assert("exactly_equal", result)
-
-            elif typ == "TWO_ARGS_EITHER":
-                value, result = m.groups()
-                value = parse_value(value, "arg1")
-                mask1 = get_mask("exactly_equal", "arg1", value)
-                mask2 = get_mask("exactly_equal", "arg2", value)
-                mask = f"logical_or({mask1}, {mask2})"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_SAME_SIGN":
-                result, = m.groups()
-                mask = "same_sign(arg1, arg2)"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_SAME_SIGN_EXCEPT":
-                result, value, value1, value2 = m.groups()
-                assert value == value1 == value2
-                value = parse_value(value, "res")
-                mask = f"logical_and(same_sign(arg1, arg2), logical_not(exactly_equal(res, {value})))"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_SAME_SIGN_BOTH":
-                value, result = m.groups()
-                mask1 = get_mask("exactly_equal", "arg1", value)
-                mask2 = get_mask("exactly_equal", "arg2", value)
-                mask = f"logical_and(same_sign(arg1, arg2), logical_and({mask1}, {mask2}))"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_DIFFERENT_SIGNS":
-                result, = m.groups()
-                mask = "logical_not(same_sign(arg1, arg2))"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_DIFFERENT_SIGNS_EXCEPT":
-                result, value, value1, value2 = m.groups()
-                assert value == value1 == value2
-                value = parse_value(value, "res")
-                mask = f"logical_and(logical_not(same_sign(arg1, arg2)), logical_not(exactly_equal(res, {value})))"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_DIFFERENT_SIGNS_BOTH":
-                value, result = m.groups()
-                mask1 = get_mask("exactly_equal", "arg1", value)
-                mask2 = get_mask("exactly_equal", "arg2", value)
-                mask = f"logical_and(logical_not(same_sign(arg1, arg2)), logical_and({mask1}, {mask2}))"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_EVEN_IF":
-                value1, result, value2 = m.groups()
-                value1 = parse_value(value1, "arg2")
-                mask = get_mask("exactly_equal", "arg2", value1)
-                assertion = get_assert("exactly_equal", result)
-            else:
-                raise ValueError(f"Unrecognized special value type {typ}")
-
-            if func in OPS:
-                return OP_TWO_ARGS_TEMPLATE.format(
-                    decorator=decorator,
-                    func=func,
-                    test_name_extra=test_name_extra,
-                    doc=doc,
-                    mask=mask,
-                    assertion=assertion,
-                )
-            else:
-                return IOP_TWO_ARGS_TEMPLATE.format(
-                    decorator=decorator,
-                    func=func,
-                    test_name_extra=test_name_extra,
-                    doc=doc,
-                    operator=func[2:-2],
-                    mask=mask,
-                    assertion=assertion,
-                )
-
-        elif typ == "REMAINING":
-            return REMAINING_TEMPLATE.format(text=m.group(0))
         else:
-            raise RuntimeError(f"Unexpected type {typ}")
-
-    else:
-        if typ.startswith("ONE_ARG"):
-            decorator = "@given(numeric_arrays)"
-            if typ == "ONE_ARG_EQUAL":
-                value1, result = m.groups()
-                value1 = parse_value(value1, 'arg1')
-                mask = get_mask("exactly_equal", "arg1", value1)
-            elif typ == "ONE_ARG_GREATER":
-                value1, result = m.groups()
-                value1 = parse_value(value1, 'arg1')
-                mask = get_mask("greater", "arg1", value1)
-            elif typ == "ONE_ARG_LESS":
-                value1, result = m.groups()
-                value1 = parse_value(value1, 'arg1')
-                mask = get_mask("less", "arg1", value1)
-            elif typ == "ONE_ARG_EITHER":
-                value1, value2, result = m.groups()
-                value1 = parse_value(value1, 'arg1')
-                value2 = parse_value(value2, 'arg1')
-                mask1 = get_mask("exactly_equal", "arg1", value1)
-                mask2 = get_mask("exactly_equal", "arg1", value2)
-                mask = f"logical_or({mask1}, {mask2})"
-            elif typ == "ONE_ARG_ALREADY_INTEGER_VALUED":
-                result, = m.groups()
-                mask = parse_value("integer", "arg1")
-            elif typ == "ONE_ARG_TWO_INTEGERS_EQUALLY_CLOSE":
-                result, = m.groups()
-                mask = "logical_and(not_equal(floor(arg1), ceil(arg1)), equal(subtract(arg1, floor(arg1)), subtract(ceil(arg1), arg1)))"
-            else:
-                raise ValueError(f"Unrecognized special value type {typ}")
-            assertion = get_assert("exactly_equal", result)
             return ONE_ARG_TEMPLATE.format(
                 decorator=decorator,
                 func=func,
@@ -856,111 +693,132 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
                 assertion=assertion,
             )
 
-        elif typ.startswith("TWO_ARGS"):
-            decorator = "@given(numeric_arrays, numeric_arrays)"
-            if typ in [
-                    "TWO_ARGS_EQUAL__EQUAL",
-                    "TWO_ARGS_GREATER__EQUAL",
-                    "TWO_ARGS_LESS__EQUAL",
-                    "TWO_ARGS_EQUAL__GREATER",
-                    "TWO_ARGS_EQUAL__LESS",
-                    "TWO_ARGS_EQUAL__NOTEQUAL",
-                    "TWO_ARGS_NOTEQUAL__EQUAL",
-                    "TWO_ARGS_ABSEQUAL__EQUAL",
-                    "TWO_ARGS_ABSGREATER__EQUAL",
-                    "TWO_ARGS_ABSLESS__EQUAL",
-                    "TWO_ARGS_GREATER_EQUAL__EQUAL",
-                    "TWO_ARGS_LESS_EQUAL__EQUAL",
-                    "TWO_ARGS_EQUAL__LESS_EQUAL",
-                    "TWO_ARGS_EQUAL__LESS_NOTEQUAL",
-                    "TWO_ARGS_EQUAL__GREATER_EQUAL",
-                    "TWO_ARGS_EQUAL__GREATER_NOTEQUAL",
-                    "TWO_ARGS_LESS_EQUAL__EQUAL_NOTEQUAL",
-                    "TWO_ARGS_EITHER__EQUAL",
-                    "TWO_ARGS_EQUAL__EITHER",
-                    "TWO_ARGS_EITHER__EITHER",
-            ]:
-                arg1typs, arg2typs = [i.split('_') for i in typ[len("TWO_ARGS_"):].split("__")]
-                if arg1typs == ["EITHER"]:
-                    arg1typs = ["EITHER_EQUAL", "EITHER_EQUAL"]
-                if arg2typs == ["EITHER"]:
-                    arg2typs = ["EITHER_EQUAL", "EITHER_EQUAL"]
-                *values, result = m.groups()
-                if len(values) != len(arg1typs) + len(arg2typs):
-                    raise RuntimeError(f"Unexpected number of parsed values for {typ}: len({values}) != len({arg1typs}) + len({arg2typs})")
-                arg1values, arg2values = values[:len(arg1typs)], values[len(arg1typs):]
-                arg1values = [parse_value(value, 'arg1') for value in arg1values]
-                arg2values = [parse_value(value, 'arg2') for value in arg2values]
+    elif typ.startswith("TWO_ARGS"):
+        decorator = "@given(numeric_arrays, numeric_arrays)"
+        if typ in [
+                "TWO_ARGS_EQUAL__EQUAL",
+                "TWO_ARGS_GREATER__EQUAL",
+                "TWO_ARGS_LESS__EQUAL",
+                "TWO_ARGS_EQUAL__GREATER",
+                "TWO_ARGS_EQUAL__LESS",
+                "TWO_ARGS_EQUAL__NOTEQUAL",
+                "TWO_ARGS_NOTEQUAL__EQUAL",
+                "TWO_ARGS_ABSEQUAL__EQUAL",
+                "TWO_ARGS_ABSGREATER__EQUAL",
+                "TWO_ARGS_ABSLESS__EQUAL",
+                "TWO_ARGS_GREATER_EQUAL__EQUAL",
+                "TWO_ARGS_LESS_EQUAL__EQUAL",
+                "TWO_ARGS_EQUAL__LESS_EQUAL",
+                "TWO_ARGS_EQUAL__LESS_NOTEQUAL",
+                "TWO_ARGS_EQUAL__GREATER_EQUAL",
+                "TWO_ARGS_EQUAL__GREATER_NOTEQUAL",
+                "TWO_ARGS_LESS_EQUAL__EQUAL_NOTEQUAL",
+                "TWO_ARGS_EITHER__EQUAL",
+                "TWO_ARGS_EQUAL__EITHER",
+                "TWO_ARGS_EITHER__EITHER",
+        ]:
+            arg1typs, arg2typs = [i.split('_') for i in typ[len("TWO_ARGS_"):].split("__")]
+            if arg1typs == ["EITHER"]:
+                arg1typs = ["EITHER_EQUAL", "EITHER_EQUAL"]
+            if arg2typs == ["EITHER"]:
+                arg2typs = ["EITHER_EQUAL", "EITHER_EQUAL"]
+            *values, result = m.groups()
+            if len(values) != len(arg1typs) + len(arg2typs):
+                raise RuntimeError(f"Unexpected number of parsed values for {typ}: len({values}) != len({arg1typs}) + len({arg2typs})")
+            arg1values, arg2values = values[:len(arg1typs)], values[len(arg1typs):]
+            arg1values = [parse_value(value, 'arg1') for value in arg1values]
+            arg2values = [parse_value(value, 'arg2') for value in arg2values]
 
-                tomask = lambda t: t.lower().replace("either_equal", "equal").replace("equal", "exactly_equal")
-                value1masks = [get_mask(tomask(t), 'arg1', v) for t, v in
-                            zip(arg1typs, arg1values)]
-                value2masks = [get_mask(tomask(t), 'arg2', v) for t, v in
-                            zip(arg2typs, arg2values)]
-                if len(value1masks) > 1:
-                    if arg1typs[0] == "EITHER_EQUAL":
-                        mask1 = f"logical_or({value1masks[0]}, {value1masks[1]})"
-                    else:
-                        mask1 = f"logical_and({value1masks[0]}, {value1masks[1]})"
+            tomask = lambda t: t.lower().replace("either_equal", "equal").replace("equal", "exactly_equal")
+            value1masks = [get_mask(tomask(t), 'arg1', v) for t, v in
+                        zip(arg1typs, arg1values)]
+            value2masks = [get_mask(tomask(t), 'arg2', v) for t, v in
+                        zip(arg2typs, arg2values)]
+            if len(value1masks) > 1:
+                if arg1typs[0] == "EITHER_EQUAL":
+                    mask1 = f"logical_or({value1masks[0]}, {value1masks[1]})"
                 else:
-                    mask1 = value1masks[0]
-                if len(value2masks) > 1:
-                    if arg2typs[0] == "EITHER_EQUAL":
-                        mask2 = f"logical_or({value2masks[0]}, {value2masks[1]})"
-                    else:
-                        mask2 = f"logical_and({value2masks[0]}, {value2masks[1]})"
-                else:
-                    mask2 = value2masks[0]
-
-                mask = f"logical_and({mask1}, {mask2})"
-                assertion = get_assert("exactly_equal", result)
-
-            elif typ == "TWO_ARGS_EITHER":
-                value, result = m.groups()
-                value = parse_value(value, "arg1")
-                mask1 = get_mask("exactly_equal", "arg1", value)
-                mask2 = get_mask("exactly_equal", "arg2", value)
-                mask = f"logical_or({mask1}, {mask2})"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_SAME_SIGN":
-                result, = m.groups()
-                mask = "same_sign(arg1, arg2)"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_SAME_SIGN_EXCEPT":
-                result, value, value1, value2 = m.groups()
-                assert value == value1 == value2
-                value = parse_value(value, "res")
-                mask = f"logical_and(same_sign(arg1, arg2), logical_not(exactly_equal(res, {value})))"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_SAME_SIGN_BOTH":
-                value, result = m.groups()
-                mask1 = get_mask("exactly_equal", "arg1", value)
-                mask2 = get_mask("exactly_equal", "arg2", value)
-                mask = f"logical_and(same_sign(arg1, arg2), logical_and({mask1}, {mask2}))"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_DIFFERENT_SIGNS":
-                result, = m.groups()
-                mask = "logical_not(same_sign(arg1, arg2))"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_DIFFERENT_SIGNS_EXCEPT":
-                result, value, value1, value2 = m.groups()
-                assert value == value1 == value2
-                value = parse_value(value, "res")
-                mask = f"logical_and(logical_not(same_sign(arg1, arg2)), logical_not(exactly_equal(res, {value})))"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_DIFFERENT_SIGNS_BOTH":
-                value, result = m.groups()
-                mask1 = get_mask("exactly_equal", "arg1", value)
-                mask2 = get_mask("exactly_equal", "arg2", value)
-                mask = f"logical_and(logical_not(same_sign(arg1, arg2)), logical_and({mask1}, {mask2}))"
-                assertion = get_assert("exactly_equal", result)
-            elif typ == "TWO_ARGS_EVEN_IF":
-                value1, result, value2 = m.groups()
-                value1 = parse_value(value1, "arg2")
-                mask = get_mask("exactly_equal", "arg2", value1)
-                assertion = get_assert("exactly_equal", result)
+                    mask1 = f"logical_and({value1masks[0]}, {value1masks[1]})"
             else:
-                raise ValueError(f"Unrecognized special value type {typ}")
+                mask1 = value1masks[0]
+            if len(value2masks) > 1:
+                if arg2typs[0] == "EITHER_EQUAL":
+                    mask2 = f"logical_or({value2masks[0]}, {value2masks[1]})"
+                else:
+                    mask2 = f"logical_and({value2masks[0]}, {value2masks[1]})"
+            else:
+                mask2 = value2masks[0]
+
+            mask = f"logical_and({mask1}, {mask2})"
+            assertion = get_assert("exactly_equal", result)
+
+        elif typ == "TWO_ARGS_EITHER":
+            value, result = m.groups()
+            value = parse_value(value, "arg1")
+            mask1 = get_mask("exactly_equal", "arg1", value)
+            mask2 = get_mask("exactly_equal", "arg2", value)
+            mask = f"logical_or({mask1}, {mask2})"
+            assertion = get_assert("exactly_equal", result)
+        elif typ == "TWO_ARGS_SAME_SIGN":
+            result, = m.groups()
+            mask = "same_sign(arg1, arg2)"
+            assertion = get_assert("exactly_equal", result)
+        elif typ == "TWO_ARGS_SAME_SIGN_EXCEPT":
+            result, value, value1, value2 = m.groups()
+            assert value == value1 == value2
+            value = parse_value(value, "res")
+            mask = f"logical_and(same_sign(arg1, arg2), logical_not(exactly_equal(res, {value})))"
+            assertion = get_assert("exactly_equal", result)
+        elif typ == "TWO_ARGS_SAME_SIGN_BOTH":
+            value, result = m.groups()
+            mask1 = get_mask("exactly_equal", "arg1", value)
+            mask2 = get_mask("exactly_equal", "arg2", value)
+            mask = f"logical_and(same_sign(arg1, arg2), logical_and({mask1}, {mask2}))"
+            assertion = get_assert("exactly_equal", result)
+        elif typ == "TWO_ARGS_DIFFERENT_SIGNS":
+            result, = m.groups()
+            mask = "logical_not(same_sign(arg1, arg2))"
+            assertion = get_assert("exactly_equal", result)
+        elif typ == "TWO_ARGS_DIFFERENT_SIGNS_EXCEPT":
+            result, value, value1, value2 = m.groups()
+            assert value == value1 == value2
+            value = parse_value(value, "res")
+            mask = f"logical_and(logical_not(same_sign(arg1, arg2)), logical_not(exactly_equal(res, {value})))"
+            assertion = get_assert("exactly_equal", result)
+        elif typ == "TWO_ARGS_DIFFERENT_SIGNS_BOTH":
+            value, result = m.groups()
+            mask1 = get_mask("exactly_equal", "arg1", value)
+            mask2 = get_mask("exactly_equal", "arg2", value)
+            mask = f"logical_and(logical_not(same_sign(arg1, arg2)), logical_and({mask1}, {mask2}))"
+            assertion = get_assert("exactly_equal", result)
+        elif typ == "TWO_ARGS_EVEN_IF":
+            value1, result, value2 = m.groups()
+            value1 = parse_value(value1, "arg2")
+            mask = get_mask("exactly_equal", "arg2", value1)
+            assertion = get_assert("exactly_equal", result)
+        else:
+            raise ValueError(f"Unrecognized special value type {typ}")
+
+        if func in OPS:
+            return OP_TWO_ARGS_TEMPLATE.format(
+                decorator=decorator,
+                func=func,
+                test_name_extra=test_name_extra,
+                doc=doc,
+                mask=mask,
+                assertion=assertion,
+            )
+        elif func in IOPS:
+            return IOP_TWO_ARGS_TEMPLATE.format(
+                decorator=decorator,
+                func=func,
+                test_name_extra=test_name_extra,
+                doc=doc,
+                operator=func[2:-2],
+                mask=mask,
+                assertion=assertion,
+            )
+        else:
             return TWO_ARGS_TEMPLATE.format(
                 decorator=decorator,
                 func=func,
@@ -970,10 +828,11 @@ def generate_special_case_test(func, typ, m, test_name_extra, sigs):
                 assertion=assertion,
             )
 
-        elif typ == "REMAINING":
-            return REMAINING_TEMPLATE.format(text=m.group(0))
-        else:
-            raise RuntimeError(f"Unexpected type {typ}")
+    elif typ == "REMAINING":
+        return REMAINING_TEMPLATE.format(text=m.group(0))
+
+    else:
+        raise RuntimeError(f"Unexpected type {typ}")
 
 def parse_special_cases(spec_text, verbose=False) -> Dict[str, DefaultDict[str, List[regex.Match]]]:
     special_cases = {}
