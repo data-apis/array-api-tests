@@ -15,10 +15,13 @@ from ._types import Tuple, array
 def unique_all(x: array, /) -> Tuple[array, array, array, array]:
     pass
 
+def unique_counts(x: array, /) -> Tuple[array, array]:
+    pass
+
 def unique_inverse(x: array, /) -> Tuple[array, array]:
     pass
 
 def unique_values(x: array, /) -> array:
     pass
 
-__all__ = ['unique_all', 'unique_inverse', 'unique_values']
+__all__ = ['unique_all', 'unique_counts', 'unique_inverse', 'unique_values']

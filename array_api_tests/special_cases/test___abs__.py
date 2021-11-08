@@ -1,5 +1,5 @@
 """
-Special cases tests for x.__abs__.
+Special cases tests for __abs__.
 
 These tests are generated from the special cases listed in the spec.
 

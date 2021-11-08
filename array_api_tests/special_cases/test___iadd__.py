@@ -1,5 +1,5 @@
 """
-Special cases tests for __add__.
+Special cases tests for __iadd__.
 
 These tests are generated from the special cases listed in the spec.
 
@@ -7,217 +7,236 @@ NOTE: This file is generated automatically by the generate_stubs.py script. Do
 not modify it directly.
 """
 
+from operator import iadd
+
 from ..array_helpers import (NaN, assert_exactly_equal, exactly_equal, infinity, isfinite,
                              logical_and, logical_or, non_zero, zero)
 from ..hypothesis_helpers import numeric_arrays
+from .. import _array_module as xp
 
 from hypothesis import given
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_either(arg1, arg2):
+def test___iadd___special_cases_two_args_either(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If either `x1_i` or `x2_i` is `NaN`, the result is `NaN`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_or(exactly_equal(arg1, NaN(arg1.shape, arg1.dtype)), exactly_equal(arg2, NaN(arg1.shape, arg1.dtype)))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_1(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_1(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is `+infinity` and `x2_i` is `-infinity`, the result is `NaN`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_2(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_2(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is `-infinity` and `x2_i` is `+infinity`, the result is `NaN`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (NaN(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_3(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_3(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is `+infinity` and `x2_i` is `+infinity`, the result is `+infinity`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_4(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_4(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is `-infinity` and `x2_i` is `-infinity`, the result is `-infinity`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_5(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_5(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is `+infinity` and `x2_i` is a finite number, the result is `+infinity`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(exactly_equal(arg1, infinity(arg1.shape, arg1.dtype)), isfinite(arg2))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_6(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_6(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is `-infinity` and `x2_i` is a finite number, the result is `-infinity`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(exactly_equal(arg1, -infinity(arg1.shape, arg1.dtype)), isfinite(arg2))
     assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_7(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_7(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is a finite number and `x2_i` is `+infinity`, the result is `+infinity`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(isfinite(arg1), exactly_equal(arg2, infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_8(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_8(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is a finite number and `x2_i` is `-infinity`, the result is `-infinity`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(isfinite(arg1), exactly_equal(arg2, -infinity(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-infinity(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_9(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_9(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is `-0` and `x2_i` is `-0`, the result is `-0`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(exactly_equal(arg1, -zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (-zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_10(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_10(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is `-0` and `x2_i` is `+0`, the result is `+0`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(exactly_equal(arg1, -zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_11(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_11(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is `+0` and `x2_i` is `-0`, the result is `+0`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_12(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_12(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is `+0` and `x2_i` is `+0`, the result is `+0`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg2, zero(arg2.shape, arg2.dtype)))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__equal_13(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__equal_13(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is a nonzero finite number and `x2_i` is `-x1_i`, the result is `+0`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(logical_and(isfinite(arg1), non_zero(arg1)), exactly_equal(arg2, -arg1))
     assert_exactly_equal(res[mask], (zero(arg1.shape, arg1.dtype))[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_either__equal(arg1, arg2):
+def test___iadd___special_cases_two_args_either__equal(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is either `+0` or `-0` and `x2_i` is a nonzero finite number, the result is `x2_i`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(logical_or(exactly_equal(arg1, zero(arg1.shape, arg1.dtype)), exactly_equal(arg1, -zero(arg1.shape, arg1.dtype))), logical_and(isfinite(arg2), non_zero(arg2)))
     assert_exactly_equal(res[mask], (arg2)[mask])
 
 
 @given(numeric_arrays, numeric_arrays)
-def test___add___special_cases_two_args_equal__either(arg1, arg2):
+def test___iadd___special_cases_two_args_equal__either(arg1, arg2):
     """
-    Special case test for `__add__(self, other, /)`:
+    Special case test for `__iadd__(self, other, /)`:
 
         -   If `x1_i` is a nonzero finite number and `x2_i` is either `+0` or `-0`, the result is `x1_i`.
 
     """
-    res = arg1.__add__(arg2)
+    res = xp.asarray(arg1, copy=True)
+    iadd(res, arg2)
     mask = logical_and(logical_and(isfinite(arg1), non_zero(arg1)), logical_or(exactly_equal(arg2, zero(arg2.shape, arg2.dtype)), exactly_equal(arg2, -zero(arg2.shape, arg2.dtype))))
     assert_exactly_equal(res[mask], (arg1)[mask])
 
