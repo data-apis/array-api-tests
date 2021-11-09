@@ -29,7 +29,7 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
 from . import dtype_helpers as dh
 from . import pytest_helpers as ph
 
-from .test_broadcasting import broadcast_shapes
+from .algos import broadcast_shapes
 
 from . import _array_module
 from ._array_module import linalg

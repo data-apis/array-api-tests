@@ -1,3 +1,4 @@
+from array_api_tests.algos import broadcast_shapes
 import math
 from inspect import getfullargspec
 from typing import Any, Dict, Optional, Tuple, Union
@@ -17,6 +18,7 @@ __all__ = [
     "assert_default_float",
     "assert_default_int",
     "assert_shape",
+    "assert_result_shape",
     "assert_fill",
 ]
 
@@ -127,6 +129,28 @@ def assert_shape(
         expected = (expected,)
     msg = (
         f"{repr_name}={out_shape}, but should be {expected} [{func_name}({fmt_kw(kw)})]"
+    )
+    assert out_shape == expected, msg
+
+
+def assert_result_shape(
+    func_name: str,
+    in_shapes: Tuple[Shape],
+    out_shape: Shape,
+    /,
+    expected: Optional[Shape] = None,
+    *,
+    repr_name="out.shape",
+    **kw,
+):
+    if expected is None:
+        expected = broadcast_shapes(*in_shapes)
+    f_in_shapes = " . ".join(str(s) for s in in_shapes)
+    f_sig = f" {f_in_shapes} "
+    if kw:
+        f_sig += f", {fmt_kw(kw)}"
+    msg = (
+        f"{repr_name}={out_shape}, but should be {expected} [{func_name}({f_sig})]"
     )
     assert out_shape == expected, msg
 

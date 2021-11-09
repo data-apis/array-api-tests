@@ -24,11 +24,8 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
+from .algos import broadcast_shapes
 from .typing import Array, DataType, Param, Scalar
-
-# We might as well use this implementation rather than xp.broadcast_shapes()
-from .test_broadcasting import broadcast_shapes
-
 
 # When appropiate, this module tests operators alongside their respective
 # elementwise methods. We do this by parametrizing a generalised test method
