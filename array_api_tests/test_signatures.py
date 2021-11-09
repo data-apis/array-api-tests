@@ -83,7 +83,7 @@ def example_argument(arg, func_name, dtype):
         full_matrices=False,
         k=1,
         keepdims=True,
-        key=0,
+        key=(0, 0),
         indexing='ij',
         mode='complete',
         n=2,
