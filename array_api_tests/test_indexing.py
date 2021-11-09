@@ -41,7 +41,7 @@ def test_slicing(size, s):
 
     # Sanity check that the strategies are working properly
     if s.start is not None:
-        assert -size <= s.start <= max(0, size - 1), "Sanity check failed. This indicates a bug in the test suite"
+        assert -size <= s.start <= size, "Sanity check failed. This indicates a bug in the test suite"
     if s.stop is not None:
         if s.step is None or s.step > 0:
             assert -size <= s.stop <= size, "Sanity check failed. This indicates a bug in the test suite"
