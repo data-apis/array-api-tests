@@ -19,7 +19,7 @@ from .function_stubs import elementwise_functions
 
 
 # TODO: move tests not covering elementwise funcs/ops into standalone tests
-# result_type, meshgrid, where, tensordor, vecdot
+# result_type, meshgrid, tensordor, vecdot
 
 
 @given(hh.mutually_promotable_dtypes(None))
