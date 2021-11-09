@@ -19,11 +19,14 @@ from ._array_module import arange, reshape
 @given(shared(sizes, key='array_sizes'), integer_indices(shared(sizes, key='array_sizes')))
 def test_integer_indexing(size, idx):
     # Test that indices on single dimensional arrays give the same result as
-    # Python lists. idx may be a Python integer or a 0-D array with integer dtype.
+    # Python lists. idx may be a Python integer or a 0-D array with integer
+    # dtype.
 
     # Sanity check that the strategies are working properly
     assert -size <= int(idx) <= max(0, size - 1), "Sanity check failed. This indicates a bug in the test suite"
 
+    # The spec only requires support for a single integer index on dimension 1
+    # arrays.
     a = arange(size)
     l = list(range(size))
     # TODO: We can remove int() here if we add __index__ to the spec. See
@@ -47,6 +50,9 @@ def test_slicing(size, s):
             assert -size <= s.stop <= size, "Sanity check failed. This indicates a bug in the test suite"
         else:
             assert -size - 1 <= s.stop <= size - 1, "Sanity check failed. This indicates a bug in the test suite"
+
+    # The spec only requires support for a single slice index on dimension 1
+    # arrays.
     a = arange(size)
     l = list(range(size))
     sliced_list = l[s]
