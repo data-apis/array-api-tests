@@ -1,3 +1,5 @@
+import math
+
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -11,16 +13,23 @@ from . import xps
 @given(
     shape=hh.shapes(min_dims=1),
     dtypes=hh.mutually_promotable_dtypes(None, dtypes=dh.numeric_dtypes),
+    kw=hh.kwargs(axis=st.just(0) | st.none()),  # TODO: test with axis >= 1
     data=st.data(),
 )
-def test_concat(shape, dtypes, data):
+def test_concat(shape, dtypes, kw, data):
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
         arrays.append(x)
-    out = xp.concat(arrays)
+    out = xp.concat(arrays, **kw)
     ph.assert_dtype("concat", dtypes, out.dtype)
-    # TODO
+    shapes = tuple(x.shape for x in arrays)
+    if kw.get("axis", 0) == 0:
+        pass  # TODO: assert expected shape
+    elif kw["axis"] is None:
+        size = sum(math.prod(s) for s in shapes)
+        ph.assert_result_shape("concat", shapes, out.shape, (size,), **kw)
+    # TODO: assert out elements match input arrays
 
 
 @given(
