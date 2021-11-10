@@ -4,6 +4,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from . import _array_module as xp
+from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
@@ -50,22 +51,34 @@ def test_expand_dims(x, axis):
     ph.assert_result_shape("expand_dims", (x.shape,), out.shape, shape)
 
 
+@st.composite
+def flip_axis(draw, shape):
+    if len(shape) == 0 or draw(st.booleans()):
+        return None
+    else:
+        ndim = len(shape)
+        return draw(st.integers(-ndim, ndim - 1) | xps.valid_tuple_axes(ndim))
+
+
 @given(
     x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes),
-    kw=hh.kwargs(
-        axis=st.one_of(
-            st.none(),
-            shared_shapes.flatmap(
-                lambda s: st.none()
-                if len(s) == 0
-                else st.integers(-len(s) + 1, len(s) - 1),
-            ),
-        )
-    ),
+    kw=hh.kwargs(axis=shared_shapes.flatmap(flip_axis)),
 )
 def test_flip(x, kw):
-    xp.flip(x, **kw)
-    # TODO
+    out = xp.flip(x, **kw)
+
+    ph.assert_dtype("expand_dims", x.dtype, out.dtype)
+
+    # TODO: test all axis scenarios
+    if kw.get("axis", None) is None:
+        indices = list(ah.ndindex(x.shape))
+        reverse_indices = indices[::-1]
+        for x_idx, out_idx in zip(indices, reverse_indices):
+            msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
+            if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
+                assert xp.isnan(out[out_idx]), msg
+            else:
+                assert out[out_idx] == x[x_idx], msg
 
 
 @given(
