@@ -9,8 +9,16 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
+from .typing import Shape
 
-shared_shapes = st.shared(hh.shapes(), key="shape")
+
+def shared_shapes(*args, **kwargs) -> st.SearchStrategy[Shape]:
+    key = "shape"
+    if args:
+        key += " " + " ".join(args)
+    if kwargs:
+        key += " " + ph.fmt_kw(kwargs)
+    return st.shared(hh.shapes(*args, **kwargs), key="shape")
 
 
 @given(
@@ -36,8 +44,8 @@ def test_concat(shape, dtypes, kw, data):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes),
-    axis=shared_shapes.flatmap(lambda s: st.integers(-len(s), len(s))),
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
+    axis=shared_shapes().flatmap(lambda s: st.integers(-len(s), len(s))),
 )
 def test_expand_dims(x, axis):
     out = xp.expand_dims(x, axis=axis)
@@ -61,8 +69,8 @@ def flip_axis(draw, shape):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes),
-    kw=hh.kwargs(axis=shared_shapes.flatmap(flip_axis)),
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
+    kw=hh.kwargs(axis=shared_shapes().flatmap(flip_axis)),
 )
 def test_flip(x, kw):
     out = xp.flip(x, **kw)
@@ -82,10 +90,10 @@ def test_flip(x, kw):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes),
-    axes=shared_shapes.flatmap(
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes(min_dims=1)),
+    axes=shared_shapes(min_dims=1).flatmap(
         lambda s: st.lists(
-            st.integers(0, max(len(s) - 1, 0)),
+            st.integers(0, len(s) - 1),
             min_size=len(s),
             max_size=len(s),
             unique=True,
@@ -93,13 +101,22 @@ def test_flip(x, kw):
     ),
 )
 def test_permute_dims(x, axes):
-    xp.permute_dims(x, axes)
-    # TODO
+    out = xp.permute_dims(x, axes)
+
+    ph.assert_dtype("permute_dims", x.dtype, out.dtype)
+
+    shape = [None for _ in range(len(axes))]
+    for i, dim in enumerate(axes):
+        side = x.shape[dim]
+        shape[i] = side
+    assert all(isinstance(side, int) for side in shape)  # sanity check
+    shape = tuple(shape)
+    ph.assert_result_shape("permute_dims", (x.shape,), out.shape, shape, axes=axes)
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes),
-    shape=shared_shapes,  # TODO: test more compatible shapes
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
+    shape=shared_shapes(),  # TODO: test more compatible shapes
 )
 def test_reshape(x, shape):
     xp.reshape(x, shape)
@@ -108,8 +125,8 @@ def test_reshape(x, shape):
 
 @given(
     # TODO: axis arguments, update shift respectively
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes),
-    shift=shared_shapes.flatmap(lambda s: st.integers(0, max(math.prod(s) - 1, 0))),
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
+    shift=shared_shapes().flatmap(lambda s: st.integers(0, max(math.prod(s) - 1, 0))),
 )
 def test_roll(x, shift):
     xp.roll(x, shift)
@@ -117,8 +134,8 @@ def test_roll(x, shift):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes),
-    axis=shared_shapes.flatmap(
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
+    axis=shared_shapes().flatmap(
         lambda s: st.just(0)
         if len(s) == 0
         else st.integers(-len(s) + 1, len(s) - 1).filter(lambda i: s[i] == 1)
