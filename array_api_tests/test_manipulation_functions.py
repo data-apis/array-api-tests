@@ -1,4 +1,5 @@
 import math
+from collections import deque
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
@@ -159,14 +160,37 @@ def test_reshape(x, shape):
         else:
             assert out[out_idx] == x[x_idx], msg
 
-@given(
-    # TODO: axis arguments, update shift respectively
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
-    shift=shared_shapes().flatmap(lambda s: st.integers(0, max(math.prod(s) - 1, 0))),
-)
-def test_roll(x, shift):
-    xp.roll(x, shift)
-    # TODO
+
+@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()), st.data())
+def test_roll(x, data):
+    shift = data.draw(
+        st.integers() | st.lists(st.integers(), max_size=x.ndim).map(tuple),
+        label="shift",
+    )
+    axis_strats = [st.none()]
+    if x.shape != ():
+        axis_strats.append(st.integers(-x.ndim, x.ndim - 1))
+        if isinstance(shift, int):
+            axis_strats.append(xps.valid_tuple_axes(x.ndim))
+    kw = data.draw(hh.kwargs(axis=st.one_of(axis_strats)), label="kw")
+
+    out = xp.roll(x, shift, **kw)
+
+    ph.assert_dtype("roll", x.dtype, out.dtype)
+
+    ph.assert_result_shape("roll", (x.shape,), out.shape)
+
+    # TODO: test all shift/axis scenarios
+    if isinstance(shift, int) and kw.get("axis", None) is None:
+        indices = list(ah.ndindex(x.shape))
+        shifted_indices = deque(indices)
+        shifted_indices.rotate(shift)
+        for x_idx, out_idx in zip(indices, shifted_indices):
+            msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
+            if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
+                assert xp.isnan(out[out_idx]), msg
+            else:
+                assert out[out_idx] == x[x_idx], msg
 
 
 @given(
