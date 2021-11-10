@@ -1,6 +1,6 @@
 import math
 
-from hypothesis import given
+from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from . import _array_module as xp
@@ -113,15 +113,51 @@ def test_permute_dims(x, axes):
     shape = tuple(shape)
     ph.assert_result_shape("permute_dims", (x.shape,), out.shape, shape, axes=axes)
 
+    # TODO: test elements
+
+
+MAX_RESHAPE_SIDE = hh.MAX_ARRAY_SIZE // 64
+reshape_x_shapes = st.shared(
+    hh.shapes().filter(lambda s: math.prod(s) <= MAX_RESHAPE_SIDE),
+    key="reshape x shape",
+)
+
+
+@st.composite
+def reshape_shapes(draw, shape):
+    size = 1 if len(shape) == 0 else math.prod(shape)
+    rshape = draw(st.lists(st.integers(0)).filter(lambda s: math.prod(s) == size))
+    assume(all(side <= MAX_RESHAPE_SIDE for side in rshape))
+    if len(rshape) != 0 and size > 0 and draw(st.booleans()):
+        index = draw(st.integers(0, len(rshape) - 1))
+        rshape[index] = -1
+    return tuple(rshape)
+
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
-    shape=shared_shapes(),  # TODO: test more compatible shapes
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=reshape_x_shapes),
+    shape=reshape_x_shapes.flatmap(reshape_shapes),
 )
 def test_reshape(x, shape):
-    xp.reshape(x, shape)
-    # TODO
+    assume(math.prod(shape) == math.prod(x.shape))
 
+    out = xp.reshape(x, shape)
+
+    ph.assert_dtype("reshape", x.dtype, out.dtype)
+
+    _shape = shape
+    if any(side == -1 for side in shape):
+        size = math.prod(x.shape)
+        rsize = math.prod(shape) * -1
+        _shape[shape.index(-1)] = size / rsize
+    ph.assert_result_shape("reshape", (x.shape,), out.shape, _shape, shape=shape)
+
+    for x_idx, out_idx in zip(ah.ndindex(x.shape), ah.ndindex(out.shape)):
+        msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
+        if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
+            assert xp.isnan(out[out_idx]), msg
+        else:
+            assert out[out_idx] == x[x_idx], msg
 
 @given(
     # TODO: axis arguments, update shift respectively
