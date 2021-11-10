@@ -1,5 +1,6 @@
 import math
 from collections import deque
+from typing import Iterable, Union
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
@@ -10,7 +11,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
-from .typing import Shape
+from .typing import Array, Shape
 
 
 def shared_shapes(*args, **kwargs) -> st.SearchStrategy[Shape]:
@@ -20,6 +21,21 @@ def shared_shapes(*args, **kwargs) -> st.SearchStrategy[Shape]:
     if kwargs:
         key += " " + ph.fmt_kw(kwargs)
     return st.shared(hh.shapes(*args, **kwargs), key="shape")
+
+
+def assert_array_ndindex(
+    func_name: str,
+    x: Array,
+    x_indices: Iterable[Union[int, Shape]],
+    out: Array,
+    out_indices: Iterable[Union[int, Shape]],
+):
+    for x_idx, out_idx in zip(x_indices, out_indices):
+        msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]} [{func_name}()]"
+        if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
+            assert xp.isnan(out[out_idx]), msg
+        else:
+            assert out[out_idx] == x[x_idx], msg
 
 
 @given(
@@ -59,12 +75,9 @@ def test_expand_dims(x, axis):
     shape = tuple(shape)
     ph.assert_result_shape("expand_dims", (x.shape,), out.shape, shape)
 
-    for x_idx, out_idx in zip(ah.ndindex(x.shape), ah.ndindex(out.shape)):
-        msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
-        if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
-            assert xp.isnan(out[out_idx]), msg
-        else:
-            assert out[out_idx] == x[x_idx], msg
+    assert_array_ndindex(
+        "expand_dims", x, ah.ndindex(x.shape), out, ah.ndindex(out.shape)
+    )
 
 
 @given(
@@ -99,12 +112,7 @@ def test_squeeze(x, data):
     shape = tuple(shape)
     ph.assert_result_shape("squeeze", (x.shape,), out.shape, shape, axis=axis)
 
-    for x_idx, out_idx in zip(ah.ndindex(x.shape), ah.ndindex(out.shape)):
-        msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
-        if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
-            assert xp.isnan(out[out_idx]), msg
-        else:
-            assert out[out_idx] == x[x_idx], msg
+    assert_array_ndindex("squeeze", x, ah.ndindex(x.shape), out, ah.ndindex(out.shape))
 
 
 @st.composite
@@ -123,18 +131,13 @@ def flip_axis(draw, shape):
 def test_flip(x, kw):
     out = xp.flip(x, **kw)
 
-    ph.assert_dtype("expand_dims", x.dtype, out.dtype)
+    ph.assert_dtype("flip", x.dtype, out.dtype)
 
     # TODO: test all axis scenarios
     if kw.get("axis", None) is None:
         indices = list(ah.ndindex(x.shape))
         reverse_indices = indices[::-1]
-        for x_idx, out_idx in zip(indices, reverse_indices):
-            msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
-            if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
-                assert xp.isnan(out[out_idx]), msg
-            else:
-                assert out[out_idx] == x[x_idx], msg
+        assert_array_ndindex("flip", x, indices, out, reverse_indices)
 
 
 @given(
@@ -200,12 +203,7 @@ def test_reshape(x, shape):
         _shape[shape.index(-1)] = size / rsize
     ph.assert_result_shape("reshape", (x.shape,), out.shape, _shape, shape=shape)
 
-    for x_idx, out_idx in zip(ah.ndindex(x.shape), ah.ndindex(out.shape)):
-        msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
-        if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
-            assert xp.isnan(out[out_idx]), msg
-        else:
-            assert out[out_idx] == x[x_idx], msg
+    assert_array_ndindex("reshape", x, ah.ndindex(x.shape), out, ah.ndindex(out.shape))
 
 
 @given(xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()), st.data())
@@ -232,12 +230,9 @@ def test_roll(x, data):
         indices = list(ah.ndindex(x.shape))
         shifted_indices = deque(indices)
         shifted_indices.rotate(shift)
-        for x_idx, out_idx in zip(indices, shifted_indices):
-            msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
-            if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
-                assert xp.isnan(out[out_idx]), msg
-            else:
-                assert out[out_idx] == x[x_idx], msg
+        print(f"{indices=}")
+        print(f"{shifted_indices=}")
+        assert_array_ndindex("roll", x, indices, out, shifted_indices)
 
 
 @given(
