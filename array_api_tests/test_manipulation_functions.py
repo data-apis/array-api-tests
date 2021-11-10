@@ -39,8 +39,15 @@ def test_concat(shape, dtypes, kw, data):
     axis=shared_shapes.flatmap(lambda s: st.integers(-len(s), len(s))),
 )
 def test_expand_dims(x, axis):
-    xp.expand_dims(x, axis=axis)
-    # TODO
+    out = xp.expand_dims(x, axis=axis)
+
+    ph.assert_dtype("expand_dims", x.dtype, out.dtype)
+
+    shape = [side for side in x.shape]
+    index = axis if axis >= 0 else x.ndim + axis + 1
+    shape.insert(index, 1)
+    shape = tuple(shape)
+    ph.assert_result_shape("expand_dims", (x.shape,), out.shape, shape)
 
 
 @given(

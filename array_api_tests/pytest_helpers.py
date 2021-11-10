@@ -67,12 +67,14 @@ def fmt_kw(kw: Dict[str, Any]) -> str:
 
 def assert_dtype(
     func_name: str,
-    in_dtypes: Tuple[DataType, ...],
+    in_dtypes: Union[DataType, Tuple[DataType, ...]],
     out_dtype: DataType,
     expected: Optional[DataType] = None,
     *,
     repr_name: str = "out.dtype",
 ):
+    if not isinstance(in_dtypes, tuple):
+        in_dtypes = (in_dtypes,)
     f_in_dtypes = dh.fmt_types(in_dtypes)
     f_out_dtype = dh.dtype_to_name[out_dtype]
     if expected is None:
@@ -149,9 +151,7 @@ def assert_result_shape(
     f_sig = f" {f_in_shapes} "
     if kw:
         f_sig += f", {fmt_kw(kw)}"
-    msg = (
-        f"{repr_name}={out_shape}, but should be {expected} [{func_name}({f_sig})]"
-    )
+    msg = f"{repr_name}={out_shape}, but should be {expected} [{func_name}({f_sig})]"
     assert out_shape == expected, msg
 
 
