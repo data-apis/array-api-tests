@@ -46,7 +46,7 @@ def test_concat(shape, dtypes, kw, data):
 
 @given(
     x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
-    axis=shared_shapes().flatmap(lambda s: st.integers(-len(s), len(s))),
+    axis=shared_shapes().flatmap(lambda s: st.integers(-len(s) - 1, len(s))),
 )
 def test_expand_dims(x, axis):
     out = xp.expand_dims(x, axis=axis)
@@ -58,6 +58,53 @@ def test_expand_dims(x, axis):
     shape.insert(index, 1)
     shape = tuple(shape)
     ph.assert_result_shape("expand_dims", (x.shape,), out.shape, shape)
+
+    for x_idx, out_idx in zip(ah.ndindex(x.shape), ah.ndindex(out.shape)):
+        msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
+        if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
+            assert xp.isnan(out[out_idx]), msg
+        else:
+            assert out[out_idx] == x[x_idx], msg
+
+
+@given(
+    x=xps.arrays(
+        dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1).filter(lambda s: 1 in s)
+    ),
+    data=st.data(),
+)
+def test_squeeze(x, data):
+    # axis=shared_shapes(min_side=1).flatmap(lambda s: nd_axes(len(s))),
+    squeezable_axes = st.sampled_from(
+        [i for i, side in enumerate(x.shape) if side == 1]
+    )
+    axis = data.draw(
+        # TODO: generate valid negative axis
+        squeezable_axes | st.lists(squeezable_axes, unique=True).map(tuple),
+        label="axis",
+    )
+
+    out = xp.squeeze(x, axis)
+
+    ph.assert_dtype("squeeze", x.dtype, out.dtype)
+
+    if isinstance(axis, int):
+        axes = (axis,)
+    else:
+        axes = axis
+    shape = []
+    for i, side in enumerate(x.shape):
+        if i not in axes:
+            shape.append(side)
+    shape = tuple(shape)
+    ph.assert_result_shape("squeeze", (x.shape,), out.shape, shape, axis=axis)
+
+    for x_idx, out_idx in zip(ah.ndindex(x.shape), ah.ndindex(out.shape)):
+        msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
+        if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
+            assert xp.isnan(out[out_idx]), msg
+        else:
+            assert out[out_idx] == x[x_idx], msg
 
 
 @st.composite
@@ -191,19 +238,6 @@ def test_roll(x, data):
                 assert xp.isnan(out[out_idx]), msg
             else:
                 assert out[out_idx] == x[x_idx], msg
-
-
-@given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
-    axis=shared_shapes().flatmap(
-        lambda s: st.just(0)
-        if len(s) == 0
-        else st.integers(-len(s) + 1, len(s) - 1).filter(lambda i: s[i] == 1)
-    ),  # TODO: tuple of axis i.e. axes
-)
-def test_squeeze(x, axis):
-    xp.squeeze(x, axis)
-    # TODO
 
 
 @given(
