@@ -38,7 +38,7 @@ def inv(x: array, /) -> array:
 def matmul(x1: array, x2: array, /) -> array:
     pass
 
-def matrix_norm(x: array, /, *, axis: Tuple[int, int] = (-2, -1), keepdims: bool = False, ord: Optional[Union[int, float, Literal[inf, -inf, 'fro', 'nuc']]] = 'fro') -> array:
+def matrix_norm(x: array, /, *, keepdims: bool = False, ord: Optional[Union[int, float, Literal[inf, -inf, 'fro', 'nuc']]] = 'fro') -> array:
     pass
 
 def matrix_power(x: array, n: int, /) -> array:
