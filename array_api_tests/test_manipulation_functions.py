@@ -13,6 +13,9 @@ from . import pytest_helpers as ph
 from . import xps
 from .typing import Array, Shape
 
+MAX_SIDE = hh.MAX_ARRAY_SIZE // 64
+MAX_DIMS = min(hh.MAX_ARRAY_SIZE // MAX_SIDE, 32)  # NumPy only supports up to 32 dims
+
 
 def shared_shapes(*args, **kwargs) -> st.SearchStrategy[Shape]:
     key = "shape"
@@ -40,26 +43,63 @@ def assert_array_ndindex(
             assert out[out_idx] == x[x_idx], msg
 
 
+@st.composite
+def concat_shapes(draw, shape, axis):
+    shape = list(shape)
+    shape[axis] = draw(st.integers(1, MAX_SIDE))
+    return tuple(shape)
+
+
 @given(
-    shape=hh.shapes(min_dims=1),
     dtypes=hh.mutually_promotable_dtypes(None, dtypes=dh.numeric_dtypes),
-    kw=hh.kwargs(axis=st.just(0) | st.none()),  # TODO: test with axis >= 1
+    kw=hh.kwargs(axis=st.none() | st.integers(-MAX_DIMS, MAX_DIMS - 1)),
     data=st.data(),
 )
-def test_concat(shape, dtypes, kw, data):
+def test_concat(dtypes, kw, data):
+    axis = kw.get("axis", 0)
+    if axis is None:
+        shape_strat = hh.shapes()
+    else:
+        _axis = axis if axis >= 0 else abs(axis) - 1
+        shape_strat = shared_shapes(min_dims=_axis + 1).flatmap(
+            lambda s: concat_shapes(s, axis)
+        )
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
-        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
+        x = data.draw(xps.arrays(dtype=dtype, shape=shape_strat), label=f"x{i}")
         arrays.append(x)
+
     out = xp.concat(arrays, **kw)
+
     ph.assert_dtype("concat", dtypes, out.dtype)
+
     shapes = tuple(x.shape for x in arrays)
-    if kw.get("axis", 0) == 0:
-        pass  # TODO: assert expected shape
-    elif kw["axis"] is None:
+    axis = kw.get("axis", 0)
+    if axis is None:
         size = sum(math.prod(s) for s in shapes)
-        ph.assert_result_shape("concat", shapes, out.shape, (size,), **kw)
-    # TODO: assert out elements match input arrays
+        shape = (size,)
+    else:
+        shape = list(shapes[0])
+        for other_shape in shapes[1:]:
+            shape[axis] += other_shape[axis]
+        shape = tuple(shape)
+    ph.assert_result_shape("concat", shapes, out.shape, shape, **kw)
+
+    # TODO: adjust indices with nonzero axis
+    if axis is None or axis == 0:
+        out_indices = ah.ndindex(out.shape)
+        for i, x in enumerate(arrays, 1):
+            msg_suffix = f" [concat({ph.fmt_kw(kw)})]\nx{i}={x!r}\n{out=}"
+            for x_idx in ah.ndindex(x.shape):
+                out_idx = next(out_indices)
+                msg = (
+                    f"out[{out_idx}]={out[out_idx]}, should be x{i}[{x_idx}]={x[x_idx]}"
+                )
+                msg += msg_suffix
+                if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
+                    assert xp.isnan(out[out_idx]), msg
+                else:
+                    assert out[out_idx] == x[x_idx], msg
 
 
 @given(
@@ -169,9 +209,8 @@ def test_permute_dims(x, axes):
     # TODO: test elements
 
 
-MAX_RESHAPE_SIDE = hh.MAX_ARRAY_SIZE // 64
 reshape_x_shapes = st.shared(
-    hh.shapes().filter(lambda s: math.prod(s) <= MAX_RESHAPE_SIDE),
+    hh.shapes().filter(lambda s: math.prod(s) <= MAX_SIDE),
     key="reshape x shape",
 )
 
@@ -180,7 +219,7 @@ reshape_x_shapes = st.shared(
 def reshape_shapes(draw, shape):
     size = 1 if len(shape) == 0 else math.prod(shape)
     rshape = draw(st.lists(st.integers(0)).filter(lambda s: math.prod(s) == size))
-    assume(all(side <= MAX_RESHAPE_SIDE for side in rshape))
+    assume(all(side <= MAX_SIDE for side in rshape))
     if len(rshape) != 0 and size > 0 and draw(st.booleans()):
         index = draw(st.integers(0, len(rshape) - 1))
         rshape[index] = -1
