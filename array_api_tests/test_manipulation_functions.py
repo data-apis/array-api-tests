@@ -30,8 +30,10 @@ def assert_array_ndindex(
     out: Array,
     out_indices: Iterable[Union[int, Shape]],
 ):
+    msg_suffix = f" [{func_name}()]\n  {x=}\n{out=}"
     for x_idx, out_idx in zip(x_indices, out_indices):
-        msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]} [{func_name}()]"
+        msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
+        msg += msg_suffix
         if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
             assert xp.isnan(out[out_idx]), msg
         else:
@@ -229,9 +231,7 @@ def test_roll(x, data):
     if isinstance(shift, int) and kw.get("axis", None) is None:
         indices = list(ah.ndindex(x.shape))
         shifted_indices = deque(indices)
-        shifted_indices.rotate(shift)
-        print(f"{indices=}")
-        print(f"{shifted_indices=}")
+        shifted_indices.rotate(-shift)
         assert_array_ndindex("roll", x, indices, out, shifted_indices)
 
 
