@@ -129,12 +129,11 @@ def test_expand_dims(x, axis):
     data=st.data(),
 )
 def test_squeeze(x, data):
-    # axis=shared_shapes(min_side=1).flatmap(lambda s: nd_axes(len(s))),
+    # TODO: generate valid negative axis (which keep uniqueness)
     squeezable_axes = st.sampled_from(
         [i for i, side in enumerate(x.shape) if side == 1]
     )
     axis = data.draw(
-        # TODO: generate valid negative axis
         squeezable_axes | st.lists(squeezable_axes, unique=True).map(tuple),
         label="axis",
     )
@@ -157,20 +156,19 @@ def test_squeeze(x, data):
     assert_array_ndindex("squeeze", x, ah.ndindex(x.shape), out, ah.ndindex(out.shape))
 
 
-@st.composite
-def flip_axis(draw, shape):
-    if len(shape) == 0 or draw(st.booleans()):
-        return None
-    else:
-        ndim = len(shape)
-        return draw(st.integers(-ndim, ndim - 1) | xps.valid_tuple_axes(ndim))
-
-
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
-    kw=hh.kwargs(axis=shared_shapes().flatmap(flip_axis)),
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
+    data=st.data(),
 )
-def test_flip(x, kw):
+def test_flip(x, data):
+    if x.ndim == 0:
+        axis_strat = st.none()
+    else:
+        axis_strat = (
+            st.none() | st.integers(-x.ndim, x.ndim - 1) | xps.valid_tuple_axes(x.ndim)
+        )
+    kw = data.draw(hh.kwargs(axis=axis_strat), label="kw")
+
     out = xp.flip(x, **kw)
 
     ph.assert_dtype("flip", x.dtype, out.dtype)
@@ -209,12 +207,6 @@ def test_permute_dims(x, axes):
     # TODO: test elements
 
 
-reshape_x_shapes = st.shared(
-    hh.shapes().filter(lambda s: math.prod(s) <= MAX_SIDE),
-    key="reshape x shape",
-)
-
-
 @st.composite
 def reshape_shapes(draw, shape):
     size = 1 if len(shape) == 0 else math.prod(shape)
@@ -227,21 +219,22 @@ def reshape_shapes(draw, shape):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=reshape_x_shapes),
-    shape=reshape_x_shapes.flatmap(reshape_shapes),
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(max_side=MAX_SIDE)),
+    data=st.data(),
 )
-def test_reshape(x, shape):
-    assume(math.prod(shape) == math.prod(x.shape))
+def test_reshape(x, data):
+    shape = data.draw(reshape_shapes(x.shape))
 
     out = xp.reshape(x, shape)
 
     ph.assert_dtype("reshape", x.dtype, out.dtype)
 
-    _shape = shape
+    _shape = list(shape)
     if any(side == -1 for side in shape):
         size = math.prod(x.shape)
         rsize = math.prod(shape) * -1
         _shape[shape.index(-1)] = size / rsize
+    _shape = tuple(_shape)
     ph.assert_result_shape("reshape", (x.shape,), out.shape, _shape, shape=shape)
 
     assert_array_ndindex("reshape", x, ah.ndindex(x.shape), out, ah.ndindex(out.shape))
