@@ -275,15 +275,46 @@ def test_roll(x, data):
 
 
 @given(
-    shape=hh.shapes(),
+    shape=shared_shapes(min_dims=1),
     dtypes=hh.mutually_promotable_dtypes(None),
+    kw=hh.kwargs(
+        axis=shared_shapes(min_dims=1).flatmap(
+            lambda s: st.integers(-len(s), len(s) - 1)
+        )
+    ),
     data=st.data(),
 )
-def test_stack(shape, dtypes, data):
+def test_stack(shape, dtypes, kw, data):
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
         arrays.append(x)
-    out = xp.stack(arrays)
+
+    out = xp.stack(arrays, **kw)
+
     ph.assert_dtype("stack", dtypes, out.dtype)
-    # TODO
+
+    axis = kw.get("axis", 0)
+    _axis = axis if axis >= 0 else len(shape) + axis + 1
+    _shape = list(shape)
+    _shape.insert(_axis, len(arrays))
+    _shape = tuple(_shape)
+    ph.assert_result_shape(
+        "stack", tuple(x.shape for x in arrays), out.shape, _shape, **kw
+    )
+
+    # TODO: adjust indices with nonzero axis
+    if axis == 0:
+        out_indices = ah.ndindex(out.shape)
+        for i, x in enumerate(arrays, 1):
+            msg_suffix = f" [stack({ph.fmt_kw(kw)})]\nx{i}={x!r}\n{out=}"
+            for x_idx in ah.ndindex(x.shape):
+                out_idx = next(out_indices)
+                msg = (
+                    f"out[{out_idx}]={out[out_idx]}, should be x{i}[{x_idx}]={x[x_idx]}"
+                )
+                msg += msg_suffix
+                if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
+                    assert xp.isnan(out[out_idx]), msg
+                else:
+                    assert out[out_idx] == x[x_idx], msg
