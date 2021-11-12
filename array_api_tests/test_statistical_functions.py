@@ -1,6 +1,6 @@
 import math
 
-from hypothesis import given
+from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from . import _array_module as xp
@@ -9,8 +9,22 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
+from .typing import Scalar, ScalarType
 
-RTOL = 0.05
+
+def assert_equals(
+    func_name: str, type_: ScalarType, out: Scalar, expected: Scalar, /, **kw
+):
+    f_func = f"{func_name}({ph.fmt_kw(kw)})"
+    if type_ is bool or type_ is int:
+        msg = f"{out=}, should be {expected} [{f_func}]"
+        assert out == expected, msg
+    elif math.isnan(expected):
+        msg = f"{out=}, should be {expected} [{f_func}]"
+        assert math.isnan(out), msg
+    else:
+        msg = f"{out=}, should be roughly {expected} [{f_func}]"
+        assert math.isclose(out, expected, rel_tol=0.05), msg
 
 
 @given(
@@ -34,7 +48,7 @@ def test_min(x, data):
     f_func = f"min({ph.fmt_kw(kw)})"
 
     # TODO: support axis
-    if kw.get("axis") is None:
+    if kw.get("axis", None) is None:
         keepdims = kw.get("keepdims", False)
         if keepdims:
             idx = tuple(1 for _ in x.shape)
@@ -53,11 +67,7 @@ def test_min(x, data):
                 elements.append(s)
             min_ = scalar_type(_out)
             expected = min(elements)
-            msg = f"out={min_}, should be {expected} [{f_func}]"
-            if math.isnan(min_):
-                assert math.isnan(expected), msg
-            else:
-                assert min_ == expected, msg
+            assert_equals("min", dh.get_scalar_type(out.dtype), min_, expected)
 
 
 @given(
@@ -81,7 +91,7 @@ def test_max(x, data):
     f_func = f"max({ph.fmt_kw(kw)})"
 
     # TODO: support axis
-    if kw.get("axis") is None:
+    if kw.get("axis", None) is None:
         keepdims = kw.get("keepdims", False)
         if keepdims:
             idx = tuple(1 for _ in x.shape)
@@ -100,11 +110,7 @@ def test_max(x, data):
                 elements.append(s)
             max_ = scalar_type(_out)
             expected = max(elements)
-            msg = f"out={max_}, should be {expected} [{f_func}]"
-            if math.isnan(max_):
-                assert math.isnan(expected), msg
-            else:
-                assert max_ == expected, msg
+            assert_equals("mean", dh.get_scalar_type(out.dtype), max_, expected)
 
 
 @given(
@@ -128,7 +134,7 @@ def test_mean(x, data):
     f_func = f"mean({ph.fmt_kw(kw)})"
 
     # TODO: support axis
-    if kw.get("axis") is None:
+    if kw.get("axis", None) is None:
         keepdims = kw.get("keepdims", False)
         if keepdims:
             idx = tuple(1 for _ in x.shape)
@@ -146,15 +152,74 @@ def test_mean(x, data):
                 elements.append(s)
             mean = float(_out)
             expected = sum(elements) / len(elements)
-            msg = f"out={mean}, should be roughly {expected} [{f_func}]"
-            assert math.isclose(mean, expected, rel_tol=RTOL), msg
+            assert_equals("mean", float, mean, expected)
 
 
-# TODO: generate kwargs
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(min_side=1)))
-def test_prod(x):
-    xp.prod(x)
-    # TODO
+@given(
+    x=xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(min_side=1)),
+    data=st.data(),
+)
+def test_prod(x, data):
+    axis_strats = [st.none()]
+    if x.shape != ():
+        axis_strats.append(
+            st.integers(-x.ndim, x.ndim - 1) | xps.valid_tuple_axes(x.ndim)
+        )
+    kw = data.draw(
+        hh.kwargs(
+            axis=st.one_of(axis_strats),
+            dtype=st.none() | st.just(x.dtype),  # TODO: all valid dtypes
+            keepdims=st.booleans(),
+        ),
+        label="kw",
+    )
+
+    out = xp.prod(x, **kw)
+
+    dtype = kw.get("dtype", None)
+    if dtype is None:
+        if dh.is_int_dtype(x.dtype):
+            m, M = dh.dtype_ranges[x.dtype]
+            d_m, d_M = dh.dtype_ranges[dh.default_int]
+            if m < d_m or M > d_M:
+                _dtype = x.dtype
+            else:
+                _dtype = dh.default_int
+        else:
+            if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_float]:
+                _dtype = x.dtype
+            else:
+                _dtype = dh.default_float
+    else:
+        _dtype = dtype
+    ph.assert_dtype("prod", x.dtype, out.dtype, _dtype)
+
+    f_func = f"prod({ph.fmt_kw(kw)})"
+
+    # TODO: support axis
+    if kw.get("axis", None) is None:
+        keepdims = kw.get("keepdims", False)
+        if keepdims:
+            idx = tuple(1 for _ in x.shape)
+            msg = f"{out.shape=}, should be reduced dimension {idx} [{f_func}]"
+            assert out.shape == idx, msg
+        else:
+            ph.assert_shape("prod", out.shape, (), **kw)
+
+        # TODO: figure out NaN behaviour
+        if dh.is_int_dtype(x.dtype) or not xp.any(xp.isnan(x)):
+            _out = xp.reshape(out, ()) if keepdims else out
+            scalar_type = dh.get_scalar_type(out.dtype)
+            elements = []
+            for idx in ah.ndindex(x.shape):
+                s = scalar_type(x[idx])
+                elements.append(s)
+            prod = scalar_type(_out)
+            expected = math.prod(elements)
+            if dh.is_int_dtype(out.dtype):
+                m, M = dh.dtype_ranges[out.dtype]
+                assume(m <= expected <= M)
+            assert_equals("prod", dh.get_scalar_type(out.dtype), prod, expected)
 
 
 # TODO: generate kwargs
