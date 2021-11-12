@@ -1,4 +1,5 @@
 import math
+from typing import Optional, Union
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
@@ -9,7 +10,15 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
-from .typing import Scalar, ScalarType
+from .typing import Scalar, ScalarType, Shape
+
+
+def axes(ndim: int) -> st.SearchStrategy[Optional[Union[int, Shape]]]:
+    axes_strats = [st.none()]
+    if ndim != 0:
+        axes_strats.append(st.integers(-ndim, ndim - 1))
+        axes_strats.append(xps.valid_tuple_axes(ndim))
+    return st.one_of(axes_strats)
 
 
 def assert_equals(
@@ -32,14 +41,7 @@ def assert_equals(
     data=st.data(),
 )
 def test_min(x, data):
-    axis_strats = [st.none()]
-    if x.shape != ():
-        axis_strats.append(
-            st.integers(-x.ndim, x.ndim - 1) | xps.valid_tuple_axes(x.ndim)
-        )
-    kw = data.draw(
-        hh.kwargs(axis=st.one_of(axis_strats), keepdims=st.booleans()), label="kw"
-    )
+    kw = data.draw(hh.kwargs(axis=axes(x.ndim), keepdims=st.booleans()), label="kw")
 
     out = xp.min(x, **kw)
 
@@ -75,14 +77,7 @@ def test_min(x, data):
     data=st.data(),
 )
 def test_max(x, data):
-    axis_strats = [st.none()]
-    if x.shape != ():
-        axis_strats.append(
-            st.integers(-x.ndim, x.ndim - 1) | xps.valid_tuple_axes(x.ndim)
-        )
-    kw = data.draw(
-        hh.kwargs(axis=st.one_of(axis_strats), keepdims=st.booleans()), label="kw"
-    )
+    kw = data.draw(hh.kwargs(axis=axes(x.ndim), keepdims=st.booleans()), label="kw")
 
     out = xp.max(x, **kw)
 
@@ -118,14 +113,7 @@ def test_max(x, data):
     data=st.data(),
 )
 def test_mean(x, data):
-    axis_strats = [st.none()]
-    if x.shape != ():
-        axis_strats.append(
-            st.integers(-x.ndim, x.ndim - 1) | xps.valid_tuple_axes(x.ndim)
-        )
-    kw = data.draw(
-        hh.kwargs(axis=st.one_of(axis_strats), keepdims=st.booleans()), label="kw"
-    )
+    kw = data.draw(hh.kwargs(axis=axes(x.ndim), keepdims=st.booleans()), label="kw")
 
     out = xp.mean(x, **kw)
 
@@ -160,14 +148,9 @@ def test_mean(x, data):
     data=st.data(),
 )
 def test_prod(x, data):
-    axis_strats = [st.none()]
-    if x.shape != ():
-        axis_strats.append(
-            st.integers(-x.ndim, x.ndim - 1) | xps.valid_tuple_axes(x.ndim)
-        )
     kw = data.draw(
         hh.kwargs(
-            axis=st.one_of(axis_strats),
+            axis=axes(x.ndim),
             dtype=st.none() | st.just(x.dtype),  # TODO: all valid dtypes
             keepdims=st.booleans(),
         ),
@@ -222,10 +205,14 @@ def test_prod(x, data):
             assert_equals("prod", dh.get_scalar_type(out.dtype), prod, expected)
 
 
-# TODO: generate kwargs
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)))
-def test_std(x):
-    xp.std(x)
+@given(
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
+    data=st.data(),
+)
+def test_std(x, data):
+    kw = data.draw(hh.kwargs(axis=axes(x.ndim), keepdims=st.booleans()), label="kw")
+
+    xp.std(x, **kw)
     # TODO
 
 
