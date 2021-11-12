@@ -53,9 +53,9 @@ def test_min(x, data):
     if kw.get("axis", None) is None:
         keepdims = kw.get("keepdims", False)
         if keepdims:
-            idx = tuple(1 for _ in x.shape)
-            msg = f"{out.shape=}, should be reduced dimension {idx} [{f_func}]"
-            assert out.shape == idx, msg
+            shape = tuple(1 for _ in x.shape)
+            msg = f"{out.shape=}, should be reduced dimension {shape} [{f_func}]"
+            assert out.shape == shape, msg
         else:
             ph.assert_shape("min", out.shape, (), **kw)
 
@@ -89,9 +89,9 @@ def test_max(x, data):
     if kw.get("axis", None) is None:
         keepdims = kw.get("keepdims", False)
         if keepdims:
-            idx = tuple(1 for _ in x.shape)
-            msg = f"{out.shape=}, should be reduced dimension {idx} [{f_func}]"
-            assert out.shape == idx, msg
+            shape = tuple(1 for _ in x.shape)
+            msg = f"{out.shape=}, should be reduced dimension {shape} [{f_func}]"
+            assert out.shape == shape, msg
         else:
             ph.assert_shape("max", out.shape, (), **kw)
 
@@ -125,9 +125,9 @@ def test_mean(x, data):
     if kw.get("axis", None) is None:
         keepdims = kw.get("keepdims", False)
         if keepdims:
-            idx = tuple(1 for _ in x.shape)
-            msg = f"{out.shape=}, should be reduced dimension {idx} [{f_func}]"
-            assert out.shape == idx, msg
+            shape = tuple(1 for _ in x.shape)
+            msg = f"{out.shape=}, should be reduced dimension {shape} [{f_func}]"
+            assert out.shape == shape, msg
         else:
             ph.assert_shape("max", out.shape, (), **kw)
 
@@ -183,9 +183,9 @@ def test_prod(x, data):
     if kw.get("axis", None) is None:
         keepdims = kw.get("keepdims", False)
         if keepdims:
-            idx = tuple(1 for _ in x.shape)
-            msg = f"{out.shape=}, should be reduced dimension {idx} [{f_func}]"
-            assert out.shape == idx, msg
+            shape = tuple(1 for _ in x.shape)
+            msg = f"{out.shape=}, should be reduced dimension {shape} [{f_func}]"
+            assert out.shape == shape, msg
         else:
             ph.assert_shape("prod", out.shape, (), **kw)
 
@@ -206,14 +206,47 @@ def test_prod(x, data):
 
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)).filter(
+        lambda x: x.size >= 2
+    ),
     data=st.data(),
 )
 def test_std(x, data):
-    kw = data.draw(hh.kwargs(axis=axes(x.ndim), keepdims=st.booleans()), label="kw")
+    axis = data.draw(axes(x.ndim), label="axis")
+    if axis is None:
+        N = x.size
+        _axes = tuple(range(x.ndim))
+    else:
+        _axes = axis if isinstance(axis, tuple) else (axis,)
+        _axes = tuple(
+            axis if axis >= 0 else x.ndim + axis for axis in _axes
+        )  # normalise
+        N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
+    correction = data.draw(
+        st.floats(0.0, N, allow_infinity=False, allow_nan=False) | st.integers(0, N),
+        label="correction",
+    )
+    keepdims = data.draw(st.booleans(), label="keepdims")
+    kw = data.draw(
+        hh.specified_kwargs(
+            ("axis", axis, None),
+            ("correction", correction, 0.0),
+            ("keepdims", keepdims, False),
+        ),
+        label="kw",
+    )
 
-    xp.std(x, **kw)
-    # TODO
+    out = xp.std(x, **kw)
+
+    ph.assert_dtype("std", x.dtype, out.dtype)
+
+    if keepdims:
+        shape = tuple(1 if axis in _axes else side for axis, side in enumerate(x.shape))
+    else:
+        shape = tuple(side for axis, side in enumerate(x.shape) if axis not in _axes)
+    ph.assert_shape("std", out.shape, shape, **kw)
+
+    # We can't easily test the result(s) as standard deviation methods vary a lot
 
 
 # TODO: generate kwargs
