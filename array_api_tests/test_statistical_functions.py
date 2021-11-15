@@ -11,7 +11,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
-from .typing import Scalar, ScalarType, Shape
+from .typing import DataType, Scalar, ScalarType, Shape
 
 
 def axes(ndim: int) -> st.SearchStrategy[Optional[Union[int, Shape]]]:
@@ -20,6 +20,11 @@ def axes(ndim: int) -> st.SearchStrategy[Optional[Union[int, Shape]]]:
         axes_strats.append(st.integers(-ndim, ndim - 1))
         axes_strats.append(xps.valid_tuple_axes(ndim))
     return st.one_of(axes_strats)
+
+
+def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
+    dtypes = [d2 for d1, d2 in dh.promotion_table if d1 == dtype]
+    return st.none() | st.sampled_from(dtypes)
 
 
 def normalise_axis(
@@ -190,7 +195,7 @@ def test_prod(x, data):
     kw = data.draw(
         hh.kwargs(
             axis=axes(x.ndim),
-            dtype=st.none() | st.just(x.dtype),  # TODO: all valid dtypes
+            dtype=kwarg_dtypes(x.dtype),
             keepdims=st.booleans(),
         ),
         label="kw",
@@ -316,7 +321,7 @@ def test_sum(x, data):
     kw = data.draw(
         hh.kwargs(
             axis=axes(x.ndim),
-            dtype=st.none() | st.just(x.dtype),  # TODO: all valid dtypes
+            dtype=kwarg_dtypes(x.dtype),
             keepdims=st.booleans(),
         ),
         label="kw",
