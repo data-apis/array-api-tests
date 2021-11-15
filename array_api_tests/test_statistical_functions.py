@@ -56,10 +56,10 @@ def axes_ndindex(shape: Shape, axes: Tuple[int, ...]) -> Iterator[Tuple[Shape, .
 
 def assert_keepdimable_shape(
     func_name: str,
+    out_shape: Shape,
     in_shape: Shape,
     axes: Tuple[int, ...],
     keepdims: bool,
-    out_shape: Shape,
     /,
     **kw,
 ):
@@ -108,7 +108,7 @@ def test_min(x, data):
     ph.assert_dtype("min", x.dtype, out.dtype)
     _axes = normalise_axis(kw.get("axis", None), x.ndim)
     assert_keepdimable_shape(
-        "min", x.shape, _axes, kw.get("keepdims", False), out.shape, **kw
+        "min", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(out.dtype)
     for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
@@ -137,7 +137,7 @@ def test_max(x, data):
     ph.assert_dtype("max", x.dtype, out.dtype)
     _axes = normalise_axis(kw.get("axis", None), x.ndim)
     assert_keepdimable_shape(
-        "max", x.shape, _axes, kw.get("keepdims", False), out.shape, **kw
+        "max", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(out.dtype)
     for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
@@ -166,7 +166,7 @@ def test_mean(x, data):
     ph.assert_dtype("mean", x.dtype, out.dtype)
     _axes = normalise_axis(kw.get("axis", None), x.ndim)
     assert_keepdimable_shape(
-        "mean", x.shape, _axes, kw.get("keepdims", False), out.shape, **kw
+        "mean", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
     for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
         mean = float(out[out_idx])
@@ -217,7 +217,7 @@ def test_prod(x, data):
     ph.assert_dtype("prod", x.dtype, out.dtype, _dtype)
     _axes = normalise_axis(kw.get("axis", None), x.ndim)
     assert_keepdimable_shape(
-        "prod", x.shape, _axes, kw.get("keepdims", False), out.shape, **kw
+        "prod", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(out.dtype)
     for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
@@ -264,20 +264,97 @@ def test_std(x, data):
 
     ph.assert_dtype("std", x.dtype, out.dtype)
     assert_keepdimable_shape(
-        "std", x.shape, _axes, kw.get("keepdims", False), out.shape, **kw
+        "std", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
     # We can't easily test the result(s) as standard deviation methods vary a lot
 
 
-# TODO: generate kwargs
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(min_side=1)))
-def test_sum(x):
-    xp.sum(x)
-    # TODO
+@given(
+    x=xps.arrays(
+        dtype=xps.floating_dtypes(),
+        shape=hh.shapes(min_side=1),
+        elements={"allow_nan": False},
+    ).filter(lambda x: x.size >= 2),
+    data=st.data(),
+)
+def test_var(x, data):
+    axis = data.draw(axes(x.ndim), label="axis")
+    _axes = normalise_axis(axis, x.ndim)
+    N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
+    correction = data.draw(
+        st.floats(0.0, N, allow_infinity=False, allow_nan=False) | st.integers(0, N),
+        label="correction",
+    )
+    keepdims = data.draw(st.booleans(), label="keepdims")
+    kw = data.draw(
+        hh.specified_kwargs(
+            ("axis", axis, None),
+            ("correction", correction, 0.0),
+            ("keepdims", keepdims, False),
+        ),
+        label="kw",
+    )
+
+    out = xp.var(x, **kw)
+
+    ph.assert_dtype("var", x.dtype, out.dtype)
+    assert_keepdimable_shape(
+        "var", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
+    )
+    # We can't easily test the result(s) as variance methods vary a lot
 
 
-# TODO: generate kwargs
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)))
-def test_var(x):
-    xp.var(x)
-    # TODO
+@given(
+    x=xps.arrays(
+        dtype=xps.numeric_dtypes(),
+        shape=hh.shapes(min_side=1),
+        elements={"allow_nan": False},
+    ),
+    data=st.data(),
+)
+def test_sum(x, data):
+    kw = data.draw(
+        hh.kwargs(
+            axis=axes(x.ndim),
+            dtype=st.none() | st.just(x.dtype),  # TODO: all valid dtypes
+            keepdims=st.booleans(),
+        ),
+        label="kw",
+    )
+
+    out = xp.sum(x, **kw)
+
+    dtype = kw.get("dtype", None)
+    if dtype is None:
+        if dh.is_int_dtype(x.dtype):
+            m, M = dh.dtype_ranges[x.dtype]
+            d_m, d_M = dh.dtype_ranges[dh.default_int]
+            if m < d_m or M > d_M:
+                _dtype = x.dtype
+            else:
+                _dtype = dh.default_int
+        else:
+            if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_float]:
+                _dtype = x.dtype
+            else:
+                _dtype = dh.default_float
+    else:
+        _dtype = dtype
+    ph.assert_dtype("sum", x.dtype, out.dtype, _dtype)
+    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    assert_keepdimable_shape(
+        "sum", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
+    )
+    scalar_type = dh.get_scalar_type(out.dtype)
+    for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
+        sum_ = scalar_type(out[out_idx])
+        assume(not math.isinf(sum_))
+        elements = []
+        for idx in indices:
+            s = scalar_type(x[idx])
+            elements.append(s)
+        expected = sum(elements)
+        if dh.is_int_dtype(out.dtype):
+            m, M = dh.dtype_ranges[out.dtype]
+            assume(m <= expected <= M)
+        assert_equals("sum", dh.get_scalar_type(out.dtype), out_idx, sum_, expected)
