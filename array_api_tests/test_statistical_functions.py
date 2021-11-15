@@ -1,5 +1,6 @@
 import math
-from typing import Optional, Union
+from itertools import product
+from typing import Iterator, Optional, Tuple, Union
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
@@ -21,23 +22,82 @@ def axes(ndim: int) -> st.SearchStrategy[Optional[Union[int, Shape]]]:
     return st.one_of(axes_strats)
 
 
-def assert_equals(
-    func_name: str, type_: ScalarType, out: Scalar, expected: Scalar, /, **kw
+def normalise_axis(
+    axis: Optional[Union[int, Tuple[int, ...]]], ndim: int
+) -> Tuple[int, ...]:
+    if axis is None:
+        return tuple(range(ndim))
+    axes = axis if isinstance(axis, tuple) else (axis,)
+    axes = tuple(axis if axis >= 0 else ndim + axis for axis in axes)
+    return axes
+
+
+def axes_ndindex(shape: Shape, axes: Tuple[int, ...]) -> Iterator[Tuple[Shape, ...]]:
+    base_iterables = []
+    axes_iterables = []
+    for axis, side in enumerate(shape):
+        if axis in axes:
+            base_iterables.append((None,))
+            axes_iterables.append(range(side))
+        else:
+            base_iterables.append(range(side))
+            axes_iterables.append((None,))
+    for base_idx in product(*base_iterables):
+        indices = []
+        for idx in product(*axes_iterables):
+            idx = list(idx)
+            for axis, side in enumerate(idx):
+                if axis not in axes:
+                    idx[axis] = base_idx[axis]
+            idx = tuple(idx)
+            indices.append(idx)
+        yield tuple(indices)
+
+
+def assert_keepdimable_shape(
+    func_name: str,
+    in_shape: Shape,
+    axes: Tuple[int, ...],
+    keepdims: bool,
+    out_shape: Shape,
+    /,
+    **kw,
 ):
+    if keepdims:
+        shape = tuple(1 if axis in axes else side for axis, side in enumerate(in_shape))
+    else:
+        shape = tuple(side for axis, side in enumerate(in_shape) if axis not in axes)
+    ph.assert_shape(func_name, out_shape, shape, **kw)
+
+
+def assert_equals(
+    func_name: str,
+    type_: ScalarType,
+    idx: Shape,
+    out: Scalar,
+    expected: Scalar,
+    /,
+    **kw,
+):
+    out_repr = "out" if idx == () else f"out[{idx}]"
     f_func = f"{func_name}({ph.fmt_kw(kw)})"
     if type_ is bool or type_ is int:
-        msg = f"{out=}, should be {expected} [{f_func}]"
+        msg = f"{out_repr}={out}, should be {expected} [{f_func}]"
         assert out == expected, msg
     elif math.isnan(expected):
-        msg = f"{out=}, should be {expected} [{f_func}]"
+        msg = f"{out_repr}={out}, should be {expected} [{f_func}]"
         assert math.isnan(out), msg
     else:
-        msg = f"{out=}, should be roughly {expected} [{f_func}]"
+        msg = f"{out_repr}={out}, should be roughly {expected} [{f_func}]"
         assert math.isclose(out, expected, rel_tol=0.05), msg
 
 
 @given(
-    x=xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(min_side=1)),
+    x=xps.arrays(
+        dtype=xps.numeric_dtypes(),
+        shape=hh.shapes(min_side=1),
+        elements={"allow_nan": False},
+    ),
     data=st.data(),
 )
 def test_min(x, data):
@@ -46,34 +106,27 @@ def test_min(x, data):
     out = xp.min(x, **kw)
 
     ph.assert_dtype("min", x.dtype, out.dtype)
-
-    f_func = f"min({ph.fmt_kw(kw)})"
-
-    # TODO: support axis
-    if kw.get("axis", None) is None:
-        keepdims = kw.get("keepdims", False)
-        if keepdims:
-            shape = tuple(1 for _ in x.shape)
-            msg = f"{out.shape=}, should be reduced dimension {shape} [{f_func}]"
-            assert out.shape == shape, msg
-        else:
-            ph.assert_shape("min", out.shape, (), **kw)
-
-        # TODO: figure out NaN behaviour
-        if dh.is_int_dtype(x.dtype) or not xp.any(xp.isnan(x)):
-            _out = xp.reshape(out, ()) if keepdims else out
-            scalar_type = dh.get_scalar_type(out.dtype)
-            elements = []
-            for idx in ah.ndindex(x.shape):
-                s = scalar_type(x[idx])
-                elements.append(s)
-            min_ = scalar_type(_out)
-            expected = min(elements)
-            assert_equals("min", dh.get_scalar_type(out.dtype), min_, expected)
+    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    assert_keepdimable_shape(
+        "min", x.shape, _axes, kw.get("keepdims", False), out.shape, **kw
+    )
+    scalar_type = dh.get_scalar_type(out.dtype)
+    for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
+        min_ = scalar_type(out[out_idx])
+        elements = []
+        for idx in indices:
+            s = scalar_type(x[idx])
+            elements.append(s)
+        expected = min(elements)
+        assert_equals("min", dh.get_scalar_type(out.dtype), out_idx, min_, expected)
 
 
 @given(
-    x=xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(min_side=1)),
+    x=xps.arrays(
+        dtype=xps.numeric_dtypes(),
+        shape=hh.shapes(min_side=1),
+        elements={"allow_nan": False},
+    ),
     data=st.data(),
 )
 def test_max(x, data):
@@ -82,34 +135,27 @@ def test_max(x, data):
     out = xp.max(x, **kw)
 
     ph.assert_dtype("max", x.dtype, out.dtype)
-
-    f_func = f"max({ph.fmt_kw(kw)})"
-
-    # TODO: support axis
-    if kw.get("axis", None) is None:
-        keepdims = kw.get("keepdims", False)
-        if keepdims:
-            shape = tuple(1 for _ in x.shape)
-            msg = f"{out.shape=}, should be reduced dimension {shape} [{f_func}]"
-            assert out.shape == shape, msg
-        else:
-            ph.assert_shape("max", out.shape, (), **kw)
-
-        # TODO: figure out NaN behaviour
-        if dh.is_int_dtype(x.dtype) or not xp.any(xp.isnan(x)):
-            _out = xp.reshape(out, ()) if keepdims else out
-            scalar_type = dh.get_scalar_type(out.dtype)
-            elements = []
-            for idx in ah.ndindex(x.shape):
-                s = scalar_type(x[idx])
-                elements.append(s)
-            max_ = scalar_type(_out)
-            expected = max(elements)
-            assert_equals("mean", dh.get_scalar_type(out.dtype), max_, expected)
+    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    assert_keepdimable_shape(
+        "max", x.shape, _axes, kw.get("keepdims", False), out.shape, **kw
+    )
+    scalar_type = dh.get_scalar_type(out.dtype)
+    for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
+        max_ = scalar_type(out[out_idx])
+        elements = []
+        for idx in indices:
+            s = scalar_type(x[idx])
+            elements.append(s)
+        expected = max(elements)
+        assert_equals("max", dh.get_scalar_type(out.dtype), out_idx, max_, expected)
 
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
+    x=xps.arrays(
+        dtype=xps.floating_dtypes(),
+        shape=hh.shapes(min_side=1),
+        elements={"allow_nan": False},
+    ),
     data=st.data(),
 )
 def test_mean(x, data):
@@ -118,33 +164,26 @@ def test_mean(x, data):
     out = xp.mean(x, **kw)
 
     ph.assert_dtype("mean", x.dtype, out.dtype)
-
-    f_func = f"mean({ph.fmt_kw(kw)})"
-
-    # TODO: support axis
-    if kw.get("axis", None) is None:
-        keepdims = kw.get("keepdims", False)
-        if keepdims:
-            shape = tuple(1 for _ in x.shape)
-            msg = f"{out.shape=}, should be reduced dimension {shape} [{f_func}]"
-            assert out.shape == shape, msg
-        else:
-            ph.assert_shape("max", out.shape, (), **kw)
-
-        # TODO: figure out NaN behaviour
-        if not xp.any(xp.isnan(x)):
-            _out = xp.reshape(out, ()) if keepdims else out
-            elements = []
-            for idx in ah.ndindex(x.shape):
-                s = float(x[idx])
-                elements.append(s)
-            mean = float(_out)
-            expected = sum(elements) / len(elements)
-            assert_equals("mean", float, mean, expected)
+    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    assert_keepdimable_shape(
+        "mean", x.shape, _axes, kw.get("keepdims", False), out.shape, **kw
+    )
+    for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
+        mean = float(out[out_idx])
+        elements = []
+        for idx in indices:
+            s = float(x[idx])
+            elements.append(s)
+        expected = sum(elements) / len(elements)
+        assert_equals("mean", dh.get_scalar_type(out.dtype), out_idx, mean, expected)
 
 
 @given(
-    x=xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(min_side=1)),
+    x=xps.arrays(
+        dtype=xps.numeric_dtypes(),
+        shape=hh.shapes(min_side=1),
+        elements={"allow_nan": False},
+    ),
     data=st.data(),
 )
 def test_prod(x, data):
@@ -176,52 +215,37 @@ def test_prod(x, data):
     else:
         _dtype = dtype
     ph.assert_dtype("prod", x.dtype, out.dtype, _dtype)
-
-    f_func = f"prod({ph.fmt_kw(kw)})"
-
-    # TODO: support axis
-    if kw.get("axis", None) is None:
-        keepdims = kw.get("keepdims", False)
-        if keepdims:
-            shape = tuple(1 for _ in x.shape)
-            msg = f"{out.shape=}, should be reduced dimension {shape} [{f_func}]"
-            assert out.shape == shape, msg
-        else:
-            ph.assert_shape("prod", out.shape, (), **kw)
-
-        # TODO: figure out NaN behaviour
-        if dh.is_int_dtype(x.dtype) or not xp.any(xp.isnan(x)):
-            _out = xp.reshape(out, ()) if keepdims else out
-            scalar_type = dh.get_scalar_type(out.dtype)
-            elements = []
-            for idx in ah.ndindex(x.shape):
-                s = scalar_type(x[idx])
-                elements.append(s)
-            prod = scalar_type(_out)
-            expected = math.prod(elements)
-            if dh.is_int_dtype(out.dtype):
-                m, M = dh.dtype_ranges[out.dtype]
-                assume(m <= expected <= M)
-            assert_equals("prod", dh.get_scalar_type(out.dtype), prod, expected)
+    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    assert_keepdimable_shape(
+        "prod", x.shape, _axes, kw.get("keepdims", False), out.shape, **kw
+    )
+    scalar_type = dh.get_scalar_type(out.dtype)
+    for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
+        prod = scalar_type(out[out_idx])
+        assume(not math.isinf(prod))
+        elements = []
+        for idx in indices:
+            s = scalar_type(x[idx])
+            elements.append(s)
+        expected = math.prod(elements)
+        if dh.is_int_dtype(out.dtype):
+            m, M = dh.dtype_ranges[out.dtype]
+            assume(m <= expected <= M)
+        assert_equals("prod", dh.get_scalar_type(out.dtype), out_idx, prod, expected)
 
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)).filter(
-        lambda x: x.size >= 2
-    ),
+    x=xps.arrays(
+        dtype=xps.floating_dtypes(),
+        shape=hh.shapes(min_side=1),
+        elements={"allow_nan": False},
+    ).filter(lambda x: x.size >= 2),
     data=st.data(),
 )
 def test_std(x, data):
     axis = data.draw(axes(x.ndim), label="axis")
-    if axis is None:
-        N = x.size
-        _axes = tuple(range(x.ndim))
-    else:
-        _axes = axis if isinstance(axis, tuple) else (axis,)
-        _axes = tuple(
-            axis if axis >= 0 else x.ndim + axis for axis in _axes
-        )  # normalise
-        N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
+    _axes = normalise_axis(axis, x.ndim)
+    N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
     correction = data.draw(
         st.floats(0.0, N, allow_infinity=False, allow_nan=False) | st.integers(0, N),
         label="correction",
@@ -239,13 +263,9 @@ def test_std(x, data):
     out = xp.std(x, **kw)
 
     ph.assert_dtype("std", x.dtype, out.dtype)
-
-    if keepdims:
-        shape = tuple(1 if axis in _axes else side for axis, side in enumerate(x.shape))
-    else:
-        shape = tuple(side for axis, side in enumerate(x.shape) if axis not in _axes)
-    ph.assert_shape("std", out.shape, shape, **kw)
-
+    assert_keepdimable_shape(
+        "std", x.shape, _axes, kw.get("keepdims", False), out.shape, **kw
+    )
     # We can't easily test the result(s) as standard deviation methods vary a lot
 
 
