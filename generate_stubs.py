@@ -9,6 +9,8 @@ repo, then run
 
 This will update the stub files in array_api_tests/function_stubs/
 """
+from __future__ import annotations
+
 import argparse
 import os
 import ast
