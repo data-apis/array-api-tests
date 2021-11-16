@@ -42,11 +42,11 @@ def axes_ndindex(shape: Shape, axes: Tuple[int, ...]) -> Iterator[Tuple[Shape, .
     axes_iterables = []
     for axis, side in enumerate(shape):
         if axis in axes:
-            base_iterables.append((None,))
+            base_iterables.append([None])
             axes_iterables.append(range(side))
         else:
             base_iterables.append(range(side))
-            axes_iterables.append((None,))
+            axes_iterables.append([None])
     for base_idx in product(*base_iterables):
         indices = []
         for idx in product(*axes_iterables):

@@ -1,6 +1,7 @@
 import math
 from collections import deque
-from typing import Iterable, Union
+from itertools import product
+from typing import Iterable, Iterator, Tuple, Union
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
@@ -41,6 +42,28 @@ def assert_array_ndindex(
             assert xp.isnan(out[out_idx]), msg
         else:
             assert out[out_idx] == x[x_idx], msg
+
+
+def axis_ndindex(
+    shape: Shape, axis: int
+) -> Iterator[Tuple[Tuple[Union[int, slice], ...], ...]]:
+    iterables = [range(side) for side in shape[:axis]]
+    for _ in range(len(shape[axis:])):
+        iterables.append([slice(None, None)])
+    yield from product(*iterables)
+
+
+def assert_equals(
+    func_name: str, x_repr: str, x_val: Array, out_repr: str, out_val: Array, **kw
+):
+    msg = (
+        f"{out_repr}={out_val}, should be {x_repr}={x_val} "
+        f"[{func_name}({ph.fmt_kw(kw)})]"
+    )
+    if dh.is_float_dtype(out_val.dtype) and xp.isnan(out_val):
+        assert xp.isnan(x_val), msg
+    else:
+        assert out_val == out_val, msg
 
 
 @st.composite
@@ -85,21 +108,35 @@ def test_concat(dtypes, kw, data):
         shape = tuple(shape)
     ph.assert_result_shape("concat", shapes, out.shape, shape, **kw)
 
-    # TODO: adjust indices with nonzero axis
-    if axis is None or axis == 0:
-        out_indices = ah.ndindex(out.shape)
-        for i, x in enumerate(arrays, 1):
-            msg_suffix = f" [concat({ph.fmt_kw(kw)})]\nx{i}={x!r}\n{out=}"
+    if axis is None:
+        out_indices = (i for i in range(out.size))
+        for x_num, x in enumerate(arrays, 1):
             for x_idx in ah.ndindex(x.shape):
-                out_idx = next(out_indices)
-                msg = (
-                    f"out[{out_idx}]={out[out_idx]}, should be x{i}[{x_idx}]={x[x_idx]}"
+                out_i = next(out_indices)
+                assert_equals(
+                    "concat",
+                    f"x{x_num}[{x_idx}]",
+                    x[x_idx],
+                    f"out[{out_i}]",
+                    out[out_i],
+                    **kw,
                 )
-                msg += msg_suffix
-                if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
-                    assert xp.isnan(out[out_idx]), msg
-                else:
-                    assert out[out_idx] == x[x_idx], msg
+    else:
+        out_indices = ah.ndindex(out.shape)
+        for idx in axis_ndindex(shape, axis):
+            f_idx = ", ".join(str(i) if isinstance(i, int) else ":" for i in idx)
+            for x_num, x in enumerate(arrays, 1):
+                indexed_x = x[idx]
+                for x_idx in ah.ndindex(indexed_x.shape):
+                    out_idx = next(out_indices)
+                    assert_equals(
+                        "concat",
+                        f"x{x_num}[{f_idx}][{x_idx}]",
+                        indexed_x[x_idx],
+                        f"out[{out_idx}]",
+                        out[out_idx],
+                        **kw,
+                    )
 
 
 @given(
