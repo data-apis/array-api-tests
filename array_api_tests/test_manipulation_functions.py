@@ -237,11 +237,12 @@ def test_permute_dims(x, axes):
     for i, dim in enumerate(axes):
         side = x.shape[dim]
         shape[i] = side
-    assert all(isinstance(side, int) for side in shape)  # sanity check
     shape = tuple(shape)
     ph.assert_result_shape("permute_dims", (x.shape,), out.shape, shape, axes=axes)
 
-    # TODO: test elements
+    indices = list(ah.ndindex(x.shape))
+    permuted_indices = [tuple(idx[axis] for axis in axes) for idx in indices]
+    assert_array_ndindex("permute_dims", x, indices, out, permuted_indices)
 
 
 @st.composite
