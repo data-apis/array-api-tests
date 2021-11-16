@@ -12,6 +12,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
+from .test_statistical_functions import axes_ndindex, normalise_axis  # TODO: Move
 from .typing import Array, Shape
 
 MAX_SIDE = hh.MAX_ARRAY_SIZE // 64
@@ -210,9 +211,8 @@ def test_flip(x, data):
 
     ph.assert_dtype("flip", x.dtype, out.dtype)
 
-    # TODO: test all axis scenarios
-    if kw.get("axis", None) is None:
-        indices = list(ah.ndindex(x.shape))
+    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    for indices in axes_ndindex(x.shape, _axes):
         reverse_indices = indices[::-1]
         assert_array_ndindex("flip", x, indices, out, reverse_indices)
 
