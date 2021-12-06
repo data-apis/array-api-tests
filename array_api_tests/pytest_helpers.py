@@ -1,3 +1,4 @@
+from array_api_tests.algos import broadcast_shapes
 import math
 from inspect import getfullargspec
 from typing import Any, Dict, Optional, Tuple, Union
@@ -17,6 +18,7 @@ __all__ = [
     "assert_default_float",
     "assert_default_int",
     "assert_shape",
+    "assert_result_shape",
     "assert_fill",
 ]
 
@@ -69,7 +71,7 @@ def assert_dtype(
     out_dtype: DataType,
     expected: Optional[DataType] = None,
     *,
-    out_name: str = "out.dtype",
+    repr_name: str = "out.dtype",
 ):
     f_in_dtypes = dh.fmt_types(in_dtypes)
     f_out_dtype = dh.dtype_to_name[out_dtype]
@@ -77,7 +79,7 @@ def assert_dtype(
         expected = dh.result_type(*in_dtypes)
     f_expected = dh.dtype_to_name[expected]
     msg = (
-        f"{out_name}={f_out_dtype}, but should be {f_expected} "
+        f"{repr_name}={f_out_dtype}, but should be {f_expected} "
         f"[{func_name}({f_in_dtypes})]"
     )
     assert out_dtype == expected, msg
@@ -114,14 +116,41 @@ def assert_default_int(func_name: str, dtype: DataType):
 
 
 def assert_shape(
-    func_name: str, out_shape: Union[int, Shape], expected: Union[int, Shape], /, **kw
+    func_name: str,
+    out_shape: Union[int, Shape],
+    expected: Union[int, Shape],
+    /,
+    repr_name="out.shape",
+    **kw,
 ):
     if isinstance(out_shape, int):
         out_shape = (out_shape,)
     if isinstance(expected, int):
         expected = (expected,)
     msg = (
-        f"out.shape={out_shape}, but should be {expected} [{func_name}({fmt_kw(kw)})]"
+        f"{repr_name}={out_shape}, but should be {expected} [{func_name}({fmt_kw(kw)})]"
+    )
+    assert out_shape == expected, msg
+
+
+def assert_result_shape(
+    func_name: str,
+    in_shapes: Tuple[Shape],
+    out_shape: Shape,
+    /,
+    expected: Optional[Shape] = None,
+    *,
+    repr_name="out.shape",
+    **kw,
+):
+    if expected is None:
+        expected = broadcast_shapes(*in_shapes)
+    f_in_shapes = " . ".join(str(s) for s in in_shapes)
+    f_sig = f" {f_in_shapes} "
+    if kw:
+        f_sig += f", {fmt_kw(kw)}"
+    msg = (
+        f"{repr_name}={out_shape}, but should be {expected} [{func_name}({f_sig})]"
     )
     assert out_shape == expected, msg
 

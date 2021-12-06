@@ -1,15 +1,16 @@
 from math import prod
 
 import pytest
-from hypothesis import given, strategies as st, settings
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from .. import _array_module as xp
-from .. import xps
-from .._array_module import _UndefinedStub
 from .. import array_helpers as ah
 from .. import dtype_helpers as dh
 from .. import hypothesis_helpers as hh
-from ..test_broadcasting import broadcast_shapes
+from .. import xps
+from .._array_module import _UndefinedStub
+from ..algos import broadcast_shapes
 
 UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in dh.all_dtypes)
 pytestmark = [pytest.mark.skipif(UNDEFINED_DTYPES, reason="undefined dtypes")]

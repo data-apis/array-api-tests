@@ -19,6 +19,7 @@ __all__ = [
     'dtype_to_scalars',
     'is_int_dtype',
     'is_float_dtype',
+    'get_scalar_type',
     'dtype_ranges',
     'default_int',
     'default_float',
@@ -30,6 +31,7 @@ __all__ = [
     'binary_op_to_symbol',
     'unary_op_to_symbol',
     'inplace_op_to_symbol',
+    'op_to_func',
     'fmt_types',
 ]
 
@@ -72,6 +74,15 @@ def is_float_dtype(dtype):
         return False
     # TODO: Return True for float dtypes that aren't part of the spec e.g. np.float16
     return dtype in float_dtypes
+
+
+def get_scalar_type(dtype: DataType) -> ScalarType:
+    if is_int_dtype(dtype):
+        return int
+    elif is_float_dtype(dtype):
+        return float
+    else:
+        return bool
 
 
 class MinMax(NamedTuple):
@@ -332,7 +343,7 @@ binary_op_to_symbol = {
 }
 
 
-_op_to_func = {
+op_to_func = {
     '__abs__': 'abs',
     '__add__': 'add',
     '__and__': 'bitwise_and',
@@ -341,7 +352,6 @@ _op_to_func = {
     '__ge__': 'greater_equal',
     '__gt__': 'greater',
     '__le__': 'less_equal',
-    '__lshift__': 'bitwise_left_shift',
     '__lt__': 'less',
     # '__matmul__': 'matmul',  # TODO: support matmul
     '__mod__': 'remainder',
@@ -349,6 +359,7 @@ _op_to_func = {
     '__ne__': 'not_equal',
     '__or__': 'bitwise_or',
     '__pow__': 'pow',
+    '__lshift__': 'bitwise_left_shift',
     '__rshift__': 'bitwise_right_shift',
     '__sub__': 'subtract',
     '__truediv__': 'divide',
@@ -359,7 +370,7 @@ _op_to_func = {
 }
 
 
-for op, elwise_func in _op_to_func.items():
+for op, elwise_func in op_to_func.items():
     func_in_dtypes[op] = func_in_dtypes[elwise_func]
     func_returns_bool[op] = func_returns_bool[elwise_func]
 

@@ -18,7 +18,8 @@ from ._array_module import broadcast_to, eye, float32, float64, full
 from .array_helpers import ndindex
 from .function_stubs import elementwise_functions
 from .pytest_helpers import nargs
-from .typing import DataType, Shape, Array
+from .typing import Array, DataType, Shape
+from .algos import broadcast_shapes
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
 # If no compatible dtype is implemented for a given test, the test will fail
@@ -218,7 +219,6 @@ def two_broadcastable_shapes(draw):
     This will produce two shapes (shape1, shape2) such that shape2 can be
     broadcast to shape1.
     """
-    from .test_broadcasting import broadcast_shapes
     shape1, shape2 = draw(two_mutually_broadcastable_shapes)
     assume(broadcast_shapes(shape1, shape2) == shape1)
     return (shape1, shape2)
