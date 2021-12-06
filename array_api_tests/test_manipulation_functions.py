@@ -1,7 +1,7 @@
 import math
 from collections import deque
 from itertools import product
-from typing import Iterable, Iterator, Tuple, Union
+from typing import Iterable, Union
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
@@ -43,15 +43,6 @@ def assert_array_ndindex(
             assert xp.isnan(out[out_idx]), msg
         else:
             assert out[out_idx] == x[x_idx], msg
-
-
-def axis_ndindex(
-    shape: Shape, axis: int
-) -> Iterator[Tuple[Tuple[Union[int, slice], ...], ...]]:
-    iterables = [range(side) for side in shape[:axis]]
-    for _ in range(len(shape[axis:])):
-        iterables.append([slice(None, None)])
-    yield from product(*iterables)
 
 
 def assert_equals(
@@ -124,7 +115,10 @@ def test_concat(dtypes, kw, data):
                 )
     else:
         out_indices = ah.ndindex(out.shape)
-        for idx in axis_ndindex(shape, axis):
+        axis_indices = [range(side) for side in shapes[0][:_axis]]
+        for _ in range(_axis, len(shape)):
+            axis_indices.append([slice(None, None)])
+        for idx in product(*axis_indices):
             f_idx = ", ".join(str(i) if isinstance(i, int) else ":" for i in idx)
             for x_num, x in enumerate(arrays, 1):
                 indexed_x = x[idx]
