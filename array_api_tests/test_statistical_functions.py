@@ -207,12 +207,16 @@ def test_prod(x, data):
     dtype = kw.get("dtype", None)
     if dtype is None:
         if dh.is_int_dtype(x.dtype):
+            if x.dtype in dh.uint_dtypes:
+                default_dtype = dh.default_uint
+            else:
+                default_dtype = dh.default_int
             m, M = dh.dtype_ranges[x.dtype]
-            d_m, d_M = dh.dtype_ranges[dh.default_int]
+            d_m, d_M = dh.dtype_ranges[default_dtype]
             if m < d_m or M > d_M:
                 _dtype = x.dtype
             else:
-                _dtype = dh.default_int
+                _dtype = default_dtype
         else:
             if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_float]:
                 _dtype = x.dtype
@@ -333,12 +337,16 @@ def test_sum(x, data):
     dtype = kw.get("dtype", None)
     if dtype is None:
         if dh.is_int_dtype(x.dtype):
+            if x.dtype in dh.uint_dtypes:
+                default_dtype = dh.default_uint
+            else:
+                default_dtype = dh.default_int
             m, M = dh.dtype_ranges[x.dtype]
-            d_m, d_M = dh.dtype_ranges[dh.default_int]
+            d_m, d_M = dh.dtype_ranges[default_dtype]
             if m < d_m or M > d_M:
                 _dtype = x.dtype
             else:
-                _dtype = dh.default_int
+                _dtype = default_dtype
         else:
             if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_float]:
                 _dtype = x.dtype
