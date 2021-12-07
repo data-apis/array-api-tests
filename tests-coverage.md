@@ -59,9 +59,9 @@ The following things are tested
 | max      | Yes        | Yes        | Yes          | Yes          |               |          |
 | mean     | Yes        | Yes        | Yes          | Yes          |               |          |
 | min      | Yes        | Yes        | Yes          | Yes          |               |          |
-| prod     | Yes        | Yes        | Yes          | Yes (1)      |               |          |
+| prod     | Yes        | Yes        | Yes          | Yes [^1]     |               |          |
 | std      | Yes        | Yes        | Yes          | Yes          |               |          |
-| sum      | Yes        | Yes        | Yes          | Yes (1)      |               |          |
+| sum      | Yes        | Yes        | Yes          | Yes [^1]     |               |          |
 | var      | Yes        | Yes        | Yes          | Yes          |               |          |
 
-(1): `sum` and `prod` have special type promotion rules.
+[^1]: `sum` and `prod` have special type promotion rules.
