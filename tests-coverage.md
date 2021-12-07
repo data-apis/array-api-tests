@@ -65,3 +65,31 @@ The following things are tested
 | var      | Yes        | Yes        | Yes          | Yes          |               |          |
 
 [^1]: `sum` and `prod` have special type promotion rules.
+
+## Additional Planned Features
+
+In addition to getting full coverage of the spec, there are some additional
+features and improvements for the test suite that are planned. Work on these features
+will be guided primarily by concrete needs from library implementers, so if
+you are someone using this test suite to test your library, please [let us
+know](https://github.com/data-apis/array-api-tests/issues) the limitations you
+come across.
+
+- Making the test suite more usable for partially conforming libraries. Many
+  tests rely on various functions in the array library to function. This means
+  that if certain functions aren't implemented, for example, `asarray()` or
+  `equals()`, then many tests will not function at all. We want to improve
+  this situation, so that tests that don't strictly require these functions can
+  still be run.
+
+- Better reporting. The pytest output can be difficult to parse, especially
+  when there are many failures. Additionally some error messages can be
+  difficult to understand without prior knowledge of the test internals.
+  Better reporting can also make it easier to compare different
+  implementations by their conformance.
+
+- Better tests for numerical outputs. Right now numerical outputs are either
+  not tested at all, or only tested against very rough epsilons. This is
+  partly due to the fact that the spec does not mandate any level of precision
+  for most functions. However, it may be useful to, for instance, give a
+  report of how off a given function is from the "expected" exact output.
