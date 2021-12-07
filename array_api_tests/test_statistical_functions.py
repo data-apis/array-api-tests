@@ -94,7 +94,7 @@ def assert_equals(
         assert math.isnan(out), msg
     else:
         msg = f"{out_repr}={out}, should be roughly {expected} [{f_func}]"
-        assert math.isclose(out, expected, rel_tol=0.05), msg
+        assert math.isclose(out, expected, rel_tol=0.25, abs_tol=1), msg
 
 
 @given(
@@ -175,6 +175,7 @@ def test_mean(x, data):
     )
     for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
         mean = float(out[out_idx])
+        assume(not math.isinf(mean))  # mean may become inf due to internal overflows
         elements = []
         for idx in indices:
             s = float(x[idx])
