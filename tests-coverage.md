@@ -54,7 +54,6 @@ The following things are tested
 
 ## Statistical Functions
 
-|----------|------------|------------|--------------|--------------|---------------|----------|
 | Function | Smoke Test | All Inputs | Output Shape | Result Dtype | Output Values | Stacking |
 |----------|------------|------------|--------------|--------------|---------------|----------|
 | max      | Yes        | Yes        | Yes          | Yes          |               |          |
