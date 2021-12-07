@@ -2,7 +2,7 @@ import inspect
 
 import pytest
 
-from ._array_module import mod, mod_name, ones, eye, float64, bool, int64
+from ._array_module import mod, mod_name, ones, eye, float64, bool, int64, _UndefinedStub
 from .pytest_helpers import raises, doesnt_raise
 from . import dtype_helpers as dh
 
@@ -67,7 +67,6 @@ def example_argument(arg, func_name, dtype):
         axis2=2,
         axis=1,
         axes=(2, 1, 0),
-        condition=ones((1, 3, 3), dtype=bool),
         copy=True,
         correction=1.0,
         descending=True,
@@ -116,6 +115,8 @@ def example_argument(arg, func_name, dtype):
         x2=ones((1, 3, 3), dtype=dtype),
         x=ones((1, 3, 3), dtype=dtype),
     )
+    if not isinstance(bool, _UndefinedStub):
+        known_args['condition'] = ones((1, 3, 3), dtype=bool),
 
     if arg in known_args:
         # Special cases:
