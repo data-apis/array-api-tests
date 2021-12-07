@@ -1,7 +1,7 @@
 import math
 from collections import deque
 from itertools import product
-from typing import Iterable, Union
+from typing import Iterable, Iterator, Tuple, Union
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
@@ -26,6 +26,16 @@ def shared_shapes(*args, **kwargs) -> st.SearchStrategy[Shape]:
     if kwargs:
         key += " " + ph.fmt_kw(kwargs)
     return st.shared(hh.shapes(*args, **kwargs), key="shape")
+
+
+def axis_ndindex(
+    shape: Shape, axis: int
+) -> Iterator[Tuple[Tuple[Union[int, slice], ...], ...]]:
+    assert axis >= 0  # sanity check
+    axis_indices = [range(side) for side in shape[:axis]]
+    for _ in range(axis, len(shape)):
+        axis_indices.append([slice(None, None)])
+    yield from product(*axis_indices)
 
 
 def assert_array_ndindex(
@@ -115,10 +125,7 @@ def test_concat(dtypes, kw, data):
                 )
     else:
         out_indices = ah.ndindex(out.shape)
-        axis_indices = [range(side) for side in shapes[0][:_axis]]
-        for _ in range(_axis, len(shape)):
-            axis_indices.append([slice(None, None)])
-        for idx in product(*axis_indices):
+        for idx in axis_ndindex(shapes[0], _axis):
             f_idx = ", ".join(str(i) if isinstance(i, int) else ":" for i in idx)
             for x_num, x in enumerate(arrays, 1):
                 indexed_x = x[idx]
@@ -344,18 +351,19 @@ def test_stack(shape, dtypes, kw, data):
         "stack", tuple(x.shape for x in arrays), out.shape, _shape, **kw
     )
 
-    # TODO: adjust indices with nonzero axis
-    if axis == 0:
-        out_indices = ah.ndindex(out.shape)
-        for i, x in enumerate(arrays, 1):
-            msg_suffix = f" [stack({ph.fmt_kw(kw)})]\nx{i}={x!r}\n{out=}"
-            for x_idx in ah.ndindex(x.shape):
+    out_indices = ah.ndindex(out.shape)
+    for idx in axis_ndindex(arrays[0].shape, axis=_axis):
+        f_idx = ", ".join(str(i) if isinstance(i, int) else ":" for i in idx)
+        print(f"{f_idx=}")
+        for x_num, x in enumerate(arrays, 1):
+            indexed_x = x[idx]
+            for x_idx in ah.ndindex(indexed_x.shape):
                 out_idx = next(out_indices)
-                msg = (
-                    f"out[{out_idx}]={out[out_idx]}, should be x{i}[{x_idx}]={x[x_idx]}"
+                assert_equals(
+                    "stack",
+                    f"x{x_num}[{f_idx}][{x_idx}]",
+                    indexed_x[x_idx],
+                    f"out[{out_idx}]",
+                    out[out_idx],
+                    **kw,
                 )
-                msg += msg_suffix
-                if dh.is_float_dtype(x.dtype) and xp.isnan(x[x_idx]):
-                    assert xp.isnan(out[out_idx]), msg
-                else:
-                    assert out[out_idx] == x[x_idx], msg
