@@ -3,6 +3,7 @@ from collections import deque
 from itertools import product
 from typing import Iterable, Iterator, Tuple, Union
 
+import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
@@ -168,23 +169,26 @@ def test_expand_dims(x, axis):
     data=st.data(),
 )
 def test_squeeze(x, data):
-    # TODO: generate valid negative axis (which keep uniqueness)
-    squeezable_axes = st.sampled_from(
-        [i for i, side in enumerate(x.shape) if side == 1]
-    )
+    axes = st.integers(-x.ndim, x.ndim - 1)
     axis = data.draw(
-        squeezable_axes | st.lists(squeezable_axes, unique=True).map(tuple),
+        axes
+        | st.lists(axes, unique_by=lambda i: i if i >= 0 else i + x.ndim).map(tuple),
         label="axis",
     )
+
+    axes = (axis,) if isinstance(axis, int) else axis
+    axes = normalise_axis(axes, x.ndim)
+
+    squeezable_axes = [i for i, side in enumerate(x.shape) if side == 1]
+    if any(i not in squeezable_axes for i in axes):
+        with pytest.raises(ValueError):
+            xp.squeeze(x, axis)
+        return
 
     out = xp.squeeze(x, axis)
 
     ph.assert_dtype("squeeze", x.dtype, out.dtype)
 
-    if isinstance(axis, int):
-        axes = (axis,)
-    else:
-        axes = axis
     shape = []
     for i, side in enumerate(x.shape):
         if i not in axes:
