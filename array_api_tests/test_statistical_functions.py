@@ -125,7 +125,7 @@ def test_max(x, data):
             s = scalar_type(x[idx])
             elements.append(s)
         expected = max(elements)
-        assert_equals("max", dh.get_scalar_type(out.dtype), out_idx, max_, expected)
+        assert_equals("max", scalar_type, out_idx, max_, expected)
 
 
 @given(
@@ -154,7 +154,7 @@ def test_mean(x, data):
             s = float(x[idx])
             elements.append(s)
         expected = sum(elements) / len(elements)
-        assert_equals("mean", dh.get_scalar_type(out.dtype), out_idx, mean, expected)
+        assert_equals("mean", float, out_idx, mean, expected)
 
 
 @given(
@@ -183,7 +183,7 @@ def test_min(x, data):
             s = scalar_type(x[idx])
             elements.append(s)
         expected = min(elements)
-        assert_equals("min", dh.get_scalar_type(out.dtype), out_idx, min_, expected)
+        assert_equals("min", scalar_type, out_idx, min_, expected)
 
 
 @given(
@@ -246,7 +246,7 @@ def test_prod(x, data):
         if dh.is_int_dtype(out.dtype):
             m, M = dh.dtype_ranges[out.dtype]
             assume(m <= expected <= M)
-        assert_equals("prod", dh.get_scalar_type(out.dtype), out_idx, prod, expected)
+        assert_equals("prod", scalar_type, out_idx, prod, expected)
 
 
 @given(
@@ -344,7 +344,7 @@ def test_sum(x, data):
         if dh.is_int_dtype(out.dtype):
             m, M = dh.dtype_ranges[out.dtype]
             assume(m <= expected <= M)
-        assert_equals("sum", dh.get_scalar_type(out.dtype), out_idx, sum_, expected)
+        assert_equals("sum", scalar_type, out_idx, sum_, expected)
 
 
 @given(
