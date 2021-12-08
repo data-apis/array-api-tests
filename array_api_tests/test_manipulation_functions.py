@@ -144,9 +144,17 @@ def test_concat(dtypes, kw, data):
 
 @given(
     x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
-    axis=shared_shapes().flatmap(lambda s: st.integers(-len(s) - 1, len(s))),
+    axis=shared_shapes().flatmap(
+        # Generate both valid and invalid axis
+        lambda s: st.integers(2 * (-len(s) - 1), 2 * len(s))
+    ),
 )
 def test_expand_dims(x, axis):
+    if axis < -x.ndim - 1 or axis > x.ndim:
+        with pytest.raises(IndexError):
+            xp.expand_dims(x, axis=axis)
+        return
+
     out = xp.expand_dims(x, axis=axis)
 
     ph.assert_dtype("expand_dims", x.dtype, out.dtype)
