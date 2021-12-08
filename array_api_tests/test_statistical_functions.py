@@ -4,6 +4,7 @@ from typing import Iterator, Optional, Tuple, Union
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
+from hypothesis.control import reject
 
 from . import _array_module as xp
 from . import array_helpers as ah
@@ -202,7 +203,10 @@ def test_prod(x, data):
         label="kw",
     )
 
-    out = xp.prod(x, **kw)
+    try:
+        out = xp.prod(x, **kw)
+    except OverflowError:
+        reject()
 
     dtype = kw.get("dtype", None)
     if dtype is None:
@@ -232,7 +236,7 @@ def test_prod(x, data):
     scalar_type = dh.get_scalar_type(out.dtype)
     for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
         prod = scalar_type(out[out_idx])
-        assume(not math.isinf(prod))
+        assume(math.isfinite(prod))
         elements = []
         for idx in indices:
             s = scalar_type(x[idx])
@@ -297,7 +301,10 @@ def test_sum(x, data):
         label="kw",
     )
 
-    out = xp.sum(x, **kw)
+    try:
+        out = xp.sum(x, **kw)
+    except OverflowError:
+        reject()
 
     dtype = kw.get("dtype", None)
     if dtype is None:
@@ -327,7 +334,7 @@ def test_sum(x, data):
     scalar_type = dh.get_scalar_type(out.dtype)
     for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
         sum_ = scalar_type(out[out_idx])
-        assume(not math.isinf(sum_))
+        assume(math.isfinite(sum_))
         elements = []
         for idx in indices:
             s = scalar_type(x[idx])
