@@ -39,18 +39,19 @@ def normalise_axis(
 
 
 def axes_ndindex(shape: Shape, axes: Tuple[int, ...]) -> Iterator[Tuple[Shape, ...]]:
-    base_iterables = []
-    axes_iterables = []
+    """Generate indices that index all elements except in `axes` dimensions"""
+    base_indices = []
+    axes_indices = []
     for axis, side in enumerate(shape):
         if axis in axes:
-            base_iterables.append([None])
-            axes_iterables.append(range(side))
+            base_indices.append([None])
+            axes_indices.append(range(side))
         else:
-            base_iterables.append(range(side))
-            axes_iterables.append([None])
-    for base_idx in product(*base_iterables):
+            base_indices.append(range(side))
+            axes_indices.append([None])
+    for base_idx in product(*base_indices):
         indices = []
-        for idx in product(*axes_iterables):
+        for idx in product(*axes_indices):
             idx = list(idx)
             for axis, side in enumerate(idx):
                 if axis not in axes:

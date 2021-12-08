@@ -13,7 +13,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
-from .test_statistical_functions import axes_ndindex, normalise_axis  # TODO: Move
+from .test_statistical_functions import axes_ndindex, normalise_axis
 from .typing import Array, Shape
 
 MAX_SIDE = hh.MAX_ARRAY_SIZE // 64
@@ -32,6 +32,7 @@ def shared_shapes(*args, **kwargs) -> st.SearchStrategy[Shape]:
 def axis_ndindex(
     shape: Shape, axis: int
 ) -> Iterator[Tuple[Tuple[Union[int, slice], ...], ...]]:
+    """Generate indices that index all elements in dimensions beyond `axis`"""
     assert axis >= 0  # sanity check
     axis_indices = [range(side) for side in shape[:axis]]
     for _ in range(axis, len(shape)):
