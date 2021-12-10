@@ -16,10 +16,10 @@ from . import hypothesis_helpers as hh
 from . import xps
 
 
-def assert_default_index(func_name: str, dtype: DataType):
+def assert_default_index(func_name: str, dtype: DataType, repr_name="out.dtype"):
     f_dtype = dh.dtype_to_name[dtype]
     msg = (
-        f"out.dtype={f_dtype}, should be the default index dtype, "
+        f"{repr_name}={f_dtype}, should be the default index dtype, "
         f"which is either int32 or int64 [{func_name}()]"
     )
     assert dtype in (xp.int32, xp.int64), msg
@@ -95,11 +95,42 @@ def test_argmin(x, data):
         assert_equals("argmin", int, out_idx, min_i, expected)
 
 
-# TODO: generate kwargs, skip if opted out
 @given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
 def test_nonzero(x):
-    xp.nonzero(x)
-    # TODO
+    out = xp.nonzero(x)
+    if x.ndim == 0:
+        assert len(out) == 1, f"{len(out)=}, but should be 1 for 0-dimensional arrays"
+    else:
+        assert len(out) == x.ndim, f"{len(out)=}, but should be {x.ndim=}"
+    size = out[0].size
+    for i in range(len(out)):
+        assert out[i].ndim == 1, f"out[{i}].ndim={x.ndim}, but should be 1"
+        assert (
+            out[i].size == size
+        ), f"out[{i}].size={x.size}, but should be out[0].size={size}"
+        assert_default_index("nonzero", out[i].dtype, repr_name=f"out[{i}].dtype")
+    indices = []
+    if x.dtype == xp.bool:
+        for idx in ah.ndindex(x.shape):
+            if x[idx]:
+                indices.append(idx)
+    else:
+        for idx in ah.ndindex(x.shape):
+            if x[idx] != 0:
+                indices.append(idx)
+    if x.ndim == 0:
+        assert out[0].size == len(
+            indices
+        ), f"{out[0].size=}, but should be {len(indices)}"
+    else:
+        for i in range(size):
+            idx = tuple(int(x[i]) for x in out)
+            f_idx = f"Extrapolated index (x[{i}] for x in out)={idx}"
+            f_element = f"x[{idx}]={x[idx]}"
+            assert idx in indices, f"{f_idx} results in {f_element}, a zero element"
+            assert (
+                idx == indices[i]
+            ), f"{f_idx} is in the wrong position, should be {indices.index(idx)}"
 
 
 # TODO: skip if opted out
