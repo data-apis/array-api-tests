@@ -1,6 +1,8 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
+from array_api_tests.algos import broadcast_shapes
+from array_api_tests.test_manipulation_functions import assert_equals as assert_equals_
 from array_api_tests.test_statistical_functions import (
     assert_equals,
     assert_keepdimable_shape,
@@ -13,6 +15,7 @@ from . import _array_module as xp
 from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
+from . import pytest_helpers as ph
 from . import xps
 
 
@@ -95,6 +98,7 @@ def test_argmin(x, data):
         assert_equals("argmin", int, out_idx, min_i, expected)
 
 
+# TODO: skip if opted out
 @given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
 def test_nonzero(x):
     out = xp.nonzero(x)
@@ -133,7 +137,6 @@ def test_nonzero(x):
             ), f"{f_idx} is in the wrong position, should be {indices.index(idx)}"
 
 
-# TODO: skip if opted out
 @given(
     shapes=hh.mutually_broadcastable_shapes(3),
     dtypes=hh.mutually_promotable_dtypes(),
@@ -143,5 +146,17 @@ def test_where(shapes, dtypes, data):
     cond = data.draw(xps.arrays(dtype=xp.bool, shape=shapes[0]), label="condition")
     x1 = data.draw(xps.arrays(dtype=dtypes[0], shape=shapes[1]), label="x1")
     x2 = data.draw(xps.arrays(dtype=dtypes[1], shape=shapes[2]), label="x2")
-    xp.where(cond, x1, x2)
-    # TODO
+
+    out = xp.where(cond, x1, x2)
+
+    shape = broadcast_shapes(*shapes)
+    ph.assert_shape("where", out.shape, shape)
+    # TODO: generate indices without broadcasting arrays
+    _cond = xp.broadcast_to(cond, shape)
+    _x1 = xp.broadcast_to(x1, shape)
+    _x2 = xp.broadcast_to(x2, shape)
+    for idx in ah.ndindex(shape):
+        if _cond[idx]:
+            assert_equals_("where", f"_x1[{idx}]", _x1[idx], f"out[{idx}]", out[idx])
+        else:
+            assert_equals_("where", f"_x2[{idx}]", _x2[idx], f"out[{idx}]", out[idx])
