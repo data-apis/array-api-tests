@@ -292,6 +292,7 @@ def test_reshape(x, data):
     assert_array_ndindex("reshape", x, ah.ndindex(x.shape), out, ah.ndindex(out.shape))
 
 
+@pytest.mark.skip(reason="faulty test logic")  # TODO
 @given(xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()), st.data())
 def test_roll(x, data):
     shift_strat = st.integers(-hh.MAX_ARRAY_SIZE, hh.MAX_ARRAY_SIZE)
