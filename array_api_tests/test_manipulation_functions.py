@@ -67,7 +67,7 @@ def assert_equals(
     if dh.is_float_dtype(out_val.dtype) and xp.isnan(out_val):
         assert xp.isnan(x_val), msg
     else:
-        assert out_val == out_val, msg
+        assert x_val == out_val, msg
 
 
 @st.composite
