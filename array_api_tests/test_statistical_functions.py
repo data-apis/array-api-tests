@@ -1,6 +1,6 @@
 import math
 from itertools import product
-from typing import Iterator, Optional, Tuple, Union
+from typing import Iterator, List, Optional, Tuple, Union
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
@@ -38,7 +38,7 @@ def normalise_axis(
     return axes
 
 
-def axes_ndindex(shape: Shape, axes: Tuple[int, ...]) -> Iterator[Tuple[Shape, ...]]:
+def axes_ndindex(shape: Shape, axes: Tuple[int, ...]) -> Iterator[List[Shape]]:
     """Generate indices that index all elements except in `axes` dimensions"""
     base_indices = []
     axes_indices = []
@@ -58,7 +58,7 @@ def axes_ndindex(shape: Shape, axes: Tuple[int, ...]) -> Iterator[Tuple[Shape, .
                     idx[axis] = base_idx[axis]
             idx = tuple(idx)
             indices.append(idx)
-        yield tuple(indices)
+        yield list(indices)
 
 
 def assert_keepdimable_shape(

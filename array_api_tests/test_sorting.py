@@ -3,12 +3,12 @@ from hypothesis import strategies as st
 from hypothesis.control import assume
 
 from . import _array_module as xp
-from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
-from .test_manipulation_functions import assert_equals, axis_ndindex
+from .test_manipulation_functions import assert_equals
+from .test_statistical_functions import axes_ndindex, normalise_axis
 
 
 # TODO: generate kwargs
@@ -45,25 +45,21 @@ def test_sort(x, data):
     ph.assert_dtype("sort", out.dtype, x.dtype)
     ph.assert_shape("sort", out.shape, x.shape, **kw)
     axis = kw.get("axis", -1)
-    _axis = axis if axis >= 0 else x.ndim + axis
+    axes = normalise_axis(axis, x.ndim)
     descending = kw.get("descending", False)
     scalar_type = dh.get_scalar_type(x.dtype)
-    for idx in axis_ndindex(x.shape, _axis):
-        f_idx = ", ".join(str(i) if isinstance(i, int) else ":" for i in idx)
-        indexed_x = x[idx]
-        indexed_out = out[idx]
-        out_indices = list(ah.ndindex(indexed_x.shape))
-        elements = [scalar_type(indexed_x[idx2]) for idx2 in out_indices]
+    for indices in axes_ndindex(x.shape, axes):
+        elements = [scalar_type(x[idx]) for idx in indices]
         indices_order = sorted(
-            range(len(out_indices)), key=elements.__getitem__, reverse=descending
+            range(len(indices)), key=elements.__getitem__, reverse=descending
         )
-        x_indices = [out_indices[o] for o in indices_order]
-        for out_idx, x_idx in zip(out_indices, x_indices):
+        x_indices = [indices[o] for o in indices_order]
+        for out_idx, x_idx in zip(indices, x_indices):
             assert_equals(
                 "sort",
-                f"x[{f_idx}][{x_idx}]",
-                indexed_x[x_idx],
-                f"out[{f_idx}][{out_idx}]",
-                indexed_out[out_idx],
+                f"x[{x_idx}]",
+                x[x_idx],
+                f"out[{out_idx}]",
+                out[out_idx],
                 **kw,
             )
