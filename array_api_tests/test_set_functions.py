@@ -1,3 +1,4 @@
+# TODO: disable if opted out
 import math
 from collections import Counter
 
@@ -62,14 +63,60 @@ def test_unique_counts(x):
     if dh.is_float_dtype(out.values.dtype):
         assume(x.size <= 128)  # may not be representable
         expected = sum(v for k, v in counts.items() if math.isnan(k))
-        print(f"{counts=}")
         assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
 
 
-@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()))
+@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
 def test_unique_inverse(x):
-    xp.unique_inverse(x)
-    # TODO
+    out = xp.unique_inverse(x)
+    assert hasattr(out, "values")
+    assert hasattr(out, "inverse_indices")
+    ph.assert_dtype(
+        "unique_inverse", x.dtype, out.values.dtype, repr_name="out.values.dtype"
+    )
+    assert_default_index(
+        "unique_inverse",
+        out.inverse_indices.dtype,
+        repr_name="out.inverse_indices.dtype",
+    )
+    ph.assert_shape(
+        "unique_inverse",
+        out.inverse_indices.shape,
+        x.shape,
+        repr_name="out.inverse_indices.shape",
+    )
+    scalar_type = dh.get_scalar_type(out.values.dtype)
+    distinct = set(scalar_type(x[idx]) for idx in ah.ndindex(x.shape))
+    vals_idx = {}
+    nans = 0
+    for idx in ah.ndindex(out.values.shape):
+        val = scalar_type(out.values[idx])
+        if math.isnan(val):
+            nans += 1
+        else:
+            assert (
+                val in distinct
+            ), f"out.values[{idx}]={val}, but {val} not in input array"
+            assert (
+                val not in vals_idx.keys()
+            ), f"out.values[{idx}]={val}, but {val} is also in out[{vals_idx[val]}]"
+            vals_idx[val] = idx
+    for idx in ah.ndindex(out.inverse_indices.shape):
+        ridx = int(out.inverse_indices[idx])
+        val = out.values[ridx]
+        expected = x[idx]
+        msg = (
+            f"out.inverse_indices[{idx}]={ridx} results in out.values[{ridx}]={val}, "
+            f"but should result in x[{idx}]={expected}"
+        )
+        if dh.is_float_dtype(out.values.dtype) and xp.isnan(expected):
+            assert xp.isnan(val), msg
+        else:
+            assert val == expected, msg
+    if dh.is_float_dtype(out.values.dtype):
+        assume(x.size <= 128)  # may not be representable
+        expected = xp.sum(xp.astype(xp.isnan(x), xp.uint8))
+        assert nans == expected, f"{nans} NaNs in out.values, but should be {expected}"
 
 
 @given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
