@@ -10,7 +10,6 @@ from . import xps
 from .test_statistical_functions import (
     assert_equals,
     assert_keepdimable_shape,
-    axes,
     axes_ndindex,
     normalise_axis,
 )
@@ -21,7 +20,7 @@ from .test_statistical_functions import (
     data=st.data(),
 )
 def test_all(x, data):
-    kw = data.draw(hh.kwargs(axis=axes(x.ndim), keepdims=st.booleans()), label="kw")
+    kw = data.draw(hh.kwargs(axis=hh.axes(x.ndim), keepdims=st.booleans()), label="kw")
 
     out = xp.all(x, **kw)
 
@@ -46,7 +45,7 @@ def test_all(x, data):
     data=st.data(),
 )
 def test_any(x, data):
-    kw = data.draw(hh.kwargs(axis=axes(x.ndim), keepdims=st.booleans()), label="kw")
+    kw = data.draw(hh.kwargs(axis=hh.axes(x.ndim), keepdims=st.booleans()), label="kw")
 
     out = xp.any(x, **kw)
 

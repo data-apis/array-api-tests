@@ -15,14 +15,6 @@ from . import xps
 from .typing import DataType, Scalar, ScalarType, Shape
 
 
-def axes(ndim: int) -> st.SearchStrategy[Optional[Union[int, Shape]]]:
-    axes_strats = [st.none()]
-    if ndim != 0:
-        axes_strats.append(st.integers(-ndim, ndim - 1))
-        axes_strats.append(xps.valid_tuple_axes(ndim))
-    return st.one_of(axes_strats)
-
-
 def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
     dtypes = [d2 for d1, d2 in dh.promotion_table if d1 == dtype]
     return st.none() | st.sampled_from(dtypes)
@@ -108,7 +100,7 @@ def assert_equals(
     data=st.data(),
 )
 def test_max(x, data):
-    kw = data.draw(hh.kwargs(axis=axes(x.ndim), keepdims=st.booleans()), label="kw")
+    kw = data.draw(hh.kwargs(axis=hh.axes(x.ndim), keepdims=st.booleans()), label="kw")
 
     out = xp.max(x, **kw)
 
@@ -137,7 +129,7 @@ def test_max(x, data):
     data=st.data(),
 )
 def test_mean(x, data):
-    kw = data.draw(hh.kwargs(axis=axes(x.ndim), keepdims=st.booleans()), label="kw")
+    kw = data.draw(hh.kwargs(axis=hh.axes(x.ndim), keepdims=st.booleans()), label="kw")
 
     out = xp.mean(x, **kw)
 
@@ -166,7 +158,7 @@ def test_mean(x, data):
     data=st.data(),
 )
 def test_min(x, data):
-    kw = data.draw(hh.kwargs(axis=axes(x.ndim), keepdims=st.booleans()), label="kw")
+    kw = data.draw(hh.kwargs(axis=hh.axes(x.ndim), keepdims=st.booleans()), label="kw")
 
     out = xp.min(x, **kw)
 
@@ -197,7 +189,7 @@ def test_min(x, data):
 def test_prod(x, data):
     kw = data.draw(
         hh.kwargs(
-            axis=axes(x.ndim),
+            axis=hh.axes(x.ndim),
             dtype=kwarg_dtypes(x.dtype),
             keepdims=st.booleans(),
         ),
@@ -258,7 +250,7 @@ def test_prod(x, data):
     data=st.data(),
 )
 def test_std(x, data):
-    axis = data.draw(axes(x.ndim), label="axis")
+    axis = data.draw(hh.axes(x.ndim), label="axis")
     _axes = normalise_axis(axis, x.ndim)
     N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
     correction = data.draw(
@@ -295,7 +287,7 @@ def test_std(x, data):
 def test_sum(x, data):
     kw = data.draw(
         hh.kwargs(
-            axis=axes(x.ndim),
+            axis=hh.axes(x.ndim),
             dtype=kwarg_dtypes(x.dtype),
             keepdims=st.booleans(),
         ),
@@ -356,7 +348,7 @@ def test_sum(x, data):
     data=st.data(),
 )
 def test_var(x, data):
-    axis = data.draw(axes(x.ndim), label="axis")
+    axis = data.draw(hh.axes(x.ndim), label="axis")
     _axes = normalise_axis(axis, x.ndim)
     N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
     correction = data.draw(

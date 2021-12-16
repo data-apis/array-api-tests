@@ -1,22 +1,21 @@
 from hypothesis import given
 from hypothesis import strategies as st
 
-from array_api_tests.algos import broadcast_shapes
-from array_api_tests.test_manipulation_functions import assert_equals as assert_equals_
-from array_api_tests.test_statistical_functions import (
-    assert_equals,
-    assert_keepdimable_shape,
-    axes_ndindex,
-    normalise_axis,
-)
-from array_api_tests.typing import DataType
-
 from . import _array_module as xp
 from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
+from .algos import broadcast_shapes
+from .test_manipulation_functions import assert_equals as assert_equals_
+from .test_statistical_functions import (
+    assert_equals,
+    assert_keepdimable_shape,
+    axes_ndindex,
+    normalise_axis,
+)
+from .typing import DataType
 
 
 def assert_default_index(func_name: str, dtype: DataType, repr_name="out.dtype"):

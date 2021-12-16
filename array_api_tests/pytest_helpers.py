@@ -1,4 +1,4 @@
-from array_api_tests.algos import broadcast_shapes
+from .algos import broadcast_shapes
 import math
 from inspect import getfullargspec
 from typing import Any, Dict, Optional, Tuple, Union

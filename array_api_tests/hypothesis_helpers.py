@@ -2,7 +2,7 @@ import itertools
 from functools import reduce
 from math import sqrt
 from operator import mul
-from typing import Any, List, NamedTuple, Optional, Tuple, Sequence
+from typing import Any, List, NamedTuple, Optional, Tuple, Sequence, Union
 
 from hypothesis import assume
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
@@ -399,3 +399,12 @@ def specified_kwargs(draw, *keys_values_defaults: KVD):
         if value is not default or draw(booleans()):
             kw[keyword] = value
     return kw
+
+
+def axes(ndim: int) -> SearchStrategy[Optional[Union[int, Shape]]]:
+    """Generate valid arguments for some axis keywords"""
+    axes_strats = [none()]
+    if ndim != 0:
+        axes_strats.append(integers(-ndim, ndim - 1))
+        axes_strats.append(xps.valid_tuple_axes(ndim))
+    return one_of(axes_strats)
