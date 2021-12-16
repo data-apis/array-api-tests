@@ -2,7 +2,7 @@ import itertools
 from functools import reduce
 from math import sqrt
 from operator import mul
-from typing import Any, List, NamedTuple, Optional, Tuple, Sequence, Union
+from typing import Any, List, NamedTuple, Optional, Sequence, Tuple, Union
 
 from hypothesis import assume
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
@@ -11,15 +11,15 @@ from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
 
 from . import _array_module as xp
 from . import dtype_helpers as dh
+from . import shape_helpers as sh
 from . import xps
 from ._array_module import _UndefinedStub
 from ._array_module import bool as bool_dtype
 from ._array_module import broadcast_to, eye, float32, float64, full
-from .array_helpers import ndindex
+from .algos import broadcast_shapes
 from .function_stubs import elementwise_functions
 from .pytest_helpers import nargs
 from .typing import Array, DataType, Shape
-from .algos import broadcast_shapes
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
 # If no compatible dtype is implemented for a given test, the test will fail
@@ -208,7 +208,7 @@ def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes(
     assume(xp.all(xp.abs(d) > 0.5))
 
     a = xp.zeros(shape)
-    for j, (idx, i) in enumerate(itertools.product(ndindex(stack_shape), range(n))):
+    for j, (idx, i) in enumerate(itertools.product(sh.ndindex(stack_shape), range(n))):
         a[idx + (i, i)] = d[j]
     return a
 

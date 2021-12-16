@@ -1,16 +1,15 @@
 import math
-from itertools import product
-from typing import Iterator, List, Optional, Tuple, Union
+from typing import Optional, Tuple
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
 from hypothesis.control import reject
 
 from . import _array_module as xp
-from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 from . import xps
 from .typing import DataType, Scalar, ScalarType, Shape
 
@@ -18,39 +17,6 @@ from .typing import DataType, Scalar, ScalarType, Shape
 def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
     dtypes = [d2 for d1, d2 in dh.promotion_table if d1 == dtype]
     return st.none() | st.sampled_from(dtypes)
-
-
-def normalise_axis(
-    axis: Optional[Union[int, Tuple[int, ...]]], ndim: int
-) -> Tuple[int, ...]:
-    if axis is None:
-        return tuple(range(ndim))
-    axes = axis if isinstance(axis, tuple) else (axis,)
-    axes = tuple(axis if axis >= 0 else ndim + axis for axis in axes)
-    return axes
-
-
-def axes_ndindex(shape: Shape, axes: Tuple[int, ...]) -> Iterator[List[Shape]]:
-    """Generate indices that index all elements except in `axes` dimensions"""
-    base_indices = []
-    axes_indices = []
-    for axis, side in enumerate(shape):
-        if axis in axes:
-            base_indices.append([None])
-            axes_indices.append(range(side))
-        else:
-            base_indices.append(range(side))
-            axes_indices.append([None])
-    for base_idx in product(*base_indices):
-        indices = []
-        for idx in product(*axes_indices):
-            idx = list(idx)
-            for axis, side in enumerate(idx):
-                if axis not in axes:
-                    idx[axis] = base_idx[axis]
-            idx = tuple(idx)
-            indices.append(idx)
-        yield list(indices)
 
 
 def assert_keepdimable_shape(
@@ -105,12 +71,12 @@ def test_max(x, data):
     out = xp.max(x, **kw)
 
     ph.assert_dtype("max", x.dtype, out.dtype)
-    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     assert_keepdimable_shape(
         "max", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(out.dtype)
-    for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
+    for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
         max_ = scalar_type(out[out_idx])
         elements = []
         for idx in indices:
@@ -134,11 +100,11 @@ def test_mean(x, data):
     out = xp.mean(x, **kw)
 
     ph.assert_dtype("mean", x.dtype, out.dtype)
-    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     assert_keepdimable_shape(
         "mean", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
-    for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
+    for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
         mean = float(out[out_idx])
         assume(not math.isinf(mean))  # mean may become inf due to internal overflows
         elements = []
@@ -163,12 +129,12 @@ def test_min(x, data):
     out = xp.min(x, **kw)
 
     ph.assert_dtype("min", x.dtype, out.dtype)
-    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     assert_keepdimable_shape(
         "min", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(out.dtype)
-    for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
+    for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
         min_ = scalar_type(out[out_idx])
         elements = []
         for idx in indices:
@@ -222,12 +188,12 @@ def test_prod(x, data):
     else:
         _dtype = dtype
     ph.assert_dtype("prod", x.dtype, out.dtype, _dtype)
-    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     assert_keepdimable_shape(
         "prod", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(out.dtype)
-    for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
+    for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
         prod = scalar_type(out[out_idx])
         assume(math.isfinite(prod))
         elements = []
@@ -251,7 +217,7 @@ def test_prod(x, data):
 )
 def test_std(x, data):
     axis = data.draw(hh.axes(x.ndim), label="axis")
-    _axes = normalise_axis(axis, x.ndim)
+    _axes = sh.normalise_axis(axis, x.ndim)
     N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
     correction = data.draw(
         st.floats(0.0, N, allow_infinity=False, allow_nan=False) | st.integers(0, N),
@@ -320,12 +286,12 @@ def test_sum(x, data):
     else:
         _dtype = dtype
     ph.assert_dtype("sum", x.dtype, out.dtype, _dtype)
-    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     assert_keepdimable_shape(
         "sum", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(out.dtype)
-    for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
+    for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
         sum_ = scalar_type(out[out_idx])
         assume(math.isfinite(sum_))
         elements = []
@@ -349,7 +315,7 @@ def test_sum(x, data):
 )
 def test_var(x, data):
     axis = data.draw(hh.axes(x.ndim), label="axis")
-    _axes = normalise_axis(axis, x.ndim)
+    _axes = sh.normalise_axis(axis, x.ndim)
     N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
     correction = data.draw(
         st.floats(0.0, N, allow_infinity=False, allow_nan=False) | st.integers(0, N),

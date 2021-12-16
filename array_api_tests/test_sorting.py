@@ -6,10 +6,11 @@ from . import _array_module as xp
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 from . import xps
 from .test_manipulation_functions import assert_equals as assert_equals_
 from .test_searching_functions import assert_default_index
-from .test_statistical_functions import assert_equals, axes_ndindex, normalise_axis
+from .test_statistical_functions import assert_equals
 
 
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
@@ -39,10 +40,10 @@ def test_argsort(x, data):
     assert_default_index("sort", out.dtype)
     ph.assert_shape("sort", out.shape, x.shape, **kw)
     axis = kw.get("axis", -1)
-    axes = normalise_axis(axis, x.ndim)
+    axes = sh.normalise_axis(axis, x.ndim)
     descending = kw.get("descending", False)
     scalar_type = dh.get_scalar_type(x.dtype)
-    for indices in axes_ndindex(x.shape, axes):
+    for indices in sh.axes_ndindex(x.shape, axes):
         elements = [scalar_type(x[idx]) for idx in indices]
         indices_order = sorted(range(len(indices)), key=elements.__getitem__)
         if descending:
@@ -79,10 +80,10 @@ def test_sort(x, data):
     ph.assert_dtype("sort", out.dtype, x.dtype)
     ph.assert_shape("sort", out.shape, x.shape, **kw)
     axis = kw.get("axis", -1)
-    axes = normalise_axis(axis, x.ndim)
+    axes = sh.normalise_axis(axis, x.ndim)
     descending = kw.get("descending", False)
     scalar_type = dh.get_scalar_type(x.dtype)
-    for indices in axes_ndindex(x.shape, axes):
+    for indices in sh.axes_ndindex(x.shape, axes):
         elements = [scalar_type(x[idx]) for idx in indices]
         indices_order = sorted(
             range(len(indices)), key=elements.__getitem__, reverse=descending

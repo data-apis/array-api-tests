@@ -1,10 +1,8 @@
 import pytest
 
-from .. import array_helpers as ah
+from .. import shape_helpers as sh
 from ..test_creation_functions import frange
-from ..test_manipulation_functions import axis_ndindex
 from ..test_signatures import extension_module
-from ..test_statistical_functions import axes_ndindex
 
 
 def test_extension_module_is_extension():
@@ -34,7 +32,7 @@ def test_frange(r, size, elements):
     [((), [()])],
 )
 def test_ndindex(shape, expected):
-    assert list(ah.ndindex(shape)) == expected
+    assert list(sh.ndindex(shape)) == expected
 
 
 @pytest.mark.parametrize(
@@ -50,7 +48,7 @@ def test_ndindex(shape, expected):
     ],
 )
 def test_axis_ndindex(shape, axis, expected):
-    assert list(axis_ndindex(shape, axis)) == expected
+    assert list(sh.axis_ndindex(shape, axis)) == expected
 
 
 @pytest.mark.parametrize(
@@ -69,4 +67,4 @@ def test_axis_ndindex(shape, axis, expected):
     ],
 )
 def test_axes_ndindex(shape, axes, expected):
-    assert list(axes_ndindex(shape, axes)) == expected
+    assert list(sh.axes_ndindex(shape, axes)) == expected

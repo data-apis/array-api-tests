@@ -2,19 +2,14 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from . import _array_module as xp
-from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 from . import xps
 from .algos import broadcast_shapes
 from .test_manipulation_functions import assert_equals as assert_equals_
-from .test_statistical_functions import (
-    assert_equals,
-    assert_keepdimable_shape,
-    axes_ndindex,
-    normalise_axis,
-)
+from .test_statistical_functions import assert_equals, assert_keepdimable_shape
 from .typing import DataType
 
 
@@ -47,12 +42,12 @@ def test_argmax(x, data):
     out = xp.argmax(x, **kw)
 
     assert_default_index("argmax", out.dtype)
-    axes = normalise_axis(kw.get("axis", None), x.ndim)
+    axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     assert_keepdimable_shape(
         "argmax", out.shape, x.shape, axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
-    for indices, out_idx in zip(axes_ndindex(x.shape, axes), ah.ndindex(out.shape)):
+    for indices, out_idx in zip(sh.axes_ndindex(x.shape, axes), sh.ndindex(out.shape)):
         max_i = int(out[out_idx])
         elements = []
         for idx in indices:
@@ -82,12 +77,12 @@ def test_argmin(x, data):
     out = xp.argmin(x, **kw)
 
     assert_default_index("argmin", out.dtype)
-    axes = normalise_axis(kw.get("axis", None), x.ndim)
+    axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     assert_keepdimable_shape(
         "argmin", out.shape, x.shape, axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
-    for indices, out_idx in zip(axes_ndindex(x.shape, axes), ah.ndindex(out.shape)):
+    for indices, out_idx in zip(sh.axes_ndindex(x.shape, axes), sh.ndindex(out.shape)):
         min_i = int(out[out_idx])
         elements = []
         for idx in indices:
@@ -114,11 +109,11 @@ def test_nonzero(x):
         assert_default_index("nonzero", out[i].dtype, repr_name=f"out[{i}].dtype")
     indices = []
     if x.dtype == xp.bool:
-        for idx in ah.ndindex(x.shape):
+        for idx in sh.ndindex(x.shape):
             if x[idx]:
                 indices.append(idx)
     else:
-        for idx in ah.ndindex(x.shape):
+        for idx in sh.ndindex(x.shape):
             if x[idx] != 0:
                 indices.append(idx)
     if x.ndim == 0:
@@ -154,7 +149,7 @@ def test_where(shapes, dtypes, data):
     _cond = xp.broadcast_to(cond, shape)
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
-    for idx in ah.ndindex(shape):
+    for idx in sh.ndindex(shape):
         if _cond[idx]:
             assert_equals_("where", f"_x1[{idx}]", _x1[idx], f"out[{idx}]", out[idx])
         else:

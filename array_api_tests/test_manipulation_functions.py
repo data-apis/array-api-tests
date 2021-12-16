@@ -1,19 +1,17 @@
 import math
 from collections import deque
-from itertools import product
-from typing import Iterable, Iterator, Tuple, Union
+from typing import Iterable, Union
 
 import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from . import _array_module as xp
-from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 from . import xps
-from .test_statistical_functions import axes_ndindex, normalise_axis
 from .typing import Array, Shape
 
 MAX_SIDE = hh.MAX_ARRAY_SIZE // 64
@@ -27,17 +25,6 @@ def shared_shapes(*args, **kwargs) -> st.SearchStrategy[Shape]:
     if kwargs:
         key += " " + ph.fmt_kw(kwargs)
     return st.shared(hh.shapes(*args, **kwargs), key="shape")
-
-
-def axis_ndindex(
-    shape: Shape, axis: int
-) -> Iterator[Tuple[Tuple[Union[int, slice], ...], ...]]:
-    """Generate indices that index all elements in dimensions beyond `axis`"""
-    assert axis >= 0  # sanity check
-    axis_indices = [range(side) for side in shape[:axis]]
-    for _ in range(axis, len(shape)):
-        axis_indices.append([slice(None, None)])
-    yield from product(*axis_indices)
 
 
 def assert_array_ndindex(
@@ -115,7 +102,7 @@ def test_concat(dtypes, kw, data):
     if axis is None:
         out_indices = (i for i in range(out.size))
         for x_num, x in enumerate(arrays, 1):
-            for x_idx in ah.ndindex(x.shape):
+            for x_idx in sh.ndindex(x.shape):
                 out_i = next(out_indices)
                 assert_equals(
                     "concat",
@@ -126,12 +113,12 @@ def test_concat(dtypes, kw, data):
                     **kw,
                 )
     else:
-        out_indices = ah.ndindex(out.shape)
-        for idx in axis_ndindex(shapes[0], _axis):
+        out_indices = sh.ndindex(out.shape)
+        for idx in sh.axis_ndindex(shapes[0], _axis):
             f_idx = ", ".join(str(i) if isinstance(i, int) else ":" for i in idx)
             for x_num, x in enumerate(arrays, 1):
                 indexed_x = x[idx]
-                for x_idx in ah.ndindex(indexed_x.shape):
+                for x_idx in sh.ndindex(indexed_x.shape):
                     out_idx = next(out_indices)
                     assert_equals(
                         "concat",
@@ -167,7 +154,7 @@ def test_expand_dims(x, axis):
     ph.assert_result_shape("expand_dims", (x.shape,), out.shape, shape)
 
     assert_array_ndindex(
-        "expand_dims", x, ah.ndindex(x.shape), out, ah.ndindex(out.shape)
+        "expand_dims", x, sh.ndindex(x.shape), out, sh.ndindex(out.shape)
     )
 
 
@@ -186,7 +173,7 @@ def test_squeeze(x, data):
     )
 
     axes = (axis,) if isinstance(axis, int) else axis
-    axes = normalise_axis(axes, x.ndim)
+    axes = sh.normalise_axis(axes, x.ndim)
 
     squeezable_axes = [i for i, side in enumerate(x.shape) if side == 1]
     if any(i not in squeezable_axes for i in axes):
@@ -205,7 +192,7 @@ def test_squeeze(x, data):
     shape = tuple(shape)
     ph.assert_result_shape("squeeze", (x.shape,), out.shape, shape, axis=axis)
 
-    assert_array_ndindex("squeeze", x, ah.ndindex(x.shape), out, ah.ndindex(out.shape))
+    assert_array_ndindex("squeeze", x, sh.ndindex(x.shape), out, sh.ndindex(out.shape))
 
 
 @given(
@@ -225,8 +212,8 @@ def test_flip(x, data):
 
     ph.assert_dtype("flip", x.dtype, out.dtype)
 
-    _axes = normalise_axis(kw.get("axis", None), x.ndim)
-    for indices in axes_ndindex(x.shape, _axes):
+    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    for indices in sh.axes_ndindex(x.shape, _axes):
         reverse_indices = indices[::-1]
         assert_array_ndindex("flip", x, indices, out, reverse_indices)
 
@@ -254,7 +241,7 @@ def test_permute_dims(x, axes):
     shape = tuple(shape)
     ph.assert_result_shape("permute_dims", (x.shape,), out.shape, shape, axes=axes)
 
-    indices = list(ah.ndindex(x.shape))
+    indices = list(sh.ndindex(x.shape))
     permuted_indices = [tuple(idx[axis] for axis in axes) for idx in indices]
     assert_array_ndindex("permute_dims", x, indices, out, permuted_indices)
 
@@ -289,7 +276,7 @@ def test_reshape(x, data):
     _shape = tuple(_shape)
     ph.assert_result_shape("reshape", (x.shape,), out.shape, _shape, shape=shape)
 
-    assert_array_ndindex("reshape", x, ah.ndindex(x.shape), out, ah.ndindex(out.shape))
+    assert_array_ndindex("reshape", x, sh.ndindex(x.shape), out, sh.ndindex(out.shape))
 
 
 @pytest.mark.skip(reason="faulty test logic")  # TODO
@@ -319,14 +306,14 @@ def test_roll(x, data):
 
     if kw.get("axis", None) is None:
         assert isinstance(shift, int)  # sanity check
-        indices = list(ah.ndindex(x.shape))
+        indices = list(sh.ndindex(x.shape))
         shifted_indices = deque(indices)
         shifted_indices.rotate(-shift)
         assert_array_ndindex("roll", x, indices, out, shifted_indices)
     else:
         _shift = (shift,) if isinstance(shift, int) else shift
-        axes = normalise_axis(kw["axis"], x.ndim)
-        all_indices = list(ah.ndindex(x.shape))
+        axes = sh.normalise_axis(kw["axis"], x.ndim)
+        all_indices = list(sh.ndindex(x.shape))
         for s, a in zip(_shift, axes):
             side = x.shape[a]
             for i in range(side):
@@ -365,13 +352,13 @@ def test_stack(shape, dtypes, kw, data):
         "stack", tuple(x.shape for x in arrays), out.shape, _shape, **kw
     )
 
-    out_indices = ah.ndindex(out.shape)
-    for idx in axis_ndindex(arrays[0].shape, axis=_axis):
+    out_indices = sh.ndindex(out.shape)
+    for idx in sh.axis_ndindex(arrays[0].shape, axis=_axis):
         f_idx = ", ".join(str(i) if isinstance(i, int) else ":" for i in idx)
         print(f"{f_idx=}")
         for x_num, x in enumerate(arrays, 1):
             indexed_x = x[idx]
-            for x_idx in ah.ndindex(indexed_x.shape):
+            for x_idx in sh.ndindex(indexed_x.shape):
                 out_idx = next(out_indices)
                 assert_equals(
                     "stack",

@@ -5,10 +5,10 @@ from collections import Counter, defaultdict
 from hypothesis import assume, given
 
 from . import _array_module as xp
-from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 from . import xps
 from .test_searching_functions import assert_default_index
 
@@ -51,13 +51,13 @@ def test_unique_all(x):
     scalar_type = dh.get_scalar_type(out.values.dtype)
     counts = defaultdict(int)
     firsts = {}
-    for i, idx in enumerate(ah.ndindex(x.shape)):
+    for i, idx in enumerate(sh.ndindex(x.shape)):
         val = scalar_type(x[idx])
         if counts[val] == 0:
             firsts[val] = i
         counts[val] += 1
 
-    for idx in ah.ndindex(out.indices.shape):
+    for idx in sh.ndindex(out.indices.shape):
         val = scalar_type(out.values[idx])
         if math.isnan(val):
             break
@@ -68,7 +68,7 @@ def test_unique_all(x):
             f"but first occurence of {val} is at {expected}"
         )
 
-    for idx in ah.ndindex(out.inverse_indices.shape):
+    for idx in sh.ndindex(out.inverse_indices.shape):
         ridx = int(out.inverse_indices[idx])
         val = out.values[ridx]
         expected = x[idx]
@@ -83,7 +83,7 @@ def test_unique_all(x):
 
     vals_idx = {}
     nans = 0
-    for idx in ah.ndindex(out.values.shape):
+    for idx in sh.ndindex(out.values.shape):
         val = scalar_type(out.values[idx])
         count = int(out.counts[idx])
         if math.isnan(val):
@@ -128,10 +128,10 @@ def test_unique_counts(x):
         out.counts.shape == out.values.shape
     ), f"{out.counts.shape=}, but should be {out.values.shape=}"
     scalar_type = dh.get_scalar_type(out.values.dtype)
-    counts = Counter(scalar_type(x[idx]) for idx in ah.ndindex(x.shape))
+    counts = Counter(scalar_type(x[idx]) for idx in sh.ndindex(x.shape))
     vals_idx = {}
     nans = 0
-    for idx in ah.ndindex(out.values.shape):
+    for idx in sh.ndindex(out.values.shape):
         val = scalar_type(out.values[idx])
         count = int(out.counts[idx])
         if math.isnan(val):
@@ -180,10 +180,10 @@ def test_unique_inverse(x):
         repr_name="out.inverse_indices.shape",
     )
     scalar_type = dh.get_scalar_type(out.values.dtype)
-    distinct = set(scalar_type(x[idx]) for idx in ah.ndindex(x.shape))
+    distinct = set(scalar_type(x[idx]) for idx in sh.ndindex(x.shape))
     vals_idx = {}
     nans = 0
-    for idx in ah.ndindex(out.values.shape):
+    for idx in sh.ndindex(out.values.shape):
         val = scalar_type(out.values[idx])
         if math.isnan(val):
             nans += 1
@@ -195,7 +195,7 @@ def test_unique_inverse(x):
                 val not in vals_idx.keys()
             ), f"out.values[{idx}]={val}, but {val} is also in out[{vals_idx[val]}]"
             vals_idx[val] = idx
-    for idx in ah.ndindex(out.inverse_indices.shape):
+    for idx in sh.ndindex(out.inverse_indices.shape):
         ridx = int(out.inverse_indices[idx])
         val = out.values[ridx]
         expected = x[idx]
@@ -218,10 +218,10 @@ def test_unique_values(x):
     out = xp.unique_values(x)
     ph.assert_dtype("unique_values", x.dtype, out.dtype)
     scalar_type = dh.get_scalar_type(x.dtype)
-    distinct = set(scalar_type(x[idx]) for idx in ah.ndindex(x.shape))
+    distinct = set(scalar_type(x[idx]) for idx in sh.ndindex(x.shape))
     vals_idx = {}
     nans = 0
-    for idx in ah.ndindex(out.shape):
+    for idx in sh.ndindex(out.shape):
         val = scalar_type(out[idx])
         if math.isnan(val):
             nans += 1
