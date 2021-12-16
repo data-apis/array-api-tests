@@ -1,4 +1,4 @@
-# TODO: disable if opted out
+# TODO: disable if opted out, refactor things
 import math
 from collections import Counter, defaultdict
 
