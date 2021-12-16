@@ -41,8 +41,26 @@ def test_all(x, data):
         assert_equals("all", scalar_type, out_idx, result, expected)
 
 
-# TODO: generate kwargs
-@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()))
-def test_any(x):
-    xp.any(x)
-    # TODO
+@given(
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
+    data=st.data(),
+)
+def test_any(x, data):
+    kw = data.draw(hh.kwargs(axis=axes(x.ndim), keepdims=st.booleans()), label="kw")
+
+    out = xp.any(x, **kw)
+
+    ph.assert_dtype("any", x.dtype, out.dtype, xp.bool)
+    _axes = normalise_axis(kw.get("axis", None), x.ndim)
+    assert_keepdimable_shape(
+        "any", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
+    )
+    scalar_type = dh.get_scalar_type(x.dtype)
+    for indices, out_idx in zip(axes_ndindex(x.shape, _axes), ah.ndindex(out.shape)):
+        result = bool(out[out_idx])
+        elements = []
+        for idx in indices:
+            s = scalar_type(x[idx])
+            elements.append(s)
+        expected = any(elements)
+        assert_equals("any", scalar_type, out_idx, result, expected)
