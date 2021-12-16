@@ -8,18 +8,6 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 from .algos import broadcast_shapes
-from .test_manipulation_functions import assert_equals as assert_equals_
-from .test_statistical_functions import assert_equals, assert_keepdimable_shape
-from .typing import DataType
-
-
-def assert_default_index(func_name: str, dtype: DataType, repr_name="out.dtype"):
-    f_dtype = dh.dtype_to_name[dtype]
-    msg = (
-        f"{repr_name}={f_dtype}, should be the default index dtype, "
-        f"which is either int32 or int64 [{func_name}()]"
-    )
-    assert dtype in (xp.int32, xp.int64), msg
 
 
 @given(
@@ -41,9 +29,9 @@ def test_argmax(x, data):
 
     out = xp.argmax(x, **kw)
 
-    assert_default_index("argmax", out.dtype)
+    ph.assert_default_index("argmax", out.dtype)
     axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
-    assert_keepdimable_shape(
+    ph.assert_keepdimable_shape(
         "argmax", out.shape, x.shape, axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
@@ -54,7 +42,7 @@ def test_argmax(x, data):
             s = scalar_type(x[idx])
             elements.append(s)
         expected = max(range(len(elements)), key=elements.__getitem__)
-        assert_equals("argmax", int, out_idx, max_i, expected)
+        ph.assert_scalar_equals("argmax", int, out_idx, max_i, expected)
 
 
 @given(
@@ -76,9 +64,9 @@ def test_argmin(x, data):
 
     out = xp.argmin(x, **kw)
 
-    assert_default_index("argmin", out.dtype)
+    ph.assert_default_index("argmin", out.dtype)
     axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
-    assert_keepdimable_shape(
+    ph.assert_keepdimable_shape(
         "argmin", out.shape, x.shape, axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
@@ -89,7 +77,7 @@ def test_argmin(x, data):
             s = scalar_type(x[idx])
             elements.append(s)
         expected = min(range(len(elements)), key=elements.__getitem__)
-        assert_equals("argmin", int, out_idx, min_i, expected)
+        ph.assert_scalar_equals("argmin", int, out_idx, min_i, expected)
 
 
 # TODO: skip if opted out
@@ -106,7 +94,7 @@ def test_nonzero(x):
         assert (
             out[i].size == size
         ), f"out[{i}].size={x.size}, but should be out[0].size={size}"
-        assert_default_index("nonzero", out[i].dtype, repr_name=f"out[{i}].dtype")
+        ph.assert_default_index("nonzero", out[i].dtype, repr_name=f"out[{i}].dtype")
     indices = []
     if x.dtype == xp.bool:
         for idx in sh.ndindex(x.shape):
@@ -151,6 +139,10 @@ def test_where(shapes, dtypes, data):
     _x2 = xp.broadcast_to(x2, shape)
     for idx in sh.ndindex(shape):
         if _cond[idx]:
-            assert_equals_("where", f"_x1[{idx}]", _x1[idx], f"out[{idx}]", out[idx])
+            ph.assert_0d_equals(
+                "where", f"_x1[{idx}]", _x1[idx], f"out[{idx}]", out[idx]
+            )
         else:
-            assert_equals_("where", f"_x2[{idx}]", _x2[idx], f"out[{idx}]", out[idx])
+            ph.assert_0d_equals(
+                "where", f"_x2[{idx}]", _x2[idx], f"out[{idx}]", out[idx]
+            )

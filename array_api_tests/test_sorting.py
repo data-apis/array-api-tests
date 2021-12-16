@@ -8,9 +8,6 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .test_manipulation_functions import assert_equals as assert_equals_
-from .test_searching_functions import assert_default_index
-from .test_statistical_functions import assert_equals
 
 
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
@@ -37,7 +34,7 @@ def test_argsort(x, data):
 
     out = xp.argsort(x, **kw)
 
-    assert_default_index("sort", out.dtype)
+    ph.assert_default_index("sort", out.dtype)
     ph.assert_shape("sort", out.shape, x.shape, **kw)
     axis = kw.get("axis", -1)
     axes = sh.normalise_axis(axis, x.ndim)
@@ -50,7 +47,7 @@ def test_argsort(x, data):
             # sorted(..., reverse=descending) doesn't always work
             indices_order = reversed(indices_order)
         for idx, o in zip(indices, indices_order):
-            assert_equals("argsort", int, idx, int(out[idx]), o)
+            ph.assert_scalar_equals("argsort", int, idx, int(out[idx]), o)
 
 
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
@@ -90,7 +87,7 @@ def test_sort(x, data):
         )
         x_indices = [indices[o] for o in indices_order]
         for out_idx, x_idx in zip(indices, x_indices):
-            assert_equals_(
+            ph.assert_0d_equals(
                 "sort",
                 f"x[{x_idx}]",
                 x[x_idx],

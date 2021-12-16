@@ -7,7 +7,6 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .test_statistical_functions import assert_equals, assert_keepdimable_shape
 
 
 @given(
@@ -21,7 +20,7 @@ def test_all(x, data):
 
     ph.assert_dtype("all", x.dtype, out.dtype, xp.bool)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
-    assert_keepdimable_shape(
+    ph.assert_keepdimable_shape(
         "all", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
@@ -32,7 +31,7 @@ def test_all(x, data):
             s = scalar_type(x[idx])
             elements.append(s)
         expected = all(elements)
-        assert_equals("all", scalar_type, out_idx, result, expected)
+        ph.assert_scalar_equals("all", scalar_type, out_idx, result, expected)
 
 
 @given(
@@ -46,7 +45,7 @@ def test_any(x, data):
 
     ph.assert_dtype("any", x.dtype, out.dtype, xp.bool)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
-    assert_keepdimable_shape(
+    ph.assert_keepdimable_shape(
         "any", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
@@ -57,4 +56,4 @@ def test_any(x, data):
             s = scalar_type(x[idx])
             elements.append(s)
         expected = any(elements)
-        assert_equals("any", scalar_type, out_idx, result, expected)
+        ph.assert_scalar_equals("any", scalar_type, out_idx, result, expected)

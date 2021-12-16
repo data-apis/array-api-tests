@@ -44,19 +44,6 @@ def assert_array_ndindex(
             assert out[out_idx] == x[x_idx], msg
 
 
-def assert_equals(
-    func_name: str, x_repr: str, x_val: Array, out_repr: str, out_val: Array, **kw
-):
-    msg = (
-        f"{out_repr}={out_val}, should be {x_repr}={x_val} "
-        f"[{func_name}({ph.fmt_kw(kw)})]"
-    )
-    if dh.is_float_dtype(out_val.dtype) and xp.isnan(out_val):
-        assert xp.isnan(x_val), msg
-    else:
-        assert x_val == out_val, msg
-
-
 @st.composite
 def concat_shapes(draw, shape, axis):
     shape = list(shape)
@@ -104,7 +91,7 @@ def test_concat(dtypes, kw, data):
         for x_num, x in enumerate(arrays, 1):
             for x_idx in sh.ndindex(x.shape):
                 out_i = next(out_indices)
-                assert_equals(
+                ph.assert_0d_equals(
                     "concat",
                     f"x{x_num}[{x_idx}]",
                     x[x_idx],
@@ -120,7 +107,7 @@ def test_concat(dtypes, kw, data):
                 indexed_x = x[idx]
                 for x_idx in sh.ndindex(indexed_x.shape):
                     out_idx = next(out_indices)
-                    assert_equals(
+                    ph.assert_0d_equals(
                         "concat",
                         f"x{x_num}[{f_idx}][{x_idx}]",
                         indexed_x[x_idx],
@@ -360,7 +347,7 @@ def test_stack(shape, dtypes, kw, data):
             indexed_x = x[idx]
             for x_idx in sh.ndindex(indexed_x.shape):
                 out_idx = next(out_indices)
-                assert_equals(
+                ph.assert_0d_equals(
                     "stack",
                     f"x{x_num}[{f_idx}][{x_idx}]",
                     indexed_x[x_idx],

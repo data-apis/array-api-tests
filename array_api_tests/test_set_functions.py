@@ -10,7 +10,6 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .test_searching_functions import assert_default_index
 
 
 @given(
@@ -29,11 +28,15 @@ def test_unique_all(x):
     ph.assert_dtype(
         "unique_all", x.dtype, out.values.dtype, repr_name="out.values.dtype"
     )
-    assert_default_index("unique_all", out.indices.dtype, repr_name="out.indices.dtype")
-    assert_default_index(
+    ph.assert_default_index(
+        "unique_all", out.indices.dtype, repr_name="out.indices.dtype"
+    )
+    ph.assert_default_index(
         "unique_all", out.inverse_indices.dtype, repr_name="out.inverse_indices.dtype"
     )
-    assert_default_index("unique_all", out.counts.dtype, repr_name="out.counts.dtype")
+    ph.assert_default_index(
+        "unique_all", out.counts.dtype, repr_name="out.counts.dtype"
+    )
 
     assert (
         out.indices.shape == out.values.shape
@@ -121,7 +124,7 @@ def test_unique_counts(x):
     ph.assert_dtype(
         "unique_counts", x.dtype, out.values.dtype, repr_name="out.values.dtype"
     )
-    assert_default_index(
+    ph.assert_default_index(
         "unique_counts", out.counts.dtype, repr_name="out.counts.dtype"
     )
     assert (
@@ -168,7 +171,7 @@ def test_unique_inverse(x):
     ph.assert_dtype(
         "unique_inverse", x.dtype, out.values.dtype, repr_name="out.values.dtype"
     )
-    assert_default_index(
+    ph.assert_default_index(
         "unique_inverse",
         out.inverse_indices.dtype,
         repr_name="out.inverse_indices.dtype",
