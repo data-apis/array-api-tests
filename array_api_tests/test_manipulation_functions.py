@@ -1,6 +1,6 @@
 import math
 from collections import deque
-from typing import Iterable, Union
+from typing import Iterable, Iterator, Tuple, Union
 
 import pytest
 from hypothesis import assume, given
@@ -33,8 +33,10 @@ def assert_array_ndindex(
     x_indices: Iterable[Union[int, Shape]],
     out: Array,
     out_indices: Iterable[Union[int, Shape]],
+    /,
+    **kw,
 ):
-    msg_suffix = f" [{func_name}()]\n  {x=}\n{out=}"
+    msg_suffix = f" [{func_name}({ph.fmt_kw(kw)})]\n  {x=}\n{out=}"
     for x_idx, out_idx in zip(x_indices, out_indices):
         msg = f"out[{out_idx}]={out[out_idx]}, should be x[{x_idx}]={x[x_idx]}"
         msg += msg_suffix
@@ -266,7 +268,15 @@ def test_reshape(x, data):
     assert_array_ndindex("reshape", x, sh.ndindex(x.shape), out, sh.ndindex(out.shape))
 
 
-@pytest.mark.skip(reason="faulty test logic")  # TODO
+def roll_ndindex(shape: Shape, shifts: Tuple[int], axes: Tuple[int]) -> Iterator[Shape]:
+    assert len(shifts) == len(axes)  # sanity check
+    all_shifts = [0 for _ in shape]
+    for s, a in zip(shifts, axes):
+        all_shifts[a] = s
+    for idx in sh.ndindex(shape):
+        yield tuple((i + sh) % si for i, sh, si in zip(idx, all_shifts, shape))
+
+
 @given(xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()), st.data())
 def test_roll(x, data):
     shift_strat = st.integers(-hh.MAX_ARRAY_SIZE, hh.MAX_ARRAY_SIZE)
@@ -287,6 +297,8 @@ def test_roll(x, data):
 
     out = xp.roll(x, shift, **kw)
 
+    kw = {"shift": shift, **kw}  # for error messages
+
     ph.assert_dtype("roll", x.dtype, out.dtype)
 
     ph.assert_result_shape("roll", (x.shape,), out.shape)
@@ -296,18 +308,12 @@ def test_roll(x, data):
         indices = list(sh.ndindex(x.shape))
         shifted_indices = deque(indices)
         shifted_indices.rotate(-shift)
-        assert_array_ndindex("roll", x, indices, out, shifted_indices)
+        assert_array_ndindex("roll", x, indices, out, shifted_indices, **kw)
     else:
-        _shift = (shift,) if isinstance(shift, int) else shift
+        shifts = (shift,) if isinstance(shift, int) else shift
         axes = sh.normalise_axis(kw["axis"], x.ndim)
-        all_indices = list(sh.ndindex(x.shape))
-        for s, a in zip(_shift, axes):
-            side = x.shape[a]
-            for i in range(side):
-                indices = [idx for idx in all_indices if idx[a] == i]
-                shifted_indices = deque(indices)
-                shifted_indices.rotate(-s)
-                assert_array_ndindex("roll", x, indices, out, shifted_indices)
+        shifted_indices = roll_ndindex(x.shape, shifts, axes)
+        assert_array_ndindex("roll", x, sh.ndindex(x.shape), out, shifted_indices, **kw)
 
 
 @given(

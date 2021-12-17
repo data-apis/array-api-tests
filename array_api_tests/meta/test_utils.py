@@ -2,6 +2,7 @@ import pytest
 
 from .. import shape_helpers as sh
 from ..test_creation_functions import frange
+from ..test_manipulation_functions import roll_ndindex
 from ..test_signatures import extension_module
 
 
@@ -68,3 +69,16 @@ def test_axis_ndindex(shape, axis, expected):
 )
 def test_axes_ndindex(shape, axes, expected):
     assert list(sh.axes_ndindex(shape, axes)) == expected
+
+
+@pytest.mark.parametrize(
+    "shape, shifts, axes, expected",
+    [
+        ((1, 1), (0,), (0,), [(0, 0)]),
+        ((2, 1), (1, 1), (0, 1), [(1, 0), (0, 0)]),
+        ((2, 2), (1, 1), (0, 1), [(1, 1), (1, 0), (0, 1), (0, 0)]),
+        ((2, 2), (-1, 1), (0, 1), [(1, 1), (1, 0), (0, 1), (0, 0)]),
+    ],
+)
+def test_roll_ndindex(shape, shifts, axes, expected):
+    assert list(roll_ndindex(shape, shifts, axes)) == expected
