@@ -1,34 +1,43 @@
-from ._array_module import (e, inf, nan, pi, equal, isnan, abs, full,
-                            float64, less, isinf, greater, all)
-from .array_helpers import one
+import math
 
-def test_e():
-    # Check that e acts as a scalar
-    E = full((1,), e, dtype=float64)
+import pytest
 
-    # We don't require any accuracy. This is just a smoke test to check that
-    # 'e' is actually the constant e.
-    assert all(less(abs(E - 2.71), one((1,), dtype=float64))), "e is not the constant e"
+from . import dtype_helpers as dh
+from ._array_module import mod as xp
+from .typing import Array
 
-def test_pi():
-    # Check that pi acts as a scalar
-    PI = full((1,), pi, dtype=float64)
 
-    # We don't require any accuracy. This is just a smoke test to check that
-    # 'pi' is actually the constant π.
-    assert all(less(abs(PI - 3.14), one((1,), dtype=float64))), "pi is not the constant π"
+def assert_0d_float(name: str, x: Array):
+    assert dh.is_float_dtype(
+        x.dtype
+    ), f"xp.asarray(xp.{name})={x!r}, but should have float dtype"
+
+
+@pytest.mark.parametrize("name, n", [("e", math.e), ("pi", math.pi)])
+def test_irrational(name, n):
+    assert hasattr(xp, name)
+    c = getattr(xp, name)
+    floor = math.floor(n)
+    assert c > floor, f"xp.{name}={c} <= {floor}"
+    ceil = math.ceil(n)
+    assert c < ceil, f"xp.{name}={c} >= {ceil}"
+    x = xp.asarray(c)
+    assert_0d_float("name", x)
+
 
 def test_inf():
-    # Check that inf acts as a scalar
-    INF = full((1,), inf, dtype=float64)
-    zero = full((1,), 0.0, dtype=float64)
+    assert hasattr(xp, "inf")
+    assert math.isinf(xp.inf)
+    assert xp.inf > 0, "xp.inf not greater than 0"
+    x = xp.asarray(xp.inf)
+    assert_0d_float("inf", x)
+    assert xp.isinf(x), "xp.isinf(xp.asarray(xp.inf))=False"
 
-    assert all(isinf(INF)), "inf is not infinity"
-    assert all(greater(INF, zero)), "inf is not positive"
 
 def test_nan():
-    # Check that nan acts as a scalar
-    NAN = full((1,), nan, dtype=float64)
-
-    assert all(isnan(NAN)), "nan is not Not a Number"
-    assert not all(equal(NAN, NAN)), "nan should be unequal to itself"
+    assert hasattr(xp, "nan")
+    assert math.isnan(xp.nan)
+    assert xp.nan != xp.nan, "xp.nan should not have equality with itself"
+    x = xp.asarray(xp.nan)
+    assert_0d_float("nan", x)
+    assert xp.isnan(x), "xp.isnan(xp.asarray(xp.nan))=False"
