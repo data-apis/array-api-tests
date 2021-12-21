@@ -1,5 +1,3 @@
-import itertools
-
 from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
                             logical_or, isfinite, greater, less, less_equal,
                             zeros, ones, full, bool, int8, int16, int32,
@@ -23,7 +21,7 @@ __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'assert_isinf', 'positive_mathematical_sign',
            'assert_positive_mathematical_sign', 'negative_mathematical_sign',
            'assert_negative_mathematical_sign', 'same_sign',
-           'assert_same_sign', 'ndindex', 'float64',
+           'assert_same_sign', 'float64',
            'asarray', 'full', 'true', 'false', 'isnan']
 
 def zero(shape, dtype):
@@ -319,13 +317,3 @@ def int_to_dtype(x, n, signed):
         if x & highest_bit:
             x = -((~x & mask) + 1)
     return x
-
-def ndindex(shape):
-    """
-    Iterator of n-D indices to an array
-
-    Yields tuples of integers to index every element of an array of shape
-    `shape`. Same as np.ndindex().
-
-    """
-    return itertools.product(*[range(i) for i in shape])

@@ -23,6 +23,7 @@ from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 from . import xps
 from .algos import broadcast_shapes
 from .typing import Array, DataType, Param, Scalar
@@ -377,13 +378,13 @@ def test_bitwise_and(
 
         # Compare against the Python & operator.
         if res.dtype == xp.bool:
-            for idx in ah.ndindex(res.shape):
+            for idx in sh.ndindex(res.shape):
                 s_left = bool(_left[idx])
                 s_right = bool(_right[idx])
                 s_res = bool(res[idx])
                 assert (s_left and s_right) == s_res
         else:
-            for idx in ah.ndindex(res.shape):
+            for idx in sh.ndindex(res.shape):
                 s_left = int(_left[idx])
                 s_right = int(_right[idx])
                 s_res = int(res[idx])
@@ -427,7 +428,7 @@ def test_bitwise_left_shift(
         _right = xp.broadcast_to(right, shape)
 
         # Compare against the Python << operator.
-        for idx in ah.ndindex(res.shape):
+        for idx in sh.ndindex(res.shape):
             s_left = int(_left[idx])
             s_right = int(_right[idx])
             s_res = int(res[idx])
@@ -452,12 +453,12 @@ def test_bitwise_invert(func_name, func, strat, data):
     ph.assert_shape(func_name, out.shape, x.shape)
     # Compare against the Python ~ operator.
     if out.dtype == xp.bool:
-        for idx in ah.ndindex(out.shape):
+        for idx in sh.ndindex(out.shape):
             s_x = bool(x[idx])
             s_out = bool(out[idx])
             assert (not s_x) == s_out
     else:
-        for idx in ah.ndindex(out.shape):
+        for idx in sh.ndindex(out.shape):
             s_x = int(x[idx])
             s_out = int(out[idx])
             s_invert = ah.int_to_dtype(
@@ -495,13 +496,13 @@ def test_bitwise_or(
 
         # Compare against the Python | operator.
         if res.dtype == xp.bool:
-            for idx in ah.ndindex(res.shape):
+            for idx in sh.ndindex(res.shape):
                 s_left = bool(_left[idx])
                 s_right = bool(_right[idx])
                 s_res = bool(res[idx])
                 assert (s_left or s_right) == s_res
         else:
-            for idx in ah.ndindex(res.shape):
+            for idx in sh.ndindex(res.shape):
                 s_left = int(_left[idx])
                 s_right = int(_right[idx])
                 s_res = int(res[idx])
@@ -547,7 +548,7 @@ def test_bitwise_right_shift(
         _right = xp.broadcast_to(right, shape)
 
         # Compare against the Python >> operator.
-        for idx in ah.ndindex(res.shape):
+        for idx in sh.ndindex(res.shape):
             s_left = int(_left[idx])
             s_right = int(_right[idx])
             s_res = int(res[idx])
@@ -586,13 +587,13 @@ def test_bitwise_xor(
 
         # Compare against the Python ^ operator.
         if res.dtype == xp.bool:
-            for idx in ah.ndindex(res.shape):
+            for idx in sh.ndindex(res.shape):
                 s_left = bool(_left[idx])
                 s_right = bool(_right[idx])
                 s_res = bool(res[idx])
                 assert (s_left ^ s_right) == s_res
         else:
-            for idx in ah.ndindex(res.shape):
+            for idx in sh.ndindex(res.shape):
                 s_left = int(_left[idx])
                 s_right = int(_right[idx])
                 s_res = int(res[idx])
@@ -721,7 +722,7 @@ def test_equal(
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in ah.ndindex(shape):
+        for idx in sh.ndindex(shape):
             x1_idx = _left[idx]
             x2_idx = _right[idx]
             out_idx = out[idx]
@@ -846,7 +847,7 @@ def test_greater(
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in ah.ndindex(shape):
+        for idx in sh.ndindex(shape):
             out_idx = out[idx]
             x1_idx = _left[idx]
             x2_idx = _right[idx]
@@ -887,7 +888,7 @@ def test_greater_equal(
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in ah.ndindex(shape):
+        for idx in sh.ndindex(shape):
             out_idx = out[idx]
             x1_idx = _left[idx]
             x2_idx = _right[idx]
@@ -907,7 +908,7 @@ def test_isfinite(x):
 
     # Test the exact value by comparing to the math version
     if dh.is_float_dtype(x.dtype):
-        for idx in ah.ndindex(x.shape):
+        for idx in sh.ndindex(x.shape):
             s = float(x[idx])
             assert bool(res[idx]) == math.isfinite(s)
 
@@ -925,7 +926,7 @@ def test_isinf(x):
 
     # Test the exact value by comparing to the math version
     if dh.is_float_dtype(x.dtype):
-        for idx in ah.ndindex(x.shape):
+        for idx in sh.ndindex(x.shape):
             s = float(x[idx])
             assert bool(res[idx]) == math.isinf(s)
 
@@ -943,7 +944,7 @@ def test_isnan(x):
 
     # Test the exact value by comparing to the math version
     if dh.is_float_dtype(x.dtype):
-        for idx in ah.ndindex(x.shape):
+        for idx in sh.ndindex(x.shape):
             s = float(x[idx])
             assert bool(res[idx]) == math.isnan(s)
 
@@ -979,7 +980,7 @@ def test_less(
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in ah.ndindex(shape):
+        for idx in sh.ndindex(shape):
             x1_idx = _left[idx]
             x2_idx = _right[idx]
             out_idx = out[idx]
@@ -1020,7 +1021,7 @@ def test_less_equal(
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in ah.ndindex(shape):
+        for idx in sh.ndindex(shape):
             x1_idx = _left[idx]
             x2_idx = _right[idx]
             out_idx = out[idx]
@@ -1100,7 +1101,7 @@ def test_logical_and(x1, x2):
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
 
-    for idx in ah.ndindex(shape):
+    for idx in sh.ndindex(shape):
         assert out[idx] == (bool(_x1[idx]) and bool(_x2[idx]))
 
 
@@ -1108,7 +1109,7 @@ def test_logical_and(x1, x2):
 def test_logical_not(x):
     out = ah.logical_not(x)
     ph.assert_shape("logical_not", out.shape, x.shape)
-    for idx in ah.ndindex(x.shape):
+    for idx in sh.ndindex(x.shape):
         assert out[idx] == (not bool(x[idx]))
 
 
@@ -1122,7 +1123,7 @@ def test_logical_or(x1, x2):
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
 
-    for idx in ah.ndindex(shape):
+    for idx in sh.ndindex(shape):
         assert out[idx] == (bool(_x1[idx]) or bool(_x2[idx]))
 
 
@@ -1136,7 +1137,7 @@ def test_logical_xor(x1, x2):
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
 
-    for idx in ah.ndindex(shape):
+    for idx in sh.ndindex(shape):
         assert out[idx] == (bool(_x1[idx]) ^ bool(_x2[idx]))
 
 
@@ -1225,7 +1226,7 @@ def test_not_equal(
         _right = ah.asarray(_right, dtype=promoted_dtype)
 
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in ah.ndindex(shape):
+        for idx in sh.ndindex(shape):
             out_idx = out[idx]
             x1_idx = _left[idx]
             x2_idx = _right[idx]

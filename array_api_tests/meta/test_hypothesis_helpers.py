@@ -68,7 +68,6 @@ def test_two_broadcastable_shapes(pair):
 @given(*hh.two_mutual_arrays())
 def test_two_mutual_arrays(x1, x2):
     assert (x1.dtype, x2.dtype) in dh.promotion_table.keys()
-    assert broadcast_shapes(x1.shape, x2.shape) in (x1.shape, x2.shape)
 
 
 def test_two_mutual_arrays_raises_on_bad_dtypes():

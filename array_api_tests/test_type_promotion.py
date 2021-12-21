@@ -19,7 +19,7 @@ from .function_stubs import elementwise_functions
 
 
 # TODO: move tests not covering elementwise funcs/ops into standalone tests
-# result_type, meshgrid, concat, stack, where, tensordor, vecdot
+# result_type, meshgrid, tensordor, vecdot
 
 
 @given(hh.mutually_promotable_dtypes(None))
@@ -49,34 +49,6 @@ def test_meshgrid(dtypes, data):
     out = xp.meshgrid(*arrays)
     for i, x in enumerate(out):
         ph.assert_dtype("meshgrid", dtypes, x.dtype, repr_name=f"out[{i}].dtype")
-
-
-@given(
-    shape=hh.shapes(min_dims=1),
-    dtypes=hh.mutually_promotable_dtypes(None, dtypes=dh.numeric_dtypes),
-    data=st.data(),
-)
-def test_concat(shape, dtypes, data):
-    arrays = []
-    for i, dtype in enumerate(dtypes, 1):
-        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
-        arrays.append(x)
-    out = xp.concat(arrays)
-    ph.assert_dtype("concat", dtypes, out.dtype)
-
-
-@given(
-    shape=hh.shapes(),
-    dtypes=hh.mutually_promotable_dtypes(None),
-    data=st.data(),
-)
-def test_stack(shape, dtypes, data):
-    arrays = []
-    for i, dtype in enumerate(dtypes, 1):
-        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
-        arrays.append(x)
-    out = xp.stack(arrays)
-    ph.assert_dtype("stack", dtypes, out.dtype)
 
 
 bitwise_shift_funcs = [

@@ -18,7 +18,7 @@ from hypothesis import assume, given
 from hypothesis.strategies import (booleans, composite, none, tuples, integers,
                                    shared, sampled_from)
 
-from .array_helpers import assert_exactly_equal, ndindex, asarray, equal, zero, infinity
+from .array_helpers import assert_exactly_equal, asarray, equal, zero, infinity
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
@@ -28,6 +28,7 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  SQRT_MAX_ARRAY_SIZE, finite_matrices)
 from . import dtype_helpers as dh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 
 from .algos import broadcast_shapes
 
@@ -53,7 +54,7 @@ def _test_stacks(f, *args, res=None, dims=2, true_val=None, **kw):
 
     shape = args[0].shape if len(args) == 1 else broadcast_shapes(*[x.shape
                                                                     for x in args])
-    for _idx in ndindex(shape[:-2]):
+    for _idx in sh.ndindex(shape[:-2]):
         idx = _idx + (slice(None),)*dims
         res_stack = res[idx]
         x_stacks = [x[_idx + (...,)] for x in args]
@@ -147,7 +148,7 @@ def test_cross(x1_x2_kw):
     # is the only function that works the way it does, so it's not really
     # worth generalizing _test_stacks to handle it.
     a = axis if axis >= 0 else axis + len(shape)
-    for _idx in ndindex(shape[:a] + shape[a+1:]):
+    for _idx in sh.ndindex(shape[:a] + shape[a+1:]):
         idx = _idx[:a] + (slice(None),) + _idx[a:]
         assert len(idx) == len(shape), "Invalid index. This indicates a bug in the test suite."
         res_stack = res[idx]

@@ -1,12 +1,13 @@
-from array_api_tests.algos import broadcast_shapes
 import math
 from inspect import getfullargspec
 from typing import Any, Dict, Optional, Tuple, Union
 
+from . import _array_module as xp
 from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import function_stubs
-from .typing import Array, DataType, Scalar, Shape
+from .algos import broadcast_shapes
+from .typing import Array, DataType, Scalar, ScalarType, Shape
 
 __all__ = [
     "raises",
@@ -17,8 +18,10 @@ __all__ = [
     "assert_kw_dtype",
     "assert_default_float",
     "assert_default_int",
+    "assert_default_index",
     "assert_shape",
     "assert_result_shape",
+    "assert_keepdimable_shape",
     "assert_fill",
 ]
 
@@ -67,12 +70,14 @@ def fmt_kw(kw: Dict[str, Any]) -> str:
 
 def assert_dtype(
     func_name: str,
-    in_dtypes: Tuple[DataType, ...],
+    in_dtypes: Union[DataType, Tuple[DataType, ...]],
     out_dtype: DataType,
     expected: Optional[DataType] = None,
     *,
     repr_name: str = "out.dtype",
 ):
+    if not isinstance(in_dtypes, tuple):
+        in_dtypes = (in_dtypes,)
     f_in_dtypes = dh.fmt_types(in_dtypes)
     f_out_dtype = dh.dtype_to_name[out_dtype]
     if expected is None:
@@ -115,6 +120,15 @@ def assert_default_int(func_name: str, dtype: DataType):
     assert dtype == dh.default_int, msg
 
 
+def assert_default_index(func_name: str, dtype: DataType, repr_name="out.dtype"):
+    f_dtype = dh.dtype_to_name[dtype]
+    msg = (
+        f"{repr_name}={f_dtype}, should be the default index dtype, "
+        f"which is either int32 or int64 [{func_name}()]"
+    )
+    assert dtype in (xp.int32, xp.int64), msg
+
+
 def assert_shape(
     func_name: str,
     out_shape: Union[int, Shape],
@@ -149,10 +163,59 @@ def assert_result_shape(
     f_sig = f" {f_in_shapes} "
     if kw:
         f_sig += f", {fmt_kw(kw)}"
-    msg = (
-        f"{repr_name}={out_shape}, but should be {expected} [{func_name}({f_sig})]"
-    )
+    msg = f"{repr_name}={out_shape}, but should be {expected} [{func_name}({f_sig})]"
     assert out_shape == expected, msg
+
+
+def assert_keepdimable_shape(
+    func_name: str,
+    out_shape: Shape,
+    in_shape: Shape,
+    axes: Tuple[int, ...],
+    keepdims: bool,
+    /,
+    **kw,
+):
+    if keepdims:
+        shape = tuple(1 if axis in axes else side for axis, side in enumerate(in_shape))
+    else:
+        shape = tuple(side for axis, side in enumerate(in_shape) if axis not in axes)
+    assert_shape(func_name, out_shape, shape, **kw)
+
+
+def assert_0d_equals(
+    func_name: str, x_repr: str, x_val: Array, out_repr: str, out_val: Array, **kw
+):
+    msg = (
+        f"{out_repr}={out_val}, should be {x_repr}={x_val} "
+        f"[{func_name}({fmt_kw(kw)})]"
+    )
+    if dh.is_float_dtype(out_val.dtype) and xp.isnan(out_val):
+        assert xp.isnan(x_val), msg
+    else:
+        assert x_val == out_val, msg
+
+
+def assert_scalar_equals(
+    func_name: str,
+    type_: ScalarType,
+    idx: Shape,
+    out: Scalar,
+    expected: Scalar,
+    /,
+    **kw,
+):
+    out_repr = "out" if idx == () else f"out[{idx}]"
+    f_func = f"{func_name}({fmt_kw(kw)})"
+    if type_ is bool or type_ is int:
+        msg = f"{out_repr}={out}, should be {expected} [{f_func}]"
+        assert out == expected, msg
+    elif math.isnan(expected):
+        msg = f"{out_repr}={out}, should be {expected} [{f_func}]"
+        assert math.isnan(out), msg
+    else:
+        msg = f"{out_repr}={out}, should be roughly {expected} [{f_func}]"
+        assert math.isclose(out, expected, rel_tol=0.25, abs_tol=1), msg
 
 
 def assert_fill(
