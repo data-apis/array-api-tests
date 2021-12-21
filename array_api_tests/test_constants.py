@@ -19,7 +19,7 @@ def assert_0d_float(name: str, x: Array):
 
 
 @pytest.mark.parametrize("name, n", [("e", math.e), ("pi", math.pi)])
-def test_irrational(name, n):
+def test_irrational_numbers(name, n):
     assert hasattr(xp, name)
     c = getattr(xp, name)
     assert_scalar_float(name, c)
