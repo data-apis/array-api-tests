@@ -1,83 +1,137 @@
-# Array API Standard Test Suite
+# Test Suite for Array API Compliance
 
-This is the test suite for the Python array API standard.
+This is the test suite for array libraries adopting the [Python Array API
+standard](https://data-apis.org/array-api/).
 
-**NOTE: This test suite is still a work in progress.**
+Note the suite is still a **work in progress**. Feedback and contributions are
+welcome!
 
-Feedback and contributions are welcome, but be aware that this suite is not
-yet completed. In particular, there are still many parts of the array API
-specification that are not yet tested here.
-
-## Running the tests
+## Quickstart
 
 ### Setup
 
-To run the tests, first install the testing dependencies
+To run the tests, install the testing dependencies.
 
-    pip install pytest hypothesis
+```bash
+$ pip install -r requirements
+```
 
-or
-
-    conda install pytest hypothesis
-
-as well as the array libraries that you want to test. 
+Ensure you have the array library that you want to test installed.
 
 ### Specifying the array module
 
-To run the tests, you need to set the array library that is to be tested. There
-are two ways to do this. One way is to set the `ARRAY_API_TESTS_MODULE`
-environment variable. For example you can set it when running `pytest`
+You need to specify the array library to test. It can be specified via the
+`XPTESTS_MODULE` environment variable, e.g.
 
-    ARRAY_API_TESTS_MODULE=numpy pytest
-
-Alternately, edit the `array_api_tests/_array_module.py` file and change the
-line
-
-```py
-array_module = None
+```bash
+$ export XPTESTS_MODULE=numpy.array_api
 ```
 
-to
+Alternately, change the `array_module` variable in `xptests/_array_module.py`
+line, e.g.
 
-```py
-import numpy as array_module
+```diff
+- array_module = None
++ import numpy.array_api as array_module
 ```
 
-(replacing `numpy` with the array module namespace to be tested).
+### Run the suite
 
-### Specifying test cases
+Simply run `pytest` against the `xptests/` folder to run the full suite.
 
-The test suite tries to logically organise its tests so you can find specific
-test cases whilst developing something in particular. So to avoid running the
-rather slow complete suite, you can specify particular test cases like any other
-test suite.
+```bash
+$ pytest xptests/
+```
 
-    pytest array_api_tests/test_creation_functions.py::test_zeros
+The suite tries to logically organise its tests. `pytest` allows you to only run
+a specific test case, which is useful when developing functions.
 
-## Notes on Interpreting Errors
+```bash
+$ pytest xptests/test_creation_functions.py::test_zeros
+```
 
-- Some tests cannot be run unless other tests pass first. This is because very
-  basic APIs such as certain array creation APIs are required for a large
-  fraction of the tests to run. TODO: Write which tests are required to pass
-  first here.
+## What the test suite covers
 
-- If an error message involves `_UndefinedStub`, it means some name that is
-  required for the test to run is not defined in the array library.
+We are interested in array libraries conforming to the
+[spec](https://data-apis.org/array-api/latest/API_specification/index.html).
+Ideally this means that if a library has fully adopted the Array API, the test
+suite passes. We take great care to _not_ test things which are out-of-scope, so
+as to not unexpectedly fail the suite.
 
-- Due to the nature of the array api spec, virtually every array library will
-  produce a large number of errors from nonconformance. It is still a work in
-  progress to enable reporting the errors in a way that makes them easy to
-  understand, even if there are a large number of them.
+### Primary tests
 
-- The spec documents are the ground source of truth. If the test suite appears
-  to be testing something that is different from the spec, or something that
-  isn't actually mentioned in the spec, this is a bug. [Please report
-  it](https://github.com/data-apis/array-api-tests/issues/new). Furthermore,
-  be aware that some aspects of the spec are either impossible or extremely
-  difficult to actually test, so they are not covered in the test suite (TODO:
-  list what these are).
+Every function—including array object methods—has a respective test method. We
+use [Hypothesis](https://hypothesis.readthedocs.io/en/latest/) to generate a
+diverse set of valid inputs. This means array inputs will cover different dtypes
+and shapes, as well as contain interesting elements. These examples generate
+with interesting arrangements of non-array positional arguments and keyword
+arguments.
 
-## Configuring Tests
+Each test case will cover the following areas if relevant:
+
+* **Smoking**: We pass our generated examples to all functions. As these
+  examples solely consist of *valid* inputs, we are testing that functions can
+  be called using their documented inputs without raising errors.
+
+* **Data type**: For functions returning/modifying arrays, we assert that output
+  arrays have the correct data types. Most functions
+  [type-promote](https://data-apis.org/array-api/latest/API_specification/type_promotion.html)
+  input arrays and some functions have bespoke rules—in both cases we simulate
+  the correct behaviour to find the expected data types.
+
+* **Shape**: For functions returning/modifying arrays, we assert that output
+  arrays have the correct shape. Most functions
+  [broadcast](https://data-apis.org/array-api/latest/API_specification/broadcasting.html)
+  input arrays and some functions have bespoke rules—in both cases we simulate
+  the correct behaviour to find the expected shapes.
+
+* **Values**: We assert output values (including the elements of
+  returned/modified arrays) are as expected. Except for manipulation functions
+  or special cases, the spec allows floating-point inputs to have inexact
+  outputs, so with such examples we only assert values are roughly as expected.
+
+### Additional tests
+
+In addition to having one test case for each function, we test other properties
+of the functions and some miscellaneous things.
+
+* **Special cases**: For functions with special case behaviour, we assert that
+  these functions return the correct values.
+
+* **Signatures**: We assert functions have the correct signatures.
+
+* **Constants**: We assert that
+  [constants](https://data-apis.org/array-api/latest/API_specification/constants.html)
+  behave expectedly, are roughly the expected value, and that any related
+  functions interact with them correctly.
+  
+Be aware that some aspects of the spec are impractical or impossible to actually
+test, so they are not covered in the suite <!-- TODO: note what these are -->
+
+## Interpreting errors
+
+First and foremost, note that most tests have to assume that certain aspects of
+the Array API have been correctly adopted, as fundamental APIs such as array
+creation and equalities are hard requirements for many assertions. This means a
+test case for one function might fail because another function has bugs or even
+no implementation.
+
+This means adopting libraries at first will result in a vast number of errors
+due to cascading errors. Generally the nature of the spec means many granular
+details such as type promotion is likely going to also fail nearly-conforming
+functions.
+
+We hope to improve user experience in regards to "noisy" errors in
+[#51](https://github.com/data-apis/array-api-tests/issues/51). For now, if an
+error message involves `_UndefinedStub`, it means an attribute of the array
+library (including functions) and it's objects (e.g. the array) is missing.
+
+The spec is the suite's source of truth. If the suite appears to assume
+behaviour different from the spec, or test something that is not documented,
+this is a bug—please [report such
+issues](https://github.com/data-apis/array-api-tests/issues/) to us.
+
+## Configuration
 
 By default, tests for the optional Array API extensions such as
 [`linalg`](https://data-apis.org/array-api/latest/extensions/linear_algebra_functions.html)
@@ -85,82 +139,74 @@ will be skipped if not present in the specified array module. You can purposely
 skip testing extension(s) via the `--disable-extension` option, and likewise
 purposely test them via the `--enable-extension` option.
 
-The tests make heavy use of the
-[Hypothesis](https://hypothesis.readthedocs.io/en/latest/) testing library.
-Hypothesis generates random input values for the tests. You can configure how
-many values are generated and run using the `--max-examples` flag. The default
-`--max-examples` is 100. For example, `--max-examples 50` will only generate
-half as many examples and as a result, the test suite will run in about half
-the time. Setting `--max-examples` to a lower value can be useful when you
-want to have a faster test run. It can also be useful to set `--max-examples`
-to a large value to do a longer, more rigorous run of the tests. For example,
-`--max-examples 10000` will do a very rigorous check of the tests, but may
-take a few hours to run.
+The tests make heavy use
+[Hypothesis](https://hypothesis.readthedocs.io/en/latest/). You can configure
+how many examples are generated using the `--max-examples` flag, which defaults
+to 100. Lower values can be useful for quick checks, and larger values should
+result in more rigorous runs. For example, `--max-examples 10000` may find bugs
+where default runs don't, but will take a much longer time.
+
+<!-- TODO: howto on CI -->
 
 ## Contributing
 
-### Adding Tests
+### Remain in-scope
 
-It is important that every test in the test suite only uses APIs that are part
-of the standard. This means that, for instance, when creating test arrays, you
-should only use array creation functions that are part of the spec, such as
-`ones` or `full`. It also means that many array testing functions that are
-built-in to libraries like numpy are reimplemented in the test suite (see
-`array_api_tests/pytest_helpers.py`, `array_api_tests/array_helpers.py`, and
-`array_api_tests/hypothesis_helpers.py`).
+It is important that every test only uses APIs that are part of the standard.
+For instance, when creating input arrays you should only use the [array creation
+functions](https://data-apis.org/array-api/latest/API_specification/creation_functions.html)
+that are documented in the spec. The same goes for testing arrays—you'll find
+many utilities that parralel NumPy's own test utils in the `*_helpers.py` files.
 
-In order to enforce this, the `array_api_tests._array_module` should be used
-everywhere in place of the actual array module that is being tested.
+### Tools
 
-### Hypothesis
+Hypothesis should always be used for the primary tests, and can be useful
+elsewhere. Effort should be made so drawn arguments are labeled with their
+respective names. For
+[`st.data()`](https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.data),
+draws should be accompanied with the `label` kwarg i.e. `data.draw(<strategy>,
+label=<label>)`.
 
-The test suite uses [Hypothesis](https://hypothesis.readthedocs.io/en/latest/)
-to generate random input data. Any test that should be applied over all
-possible array inputs should use hypothesis tests. Custom Hypothesis
-strategies are in the `array_api_tests/hypothesis_helpers.py` file.
+[`pytest.mark.parametrize`](https://docs.pytest.org/en/latest/how-to/parametrize.html)
+should be used to run tests over multiple arguments. Parameterization should be
+preferred over using Hypothesis when there are a small number of possible
+inputs, as this allows better failure reporting. Note using both parametrize and
+Hypothesis for a single test method is possible and can be quite useful.
 
-### Parameterization
+### Error messages
 
-Any test that applies over all functions in a module should use
-`pytest.mark.parametrize` to parameterize over them. For example,
+Any assertion should be accompanied with a descriptive error message, including
+the relevant values. Error messages should be self-explanatory as to why a given
+test fails, as one should not need prior knowledge of how the test is
+implemented.
 
-```py
-from . import function_stubs
+### Generated files
 
-@pytest.mark.parametrize('name', function_stubs.__all__)
-def test_whatever(name):
-    ...
-```
-
-will parameterize `test_whatever` over all the functions stubs generated from
-the spec. Parameterization should be preferred over using Hypothesis whenever
-there are a finite number of input possibilities, as this will cause pytest to
-report failures for all input values separately, as opposed to Hypothesis
-which will only report one failure.
-
-### Error Strings
-
-Any assertion or exception should be accompanied with a useful error message.
-The test suite is designed to be ran by people who are not familiar with the
-test suite code, so the error messages should be self explanatory as to why
-the module fails a given test.
-
-### Meta-errors
-
-Any error that indicates a bug in the test suite itself, rather than in the
-array module not following the spec, should use `RuntimeError` whenever
-possible.
-
-(TODO: Update this policy to something better. See [#5](https://github.com/data-apis/array-api-tests/issues/5).)
-
-### Automatically Generated Files
-
-Some files in the test suite are automatically generated from the API spec
-files. These files should not be edited directly. To regenerate these files,
-run the script
+Some files in the suite are automatically generated from the spec, and should
+not be edited directly. To regenerate these files, run the script
 
     ./generate_stubs.py path/to/array-api
 
-where `path/to/array-api` is the path to the local clone of the `array-api`
-repo. To modify the automatically generated files, edit the code that
-generates them in the `generate_stubs.py` script.
+where `path/to/array-api` is the path to a local clone of the [`array-api`
+repo](https://github.com/data-apis/array-api/). Edit `generate_stubs.py` to make
+changes to the generated files.
+
+## Future plans
+
+Keeping full coverage of the spec is an on-going priority as the Array API
+evolves.
+
+Additionally, we have features and general improvements planned. Work on such
+functionality is guided primarily by the concerete needs of developers
+implementing and using the Array API—be sure to [let us
+know](https://github.com/data-apis/array-api-tests/issues) any limitations you
+come across.
+
+* A dependency graph for every test case, which could be used to modify pytest's
+  collection so that low-dependency tests are run first, and tests with faulty
+  dependencies would skip/xfail.
+
+* In some tests we've found it difficult to find appropaite assertion parameters
+  for output values (particularly epsilons for floating-point outputs), so we
+  need to review these and either implement assertions or properly note the lack
+  thereof.

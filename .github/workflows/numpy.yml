@@ -23,30 +23,30 @@ jobs:
         python -m pip install -r requirements.txt
     - name: Run the test suite
       env:
-        ARRAY_API_TESTS_MODULE: numpy.array_api
+        XPTESTS_MODULE: numpy.array_api
       run: |
         # Mark some known issues as XFAIL
         cat << EOF >> xfails.txt
 
         # https://github.com/numpy/numpy/issues/18881
-        array_api_tests/test_creation_functions.py::test_linspace
+        xptests/test_creation_functions.py::test_linspace
         # einsum is not yet completed in the spec
-        array_api_tests/test_signatures.py::test_has_names[einsum]
+        xptests/test_signatures.py::test_has_names[einsum]
         # dlpack support is not yet implemented in NumPy
         # See https://github.com/numpy/numpy/pull/19083
-        array_api_tests/test_signatures.py::test_function_positional_args[__dlpack__]
-        array_api_tests/test_signatures.py::test_function_positional_args[__dlpack_device__]
-        array_api_tests/test_signatures.py::test_function_positional_args[from_dlpack]
-        array_api_tests/test_signatures.py::test_function_positional_args[to_device]
-        array_api_tests/test_signatures.py::test_function_keyword_only_args[__dlpack__]
+        xptests/test_signatures.py::test_function_positional_args[__dlpack__]
+        xptests/test_signatures.py::test_function_positional_args[__dlpack_device__]
+        xptests/test_signatures.py::test_function_positional_args[from_dlpack]
+        xptests/test_signatures.py::test_function_positional_args[to_device]
+        xptests/test_signatures.py::test_function_keyword_only_args[__dlpack__]
         # floor_divide has an issue related to https://github.com/data-apis/array-api/issues/264
-        array_api_tests/test_elementwise_functions.py::test_floor_divide
+        xptests/test_elementwise_functions.py::test_floor_divide
         # mesgrid doesn't return all arrays as the promoted dtype
-        array_api_tests/test_type_promotion.py::test_meshgrid
+        xptests/test_type_promotion.py::test_meshgrid
         # https://github.com/numpy/numpy/pull/20066#issuecomment-947056094
-        array_api_tests/test_type_promotion.py::test_where
+        xptests/test_type_promotion.py::test_where
         # shape mismatches are not handled
-        array_api_tests/test_type_promotion.py::test_tensordot
+        xptests/test_type_promotion.py::test_tensordot
 
         EOF
 
