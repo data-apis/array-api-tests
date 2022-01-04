@@ -1,5 +1,9 @@
+import math
+from itertools import product
+from typing import Sequence, Union
+
 import pytest
-from hypothesis import given
+from hypothesis import assume, given, note
 from hypothesis import strategies as st
 
 from . import _array_module as xp
@@ -7,17 +11,40 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
-from .typing import DataType, Param, ScalarType
+from .typing import DataType, Param, Scalar, ScalarType, Shape
 
 
-@given(hh.shapes(), st.data())
+def reshape(
+    flat_seq: Sequence[Scalar], shape: Shape
+) -> Union[Scalar, Sequence[Scalar]]:
+    """Reshape a flat sequence"""
+    if len(shape) == 0:
+        assert len(flat_seq) == 1  # sanity check
+        return flat_seq[0]
+    elif len(shape) == 1:
+        return flat_seq
+    size = len(flat_seq)
+    n = math.prod(shape[1:])
+    return [reshape(flat_seq[i * n : (i + 1) * n], shape[1:]) for i in range(size // n)]
+
+
+@given(hh.shapes(min_side=1), st.data())  # TODO: test 0-sided arrays
 def test_getitem(shape, data):
-    x = data.draw(xps.arrays(dtype=xps.scalar_dtypes(), shape=shape), label="x")
+    size = math.prod(shape)
+    dtype = data.draw(xps.scalar_dtypes(), label="dtype")
+    obj = data.draw(
+        st.lists(
+            xps.from_dtype(dtype),
+            min_size=size,
+            max_size=size,
+        ).map(lambda l: reshape(l, shape)),
+        label="obj",
+    )
+    x = xp.asarray(obj, dtype=dtype)
+    note(f"{x=}")
     key = data.draw(xps.indices(shape=shape), label="key")
 
     out = x[key]
-
-    ph.assert_dtype("__getitem__", x.dtype, out.dtype)
 
     _key = tuple(key) if isinstance(key, tuple) else (key,)
     if Ellipsis in _key:
@@ -25,15 +52,24 @@ def test_getitem(shape, data):
         stop_a = start_a + (len(shape) - (len(_key) - 1))
         slices = tuple(slice(None, None) for _ in range(start_a, stop_a))
         _key = _key[:start_a] + slices + _key[start_a + 1 :]
-    expected = []
+    axes_indices = []
     for a, i in enumerate(_key):
-        if isinstance(i, slice):
-            r = range(shape[a])[i]
-            expected.append(len(r))
-    expected = tuple(expected)
-    ph.assert_shape("__getitem__", out.shape, expected)
-
-    # TODO: fold in all remaining concepts from test_indexing.py
+        if isinstance(i, int):
+            axes_indices.append([i])
+        else:
+            side = shape[a]
+            indices = range(side)[i]
+            assume(len(indices) > 0)  # TODO: test 0-sided arrays
+            axes_indices.append(indices)
+    expected = []
+    for idx in product(*axes_indices):
+        val = obj
+        for i in idx:
+            val = val[i]
+        expected.append(val)
+    expected = reshape(expected, out.shape)
+    expected = xp.asarray(expected, dtype=dtype)
+    ph.assert_array("__getitem__", out, expected)
 
 
 # TODO: test_setitem
