@@ -53,6 +53,8 @@ UnaryParam = Param[str, Callable[[Array], Array], st.SearchStrategy[Array]]
 def make_unary_params(
     elwise_func_name: str, dtypes: Sequence[DataType]
 ) -> List[UnaryParam]:
+    if hh.FILTER_UNDEFINED_DTYPES:
+        dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
     strat = xps.arrays(dtype=st.sampled_from(dtypes), shape=hh.shapes())
     func = getattr(xp, elwise_func_name)
     op_name = func_to_op[elwise_func_name]
@@ -93,6 +95,8 @@ class FuncType(Enum):
 def make_binary_params(
     elwise_func_name: str, dtypes: Sequence[DataType]
 ) -> List[BinaryParam]:
+    if hh.FILTER_UNDEFINED_DTYPES:
+        dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
     dtypes_strat = st.sampled_from(dtypes)
 
     def make_param(
