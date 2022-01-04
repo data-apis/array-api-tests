@@ -1,9 +1,8 @@
 """
 https://data-apis.github.io/array-api/latest/API_specification/type_promotion.html
 """
-import math
 from collections import defaultdict
-from typing import Tuple, Union, List
+from typing import List, Tuple, Union
 
 import pytest
 from hypothesis import assume, given, reject
@@ -14,9 +13,8 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
-from .typing import DataType, ScalarType, Param
 from .function_stubs import elementwise_functions
-
+from .typing import DataType, Param, ScalarType
 
 # TODO: move tests not covering elementwise funcs/ops into standalone tests
 # result_type, meshgrid, tensordor, vecdot
@@ -26,29 +24,6 @@ from .function_stubs import elementwise_functions
 def test_result_type(dtypes):
     out = xp.result_type(*dtypes)
     ph.assert_dtype("result_type", dtypes, out, repr_name="out")
-
-
-# The number and size of generated arrays is arbitrarily limited to prevent
-# meshgrid() running out of memory.
-@given(
-    dtypes=hh.mutually_promotable_dtypes(5, dtypes=dh.numeric_dtypes),
-    data=st.data(),
-)
-def test_meshgrid(dtypes, data):
-    arrays = []
-    shapes = data.draw(
-        hh.mutually_broadcastable_shapes(
-            len(dtypes), min_dims=1, max_dims=1, max_side=5
-        ),
-        label="shapes",
-    )
-    for i, (dtype, shape) in enumerate(zip(dtypes, shapes), 1):
-        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
-        arrays.append(x)
-    assert math.prod(x.size for x in arrays) <= hh.MAX_ARRAY_SIZE  # sanity check
-    out = xp.meshgrid(*arrays)
-    for i, x in enumerate(out):
-        ph.assert_dtype("meshgrid", dtypes, x.dtype, repr_name=f"out[{i}].dtype")
 
 
 bitwise_shift_funcs = [
@@ -78,6 +53,14 @@ def make_id(
     return f"{func_name}({f_args}) -> {f_out_dtype}"
 
 
+def mark_stubbed_dtypes(*dtypes):
+    for dtype in dtypes:
+        if isinstance(dtype, xp._UndefinedStub):
+            return pytest.mark.skip(reason=f"xp.{dtype.name} not defined")
+    else:
+        return ()
+
+
 func_params: List[Param[str, Tuple[DataType, ...], DataType]] = []
 for func_name in elementwise_functions.__all__:
     valid_in_dtypes = dh.func_in_dtypes[func_name]
@@ -90,6 +73,7 @@ for func_name in elementwise_functions.__all__:
                 (in_dtype,),
                 out_dtype,
                 id=make_id(func_name, (in_dtype,), out_dtype),
+                marks=mark_stubbed_dtypes(in_dtype, out_dtype),
             )
             func_params.append(p)
     elif ndtypes == 2:
@@ -103,6 +87,7 @@ for func_name in elementwise_functions.__all__:
                     (in_dtype1, in_dtype2),
                     out_dtype,
                     id=make_id(func_name, (in_dtype1, in_dtype2), out_dtype),
+                    marks=mark_stubbed_dtypes(in_dtype1, in_dtype2, out_dtype),
                 )
                 func_params.append(p)
     else:
@@ -143,6 +128,7 @@ for (dtype1, dtype2), promoted_dtype in dh.promotion_table.items():
         (dtype1, dtype2),
         promoted_dtype,
         id=make_id("", (dtype1, dtype2), promoted_dtype),
+        marks=mark_stubbed_dtypes(dtype1, dtype2, promoted_dtype),
     )
     promotion_params.append(p)
 
@@ -194,6 +180,7 @@ for op, symbol in op_to_symbol.items():
                 (in_dtype,),
                 out_dtype,
                 id=make_id(op, (in_dtype,), out_dtype),
+                marks=mark_stubbed_dtypes(in_dtype, out_dtype),
             )
             op_params.append(p)
     else:
@@ -206,6 +193,7 @@ for op, symbol in op_to_symbol.items():
                     (in_dtype1, in_dtype2),
                     out_dtype,
                     id=make_id(op, (in_dtype1, in_dtype2), out_dtype),
+                    marks=mark_stubbed_dtypes(in_dtype1, in_dtype2, out_dtype),
                 )
                 op_params.append(p)
 # We generate params for abs seperately as it does not have an associated symbol
@@ -216,6 +204,7 @@ for in_dtype in dh.func_in_dtypes["__abs__"]:
         (in_dtype,),
         in_dtype,
         id=make_id("__abs__", (in_dtype,), in_dtype),
+        marks=mark_stubbed_dtypes(in_dtype),
     )
     op_params.append(p)
 
@@ -263,6 +252,7 @@ for op, symbol in dh.inplace_op_to_symbol.items():
                 (in_dtype1, in_dtype2),
                 promoted_dtype,
                 id=make_id(op, (in_dtype1, in_dtype2), promoted_dtype),
+                marks=mark_stubbed_dtypes(in_dtype1, in_dtype2, promoted_dtype),
             )
             inplace_params.append(p)
 
@@ -301,6 +291,7 @@ for op, symbol in dh.binary_op_to_symbol.items():
                 in_stype,
                 out_dtype,
                 id=make_id(op, (in_dtype, in_stype), out_dtype),
+                marks=mark_stubbed_dtypes(in_dtype, out_dtype),
             )
             op_scalar_params.append(p)
 
@@ -333,6 +324,7 @@ for op, symbol in dh.inplace_op_to_symbol.items():
                 dtype,
                 in_stype,
                 id=make_id(op, (dtype, in_stype), dtype),
+                marks=mark_stubbed_dtypes(dtype),
             )
             inplace_scalar_params.append(p)
 

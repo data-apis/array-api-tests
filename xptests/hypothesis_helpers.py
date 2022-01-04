@@ -67,7 +67,13 @@ def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):
         key += 1
     return key
 
-promotable_dtypes: List[Tuple[DataType, DataType]] = sorted(dh.promotion_table.keys(), key=_dtypes_sorter)
+_promotable_dtypes = list(dh.promotion_table.keys())
+if FILTER_UNDEFINED_DTYPES:
+    _promotable_dtypes = [
+        (d1, d2) for d1, d2 in _promotable_dtypes
+        if not isinstance(d1, _UndefinedStub) or not isinstance(d2, _UndefinedStub)
+    ]
+promotable_dtypes: List[Tuple[DataType, DataType]] = sorted(_promotable_dtypes, key=_dtypes_sorter)
 
 def mutually_promotable_dtypes(
     max_size: Optional[int] = 2,

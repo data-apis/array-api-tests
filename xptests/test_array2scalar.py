@@ -17,8 +17,16 @@ method_stype = {
 
 def make_param(method_name: str, dtype: DataType) -> Param:
     stype = method_stype[method_name]
+    if isinstance(dtype, xp._UndefinedStub):
+        marks = pytest.mark.skip(reason=f"xp.{dtype.name} not defined")
+    else:
+        marks = ()
     return pytest.param(
-        method_name, dtype, stype, id=f"{method_name}({dh.dtype_to_name[dtype]})"
+        method_name,
+        dtype,
+        stype,
+        id=f"{method_name}({dh.dtype_to_name[dtype]})",
+        marks=marks,
     )
 
 
