@@ -13,7 +13,7 @@ welcome!
 To run the tests, install the testing dependencies.
 
 ```bash
-$ pip install -r requirements
+$ pip install -r requirements.txt
 ```
 
 Ensure you have the array library that you want to test installed.
