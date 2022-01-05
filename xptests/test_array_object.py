@@ -46,6 +46,8 @@ def test_getitem(shape, data):
 
     out = x[key]
 
+    ph.assert_dtype("__getitem__", x.dtype, out.dtype)
+
     _key = tuple(key) if isinstance(key, tuple) else (key,)
     if Ellipsis in _key:
         start_a = _key.index(Ellipsis)
@@ -53,22 +55,26 @@ def test_getitem(shape, data):
         slices = tuple(slice(None, None) for _ in range(start_a, stop_a))
         _key = _key[:start_a] + slices + _key[start_a + 1 :]
     axes_indices = []
+    out_shape = []
     for a, i in enumerate(_key):
         if isinstance(i, int):
             axes_indices.append([i])
         else:
             side = shape[a]
             indices = range(side)[i]
-            assume(len(indices) > 0)  # TODO: test 0-sided arrays
             axes_indices.append(indices)
-    expected = []
+            out_shape.append(len(indices))
+    out_shape = tuple(out_shape)
+    ph.assert_shape("__getitem__", out.shape, out_shape)
+    assume(all(len(indices) > 0 for indices in axes_indices))
+    out_obj = []
     for idx in product(*axes_indices):
         val = obj
         for i in idx:
             val = val[i]
-        expected.append(val)
-    expected = reshape(expected, out.shape)
-    expected = xp.asarray(expected, dtype=dtype)
+        out_obj.append(val)
+    out_obj = reshape(out_obj, out_shape)
+    expected = xp.asarray(out_obj, dtype=dtype)
     ph.assert_array("__getitem__", out, expected)
 
 
