@@ -1297,17 +1297,19 @@ def test_remainder(
 ):
     left = data.draw(left_strat, label=left_sym)
     right = data.draw(right_strat, label=right_sym)
-    # TODO: rework same sign testing below to remove this
-    if not right_is_scalar:
-        assume(len(left.shape) <= len(right.shape))
+    if right_is_scalar:
+        out_dtype = left.dtype
+    else:
+        out_dtype = dh.result_type(left.dtype, right.dtype)
+    if dh.is_int_dtype(out_dtype):
+        if right_is_scalar:
+            assume(right != 0)
+        else:
+            assume(not ah.any(right == 0))
 
-    res = func(left, right)
+    func(left, right)
 
-    if not right_is_scalar:
-        # res and x2 should have the same sign.
-        # ah.assert_same_sign returns False for nans
-        not_nan = ah.logical_not(ah.logical_or(ah.isnan(res), ah.isnan(left)))
-        ah.assert_same_sign(res[not_nan], right[not_nan])
+    # TODO: test results
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
