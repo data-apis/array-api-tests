@@ -1297,6 +1297,15 @@ def test_remainder(
 ):
     left = data.draw(left_strat, label=left_sym)
     right = data.draw(right_strat, label=right_sym)
+    if right_is_scalar:
+        out_dtype = left.dtype
+    else:
+        out_dtype = dh.result_type(left.dtype, right.dtype)
+    if dh.is_int_dtype(out_dtype):
+        if right_is_scalar:
+            assume(right != 0)
+        else:
+            assume(not ah.any(right == 0))
     # TODO: rework same sign testing below to remove this
     if not right_is_scalar:
         assume(len(left.shape) <= len(right.shape))
