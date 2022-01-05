@@ -1306,17 +1306,10 @@ def test_remainder(
             assume(right != 0)
         else:
             assume(not ah.any(right == 0))
-    # TODO: rework same sign testing below to remove this
-    if not right_is_scalar:
-        assume(len(left.shape) <= len(right.shape))
 
-    res = func(left, right)
+    func(left, right)
 
-    if not right_is_scalar:
-        # res and x2 should have the same sign.
-        # ah.assert_same_sign returns False for nans
-        not_nan = ah.logical_not(ah.logical_or(ah.isnan(res), ah.isnan(left)))
-        ah.assert_same_sign(res[not_nan], right[not_nan])
+    # TODO: test results
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
