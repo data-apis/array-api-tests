@@ -208,13 +208,13 @@ def assert_scalar_equals(
     out_repr = "out" if idx == () else f"out[{idx}]"
     f_func = f"{func_name}({fmt_kw(kw)})"
     if type_ is bool or type_ is int:
-        msg = f"{out_repr}={out}, should be {expected} [{f_func}]"
+        msg = f"{out_repr}={out}, but should be {expected} [{f_func}]"
         assert out == expected, msg
     elif math.isnan(expected):
-        msg = f"{out_repr}={out}, should be {expected} [{f_func}]"
+        msg = f"{out_repr}={out}, but should be {expected} [{f_func}]"
         assert math.isnan(out), msg
     else:
-        msg = f"{out_repr}={out}, should be roughly {expected} [{f_func}]"
+        msg = f"{out_repr}={out}, but should be roughly {expected} [{f_func}]"
         assert math.isclose(out, expected, rel_tol=0.25, abs_tol=1), msg
 
 
