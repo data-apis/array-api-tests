@@ -1,6 +1,6 @@
 import math
 from itertools import product
-from typing import Sequence, Union
+from typing import Sequence, Union, get_args
 
 import pytest
 from hypothesis import assume, given, note
@@ -33,11 +33,9 @@ def test_getitem(shape, data):
     size = math.prod(shape)
     dtype = data.draw(xps.scalar_dtypes(), label="dtype")
     obj = data.draw(
-        st.lists(
-            xps.from_dtype(dtype),
-            min_size=size,
-            max_size=size,
-        ).map(lambda l: reshape(l, shape)),
+        st.lists(xps.from_dtype(dtype), min_size=size, max_size=size).map(
+            lambda l: reshape(l, shape)
+        ),
         label="obj",
     )
     x = xp.asarray(obj, dtype=dtype)
@@ -47,7 +45,6 @@ def test_getitem(shape, data):
     out = x[key]
 
     ph.assert_dtype("__getitem__", x.dtype, out.dtype)
-
     _key = tuple(key) if isinstance(key, tuple) else (key,)
     if Ellipsis in _key:
         start_a = _key.index(Ellipsis)
@@ -78,7 +75,39 @@ def test_getitem(shape, data):
     ph.assert_array("__getitem__", out, expected)
 
 
-# TODO: test_setitem
+@given(hh.shapes(min_side=1), st.data())  # TODO: test 0-sided arrays
+def test_setitem(shape, data):
+    size = math.prod(shape)
+    dtype = data.draw(xps.scalar_dtypes(), label="dtype")
+    obj = data.draw(
+        st.lists(xps.from_dtype(dtype), min_size=size, max_size=size).map(
+            lambda l: reshape(l, shape)
+        ),
+        label="obj",
+    )
+    x = xp.asarray(obj, dtype=dtype)
+    note(f"{x=}")
+    key = data.draw(xps.indices(shape=shape, max_dims=0), label="key")
+    value = data.draw(
+        xps.from_dtype(dtype) | xps.arrays(dtype=dtype, shape=()), label="value"
+    )
+
+    res = xp.asarray(x, copy=True)
+    res[key] = value
+
+    ph.assert_dtype("__setitem__", x.dtype, res.dtype, repr_name="x.dtype")
+    ph.assert_shape("__setitem__", res.shape, x.shape, repr_name="x.shape")
+    if isinstance(value, get_args(Scalar)):
+        msg = f"x[{key}]={res[key]!r}, but should be {value=} [__setitem__()]"
+        if math.isnan(value):
+            assert xp.isnan(res[key]), msg
+        else:
+            assert res[key] == value, msg
+    else:
+        ph.assert_0d_equals("__setitem__", "value", value, f"x[{key}]", res[key])
+
+
+# TODO: test boolean indexing
 
 
 def make_param(method_name: str, dtype: DataType, stype: ScalarType) -> Param:
