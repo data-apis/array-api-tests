@@ -23,7 +23,7 @@ jobs:
         python -m pip install -r requirements.txt
     - name: Run the test suite
       env:
-        XPTESTS_MODULE: numpy.array_api
+        ARRAY_API_TESTS_MODULE: numpy.array_api
       run: |
         # Mark some known issues as XFAIL
         cat << EOF >> xfails.txt

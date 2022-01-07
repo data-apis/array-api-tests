@@ -9,8 +9,8 @@ from . import function_stubs
 array_module = None
 
 if array_module is None:
-    if 'XPTESTS_MODULE' in os.environ:
-        mod_name = os.environ['XPTESTS_MODULE']
+    if 'ARRAY_API_TESTS_MODULE' in os.environ:
+        mod_name = os.environ['ARRAY_API_TESTS_MODULE']
         _module, _sub = mod_name, None
         if '.' in mod_name:
             _module, _sub = mod_name.split('.', 1)
@@ -24,7 +24,7 @@ if array_module is None:
                 # submodules that can be imported (like mxnet.nd).
                 mod = import_module(mod_name)
     else:
-        raise RuntimeError("No array module specified. Either edit _array_module.py or set the XPTESTS_MODULE environment variable")
+        raise RuntimeError("No array module specified. Either edit _array_module.py or set the ARRAY_API_TESTS_MODULE environment variable")
 else:
     mod = array_module
     mod_name = mod.__name__
