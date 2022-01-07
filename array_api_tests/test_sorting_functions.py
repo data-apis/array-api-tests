@@ -5,7 +5,7 @@ from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.control import assume
 
-from xptests.typing import Scalar, ScalarType, Shape
+from .typing import Scalar, ScalarType, Shape
 
 from . import _array_module as xp
 from . import dtype_helpers as dh

@@ -21,13 +21,13 @@ Ensure you have the array library that you want to test installed.
 ### Specifying the array module
 
 You need to specify the array library to test. It can be specified via the
-`XPTESTS_MODULE` environment variable, e.g.
+`ARRAY_API_TESTS_MODULE` environment variable, e.g.
 
 ```bash
-$ export XPTESTS_MODULE=numpy.array_api
+$ export ARRAY_API_TESTS_MODULE=numpy.array_api
 ```
 
-Alternately, change the `array_module` variable in `xptests/_array_module.py`
+Alternately, change the `array_module` variable in `array_api_tests/_array_module.py`
 line, e.g.
 
 ```diff
@@ -37,17 +37,17 @@ line, e.g.
 
 ### Run the suite
 
-Simply run `pytest` against the `xptests/` folder to run the full suite.
+Simply run `pytest` against the `array_api_tests/` folder to run the full suite.
 
 ```bash
-$ pytest xptests/
+$ pytest array_api_tests/
 ```
 
 The suite tries to logically organise its tests. `pytest` allows you to only run
 a specific test case, which is useful when developing functions.
 
 ```bash
-$ pytest xptests/test_creation_functions.py::test_zeros
+$ pytest array_api_tests/test_creation_functions.py::test_zeros
 ```
 
 ## What the test suite covers
@@ -104,7 +104,7 @@ of the functions and some miscellaneous things.
   [constants](https://data-apis.org/array-api/latest/API_specification/constants.html)
   behave expectedly, are roughly the expected value, and that any related
   functions interact with them correctly.
-  
+
 Be aware that some aspects of the spec are impractical or impossible to actually
 test, so they are not covered in the suite <!-- TODO: note what these are -->
 
