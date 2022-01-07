@@ -62,12 +62,14 @@ def test_argsort(x, data):
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices in sh.axes_ndindex(x.shape, axes):
         elements = [scalar_type(x[idx]) for idx in indices]
-        orders = sorted(range(len(elements)), key=elements.__getitem__)
-        if kw.get("descending", False):
-            orders = reversed(orders)
+        orders = sorted(
+            range(len(elements)),
+            key=elements.__getitem__,
+            reverse=kw.get("descending", False),
+        )
         if kw.get("stable", True):
             for idx, o in zip(indices, orders):
-                ph.assert_scalar_equals("argsort", int, idx, int(out[idx]), o)
+                ph.assert_scalar_equals("argsort", int, idx, int(out[idx]), o, **kw)
         else:
             idx_elements = dict(zip(indices, elements))
             idx_orders = dict(zip(indices, orders))
