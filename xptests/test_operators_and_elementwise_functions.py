@@ -1267,6 +1267,12 @@ def test_pow(
 ):
     left = data.draw(left_strat, label=left_sym)
     right = data.draw(right_strat, label=right_sym)
+    if right_is_scalar:
+        if isinstance(right, int):
+            assume(right >= 0)
+    else:
+        if dh.is_int_dtype(right.dtype):
+            assume(xp.all(right >= 0))
 
     try:
         func(left, right)
