@@ -4,8 +4,8 @@ from pathlib import Path
 from pytest import mark
 from hypothesis import settings
 
-from xptests import _array_module as xp
-from xptests._array_module import _UndefinedStub
+from array_api_tests import _array_module as xp
+from array_api_tests._array_module import _UndefinedStub
 
 
 settings.register_profile('xp_default', deadline=800)
@@ -77,7 +77,7 @@ xfails_path = Path(__file__).parent / 'xfails.txt'
 if xfails_path.exists():
     with open(xfails_path) as f:
         for line in f:
-            if line.startswith('xptests'):
+            if line.startswith('array_api_tests'):
                 id_ = line.strip('\n')
                 xfail_ids.append(id_)
 

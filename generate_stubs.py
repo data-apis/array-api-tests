@@ -7,7 +7,7 @@ repo, then run
 
 ./generate_stubs.py path/to/clone/of/array-api
 
-This will update the stub files in xptests/function_stubs/
+This will update the stub files in array_api_tests/function_stubs/
 """
 from __future__ import annotations
 
@@ -218,12 +218,12 @@ def main():
     parser.add_argument('-v', '--verbose', help="Print verbose output to the terminal", action='store_true')
     args = parser.parse_args()
 
-    types_path = os.path.join('xptests', 'function_stubs', '_types.py')
+    types_path = os.path.join('array_api_tests', 'function_stubs', '_types.py')
     if args.write:
         with open(types_path, 'w') as f:
             f.write(TYPES_HEADER)
 
-    special_cases_dir = Path('xptests/special_cases')
+    special_cases_dir = Path('array_api_tests/special_cases')
     special_cases_dir.mkdir(exist_ok=True)
     (special_cases_dir / '__init__.py').touch()
 
@@ -256,7 +256,7 @@ def main():
             title += " (Extension)"
         else:
             py_file = filename.replace('.md', '.py')
-        py_path = os.path.join('xptests', 'function_stubs', py_file)
+        py_path = os.path.join('array_api_tests', 'function_stubs', py_file)
         module_name = py_file.replace('.py', '')
         modules[module_name] = []
         if args.verbose:
@@ -342,7 +342,7 @@ def {annotated_sig}:{doc}
         if filename == 'elementwise_functions.md':
             special_cases = parse_special_cases(text, verbose=args.verbose)
             for func in special_cases:
-                py_path = os.path.join('xptests', 'special_cases', f'test_{func}.py')
+                py_path = os.path.join('array_api_tests', 'special_cases', f'test_{func}.py')
                 tests = make_special_case_tests(func, special_cases, sigs)
                 if tests:
                     code = SPECIAL_CASES_HEADER.format(func=func) + '\n'.join(tests)
@@ -354,7 +354,7 @@ def {annotated_sig}:{doc}
         elif filename == 'array_object.md':
             op_special_cases = parse_special_cases(text, verbose=args.verbose)
             for func in op_special_cases:
-                py_path = os.path.join('xptests', 'special_cases', f'test_dunder_{func[2:-2]}.py')
+                py_path = os.path.join('array_api_tests', 'special_cases', f'test_dunder_{func[2:-2]}.py')
                 tests = make_special_case_tests(func, op_special_cases, sigs)
                 if tests:
                     code = OP_SPECIAL_CASES_HEADER.format(func=func) + '\n'.join(tests)
@@ -368,7 +368,7 @@ def {annotated_sig}:{doc}
                 iop = f"__i{name}__"
                 iop_special_cases[iop] = op_special_cases[op]
             for func in iop_special_cases:
-                py_path = os.path.join('xptests', 'special_cases', f'test_dunder_{func[2:-2]}.py')
+                py_path = os.path.join('array_api_tests', 'special_cases', f'test_dunder_{func[2:-2]}.py')
                 tests = make_special_case_tests(func, iop_special_cases, sigs)
                 if tests:
                     code = IOP_SPECIAL_CASES_HEADER.format(func=func, operator=func[2:-2]) + '\n'.join(tests)
@@ -377,7 +377,7 @@ def {annotated_sig}:{doc}
                         with open(py_path, 'w') as f:
                             f.write(code)
 
-    init_path = os.path.join('xptests', 'function_stubs', '__init__.py')
+    init_path = os.path.join('array_api_tests', 'function_stubs', '__init__.py')
     if args.write:
         with open(init_path, 'w') as f:
             f.write(INIT_HEADER)
