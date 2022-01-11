@@ -12,11 +12,7 @@ from . import shape_helpers as sh
 from . import xps
 
 
-@given(
-    xps.arrays(
-        dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1, min_dims=1, max_dims=1)
-    )
-)  # TODO
+@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
 def test_unique_all(x):
     out = xp.unique_all(x)
 
