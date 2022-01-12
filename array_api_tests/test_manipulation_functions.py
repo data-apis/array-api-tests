@@ -46,49 +46,50 @@ def assert_array_ndindex(
             assert out[out_idx] == x[x_idx], msg
 
 
-@st.composite
-def concat_shapes(draw, shape, axis):
-    shape = list(shape)
-    shape[axis] = draw(st.integers(1, MAX_SIDE))
-    return tuple(shape)
-
-
 @given(
     dtypes=hh.mutually_promotable_dtypes(None, dtypes=dh.numeric_dtypes),
-    kw=hh.kwargs(axis=st.none() | st.integers(-MAX_DIMS, MAX_DIMS - 1)),
+    _axis=st.none() | st.integers(0, MAX_DIMS - 1),
     data=st.data(),
 )
-def test_concat(dtypes, kw, data):
-    axis = kw.get("axis", 0)
-    if axis is None:
+def test_concat(dtypes, _axis, data):
+    if _axis is None:
         shape_strat = hh.shapes()
+        axis_strat = st.none()
     else:
-        any_side_axis = axis if axis >= 0 else abs(axis) - 1
-        shape_strat = shared_shapes(min_dims=any_side_axis + 1).flatmap(
-            lambda s: concat_shapes(s, any_side_axis)
+        base_shape = data.draw(
+            hh.shapes(min_dims=_axis + 1).map(
+                lambda t: t[:_axis] + (None,) + t[_axis + 1 :]
+            ),
+            label="base shape",
         )
+        shape_strat = st.integers(0, MAX_SIDE).map(
+            lambda i: base_shape[:_axis] + (i,) + base_shape[_axis + 1 :]
+        )
+        axis_strat = st.sampled_from([_axis, _axis - len(base_shape)])
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape_strat), label=f"x{i}")
         arrays.append(x)
+    kw = data.draw(
+        axis_strat.flatmap(lambda a: hh.specified_kwargs(("axis", a, 0))), label="kw"
+    )
 
     out = xp.concat(arrays, **kw)
 
     ph.assert_dtype("concat", dtypes, out.dtype)
 
     shapes = tuple(x.shape for x in arrays)
-    axis = kw.get("axis", 0)
-    if axis is None:
+    if _axis is None:
         size = sum(math.prod(s) for s in shapes)
         shape = (size,)
     else:
         shape = list(shapes[0])
         for other_shape in shapes[1:]:
-            shape[axis] += other_shape[axis]
+            shape[_axis] += other_shape[_axis]
         shape = tuple(shape)
     ph.assert_result_shape("concat", shapes, out.shape, shape, **kw)
 
-    if axis is None:
+    if _axis is None:
         out_indices = (i for i in range(out.size))
         for x_num, x in enumerate(arrays, 1):
             for x_idx in sh.ndindex(x.shape):
@@ -102,8 +103,6 @@ def test_concat(dtypes, kw, data):
                     **kw,
                 )
     else:
-        ndim = len(shapes[0])
-        _axis = axis if axis >= 0 else ndim - 1
         out_indices = sh.ndindex(out.shape)
         for idx in sh.axis_ndindex(shapes[0], _axis):
             f_idx = ", ".join(str(i) if isinstance(i, int) else ":" for i in idx)
