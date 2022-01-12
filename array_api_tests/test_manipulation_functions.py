@@ -48,31 +48,30 @@ def assert_array_ndindex(
 
 @given(
     dtypes=hh.mutually_promotable_dtypes(None, dtypes=dh.numeric_dtypes),
-    _axis=st.none() | st.integers(0, MAX_DIMS - 1),
+    base_shape=hh.shapes(),
     data=st.data(),
 )
-def test_concat(dtypes, _axis, data):
-    if _axis is None:
+def test_concat(dtypes, base_shape, data):
+    axis_strat = st.none()
+    ndim = len(base_shape)
+    if ndim > 0:
+        axis_strat |= st.integers(-ndim, ndim - 1)
+    kw = data.draw(
+        axis_strat.flatmap(lambda a: hh.specified_kwargs(("axis", a, 0))), label="kw"
+    )
+    axis = kw.get("axis", 0)
+    if axis is None:
+        _axis = None
         shape_strat = hh.shapes()
-        axis_strat = st.none()
     else:
-        base_shape = data.draw(
-            hh.shapes(min_dims=_axis + 1).map(
-                lambda t: t[:_axis] + (None,) + t[_axis + 1 :]
-            ),
-            label="base shape",
-        )
+        _axis = axis if axis >= 0 else len(base_shape) + axis
         shape_strat = st.integers(0, MAX_SIDE).map(
             lambda i: base_shape[:_axis] + (i,) + base_shape[_axis + 1 :]
         )
-        axis_strat = st.sampled_from([_axis, _axis - len(base_shape)])
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape_strat), label=f"x{i}")
         arrays.append(x)
-    kw = data.draw(
-        axis_strat.flatmap(lambda a: hh.specified_kwargs(("axis", a, 0))), label="kw"
-    )
 
     out = xp.concat(arrays, **kw)
 
@@ -292,7 +291,7 @@ def test_roll(x, data):
     else:
         axis_strat = st.none()
         if x.ndim != 0:
-            axis_strat = axis_strat | st.integers(-x.ndim, x.ndim - 1)
+            axis_strat |= st.integers(-x.ndim, x.ndim - 1)
         kw_strat = hh.kwargs(axis=axis_strat)
     kw = data.draw(kw_strat, label="kw")
 
