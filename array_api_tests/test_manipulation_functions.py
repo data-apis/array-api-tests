@@ -46,26 +46,27 @@ def assert_array_ndindex(
             assert out[out_idx] == x[x_idx], msg
 
 
-@st.composite
-def concat_shapes(draw, shape, axis):
-    shape = list(shape)
-    shape[axis] = draw(st.integers(1, MAX_SIDE))
-    return tuple(shape)
-
-
 @given(
     dtypes=hh.mutually_promotable_dtypes(None, dtypes=dh.numeric_dtypes),
-    kw=hh.kwargs(axis=st.none() | st.integers(-MAX_DIMS, MAX_DIMS - 1)),
+    base_shape=hh.shapes(),
     data=st.data(),
 )
-def test_concat(dtypes, kw, data):
+def test_concat(dtypes, base_shape, data):
+    axis_strat = st.none()
+    ndim = len(base_shape)
+    if ndim > 0:
+        axis_strat |= st.integers(-ndim, ndim - 1)
+    kw = data.draw(
+        axis_strat.flatmap(lambda a: hh.specified_kwargs(("axis", a, 0))), label="kw"
+    )
     axis = kw.get("axis", 0)
     if axis is None:
+        _axis = None
         shape_strat = hh.shapes()
     else:
-        _axis = axis if axis >= 0 else abs(axis) - 1
-        shape_strat = shared_shapes(min_dims=_axis + 1).flatmap(
-            lambda s: concat_shapes(s, axis)
+        _axis = axis if axis >= 0 else len(base_shape) + axis
+        shape_strat = st.integers(0, MAX_SIDE).map(
+            lambda i: base_shape[:_axis] + (i,) + base_shape[_axis + 1 :]
         )
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
@@ -77,18 +78,17 @@ def test_concat(dtypes, kw, data):
     ph.assert_dtype("concat", dtypes, out.dtype)
 
     shapes = tuple(x.shape for x in arrays)
-    axis = kw.get("axis", 0)
-    if axis is None:
+    if _axis is None:
         size = sum(math.prod(s) for s in shapes)
         shape = (size,)
     else:
         shape = list(shapes[0])
         for other_shape in shapes[1:]:
-            shape[axis] += other_shape[axis]
+            shape[_axis] += other_shape[_axis]
         shape = tuple(shape)
     ph.assert_result_shape("concat", shapes, out.shape, shape, **kw)
 
-    if axis is None:
+    if _axis is None:
         out_indices = (i for i in range(out.size))
         for x_num, x in enumerate(arrays, 1):
             for x_idx in sh.ndindex(x.shape):
@@ -291,7 +291,7 @@ def test_roll(x, data):
     else:
         axis_strat = st.none()
         if x.ndim != 0:
-            axis_strat = axis_strat | st.integers(-x.ndim, x.ndim - 1)
+            axis_strat |= st.integers(-x.ndim, x.ndim - 1)
         kw_strat = hh.kwargs(axis=axis_strat)
     kw = data.draw(kw_strat, label="kw")
 
