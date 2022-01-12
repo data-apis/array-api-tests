@@ -63,9 +63,9 @@ def test_concat(dtypes, kw, data):
     if axis is None:
         shape_strat = hh.shapes()
     else:
-        _axis = axis if axis >= 0 else abs(axis) - 1
-        shape_strat = shared_shapes(min_dims=_axis + 1).flatmap(
-            lambda s: concat_shapes(s, axis)
+        any_side_axis = axis if axis >= 0 else abs(axis) - 1
+        shape_strat = shared_shapes(min_dims=any_side_axis + 1).flatmap(
+            lambda s: concat_shapes(s, any_side_axis)
         )
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
@@ -102,6 +102,8 @@ def test_concat(dtypes, kw, data):
                     **kw,
                 )
     else:
+        ndim = len(shapes[0])
+        _axis = axis if axis >= 0 else ndim - 1
         out_indices = sh.ndindex(out.shape)
         for idx in sh.axis_ndindex(shapes[0], _axis):
             f_idx = ", ".join(str(i) if isinstance(i, int) else ":" for i in idx)
