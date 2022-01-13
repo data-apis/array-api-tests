@@ -174,10 +174,10 @@ def mutually_broadcastable_shapes(draw, num_shapes, **kwargs):
     # too much. So instead, we trick it into generating more interesting
     # examples by telling it to create shapes that broadcast against some base
     # shape.
-    if 'base_shape' not in kwargs:
-        base_shape = draw(shapes())
-        kwargs.setdefault('base_shape', base_shape)
     kwargs.setdefault('min_side', 0)
+    if 'base_shape' not in kwargs:
+        base_shape = draw(shapes(**kwargs))
+        kwargs['base_shape'] = base_shape
 
     input_shapes, result_shape = draw(xps.mutually_broadcastable_shapes(num_shapes, **kwargs))
 
@@ -190,9 +190,7 @@ def mutually_broadcastable_shapes(draw, num_shapes, **kwargs):
     # The broadcast compatible shapes can be bigger than the base shape. This
     # is already somewhat limited by the mutually_broadcastable_shapes
     # defaults, and pretty unlikely, but we filter again here just to be safe.
-    if not prod([i for i in final_result_shape if i]) < SQRT_MAX_ARRAY_SIZE:
-        note(f"Filtering in mutually_broadcastable_shapes {result_shape}")
-        assume(False)
+    assume(prod(i for i in final_result_shape if i) < SQRT_MAX_ARRAY_SIZE)
 
     # The hypothesis strategy would return this. We don't actually need the
     # result shape in most cases (if we end up needing it, we can uncomment
