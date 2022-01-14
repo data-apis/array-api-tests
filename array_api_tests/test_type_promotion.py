@@ -5,7 +5,7 @@ from collections import defaultdict
 from typing import List, Tuple, Union
 
 import pytest
-from hypothesis import assume, given, reject
+from hypothesis import given, reject
 from hypothesis import strategies as st
 
 from . import _array_module as xp
@@ -258,15 +258,15 @@ for op, symbol in dh.inplace_op_to_symbol.items():
 
 
 @pytest.mark.parametrize("op, expr, in_dtypes, out_dtype", inplace_params)
-@given(shapes=hh.mutually_broadcastable_shapes(2), data=st.data())
-def test_inplace_op_promotion(op, expr, in_dtypes, out_dtype, shapes, data):
-    assume(len(shapes[0]) >= len(shapes[1]))
+@given(shape=hh.shapes(), data=st.data())
+def test_inplace_op_promotion(op, expr, in_dtypes, out_dtype, shape, data):
+    # TODO: test broadcastable shapes (that don't change x1's shape)
     elements = func_elements[func_name]
     x1 = data.draw(
-        xps.arrays(dtype=in_dtypes[0], shape=shapes[0], elements=elements), label="x1"
+        xps.arrays(dtype=in_dtypes[0], shape=shape, elements=elements), label="x1"
     )
     x2 = data.draw(
-        xps.arrays(dtype=in_dtypes[1], shape=shapes[1], elements=elements), label="x2"
+        xps.arrays(dtype=in_dtypes[1], shape=shape, elements=elements), label="x2"
     )
     locals_ = {"x1": x1, "x2": x2}
     try:
