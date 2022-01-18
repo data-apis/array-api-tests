@@ -156,16 +156,40 @@ def test_getitem_mask(shape, data):
                 )
 
 
-@given(hh.shapes(min_side=1), st.data())
+@given(hh.shapes(), st.data())
 def test_setitem_mask(shape, data):
     x = data.draw(xps.arrays(xps.scalar_dtypes(), shape=shape), label="x")
     key = data.draw(xps.arrays(dtype=xp.bool, shape=shape), label="key")
-    value = data.draw(xps.from_dtype(x.dtype), label="value")  # TODO: more values
+    value = data.draw(
+        xps.from_dtype(x.dtype) | xps.arrays(dtype=x.dtype, shape=()), label="value"
+    )
 
     res = xp.asarray(x, copy=True)
     res[key] = value
 
-    # TODO
+    ph.assert_dtype("__setitem__", x.dtype, res.dtype, repr_name="x.dtype")
+    ph.assert_shape("__setitem__", res.shape, x.shape, repr_name="x.dtype")
+
+    scalar_type = dh.get_scalar_type(x.dtype)
+    for idx in sh.ndindex(x.shape):
+        if key[idx]:
+            if isinstance(value, Scalar):
+                ph.assert_scalar_equals(
+                    "__setitem__",
+                    scalar_type,
+                    idx,
+                    scalar_type(res[idx]),
+                    value,
+                    repr_name="modified x",
+                )
+            else:
+                ph.assert_0d_equals(
+                    "__setitem__", "value", value, f"modified x[{idx}]", res[idx]
+                )
+        else:
+            ph.assert_0d_equals(
+                "__setitem__", f"old x[{idx}]", x[idx], f"modified x[{idx}]", res[idx]
+            )
 
 
 def make_param(method_name: str, dtype: DataType, stype: ScalarType) -> Param:
