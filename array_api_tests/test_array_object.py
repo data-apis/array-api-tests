@@ -107,7 +107,50 @@ def test_setitem(shape, data):
         ph.assert_0d_equals("__setitem__", "value", value, f"x[{key}]", res[key])
 
 
-# TODO: test boolean indexing
+# TODO: make mask tests optional
+
+
+@given(hh.shapes(), st.data())
+def test_getitem_mask(shape, data):
+    x = data.draw(xps.arrays(xps.scalar_dtypes(), shape=shape), label="x")
+    mask_shapes = st.one_of(
+        st.sampled_from([x.shape, ()]),
+        st.lists(st.booleans(), min_size=x.ndim, max_size=x.ndim).map(
+            lambda l: tuple(s if b else 0 for s, b in zip(x.shape, l))
+        ),
+        hh.shapes(),
+    )
+    key = data.draw(xps.arrays(dtype=xp.bool, shape=mask_shapes), label="key")
+
+    if key.ndim > x.ndim or not all(
+        ks in (xs, 0) for xs, ks in zip(x.shape, key.shape)
+    ):
+        with pytest.raises(IndexError):
+            x[key]
+        return
+
+    out = x[key]
+
+    ph.assert_dtype("__getitem__", x.dtype, out.dtype)
+    if key.ndim == 0:
+        out_shape = (1,) if key else (0,)
+        out_shape += x.shape
+    else:
+        size = int(xp.sum(xp.astype(key, xp.uint8)))
+        out_shape = (size,) + x.shape[key.ndim :]
+    ph.assert_shape("__getitem__", out.shape, out_shape)
+
+
+@given(hh.shapes(min_side=1), st.data())
+def test_setitem_mask(shape, data):
+    x = data.draw(xps.arrays(xps.scalar_dtypes(), shape=shape), label="x")
+    key = data.draw(xps.arrays(dtype=xp.bool, shape=shape), label="key")
+    value = data.draw(xps.from_dtype(x.dtype), label="value")
+
+    res = xp.asarray(x, copy=True)
+    res[key] = value
+
+    # TODO
 
 
 def make_param(method_name: str, dtype: DataType, stype: ScalarType) -> Param:
