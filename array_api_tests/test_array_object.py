@@ -10,6 +10,7 @@ from . import _array_module as xp
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 from . import xps
 from .typing import DataType, Param, Scalar, ScalarType, Shape
 
@@ -140,12 +141,26 @@ def test_getitem_mask(shape, data):
         out_shape = (size,) + x.shape[key.ndim :]
     ph.assert_shape("__getitem__", out.shape, out_shape)
 
+    if not any(s == 0 for s in key.shape):
+        assume(key.ndim == x.ndim)  # TODO: test key.ndim < x.ndim scenarios
+        out_indices = sh.ndindex(out.shape)
+        for x_idx in sh.ndindex(x.shape):
+            if key[x_idx]:
+                out_idx = next(out_indices)
+                ph.assert_0d_equals(
+                    "__getitem__",
+                    f"x[{x_idx}]",
+                    x[x_idx],
+                    f"out[{out_idx}]",
+                    out[out_idx],
+                )
+
 
 @given(hh.shapes(min_side=1), st.data())
 def test_setitem_mask(shape, data):
     x = data.draw(xps.arrays(xps.scalar_dtypes(), shape=shape), label="x")
     key = data.draw(xps.arrays(dtype=xp.bool, shape=shape), label="key")
-    value = data.draw(xps.from_dtype(x.dtype), label="value")
+    value = data.draw(xps.from_dtype(x.dtype), label="value")  # TODO: more values
 
     res = xp.asarray(x, copy=True)
     res[key] = value
