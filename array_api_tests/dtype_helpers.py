@@ -124,7 +124,11 @@ if isinstance(xp.asarray, _UndefinedStub):
     )
 else:
     default_int = xp.asarray(int()).dtype
+    if default_int not in int_dtypes:
+        warn(f"inferred default int is {default_int!r}, which is not an int")
     default_float = xp.asarray(float()).dtype
+    if default_float not in float_dtypes:
+        warn(f"inferred default float is {default_float!r}, which is not a float")
 if dtype_nbits[default_int] == 32:
     default_uint = xp.uint32
 else:
