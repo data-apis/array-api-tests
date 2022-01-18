@@ -186,6 +186,19 @@ def test_arange(dtype, data):
             ), f"out[0]={out[0]}, but should be {_start} {f_func}"
 
 
+@given(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1), data=st.data())
+def test_asarray_scalars(dtype, shape, data):
+    obj = data.draw(hh.scalar_objects(dtype, shape), label="obj")
+    kw = data.draw(
+        hh.kwargs(dtype=st.sampled_from([None, dtype]), copy=st.none()), label="kw"
+    )
+
+    xp.asarray(obj, **kw)
+
+
+# TODO: test asarray with arrays and copy (in a seperate method)
+
+
 @given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
 def test_empty(shape, kw):
     out = xp.empty(shape, **kw)

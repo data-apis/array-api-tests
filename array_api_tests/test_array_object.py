@@ -1,6 +1,6 @@
 import math
 from itertools import product
-from typing import Sequence, Union, get_args
+from typing import get_args
 
 import pytest
 from hypothesis import assume, given, note
@@ -12,33 +12,13 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .typing import DataType, Param, Scalar, ScalarType, Shape
-
-
-def reshape(
-    flat_seq: Sequence[Scalar], shape: Shape
-) -> Union[Scalar, Sequence[Scalar]]:
-    """Reshape a flat sequence"""
-    if len(shape) == 0:
-        assert len(flat_seq) == 1  # sanity check
-        return flat_seq[0]
-    elif len(shape) == 1:
-        return flat_seq
-    size = len(flat_seq)
-    n = math.prod(shape[1:])
-    return [reshape(flat_seq[i * n : (i + 1) * n], shape[1:]) for i in range(size // n)]
+from .typing import DataType, Param, Scalar, ScalarType
 
 
 @given(hh.shapes(min_side=1), st.data())  # TODO: test 0-sided arrays
 def test_getitem(shape, data):
-    size = math.prod(shape)
     dtype = data.draw(xps.scalar_dtypes(), label="dtype")
-    obj = data.draw(
-        st.lists(xps.from_dtype(dtype), min_size=size, max_size=size).map(
-            lambda l: reshape(l, shape)
-        ),
-        label="obj",
-    )
+    obj = data.draw(hh.scalar_objects(dtype, shape), label="obj")
     x = xp.asarray(obj, dtype=dtype)
     note(f"{x=}")
     key = data.draw(xps.indices(shape=shape), label="key")
@@ -71,21 +51,15 @@ def test_getitem(shape, data):
         for i in idx:
             val = val[i]
         out_obj.append(val)
-    out_obj = reshape(out_obj, out_shape)
+    out_obj = sh.reshape(out_obj, out_shape)
     expected = xp.asarray(out_obj, dtype=dtype)
     ph.assert_array("__getitem__", out, expected)
 
 
 @given(hh.shapes(min_side=1), st.data())  # TODO: test 0-sided arrays
 def test_setitem(shape, data):
-    size = math.prod(shape)
     dtype = data.draw(xps.scalar_dtypes(), label="dtype")
-    obj = data.draw(
-        st.lists(xps.from_dtype(dtype), min_size=size, max_size=size).map(
-            lambda l: reshape(l, shape)
-        ),
-        label="obj",
-    )
+    obj = data.draw(hh.scalar_objects(dtype, shape), label="obj")
     x = xp.asarray(obj, dtype=dtype)
     note(f"{x=}")
     # TODO: test setting non-0d arrays
