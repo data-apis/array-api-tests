@@ -246,7 +246,43 @@ def test_asarray_scalars(shape, data):
         ph.assert_scalar_equals("asarray", scalar_type, idx, v, v_expect, **kw)
 
 
-# TODO: test asarray with arrays and copy (in a seperate method)
+@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()), st.data())
+def test_asarray_arrays(x, data):
+    # TODO: test other valid dtypes
+    kw = data.draw(
+        hh.kwargs(dtype=st.none() | st.just(x.dtype), copy=st.none() | st.booleans()),
+        label="kw",
+    )
+
+    out = xp.asarray(x, **kw)
+
+    dtype = kw.get("dtype", None)
+    if dtype is None:
+        ph.assert_dtype("asarray", x.dtype, out.dtype)
+    else:
+        ph.assert_kw_dtype("asarray", dtype, out.dtype)
+    ph.assert_shape("asarray", out.shape, x.shape)
+    if dtype is None or dtype == x.dtype:
+        ph.assert_array("asarray", out, x, **kw)
+    else:
+        pass  # TODO
+    copy = kw.get("copy", None)
+    if copy is not None:
+        idx = data.draw(xps.indices(x.shape, max_dims=0), label="mutating idx")
+        _dtype = x.dtype if dtype is None else dtype
+        old_value = x[idx]
+        value = data.draw(
+            xps.arrays(dtype=_dtype, shape=()).filter(lambda y: y != old_value),
+            label="mutating value",
+        )
+        x[idx] = value
+        note(f"mutated {x=}")
+        if copy:
+            assert not xp.all(
+                out == x
+            ), "xp.all(out == x)=True, but should be False after x was mutated\n{out=}"
+        elif copy is False:
+            pass  # TODO
 
 
 @given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
