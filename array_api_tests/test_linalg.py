@@ -35,6 +35,9 @@ from .algos import broadcast_shapes
 from . import _array_module
 from ._array_module import linalg
 
+pytestmark = pytest.mark.ci
+
+
 
 # Standin strategy for not yet implemented tests
 todo = none()

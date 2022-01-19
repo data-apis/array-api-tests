@@ -1,5 +1,6 @@
 # TODO: disable if opted out, refactor things
 import math
+import pytest
 from collections import Counter, defaultdict
 
 from hypothesis import assume, given
@@ -10,6 +11,8 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
+
+pytestmark = pytest.mark.ci
 
 
 @given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
