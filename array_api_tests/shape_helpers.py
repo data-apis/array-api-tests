@@ -1,9 +1,10 @@
+import math
 from itertools import product
 from typing import Iterator, List, Optional, Tuple, Union
 
-from .typing import Shape
+from .typing import Scalar, Shape
 
-__all__ = ["normalise_axis", "ndindex", "axis_ndindex", "axes_ndindex"]
+__all__ = ["normalise_axis", "ndindex", "axis_ndindex", "axes_ndindex", "reshape"]
 
 
 def normalise_axis(
@@ -57,3 +58,20 @@ def axes_ndindex(shape: Shape, axes: Tuple[int, ...]) -> Iterator[List[Shape]]:
             idx = tuple(idx)
             indices.append(idx)
         yield list(indices)
+
+
+def reshape(flat_seq: List[Scalar], shape: Shape) -> Union[Scalar, List[Scalar]]:
+    """Reshape a flat sequence"""
+    if any(s == 0 for s in shape):
+        raise ValueError(
+            f"{shape=} contains 0-sided dimensions, "
+            f"but that's not representable in lists"
+        )
+    if len(shape) == 0:
+        assert len(flat_seq) == 1  # sanity check
+        return flat_seq[0]
+    elif len(shape) == 1:
+        return flat_seq
+    size = len(flat_seq)
+    n = math.prod(shape[1:])
+    return [reshape(flat_seq[i * n : (i + 1) * n], shape[1:]) for i in range(size // n)]

@@ -2,7 +2,7 @@ import math
 from itertools import count
 from typing import Iterator, NamedTuple, Union
 
-from hypothesis import assume, given
+from hypothesis import assume, given, note
 from hypothesis import strategies as st
 
 from . import _array_module as xp
@@ -10,6 +10,7 @@ from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 from . import xps
 from .typing import DataType, Scalar
 
@@ -184,6 +185,104 @@ def test_arange(dtype, data):
             assert ah.equal(
                 out[0], ah.asarray(_start, dtype=out.dtype)
             ), f"out[0]={out[0]}, but should be {_start} {f_func}"
+
+
+@given(
+    shape=hh.shapes(min_side=1),
+    data=st.data(),
+)
+def test_asarray_scalars(shape, data):
+    kw = data.draw(
+        hh.kwargs(dtype=st.none() | xps.scalar_dtypes(), copy=st.none()), label="kw"
+    )
+    dtype = kw.get("dtype", None)
+    if dtype is None:
+        dtype_family = data.draw(
+            st.sampled_from(
+                [(xp.bool,), (xp.int32, xp.int64), (xp.float32, xp.float64)]
+            ),
+            label="expected out dtypes",
+        )
+        _dtype = dtype_family[0]
+    else:
+        _dtype = dtype
+    if dh.is_float_dtype(_dtype):
+        elements_strat = xps.from_dtype(_dtype) | xps.from_dtype(xp.int32)
+    elif dh.is_int_dtype(_dtype):
+        elements_strat = xps.from_dtype(_dtype) | st.booleans()
+    else:
+        elements_strat = xps.from_dtype(_dtype)
+    size = math.prod(shape)
+    obj_strat = st.lists(elements_strat, min_size=size, max_size=size)
+    scalar_type = dh.get_scalar_type(_dtype)
+    if dtype is None:
+        # For asarray to infer the dtype we're testing, obj requires at least
+        # one element to be the scalar equivalent of the inferred dtype, and so
+        # we filter out invalid examples. Note we use type() as Python booleans
+        # instance check with ints e.g. isinstance(False, int) == True.
+        obj_strat = obj_strat.filter(lambda l: any(type(e) == scalar_type for e in l))
+    _obj = data.draw(obj_strat, label="_obj")
+    obj = sh.reshape(_obj, shape)
+    note(f"{obj=}")
+
+    out = xp.asarray(obj, **kw)
+
+    if dtype is None:
+        msg = f"out.dtype={dh.dtype_to_name[out.dtype]}, should be "
+        if dtype_family == (xp.float32, xp.float64):
+            msg += "default floating-point dtype (float32 or float64)"
+        elif dtype_family == (xp.int32, xp.int64):
+            msg += "default integer dtype (int32 or int64)"
+        else:
+            msg += "boolean dtype"
+        msg += " [asarray()]"
+        assert out.dtype in dtype_family, msg
+    else:
+        assert kw["dtype"] == _dtype  # sanity check
+        ph.assert_kw_dtype("asarray", _dtype, out.dtype)
+    ph.assert_shape("asarray", out.shape, shape)
+    for idx, v_expect in zip(sh.ndindex(out.shape), _obj):
+        v = scalar_type(out[idx])
+        ph.assert_scalar_equals("asarray", scalar_type, idx, v, v_expect, **kw)
+
+
+@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()), st.data())
+def test_asarray_arrays(x, data):
+    # TODO: test other valid dtypes
+    kw = data.draw(
+        hh.kwargs(dtype=st.none() | st.just(x.dtype), copy=st.none() | st.booleans()),
+        label="kw",
+    )
+
+    out = xp.asarray(x, **kw)
+
+    dtype = kw.get("dtype", None)
+    if dtype is None:
+        ph.assert_dtype("asarray", x.dtype, out.dtype)
+    else:
+        ph.assert_kw_dtype("asarray", dtype, out.dtype)
+    ph.assert_shape("asarray", out.shape, x.shape)
+    if dtype is None or dtype == x.dtype:
+        ph.assert_array("asarray", out, x, **kw)
+    else:
+        pass  # TODO
+    copy = kw.get("copy", None)
+    if copy is not None:
+        idx = data.draw(xps.indices(x.shape, max_dims=0), label="mutating idx")
+        _dtype = x.dtype if dtype is None else dtype
+        old_value = x[idx]
+        value = data.draw(
+            xps.arrays(dtype=_dtype, shape=()).filter(lambda y: y != old_value),
+            label="mutating value",
+        )
+        x[idx] = value
+        note(f"mutated {x=}")
+        if copy:
+            assert not xp.all(
+                out == x
+            ), "xp.all(out == x)=True, but should be False after x was mutated\n{out=}"
+        elif copy is False:
+            pass  # TODO
 
 
 @given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
