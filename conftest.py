@@ -27,14 +27,7 @@ def pytest_addoption(parser):
         action="store_true",
         help="disable the Hypothesis deadline",
     )
-    # enable/disable extensions
-    parser.addoption(
-        "--enable-extension",
-        metavar="ext",
-        nargs="+",
-        default=[],
-        help="enable testing for Array API extension(s)",
-    )
+    # disable extensions
     parser.addoption(
         "--disable-extension",
         metavar="ext",
@@ -82,13 +75,9 @@ if xfails_path.exists():
 
 
 def pytest_collection_modifyitems(config, items):
-    enabled_exts = config.getoption("--enable-extension")
     disabled_exts = config.getoption("--disable-extension")
-    for ext in enabled_exts:
-        if ext in disabled_exts:
-            raise ValueError(f"{ext=} both enabled and disabled")
     for item in items:
-        # enable/disable extensions
+        # disable extensions
         try:
             ext_mark = next(m for m in item.iter_markers() if m.name == "xp_extension")
             ext = ext_mark.args[0]
@@ -96,7 +85,7 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(
                     mark.skip(reason=f"{ext} disabled in --disable-extensions")
                 )
-            elif ext not in enabled_exts and not xp_has_ext(ext):
+            elif not xp_has_ext(ext):
                 item.add_marker(mark.skip(reason=f"{ext} not found in array module"))
         except StopIteration:
             pass
