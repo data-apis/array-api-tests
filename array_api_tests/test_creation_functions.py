@@ -10,6 +10,7 @@ from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 from . import xps
 from .typing import DataType, Scalar
 
@@ -186,14 +187,59 @@ def test_arange(dtype, data):
             ), f"out[0]={out[0]}, but should be {_start} {f_func}"
 
 
-@given(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1), data=st.data())
-def test_asarray_scalars(dtype, shape, data):
-    obj = data.draw(hh.scalar_objects(dtype, shape), label="obj")
+@given(
+    shape=hh.shapes(min_side=1),
+    data=st.data(),
+)
+def test_asarray_scalars(shape, data):
     kw = data.draw(
-        hh.kwargs(dtype=st.sampled_from([None, dtype]), copy=st.none()), label="kw"
+        hh.kwargs(dtype=st.none() | xps.scalar_dtypes(), copy=st.none()), label="kw"
     )
+    dtype = kw.get("dtype", None)
+    if dtype is None:
+        dtype_family = data.draw(
+            st.sampled_from(
+                [(xp.bool,), (xp.int32, xp.int64), (xp.float32, xp.float64)]
+            ),
+            label="expected out dtypes",
+        )
+        _dtype = dtype_family[0]
+    else:
+        _dtype = dtype
+    if dh.is_float_dtype(_dtype):
+        elements_strat = xps.from_dtype(_dtype) | xps.from_dtype(xp.int32)
+    elif dh.is_int_dtype(_dtype):
+        elements_strat = xps.from_dtype(_dtype) | st.booleans()
+    else:
+        elements_strat = xps.from_dtype(_dtype)
+    size = math.prod(shape)
+    obj_strat = st.lists(elements_strat, min_size=size, max_size=size)
+    if dtype is None:
+        # For asarray to infer the dtype we're testing, obj requires at least
+        # one element to be the scalar equivalent of the inferred dtype, and so
+        # we filter out invalid examples. Note we use type() as Python booleans
+        # instance check with ints e.g. isinstance(False, int) == True.
+        scalar_type = dh.get_scalar_type(_dtype)
+        obj_strat = obj_strat.filter(lambda l: any(type(e) == scalar_type for e in l))
+    obj_strat = obj_strat.map(lambda l: sh.reshape(l, shape))
+    obj = data.draw(obj_strat, label="obj")
 
-    xp.asarray(obj, **kw)
+    out = xp.asarray(obj, **kw)
+
+    if dtype is None:
+        msg = f"out.dtype={dh.dtype_to_name[out.dtype]}, should be "
+        if dtype_family == (xp.float32, xp.float64):
+            msg += "default floating-point dtype (float32 or float64)"
+        elif dtype_family == (xp.int32, xp.int64):
+            msg += "default integer dtype (int32 or int64)"
+        else:
+            msg += "boolean dtype"
+        msg += " [asarray()]"
+        assert out.dtype in dtype_family, msg
+    else:
+        assert kw["dtype"] == _dtype  # sanity check
+        ph.assert_kw_dtype("asarray", _dtype, out.dtype)
+    ph.assert_shape("asarray", out.shape, shape)
 
 
 # TODO: test asarray with arrays and copy (in a seperate method)

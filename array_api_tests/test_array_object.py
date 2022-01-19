@@ -1,6 +1,6 @@
 import math
 from itertools import product
-from typing import get_args
+from typing import List, get_args
 
 import pytest
 from hypothesis import assume, given, note
@@ -12,13 +12,21 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .typing import DataType, Param, Scalar, ScalarType
+from .typing import DataType, Param, Scalar, ScalarType, Shape
+
+
+def scalar_objects(dtype: DataType, shape: Shape) -> st.SearchStrategy[List[Scalar]]:
+    """Generates scalars or nested sequences which are valid for xp.asarray()"""
+    size = math.prod(shape)
+    return st.lists(xps.from_dtype(dtype), min_size=size, max_size=size).map(
+        lambda l: sh.reshape(l, shape)
+    )
 
 
 @given(hh.shapes(min_side=1), st.data())  # TODO: test 0-sided arrays
 def test_getitem(shape, data):
     dtype = data.draw(xps.scalar_dtypes(), label="dtype")
-    obj = data.draw(hh.scalar_objects(dtype, shape), label="obj")
+    obj = data.draw(scalar_objects(dtype, shape), label="obj")
     x = xp.asarray(obj, dtype=dtype)
     note(f"{x=}")
     key = data.draw(xps.indices(shape=shape), label="key")
@@ -59,7 +67,7 @@ def test_getitem(shape, data):
 @given(hh.shapes(min_side=1), st.data())  # TODO: test 0-sided arrays
 def test_setitem(shape, data):
     dtype = data.draw(xps.scalar_dtypes(), label="dtype")
-    obj = data.draw(hh.scalar_objects(dtype, shape), label="obj")
+    obj = data.draw(scalar_objects(dtype, shape), label="obj")
     x = xp.asarray(obj, dtype=dtype)
     note(f"{x=}")
     # TODO: test setting non-0d arrays

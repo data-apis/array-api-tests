@@ -19,7 +19,7 @@ from ._array_module import broadcast_to, eye, float32, float64, full
 from .algos import broadcast_shapes
 from .function_stubs import elementwise_functions
 from .pytest_helpers import nargs
-from .typing import Array, DataType, Scalar, Shape
+from .typing import Array, DataType, Shape
 
 # Set this to True to not fail tests just because a dtype isn't implemented.
 # If no compatible dtype is implemented for a given test, the test will fail
@@ -431,11 +431,3 @@ def axes(ndim: int) -> SearchStrategy[Optional[Union[int, Shape]]]:
         axes_strats.append(integers(-ndim, ndim - 1))
         axes_strats.append(xps.valid_tuple_axes(ndim))
     return one_of(axes_strats)
-
-
-def scalar_objects(dtype: DataType, shape: Shape) -> SearchStrategy[List[Scalar]]:
-    """Generates scalars or nested sequences which are valid for xp.asarray()"""
-    size = math.prod(shape)
-    return lists(xps.from_dtype(dtype), min_size=size, max_size=size).map(
-        lambda l: sh.reshape(l, shape)
-    )
