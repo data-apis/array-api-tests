@@ -124,7 +124,7 @@ def test_setitem(shape, data):
 
 
 @given(hh.shapes(), st.data())
-def test_getitem_mask(shape, data):
+def test_getitem_masking(shape, data):
     x = data.draw(xps.arrays(xps.scalar_dtypes(), shape=shape), label="x")
     mask_shapes = st.one_of(
         st.sampled_from([x.shape, ()]),
@@ -168,7 +168,7 @@ def test_getitem_mask(shape, data):
 
 
 @given(hh.shapes(), st.data())
-def test_setitem_mask(shape, data):
+def test_setitem_masking(shape, data):
     x = data.draw(xps.arrays(xps.scalar_dtypes(), shape=shape), label="x")
     key = data.draw(xps.arrays(dtype=xp.bool, shape=shape), label="key")
     value = data.draw(
