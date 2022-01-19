@@ -2,7 +2,7 @@ import math
 from itertools import count
 from typing import Iterator, NamedTuple, Union
 
-from hypothesis import assume, given
+from hypothesis import assume, given, note
 from hypothesis import strategies as st
 
 from . import _array_module as xp
@@ -214,15 +214,16 @@ def test_asarray_scalars(shape, data):
         elements_strat = xps.from_dtype(_dtype)
     size = math.prod(shape)
     obj_strat = st.lists(elements_strat, min_size=size, max_size=size)
+    scalar_type = dh.get_scalar_type(_dtype)
     if dtype is None:
         # For asarray to infer the dtype we're testing, obj requires at least
         # one element to be the scalar equivalent of the inferred dtype, and so
         # we filter out invalid examples. Note we use type() as Python booleans
         # instance check with ints e.g. isinstance(False, int) == True.
-        scalar_type = dh.get_scalar_type(_dtype)
         obj_strat = obj_strat.filter(lambda l: any(type(e) == scalar_type for e in l))
-    obj_strat = obj_strat.map(lambda l: sh.reshape(l, shape))
-    obj = data.draw(obj_strat, label="obj")
+    _obj = data.draw(obj_strat, label="_obj")
+    obj = sh.reshape(_obj, shape)
+    note(f"{obj=}")
 
     out = xp.asarray(obj, **kw)
 
@@ -240,6 +241,9 @@ def test_asarray_scalars(shape, data):
         assert kw["dtype"] == _dtype  # sanity check
         ph.assert_kw_dtype("asarray", _dtype, out.dtype)
     ph.assert_shape("asarray", out.shape, shape)
+    for idx, v_expect in zip(sh.ndindex(out.shape), _obj):
+        v = scalar_type(out[idx])
+        ph.assert_scalar_equals("asarray", scalar_type, idx, v, v_expect, **kw)
 
 
 # TODO: test asarray with arrays and copy (in a seperate method)
