@@ -10,6 +10,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
+from .algos import broadcast_shapes
 from .typing import DataType
 
 
@@ -54,6 +55,32 @@ def test_astype(x_dtype, dtype, kw, data):
     ph.assert_shape("astype", out.shape, x.shape)
     # TODO: test values
     # TODO: test copy
+
+
+@given(
+    shapes=st.integers(1, 5).flatmap(hh.mutually_broadcastable_shapes), data=st.data()
+)
+def test_broadcast_arrays(shapes, data):
+    arrays = []
+    for c, shape in enumerate(shapes, 1):
+        x = data.draw(xps.arrays(dtype=xps.scalar_dtypes(), shape=shape), label=f"x{c}")
+        arrays.append(x)
+
+    out = xp.broadcast_arrays(*arrays)
+
+    out_shape = broadcast_shapes(*shapes)
+    for i, x in enumerate(arrays):
+        ph.assert_dtype(
+            "broadcast_arrays", x.dtype, out[i].dtype, repr_name=f"out[{i}].dtype"
+        )
+        ph.assert_result_shape(
+            "broadcast_arrays",
+            shapes,
+            out[i].shape,
+            out_shape,
+            repr_name=f"out[{i}].shape",
+        )
+    # TODO: test values
 
 
 def make_dtype_id(dtype: DataType) -> str:
