@@ -28,6 +28,8 @@ from . import xps
 from .algos import broadcast_shapes
 from .typing import Array, DataType, Param, Scalar
 
+pytestmark = pytest.mark.ci
+
 # When appropiate, this module tests operators alongside their respective
 # elementwise methods. We do this by parametrizing a generalised test method
 # with every relevant method and operator.

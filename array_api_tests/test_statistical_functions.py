@@ -1,4 +1,5 @@
 import math
+import pytest
 from typing import Optional
 
 from hypothesis import assume, given
@@ -12,6 +13,8 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 from .typing import DataType
+
+pytestmark = pytest.mark.ci
 
 
 def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:

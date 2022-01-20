@@ -1,3 +1,4 @@
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -7,6 +8,8 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
+
+pytestmark = pytest.mark.ci
 
 
 @given(

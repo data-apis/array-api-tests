@@ -14,6 +14,8 @@ from . import shape_helpers as sh
 from . import xps
 from .typing import DataType, Param, Scalar, ScalarType, Shape
 
+pytestmark = pytest.mark.ci
+
 
 def scalar_objects(dtype: DataType, shape: Shape) -> st.SearchStrategy[List[Scalar]]:
     """Generates scalars or nested sequences which are valid for xp.asarray()"""

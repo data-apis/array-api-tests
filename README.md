@@ -136,8 +136,7 @@ issues](https://github.com/data-apis/array-api-tests/issues/) to us.
 By default, tests for the optional Array API extensions such as
 [`linalg`](https://data-apis.org/array-api/latest/extensions/linear_algebra_functions.html)
 will be skipped if not present in the specified array module. You can purposely
-skip testing extension(s) via the `--disable-extension` option, and likewise
-purposely test them via the `--enable-extension` option.
+skip testing extension(s) via the `--disable-extension` option.
 
 The tests make heavy use
 [Hypothesis](https://hypothesis.readthedocs.io/en/latest/). You can configure

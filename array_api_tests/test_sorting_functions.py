@@ -1,4 +1,5 @@
 import math
+import pytest
 from typing import Set
 
 from hypothesis import given
@@ -12,6 +13,8 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 from .typing import Scalar, Shape
+
+pytestmark = pytest.mark.ci
 
 
 def assert_scalar_in_set(
