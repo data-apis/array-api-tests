@@ -86,8 +86,8 @@ def get_scalar_type(dtype: DataType) -> ScalarType:
 
 
 class MinMax(NamedTuple):
-    min: int
-    max: int
+    min: Union[int, float]
+    max: Union[int, float]
 
 
 dtype_ranges = {
@@ -99,6 +99,8 @@ dtype_ranges = {
     xp.uint16: MinMax(0, +65_535),
     xp.uint32: MinMax(0, +4_294_967_295),
     xp.uint64: MinMax(0, +18_446_744_073_709_551_615),
+    xp.float32: MinMax(-3.4028234663852886e+38, 3.4028234663852886e+38),
+    xp.float64: MinMax(-1.7976931348623157e+308, 1.7976931348623157e+308),
 }
 
 dtype_nbits = {

@@ -1,11 +1,59 @@
+import struct
+from typing import Union
+
 import pytest
 from hypothesis import given
+from hypothesis import strategies as st
 
 from . import _array_module as xp
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
+from . import xps
 from .typing import DataType
+
+
+def float32(n: Union[int, float]) -> float:
+    return struct.unpack("!f", struct.pack("!f", float(n)))[0]
+
+
+@given(
+    x_dtype=xps.scalar_dtypes(),
+    dtype=xps.scalar_dtypes(),
+    kw=hh.kwargs(copy=st.booleans()),
+    data=st.data(),
+)
+def test_astype(x_dtype, dtype, kw, data):
+    if xp.bool in (x_dtype, dtype):
+        elements_strat = xps.from_dtype(x_dtype)
+    else:
+        m1, M1 = dh.dtype_ranges[x_dtype]
+        m2, M2 = dh.dtype_ranges[dtype]
+        if dh.is_int_dtype(x_dtype):
+            cast = int
+        elif x_dtype == xp.float32:
+            cast = float32
+        else:
+            cast = float
+        min_value = cast(max(m1, m2))
+        max_value = cast(min(M1, M2))
+        elements_strat = xps.from_dtype(
+            x_dtype,
+            min_value=min_value,
+            max_value=max_value,
+            allow_nan=False,
+            allow_infinity=False,
+        )
+    x = data.draw(
+        xps.arrays(dtype=x_dtype, shape=hh.shapes(), elements=elements_strat), label="x"
+    )
+
+    out = xp.astype(x, dtype, **kw)
+
+    ph.assert_kw_dtype("astype", dtype, out.dtype)
+    ph.assert_shape("astype", out.shape, x.shape)
+    # TODO: test values
+    # TODO: test copy
 
 
 def make_dtype_id(dtype: DataType) -> str:
