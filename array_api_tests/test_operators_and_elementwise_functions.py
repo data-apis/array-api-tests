@@ -651,7 +651,7 @@ def test_cosh(x):
     ah.assert_exactly_equal(domain, codomain)
 
 
-@pytest.mark.parametrize(binary_argnames, make_binary_params("divide", dh.numeric_dtypes))
+@pytest.mark.parametrize(binary_argnames, make_binary_params("divide", dh.float_dtypes))
 @given(data=st.data())
 def test_divide(
     func_name,

@@ -216,7 +216,7 @@ func_in_dtypes = {
     "ceil": numeric_dtypes,
     "cos": float_dtypes,
     "cosh": float_dtypes,
-    "divide": numeric_dtypes,
+    "divide": float_dtypes,
     "equal": all_dtypes,
     "exp": float_dtypes,
     "expm1": float_dtypes,
