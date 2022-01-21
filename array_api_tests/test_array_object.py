@@ -167,7 +167,7 @@ def test_setitem_masking(shape, data):
     scalar_type = dh.get_scalar_type(x.dtype)
     for idx in sh.ndindex(x.shape):
         if key[idx]:
-            if isinstance(value, Scalar):
+            if isinstance(value, get_args(Scalar)):
                 ph.assert_scalar_equals(
                     "__setitem__",
                     scalar_type,
