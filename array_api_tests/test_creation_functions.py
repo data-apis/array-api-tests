@@ -479,27 +479,26 @@ def test_linspace(num, dtype, endpoint, data):
         ah.assert_exactly_equal(out, expected)
 
 
-@given(
+@given(dtype=xps.numeric_dtypes(), data=st.data())
+def test_meshgrid(dtype, data):
     # The number and size of generated arrays is arbitrarily limited to prevent
     # meshgrid() running out of memory.
-    dtypes=hh.mutually_promotable_dtypes(5, dtypes=dh.numeric_dtypes),
-    data=st.data(),
-)
-def test_meshgrid(dtypes, data):
-    arrays = []
     shapes = data.draw(
-        hh.mutually_broadcastable_shapes(
-            len(dtypes), min_dims=1, max_dims=1, max_side=5
+        st.integers(1, 5).flatmap(
+            lambda n: hh.mutually_broadcastable_shapes(
+                n, min_dims=1, max_dims=1, max_side=5
+            )
         ),
         label="shapes",
     )
-    for i, (dtype, shape) in enumerate(zip(dtypes, shapes), 1):
+    arrays = []
+    for i, shape in enumerate(shapes, 1):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
         arrays.append(x)
     assert math.prod(x.size for x in arrays) <= hh.MAX_ARRAY_SIZE  # sanity check
     out = xp.meshgrid(*arrays)
     for i, x in enumerate(out):
-        ph.assert_dtype("meshgrid", dtypes, x.dtype, repr_name=f"out[{i}].dtype")
+        ph.assert_dtype("meshgrid", dtype, x.dtype, repr_name=f"out[{i}].dtype")
 
 
 def make_one(dtype: DataType) -> Scalar:
