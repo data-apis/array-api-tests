@@ -99,6 +99,32 @@ def test_broadcast_to(x, data):
     # TODO: test values
 
 
+@given(_from=xps.scalar_dtypes(), to=xps.scalar_dtypes(), data=st.data())
+def test_can_cast(_from, to, data):
+    from_ = data.draw(
+        st.just(_from) | xps.arrays(dtype=_from, shape=hh.shapes()), label="from_"
+    )
+
+    out = xp.can_cast(from_, to)
+
+    f_func = f"[can_cast({dh.dtype_to_name[_from]}, {dh.dtype_to_name[to]})]"
+    assert isinstance(out, bool), f"{type(out)=}, but should be bool {f_func}"
+    if _from == xp.bool:
+        expected = to == xp.bool
+    else:
+        for dtypes in [dh.all_int_dtypes, dh.float_dtypes]:
+            if _from in dtypes:
+                same_family = to in dtypes
+                break
+        if same_family:
+            from_min, from_max = dh.dtype_ranges[_from]
+            to_min, to_max = dh.dtype_ranges[to]
+            expected = from_min >= to_min and from_max <= to_max
+        else:
+            expected = False
+    assert out == expected, f"{out=}, but should be {expected} {f_func}"
+
+
 def make_dtype_id(dtype: DataType) -> str:
     return dh.dtype_to_name[dtype]
 
