@@ -13,6 +13,8 @@ from . import xps
 from .algos import broadcast_shapes
 from .typing import DataType
 
+pytestmark = pytest.mark.ci
+
 
 def float32(n: Union[int, float]) -> float:
     return struct.unpack("!f", struct.pack("!f", float(n)))[0]
