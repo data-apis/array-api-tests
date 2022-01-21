@@ -83,6 +83,22 @@ def test_broadcast_arrays(shapes, data):
     # TODO: test values
 
 
+@given(x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()), data=st.data())
+def test_broadcast_to(x, data):
+    shape = data.draw(
+        hh.mutually_broadcastable_shapes(1, base_shape=x.shape)
+        .map(lambda S: S[0])
+        .filter(lambda s: broadcast_shapes(x.shape, s) == s),
+        label="shape",
+    )
+
+    out = xp.broadcast_to(x, shape)
+
+    ph.assert_dtype("broadcast_to", x.dtype, out.dtype)
+    ph.assert_shape("broadcast_to", out.shape, shape)
+    # TODO: test values
+
+
 def make_dtype_id(dtype: DataType) -> str:
     return dh.dtype_to_name[dtype]
 
