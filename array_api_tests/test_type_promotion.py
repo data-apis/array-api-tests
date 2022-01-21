@@ -16,16 +16,6 @@ from . import xps
 from .function_stubs import elementwise_functions
 from .typing import DataType, Param, ScalarType
 
-# TODO: move tests not covering elementwise funcs/ops into standalone tests
-# result_type, meshgrid, tensordor, vecdot
-
-
-@given(hh.mutually_promotable_dtypes(None))
-def test_result_type(dtypes):
-    out = xp.result_type(*dtypes)
-    ph.assert_dtype("result_type", dtypes, out, repr_name="out")
-
-
 bitwise_shift_funcs = [
     "bitwise_left_shift",
     "bitwise_right_shift",
@@ -133,35 +123,7 @@ for (dtype1, dtype2), promoted_dtype in dh.promotion_table.items():
     promotion_params.append(p)
 
 
-@pytest.mark.parametrize("in_dtypes, out_dtype", promotion_params)
-@given(shapes=hh.mutually_broadcastable_shapes(3), data=st.data())
-def test_where(in_dtypes, out_dtype, shapes, data):
-    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label="x1")
-    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label="x2")
-    cond = data.draw(xps.arrays(dtype=xp.bool, shape=shapes[2]), label="condition")
-    out = xp.where(cond, x1, x2)
-    ph.assert_dtype("where", in_dtypes, out.dtype, out_dtype)
-
-
 numeric_promotion_params = promotion_params[1:]
-
-
-@pytest.mark.parametrize("in_dtypes, out_dtype", numeric_promotion_params)
-@given(shapes=hh.mutually_broadcastable_shapes(2, min_dims=2), data=st.data())
-def test_tensordot(in_dtypes, out_dtype, shapes, data):
-    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label="x1")
-    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label="x2")
-    out = xp.tensordot(x1, x2)
-    ph.assert_dtype("tensordot", in_dtypes, out.dtype, out_dtype)
-
-
-@pytest.mark.parametrize("in_dtypes, out_dtype", numeric_promotion_params)
-@given(shapes=hh.mutually_broadcastable_shapes(2, min_dims=1), data=st.data())
-def test_vecdot(in_dtypes, out_dtype, shapes, data):
-    x1 = data.draw(xps.arrays(dtype=in_dtypes[0], shape=shapes[0]), label="x1")
-    x2 = data.draw(xps.arrays(dtype=in_dtypes[1], shape=shapes[1]), label="x2")
-    out = xp.vecdot(x1, x2)
-    ph.assert_dtype("vecdot", in_dtypes, out.dtype, out_dtype)
 
 
 op_params: List[Param[str, str, Tuple[DataType, ...], DataType]] = []

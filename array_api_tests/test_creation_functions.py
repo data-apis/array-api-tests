@@ -1,8 +1,8 @@
 import math
-import pytest
 from itertools import count
 from typing import Iterator, NamedTuple, Union
 
+import pytest
 from hypothesis import assume, given, note
 from hypothesis import strategies as st
 
@@ -190,10 +190,7 @@ def test_arange(dtype, data):
             ), f"out[0]={out[0]}, but should be {_start} {f_func}"
 
 
-@given(
-    shape=hh.shapes(min_side=1),
-    data=st.data(),
-)
+@given(shape=hh.shapes(min_side=1), data=st.data())
 def test_asarray_scalars(shape, data):
     kw = data.draw(
         hh.kwargs(dtype=st.none() | xps.scalar_dtypes(), copy=st.none()), label="kw"
@@ -480,6 +477,29 @@ def test_linspace(num, dtype, endpoint, data):
         expected = xp.linspace(start, stop, num + 1, dtype=dtype, endpoint=True)
         expected = expected[:-1]
         ah.assert_exactly_equal(out, expected)
+
+
+@given(
+    # The number and size of generated arrays is arbitrarily limited to prevent
+    # meshgrid() running out of memory.
+    dtypes=hh.mutually_promotable_dtypes(5, dtypes=dh.numeric_dtypes),
+    data=st.data(),
+)
+def test_meshgrid(dtypes, data):
+    arrays = []
+    shapes = data.draw(
+        hh.mutually_broadcastable_shapes(
+            len(dtypes), min_dims=1, max_dims=1, max_side=5
+        ),
+        label="shapes",
+    )
+    for i, (dtype, shape) in enumerate(zip(dtypes, shapes), 1):
+        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
+        arrays.append(x)
+    assert math.prod(x.size for x in arrays) <= hh.MAX_ARRAY_SIZE  # sanity check
+    out = xp.meshgrid(*arrays)
+    for i, x in enumerate(out):
+        ph.assert_dtype("meshgrid", dtypes, x.dtype, repr_name=f"out[{i}].dtype")
 
 
 def make_one(dtype: DataType) -> Scalar:

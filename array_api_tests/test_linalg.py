@@ -16,7 +16,7 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 import pytest
 from hypothesis import assume, given
 from hypothesis.strategies import (booleans, composite, none, tuples, integers,
-                                   shared, sampled_from)
+                                   shared, sampled_from, data, just)
 
 from .array_helpers import assert_exactly_equal, asarray, equal, zero, infinity
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
@@ -33,6 +33,7 @@ from . import shape_helpers as sh
 from .algos import broadcast_shapes
 
 from . import _array_module
+from . import _array_module as xp
 from ._array_module import linalg
 
 pytestmark = pytest.mark.ci
@@ -556,13 +557,20 @@ def test_svdvals(x):
 
 
 @given(
-    x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
-    x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
-    kw=kwargs(axes=todo)
+    dtypes=mutually_promotable_dtypes(dtypes=dh.numeric_dtypes),
+    shape=shapes(),
+    data=data(),
 )
-def test_tensordot(x1, x2, kw):
-    # res = _array_module.tensordot(x1, x2, **kw)
-    pass
+def test_tensordot(dtypes, shape, data):
+    # TODO: vary shapes, vary contracted axes, test different axes arguments
+    x1 = data.draw(xps.arrays(dtype=dtypes[0], shape=shape), label="x1")
+    x2 = data.draw(xps.arrays(dtype=dtypes[1], shape=shape), label="x2")
+
+    out = xp.tensordot(x1, x2, axes=len(shape))
+
+    ph.assert_dtype("tensordot", dtypes, out.dtype)
+    # TODO: assert shape and elements
+
 
 @pytest.mark.xp_extension('linalg')
 @given(
@@ -605,13 +613,21 @@ def test_trace(x, kw):
 
 
 @given(
-    x1=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
-    x2=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
-    kw=kwargs(axis=todo)
+    dtypes=mutually_promotable_dtypes(dtypes=dh.numeric_dtypes),
+    shape=shapes(),
+    data=data(),
 )
-def test_vecdot(x1, x2, kw):
-    # res = _array_module.vecdot(x1, x2, **kw)
-    pass
+def test_vecdot(dtypes, shape, data):
+    # TODO: vary shapes, test different axis arguments
+    x1 = data.draw(xps.arrays(dtype=dtypes[0], shape=shape), label="x1")
+    x2 = data.draw(xps.arrays(dtype=dtypes[1], shape=shape), label="x2")
+    kw = data.draw(kwargs(axis=just(-1)))
+
+    out = xp.vecdot(x1, x2, **kw)
+
+    ph.assert_dtype("vecdot", dtypes, out.dtype)
+    # TODO: assert shape and elements
+
 
 @pytest.mark.xp_extension('linalg')
 @given(
