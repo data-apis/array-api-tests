@@ -50,13 +50,54 @@ a specific test case, which is useful when developing functions.
 $ pytest array_api_tests/test_creation_functions.py::test_zeros
 ```
 
+## Releases
+
+The test suite has tagged releases on
+[GitHub](https://github.com/data-apis/array-api-tests/releases). If you run
+the test suite in your CI system, we recommend pinning against a release tag.
+
+We use [calender versioning](https://calver.org/) for the releases. You should
+expect that any version may be "breaking" compared to the previous one, in the
+sense that there may have been additional tests added which cause a previously
+passing library to fail.
+
+For now, the test suite is
+not installable as a Python package. You can use it by cloning the repo and
+running `pytest` as described above. If it would help you to be able to
+install it as a package, [please let us
+know](https://github.com/data-apis/array-api-tests/issues/85).
+
+*Test suite maintainer note:* to make a release of the test suite, make an
+annotated tag with the version:
+
+```
+git tag -a 2022.1
+```
+
+(for the message, just write something like "array-api-tests version 2022.1").
+Be sure to use the calver version number for the tag name. Versioneer will
+automatically set the version number of the `array_api_tests` package based on
+the git tag.
+
+Then push the tag to GitHub
+
+```
+git push --tags origin 2022.1
+```
+
+Finally go to the [tags page on
+GitHub](https://github.com/data-apis/array-api-tests/tags) and convert the tag
+into a release. If you want, you can add release notes to the release page on
+GitHub.
+
+
 ## What the test suite covers
 
 We are interested in array libraries conforming to the
 [spec](https://data-apis.org/array-api/latest/API_specification/index.html).
 Ideally this means that if a library has fully adopted the Array API, the test
-suite passes. We take great care to _not_ test things which are out-of-scope, so
-as to not unexpectedly fail the suite.
+suite passes. We take great care to _not_ test things which are out-of-scope,
+so as to not unexpectedly fail the suite.
 
 ### Primary tests
 
