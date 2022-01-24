@@ -47,7 +47,7 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "xp_extension(ext): tests an Array API extension"
     )
-    config.addinivalue_line("markers", "primary: primary test")
+    config.addinivalue_line("markers", "ci: primary test")
     # Hypothesis
     hypothesis_max_examples = config.getoption("--hypothesis-max-examples")
     disable_deadline = config.getoption("--hypothesis-disable-deadline")

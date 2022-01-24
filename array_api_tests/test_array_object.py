@@ -167,7 +167,7 @@ def test_setitem_masking(shape, data):
     scalar_type = dh.get_scalar_type(x.dtype)
     for idx in sh.ndindex(x.shape):
         if key[idx]:
-            if isinstance(value, Scalar):
+            if isinstance(value, get_args(Scalar)):
                 ph.assert_scalar_equals(
                     "__setitem__",
                     scalar_type,
@@ -200,7 +200,7 @@ def make_param(method_name: str, dtype: DataType, stype: ScalarType) -> Param:
     + [make_param("__float__", d, float) for d in dh.float_dtypes],
 )
 @given(data=st.data())
-def test_duck_typing(method_name, dtype, stype, data):
+def test_scalar_casting(method_name, dtype, stype, data):
     x = data.draw(xps.arrays(dtype, shape=()), label="x")
     method = getattr(x, method_name)
     out = method()

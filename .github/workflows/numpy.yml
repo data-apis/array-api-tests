@@ -19,7 +19,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install git+https://github.com/numpy/numpy
+        python -m pip install numpy==1.22.1
         python -m pip install -r requirements.txt
     - name: Run the test suite
       env:
@@ -28,26 +28,18 @@ jobs:
         # Mark some known issues as XFAIL
         cat << EOF >> xfails.txt
 
+        # copy not implemented
+        array_api_tests/test_creation_functions.py::test_asarray_arrays
         # https://github.com/numpy/numpy/issues/18881
         array_api_tests/test_creation_functions.py::test_linspace
-        # einsum is not yet completed in the spec
-        array_api_tests/test_signatures.py::test_has_names[einsum]
-        # dlpack support is not yet implemented in NumPy
-        # See https://github.com/numpy/numpy/pull/19083
-        array_api_tests/test_signatures.py::test_function_positional_args[__dlpack__]
-        array_api_tests/test_signatures.py::test_function_positional_args[__dlpack_device__]
-        array_api_tests/test_signatures.py::test_function_positional_args[from_dlpack]
-        array_api_tests/test_signatures.py::test_function_positional_args[to_device]
-        array_api_tests/test_signatures.py::test_function_keyword_only_args[__dlpack__]
-        # floor_divide has an issue related to https://github.com/data-apis/array-api/issues/264
-        array_api_tests/test_elementwise_functions.py::test_floor_divide
-        # mesgrid doesn't return all arrays as the promoted dtype
-        array_api_tests/test_type_promotion.py::test_meshgrid
-        # https://github.com/numpy/numpy/pull/20066#issuecomment-947056094
-        array_api_tests/test_type_promotion.py::test_where
-        # shape mismatches are not handled
-        array_api_tests/test_type_promotion.py::test_tensordot
+        # https://github.com/numpy/numpy/issues/20870
+        array_api_tests/test_data_type_functions.py::test_can_cast
+        # linalg tests generally need more mulling over
+        array_api_tests/test_linalg.py
+        # waiting on NumPy to allow/revert distinct NaNs for np.unique
+        # https://github.com/numpy/numpy/issues/20326#issuecomment-1012380448
+        array_api_tests/test_set_functions.py
 
         EOF
 
-        pytest -v -rxXfE
+        pytest -v -rxXfE --ci

@@ -11,7 +11,7 @@ special_cases/
 
 import math
 from enum import Enum, auto
-from typing import Callable, List, Sequence, Union
+from typing import Callable, List, Optional, Sequence, Union
 
 import pytest
 from hypothesis import assume, given
@@ -182,6 +182,24 @@ def make_binary_params(
     return params
 
 
+def assert_binary_param_dtype(
+    func_name: str,
+    left: Array,
+    right: Union[Array, Scalar],
+    right_is_scalar: bool,
+    res: Array,
+    res_name: str,
+    expected: Optional[DataType] = None,
+):
+    if right_is_scalar:
+        in_dtypes = left.dtype
+    else:
+        in_dtypes = (left.dtype, right.dtype)  # type: ignore
+    ph.assert_dtype(
+        func_name, in_dtypes, res.dtype, expected, repr_name=f"{res_name}.dtype"
+    )
+
+
 @pytest.mark.parametrize(unary_argnames, make_unary_params("abs", dh.numeric_dtypes))
 @given(data=st.data())
 def test_abs(func_name, func, strat, data):
@@ -193,6 +211,7 @@ def test_abs(func_name, func, strat, data):
         )
         x = x[mask]
     out = func(x)
+    ph.assert_dtype(func_name, x.dtype, out.dtype)
     ph.assert_shape(func_name, out.shape, x.shape)
     assert ah.all(
         ah.logical_not(ah.negative_mathematical_sign(out))
@@ -210,6 +229,7 @@ def test_abs(func_name, func, strat, data):
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_acos(x):
     res = xp.acos(x)
+    ph.assert_dtype("acos", x.dtype, res.dtype)
     ph.assert_shape("acos", res.shape, x.shape)
     ONE = ah.one(x.shape, x.dtype)
     # Here (and elsewhere), should technically be res.dtype, but this is the
@@ -226,6 +246,7 @@ def test_acos(x):
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_acosh(x):
     res = xp.acosh(x)
+    ph.assert_dtype("acosh", x.dtype, res.dtype)
     ph.assert_shape("acosh", res.shape, x.shape)
     ONE = ah.one(x.shape, x.dtype)
     INFINITY = ah.infinity(x.shape, x.dtype)
@@ -258,6 +279,7 @@ def test_add(
     except OverflowError:
         reject()
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     if not right_is_scalar:
         # add is commutative
         expected = func(right, left)
@@ -266,12 +288,13 @@ def test_add(
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_asin(x):
-    res = xp.asin(x)
-    ph.assert_shape("asin", res.shape, x.shape)
+    out = xp.asin(x)
+    ph.assert_dtype("asin", x.dtype, out.dtype)
+    ph.assert_shape("asin", out.shape, x.shape)
     ONE = ah.one(x.shape, x.dtype)
     PI = ah.π(x.shape, x.dtype)
     domain = ah.inrange(x, -ONE, ONE)
-    codomain = ah.inrange(res, -PI / 2, PI / 2)
+    codomain = ah.inrange(out, -PI / 2, PI / 2)
     # asin maps [-1, 1] to [-pi/2, pi/2]. Values outside this domain are
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
@@ -279,11 +302,12 @@ def test_asin(x):
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_asinh(x):
-    res = xp.asinh(x)
-    ph.assert_shape("asinh", res.shape, x.shape)
+    out = xp.asinh(x)
+    ph.assert_dtype("asinh", x.dtype, out.dtype)
+    ph.assert_shape("asinh", out.shape, x.shape)
     INFINITY = ah.infinity(x.shape, x.dtype)
     domain = ah.inrange(x, -INFINITY, INFINITY)
-    codomain = ah.inrange(res, -INFINITY, INFINITY)
+    codomain = ah.inrange(out, -INFINITY, INFINITY)
     # asinh maps [-inf, inf] to [-inf, inf]. Values outside this domain are
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
@@ -291,12 +315,13 @@ def test_asinh(x):
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_atan(x):
-    res = xp.atan(x)
-    ph.assert_shape("atan", res.shape, x.shape)
+    out = xp.atan(x)
+    ph.assert_dtype("atan", x.dtype, out.dtype)
+    ph.assert_shape("atan", out.shape, x.shape)
     INFINITY = ah.infinity(x.shape, x.dtype)
     PI = ah.π(x.shape, x.dtype)
     domain = ah.inrange(x, -INFINITY, INFINITY)
-    codomain = ah.inrange(res, -PI / 2, PI / 2)
+    codomain = ah.inrange(out, -PI / 2, PI / 2)
     # atan maps [-inf, inf] to [-pi/2, pi/2]. Values outside this domain are
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
@@ -304,14 +329,16 @@ def test_atan(x):
 
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_atan2(x1, x2):
-    res = xp.atan2(x1, x2)
+    out = xp.atan2(x1, x2)
+    ph.assert_dtype("atan2", (x1.dtype, x2.dtype), out.dtype)
+    ph.assert_result_shape("atan2", (x1.shape, x2.shape), out.shape)
     INFINITY1 = ah.infinity(x1.shape, x1.dtype)
     INFINITY2 = ah.infinity(x2.shape, x2.dtype)
-    PI = ah.π(res.shape, res.dtype)
+    PI = ah.π(out.shape, out.dtype)
     domainx1 = ah.inrange(x1, -INFINITY1, INFINITY1)
     domainx2 = ah.inrange(x2, -INFINITY2, INFINITY2)
-    # codomain = ah.inrange(res, -PI, PI, 1e-5)
-    codomain = ah.inrange(res, -PI, PI)
+    # codomain = ah.inrange(out, -PI, PI, 1e-5)
+    codomain = ah.inrange(out, -PI, PI)
     # atan2 maps [-inf, inf] x [-inf, inf] to [-pi, pi]. Values outside
     # this domain are mapped to nan, which is already tested in the special
     # cases.
@@ -319,8 +346,8 @@ def test_atan2(x1, x2):
     # From the spec:
     #
     # The mathematical signs of `x1_i` and `x2_i` determine the quadrant of
-    # each element-wise res. The quadrant (i.e., branch) is chosen such
-    # that each element-wise res is the signed angle in radians between the
+    # each element-wise out. The quadrant (i.e., branch) is chosen such
+    # that each element-wise out is the signed angle in radians between the
     # ray ending at the origin and passing through the point `(1,0)` and the
     # ray ending at the origin and passing through the point `(x2_i, x1_i)`.
 
@@ -330,8 +357,8 @@ def test_atan2(x1, x2):
     neg_x1 = ah.negative_mathematical_sign(x1)
     pos_x2 = ah.positive_mathematical_sign(x2)
     neg_x2 = ah.negative_mathematical_sign(x2)
-    pos_out = ah.positive_mathematical_sign(res)
-    neg_out = ah.negative_mathematical_sign(res)
+    pos_out = ah.positive_mathematical_sign(out)
+    neg_out = ah.negative_mathematical_sign(out)
     ah.assert_exactly_equal(
         ah.logical_or(ah.logical_and(pos_x1, pos_x2), ah.logical_and(pos_x1, neg_x2)),
         pos_out,
@@ -344,12 +371,13 @@ def test_atan2(x1, x2):
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_atanh(x):
-    res = xp.atanh(x)
-    ph.assert_shape("atanh", res.shape, x.shape)
+    out = xp.atanh(x)
+    ph.assert_dtype("atanh", x.dtype, out.dtype)
+    ph.assert_shape("atanh", out.shape, x.shape)
     ONE = ah.one(x.shape, x.dtype)
     INFINITY = ah.infinity(x.shape, x.dtype)
     domain = ah.inrange(x, -ONE, ONE)
-    codomain = ah.inrange(res, -INFINITY, INFINITY)
+    codomain = ah.inrange(out, -INFINITY, INFINITY)
     # atanh maps [-1, 1] to [-inf, inf]. Values outside this domain are
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
@@ -375,6 +403,7 @@ def test_bitwise_and(
 
     res = func(left, right)
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
@@ -426,6 +455,7 @@ def test_bitwise_left_shift(
 
     res = func(left, right)
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
@@ -456,6 +486,7 @@ def test_bitwise_invert(func_name, func, strat, data):
 
     out = func(x)
 
+    ph.assert_dtype(func_name, x.dtype, out.dtype)
     ph.assert_shape(func_name, out.shape, x.shape)
     # Compare against the Python ~ operator.
     if out.dtype == xp.bool:
@@ -493,6 +524,7 @@ def test_bitwise_or(
 
     res = func(left, right)
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
@@ -544,6 +576,7 @@ def test_bitwise_right_shift(
 
     res = func(left, right)
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
@@ -584,6 +617,7 @@ def test_bitwise_xor(
 
     res = func(left, right)
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
@@ -614,26 +648,28 @@ def test_bitwise_xor(
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_ceil(x):
     # This test is almost identical to test_floor()
-    res = xp.ceil(x)
-    ph.assert_shape("ceil", res.shape, x.shape)
+    out = xp.ceil(x)
+    ph.assert_dtype("ceil", x.dtype, out.dtype)
+    ph.assert_shape("ceil", out.shape, x.shape)
     finite = ah.isfinite(x)
-    ah.assert_integral(res[finite])
-    assert ah.all(ah.less_equal(x[finite], res[finite]))
+    ah.assert_integral(out[finite])
+    assert ah.all(ah.less_equal(x[finite], out[finite]))
     assert ah.all(
-        ah.less_equal(res[finite] - x[finite], ah.one(x[finite].shape, x.dtype))
+        ah.less_equal(out[finite] - x[finite], ah.one(x[finite].shape, x.dtype))
     )
     integers = ah.isintegral(x)
-    ah.assert_exactly_equal(res[integers], x[integers])
+    ah.assert_exactly_equal(out[integers], x[integers])
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_cos(x):
-    res = xp.cos(x)
-    ph.assert_shape("cos", res.shape, x.shape)
+    out = xp.cos(x)
+    ph.assert_dtype("cos", x.dtype, out.dtype)
+    ph.assert_shape("cos", out.shape, x.shape)
     ONE = ah.one(x.shape, x.dtype)
     INFINITY = ah.infinity(x.shape, x.dtype)
     domain = ah.inrange(x, -INFINITY, INFINITY, open=True)
-    codomain = ah.inrange(res, -ONE, ONE)
+    codomain = ah.inrange(out, -ONE, ONE)
     # cos maps (-inf, inf) to [-1, 1]. Values outside this domain are mapped
     # to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
@@ -641,17 +677,18 @@ def test_cos(x):
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_cosh(x):
-    res = xp.cosh(x)
-    ph.assert_shape("cosh", res.shape, x.shape)
+    out = xp.cosh(x)
+    ph.assert_dtype("cosh", x.dtype, out.dtype)
+    ph.assert_shape("cosh", out.shape, x.shape)
     INFINITY = ah.infinity(x.shape, x.dtype)
     domain = ah.inrange(x, -INFINITY, INFINITY)
-    codomain = ah.inrange(res, -INFINITY, INFINITY)
+    codomain = ah.inrange(out, -INFINITY, INFINITY)
     # cosh maps [-inf, inf] to [-inf, inf]. Values outside this domain are
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
 
 
-@pytest.mark.parametrize(binary_argnames, make_binary_params("divide", dh.numeric_dtypes))
+@pytest.mark.parametrize(binary_argnames, make_binary_params("divide", dh.float_dtypes))
 @given(data=st.data())
 def test_divide(
     func_name,
@@ -667,8 +704,9 @@ def test_divide(
     left = data.draw(left_strat, label=left_sym)
     right = data.draw(right_strat, label=right_sym)
 
-    func(left, right)
+    res = func(left, right)
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     # There isn't much we can test here. The spec doesn't require any behavior
     # beyond the special cases, and indeed, there aren't many mathematical
     # properties of division that strictly hold for floating-point numbers. We
@@ -694,6 +732,9 @@ def test_equal(
 
     out = func(left, right)
 
+    assert_binary_param_dtype(
+        func_name, left, right, right_is_scalar, out, res_name, xp.bool
+    )
     # NOTE: ah.assert_exactly_equal() itself uses ah.equal(), so we must be careful
     # not to use it here. Otherwise, the test would be circular and
     # meaningless. Instead, we implement this by iterating every element of
@@ -701,7 +742,6 @@ def test_equal(
     # for the other elementwise functions that accept any input dtype but
     # always return bool (greater(), greater_equal(), less(), less_equal(),
     # and not_equal()).
-
     if not right_is_scalar:
         # First we broadcast the arrays so that they can be indexed uniformly.
         # TODO: it should be possible to skip this step if we instead generate
@@ -738,12 +778,13 @@ def test_equal(
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_exp(x):
-    res = xp.exp(x)
-    ph.assert_shape("exp", res.shape, x.shape)
+    out = xp.exp(x)
+    ph.assert_dtype("exp", x.dtype, out.dtype)
+    ph.assert_shape("exp", out.shape, x.shape)
     INFINITY = ah.infinity(x.shape, x.dtype)
     ZERO = ah.zero(x.shape, x.dtype)
     domain = ah.inrange(x, -INFINITY, INFINITY)
-    codomain = ah.inrange(res, ZERO, INFINITY)
+    codomain = ah.inrange(out, ZERO, INFINITY)
     # exp maps [-inf, inf] to [0, inf]. Values outside this domain are
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
@@ -751,12 +792,13 @@ def test_exp(x):
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_expm1(x):
-    res = xp.expm1(x)
-    ph.assert_shape("expm1", res.shape, x.shape)
+    out = xp.expm1(x)
+    ph.assert_dtype("expm1", x.dtype, out.dtype)
+    ph.assert_shape("expm1", out.shape, x.shape)
     INFINITY = ah.infinity(x.shape, x.dtype)
     NEGONE = -ah.one(x.shape, x.dtype)
     domain = ah.inrange(x, -INFINITY, INFINITY)
-    codomain = ah.inrange(res, NEGONE, INFINITY)
+    codomain = ah.inrange(out, NEGONE, INFINITY)
     # expm1 maps [-inf, inf] to [1, inf]. Values outside this domain are
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
@@ -765,16 +807,17 @@ def test_expm1(x):
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_floor(x):
     # This test is almost identical to test_ceil
-    res = xp.floor(x)
-    ph.assert_shape("floor", res.shape, x.shape)
+    out = xp.floor(x)
+    ph.assert_dtype("floor", x.dtype, out.dtype)
+    ph.assert_shape("floor", out.shape, x.shape)
     finite = ah.isfinite(x)
-    ah.assert_integral(res[finite])
-    assert ah.all(ah.less_equal(res[finite], x[finite]))
+    ah.assert_integral(out[finite])
+    assert ah.all(ah.less_equal(out[finite], x[finite]))
     assert ah.all(
-        ah.less_equal(x[finite] - res[finite], ah.one(x[finite].shape, x.dtype))
+        ah.less_equal(x[finite] - out[finite], ah.one(x[finite].shape, x.dtype))
     )
     integers = ah.isintegral(x)
-    ah.assert_exactly_equal(res[integers], x[integers])
+    ah.assert_exactly_equal(out[integers], x[integers])
 
 
 @pytest.mark.parametrize(
@@ -801,6 +844,7 @@ def test_floor_divide(
 
     res = func(left, right)
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     if not right_is_scalar:
         if dh.is_int_dtype(left.dtype):
             # The spec does not specify the behavior for division by 0 for integer
@@ -817,7 +861,6 @@ def test_floor_divide(
         # infinities. See https://github.com/data-apis/array-api/issues/199.
         finite = ah.isfinite(div)
         ah.assert_integral(res[finite])
-
     # TODO: Test the exact output for floor_divide.
 
 
@@ -841,6 +884,9 @@ def test_greater(
 
     out = func(left, right)
 
+    assert_binary_param_dtype(
+        func_name, left, right, right_is_scalar, out, res_name, xp.bool
+    )
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
@@ -881,6 +927,9 @@ def test_greater_equal(
 
     out = func(left, right)
 
+    assert_binary_param_dtype(
+        func_name, left, right, right_is_scalar, out, res_name, xp.bool
+    )
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
 
@@ -904,55 +953,58 @@ def test_greater_equal(
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isfinite(x):
-    res = ah.isfinite(x)
-    ph.assert_shape("isfinite", res.shape, x.shape)
+    out = ah.isfinite(x)
+    ph.assert_dtype("isfinite", x.dtype, out.dtype, xp.bool)
+    ph.assert_shape("isfinite", out.shape, x.shape)
     if dh.is_int_dtype(x.dtype):
-        ah.assert_exactly_equal(res, ah.true(x.shape))
+        ah.assert_exactly_equal(out, ah.true(x.shape))
     # Test that isfinite, isinf, and isnan are self-consistent.
     inf = ah.logical_or(xp.isinf(x), ah.isnan(x))
-    ah.assert_exactly_equal(res, ah.logical_not(inf))
+    ah.assert_exactly_equal(out, ah.logical_not(inf))
 
     # Test the exact value by comparing to the math version
     if dh.is_float_dtype(x.dtype):
         for idx in sh.ndindex(x.shape):
             s = float(x[idx])
-            assert bool(res[idx]) == math.isfinite(s)
+            assert bool(out[idx]) == math.isfinite(s)
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isinf(x):
-    res = xp.isinf(x)
+    out = xp.isinf(x)
 
-    ph.assert_shape("isinf", res.shape, x.shape)
+    ph.assert_dtype("isfinite", x.dtype, out.dtype, xp.bool)
+    ph.assert_shape("isinf", out.shape, x.shape)
 
     if dh.is_int_dtype(x.dtype):
-        ah.assert_exactly_equal(res, ah.false(x.shape))
+        ah.assert_exactly_equal(out, ah.false(x.shape))
     finite_or_nan = ah.logical_or(ah.isfinite(x), ah.isnan(x))
-    ah.assert_exactly_equal(res, ah.logical_not(finite_or_nan))
+    ah.assert_exactly_equal(out, ah.logical_not(finite_or_nan))
 
     # Test the exact value by comparing to the math version
     if dh.is_float_dtype(x.dtype):
         for idx in sh.ndindex(x.shape):
             s = float(x[idx])
-            assert bool(res[idx]) == math.isinf(s)
+            assert bool(out[idx]) == math.isinf(s)
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isnan(x):
-    res = ah.isnan(x)
+    out = ah.isnan(x)
 
-    ph.assert_shape("isnan", res.shape, x.shape)
+    ph.assert_dtype("isnan", x.dtype, out.dtype, xp.bool)
+    ph.assert_shape("isnan", out.shape, x.shape)
 
     if dh.is_int_dtype(x.dtype):
-        ah.assert_exactly_equal(res, ah.false(x.shape))
+        ah.assert_exactly_equal(out, ah.false(x.shape))
     finite_or_inf = ah.logical_or(ah.isfinite(x), xp.isinf(x))
-    ah.assert_exactly_equal(res, ah.logical_not(finite_or_inf))
+    ah.assert_exactly_equal(out, ah.logical_not(finite_or_inf))
 
     # Test the exact value by comparing to the math version
     if dh.is_float_dtype(x.dtype):
         for idx in sh.ndindex(x.shape):
             s = float(x[idx])
-            assert bool(res[idx]) == math.isnan(s)
+            assert bool(out[idx]) == math.isnan(s)
 
 
 @pytest.mark.parametrize(binary_argnames, make_binary_params("less", dh.numeric_dtypes))
@@ -973,6 +1025,9 @@ def test_less(
 
     out = func(left, right)
 
+    assert_binary_param_dtype(
+        func_name, left, right, right_is_scalar, out, res_name, xp.bool
+    )
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
 
@@ -1014,6 +1069,9 @@ def test_less_equal(
 
     out = func(left, right)
 
+    assert_binary_param_dtype(
+        func_name, left, right, right_is_scalar, out, res_name, xp.bool
+    )
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
 
@@ -1037,14 +1095,15 @@ def test_less_equal(
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log(x):
-    res = xp.log(x)
+    out = xp.log(x)
 
-    ph.assert_shape("log", res.shape, x.shape)
+    ph.assert_dtype("log", x.dtype, out.dtype)
+    ph.assert_shape("log", out.shape, x.shape)
 
     INFINITY = ah.infinity(x.shape, x.dtype)
     ZERO = ah.zero(x.shape, x.dtype)
     domain = ah.inrange(x, ZERO, INFINITY)
-    codomain = ah.inrange(res, -INFINITY, INFINITY)
+    codomain = ah.inrange(out, -INFINITY, INFINITY)
     # log maps [0, inf] to [-inf, inf]. Values outside this domain are
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
@@ -1052,12 +1111,13 @@ def test_log(x):
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log1p(x):
-    res = xp.log1p(x)
-    ph.assert_shape("log1p", res.shape, x.shape)
+    out = xp.log1p(x)
+    ph.assert_dtype("log1p", x.dtype, out.dtype)
+    ph.assert_shape("log1p", out.shape, x.shape)
     INFINITY = ah.infinity(x.shape, x.dtype)
     NEGONE = -ah.one(x.shape, x.dtype)
     codomain = ah.inrange(x, NEGONE, INFINITY)
-    domain = ah.inrange(res, -INFINITY, INFINITY)
+    domain = ah.inrange(out, -INFINITY, INFINITY)
     # log1p maps [1, inf] to [-inf, inf]. Values outside this domain are
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
@@ -1065,12 +1125,13 @@ def test_log1p(x):
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log2(x):
-    res = xp.log2(x)
-    ph.assert_shape("log2", res.shape, x.shape)
+    out = xp.log2(x)
+    ph.assert_dtype("log2", x.dtype, out.dtype)
+    ph.assert_shape("log2", out.shape, x.shape)
     INFINITY = ah.infinity(x.shape, x.dtype)
     ZERO = ah.zero(x.shape, x.dtype)
     domain = ah.inrange(x, ZERO, INFINITY)
-    codomain = ah.inrange(res, -INFINITY, INFINITY)
+    codomain = ah.inrange(out, -INFINITY, INFINITY)
     # log2 maps [0, inf] to [-inf, inf]. Values outside this domain are
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
@@ -1078,12 +1139,13 @@ def test_log2(x):
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log10(x):
-    res = xp.log10(x)
-    ph.assert_shape("log10", res.shape, x.shape)
+    out = xp.log10(x)
+    ph.assert_dtype("log10", x.dtype, out.dtype)
+    ph.assert_shape("log10", out.shape, x.shape)
     INFINITY = ah.infinity(x.shape, x.dtype)
     ZERO = ah.zero(x.shape, x.dtype)
     domain = ah.inrange(x, ZERO, INFINITY)
-    codomain = ah.inrange(res, -INFINITY, INFINITY)
+    codomain = ah.inrange(out, -INFINITY, INFINITY)
     # log10 maps [0, inf] to [-inf, inf]. Values outside this domain are
     # mapped to nan, which is already tested in the special cases.
     ah.assert_exactly_equal(domain, codomain)
@@ -1091,7 +1153,8 @@ def test_log10(x):
 
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_logaddexp(x1, x2):
-    xp.logaddexp(x1, x2)
+    out = xp.logaddexp(x1, x2)
+    ph.assert_dtype("logaddexp", (x1.dtype, x2.dtype), out.dtype)
     # The spec doesn't require any behavior for this function. We could test
     # that this is indeed an approximation of log(exp(x1) + exp(x2)), but we
     # don't have tests for this sort of thing for any functions yet.
@@ -1100,13 +1163,12 @@ def test_logaddexp(x1, x2):
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_and(x1, x2):
     out = ah.logical_and(x1, x2)
-
+    ph.assert_dtype("logical_and", (x1.dtype, x2.dtype), out.dtype)
     # See the comments in test_equal
     shape = broadcast_shapes(x1.shape, x2.shape)
     ph.assert_shape("logical_and", out.shape, shape)
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
-
     for idx in sh.ndindex(shape):
         assert out[idx] == (bool(_x1[idx]) and bool(_x2[idx]))
 
@@ -1114,6 +1176,7 @@ def test_logical_and(x1, x2):
 @given(xps.arrays(dtype=xp.bool, shape=hh.shapes()))
 def test_logical_not(x):
     out = ah.logical_not(x)
+    ph.assert_dtype("logical_not", x.dtype, out.dtype)
     ph.assert_shape("logical_not", out.shape, x.shape)
     for idx in sh.ndindex(x.shape):
         assert out[idx] == (not bool(x[idx]))
@@ -1122,13 +1185,12 @@ def test_logical_not(x):
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_or(x1, x2):
     out = ah.logical_or(x1, x2)
-
+    ph.assert_dtype("logical_or", (x1.dtype, x2.dtype), out.dtype)
     # See the comments in test_equal
     shape = broadcast_shapes(x1.shape, x2.shape)
     ph.assert_shape("logical_or", out.shape, shape)
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
-
     for idx in sh.ndindex(shape):
         assert out[idx] == (bool(_x1[idx]) or bool(_x2[idx]))
 
@@ -1136,13 +1198,12 @@ def test_logical_or(x1, x2):
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_xor(x1, x2):
     out = xp.logical_xor(x1, x2)
-
+    ph.assert_dtype("logical_xor", (x1.dtype, x2.dtype), out.dtype)
     # See the comments in test_equal
     shape = broadcast_shapes(x1.shape, x2.shape)
     ph.assert_shape("logical_xor", out.shape, shape)
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
-
     for idx in sh.ndindex(shape):
         assert out[idx] == (bool(_x1[idx]) ^ bool(_x2[idx]))
 
@@ -1167,6 +1228,7 @@ def test_multiply(
 
     res = func(left, right)
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     if not right_is_scalar:
         # multiply is commutative
         expected = func(right, left)
@@ -1182,6 +1244,7 @@ def test_negative(func_name, func, strat, data):
 
     out = func(x)
 
+    ph.assert_dtype(func_name, x.dtype, out.dtype)
     ph.assert_shape(func_name, out.shape, x.shape)
 
     # Negation is an involution
@@ -1219,6 +1282,9 @@ def test_not_equal(
 
     out = func(left, right)
 
+    assert_binary_param_dtype(
+        func_name, left, right, right_is_scalar, out, res_name, xp.bool
+    )
     if not right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
 
@@ -1249,6 +1315,7 @@ def test_positive(func_name, func, strat, data):
 
     out = func(x)
 
+    ph.assert_dtype(func_name, x.dtype, out.dtype)
     ph.assert_shape(func_name, out.shape, x.shape)
     # Positive does nothing
     ah.assert_exactly_equal(out, x)
@@ -1277,10 +1344,11 @@ def test_pow(
             assume(xp.all(right >= 0))
 
     try:
-        func(left, right)
+        res = func(left, right)
     except OverflowError:
         reject()
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     # There isn't much we can test here. The spec doesn't require any behavior
     # beyond the special cases, and indeed, there aren't many mathematical
     # properties of exponentiation that strictly hold for floating-point
@@ -1315,22 +1383,25 @@ def test_remainder(
         else:
             assume(not ah.any(right == 0))
 
-    func(left, right)
+    res = func(left, right)
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     # TODO: test results
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_round(x):
-    res = xp.round(x)
+    out = xp.round(x)
 
-    ph.assert_shape("round", res.shape, x.shape)
+    ph.assert_dtype("round", x.dtype, out.dtype)
 
-    # Test that the res is integral
+    ph.assert_shape("round", out.shape, x.shape)
+
+    # Test that the out is integral
     finite = ah.isfinite(x)
-    ah.assert_integral(res[finite])
+    ah.assert_integral(out[finite])
 
-    # round(x) should be the nearest integer to x. The case where there is a
+    # round(x) should be the neaoutt integer to x. The case where there is a
     # tie (round to even) is already handled by the special cases tests.
 
     # This is the same strategy used in the mask in the
@@ -1342,41 +1413,46 @@ def test_round(x):
     under = xp.subtract(ceil, x)
     round_down = ah.less(over, under)
     round_up = ah.less(under, over)
-    ah.assert_exactly_equal(res[round_down], floor[round_down])
-    ah.assert_exactly_equal(res[round_up], ceil[round_up])
+    ah.assert_exactly_equal(out[round_down], floor[round_down])
+    ah.assert_exactly_equal(out[round_up], ceil[round_up])
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_sign(x):
-    res = xp.sign(x)
-    ph.assert_shape("sign", res.shape, x.shape)
+    out = xp.sign(x)
+    ph.assert_dtype("sign", x.dtype, out.dtype)
+    ph.assert_shape("sign", out.shape, x.shape)
     # TODO
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_sin(x):
-    res = xp.sin(x)
-    ph.assert_shape("sin", res.shape, x.shape)
+    out = xp.sin(x)
+    ph.assert_dtype("sin", x.dtype, out.dtype)
+    ph.assert_shape("sin", out.shape, x.shape)
     # TODO
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_sinh(x):
-    res = xp.sinh(x)
-    ph.assert_shape("sinh", res.shape, x.shape)
+    out = xp.sinh(x)
+    ph.assert_dtype("sinh", x.dtype, out.dtype)
+    ph.assert_shape("sinh", out.shape, x.shape)
     # TODO
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_square(x):
-    res = xp.square(x)
-    ph.assert_shape("square", res.shape, x.shape)
+    out = xp.square(x)
+    ph.assert_dtype("square", x.dtype, out.dtype)
+    ph.assert_shape("square", out.shape, x.shape)
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_sqrt(x):
-    res = xp.sqrt(x)
-    ph.assert_shape("sqrt", res.shape, x.shape)
+    out = xp.sqrt(x)
+    ph.assert_dtype("sqrt", x.dtype, out.dtype)
+    ph.assert_shape("sqrt", out.shape, x.shape)
 
 
 @pytest.mark.parametrize(
@@ -1398,33 +1474,37 @@ def test_subtract(
     right = data.draw(right_strat, label=right_sym)
 
     try:
-        func(left, right)
+        res = func(left, right)
     except OverflowError:
         reject()
 
+    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
     # TODO
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_tan(x):
-    res = xp.tan(x)
-    ph.assert_shape("tan", res.shape, x.shape)
+    out = xp.tan(x)
+    ph.assert_dtype("tan", x.dtype, out.dtype)
+    ph.assert_shape("tan", out.shape, x.shape)
     # TODO
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_tanh(x):
-    res = xp.tanh(x)
-    ph.assert_shape("tanh", res.shape, x.shape)
+    out = xp.tanh(x)
+    ph.assert_dtype("tanh", x.dtype, out.dtype)
+    ph.assert_shape("tanh", out.shape, x.shape)
     # TODO
 
 
 @given(xps.arrays(dtype=hh.numeric_dtypes, shape=xps.array_shapes()))
 def test_trunc(x):
-    res = xp.trunc(x)
-    ph.assert_shape("bitwise_trunc", res.shape, x.shape)
+    out = xp.trunc(x)
+    ph.assert_dtype("trunc", x.dtype, out.dtype)
+    ph.assert_shape("trunc", out.shape, x.shape)
     if dh.is_int_dtype(x.dtype):
-        ah.assert_exactly_equal(res, x)
+        ah.assert_exactly_equal(out, x)
     else:
         finite = ah.isfinite(x)
-        ah.assert_integral(res[finite])
+        ah.assert_integral(out[finite])
