@@ -71,19 +71,6 @@ def _test_stacks(f, *args, res=None, dims=2, true_val=None, matrix_axes=(-2, -1)
             iter_indices(res.shape, skip_axes=tuple(range(-dims, 0)))):
         x_idxes = [x_idx.raw for x_idx in x_idxes]
         res_idx = res_idx.raw
-        # res should have `dims` slices in it. Cases where there are more than
-        # `dims` slices are ambiguous, but that should only occur in cases
-        # where axes = (-2, -1).
-        # res_idx2 = []
-        # d = dims
-        # for i in res_idx:
-        #     if isinstance(i, slice):
-        #         if d:
-        #             res_idx2.append(i)
-        #             d -= 1
-        #     else:
-        #         res_idx2.append(i)
-        # res_idx2 = tuple(res_idx2)
 
         res_stack = res[res_idx]
         x_stacks = [x[x_idx] for x, x_idx in zip(args, x_idxes)]
