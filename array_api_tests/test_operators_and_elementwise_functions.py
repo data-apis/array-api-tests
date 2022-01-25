@@ -11,7 +11,7 @@ special_cases/
 
 import math
 from enum import Enum, auto
-from typing import Callable, List, Optional, Sequence, Union
+from typing import Callable, List, Optional, Union
 
 import pytest
 from hypothesis import assume, given
@@ -26,9 +26,18 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 from .algos import broadcast_shapes
-from .typing import Array, DataType, Param, Scalar
+from .typing import Array, DataType, Param, Scalar, Shape
 
 pytestmark = pytest.mark.ci
+
+
+def all_integer_dtypes() -> st.SearchStrategy[DataType]:
+    return xps.unsigned_integer_dtypes() | xps.integer_dtypes()
+
+
+def boolean_and_all_integer_dtypes() -> st.SearchStrategy[DataType]:
+    return xps.boolean_dtypes() | all_integer_dtypes()
+
 
 # When appropiate, this module tests operators alongside their respective
 # elementwise methods. We do this by parametrizing a generalised test method
@@ -53,11 +62,9 @@ UnaryParam = Param[str, Callable[[Array], Array], st.SearchStrategy[Array]]
 
 
 def make_unary_params(
-    elwise_func_name: str, dtypes: Sequence[DataType]
+    elwise_func_name: str, dtypes_strat: st.SearchStrategy[DataType]
 ) -> List[UnaryParam]:
-    if hh.FILTER_UNDEFINED_DTYPES:
-        dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
-    strat = xps.arrays(dtype=st.sampled_from(dtypes), shape=hh.shapes())
+    strat = xps.arrays(dtype=dtypes_strat, shape=hh.shapes())
     func = getattr(xp, elwise_func_name)
     op_name = func_to_op[elwise_func_name]
     op = lambda x: getattr(x, op_name)()
@@ -94,13 +101,12 @@ class FuncType(Enum):
     IOP = auto()
 
 
-def make_binary_params(
-    elwise_func_name: str, dtypes: Sequence[DataType]
-) -> List[BinaryParam]:
-    if hh.FILTER_UNDEFINED_DTYPES:
-        dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
-    dtypes_strat = st.sampled_from(dtypes)
+shapes_kw = {"min_side": 1}
 
+
+def make_binary_params(
+    elwise_func_name: str, dtypes_strat: st.SearchStrategy[DataType]
+) -> List[BinaryParam]:
     def make_param(
         func_name: str, func_type: FuncType, right_is_scalar: bool
     ) -> BinaryParam:
@@ -113,17 +119,25 @@ def make_binary_params(
 
         shared_dtypes = st.shared(dtypes_strat)
         if right_is_scalar:
-            left_strat = xps.arrays(dtype=shared_dtypes, shape=hh.shapes())
+            left_strat = xps.arrays(dtype=shared_dtypes, shape=hh.shapes(**shapes_kw))
             right_strat = shared_dtypes.flatmap(
                 lambda d: xps.from_dtype(d, **finite_kw)
             )
         else:
             if func_type is FuncType.IOP:
-                shared_shapes = st.shared(hh.shapes())
+                shared_shapes = st.shared(hh.shapes(**shapes_kw))
                 left_strat = xps.arrays(dtype=shared_dtypes, shape=shared_shapes)
                 right_strat = xps.arrays(dtype=shared_dtypes, shape=shared_shapes)
             else:
-                left_strat, right_strat = hh.two_mutual_arrays(dtypes)
+                mutual_shapes = st.shared(
+                    hh.mutually_broadcastable_shapes(2, **shapes_kw)
+                )
+                left_strat = xps.arrays(
+                    dtype=shared_dtypes, shape=mutual_shapes.map(lambda pair: pair[0])
+                )
+                right_strat = xps.arrays(
+                    dtype=shared_dtypes, shape=mutual_shapes.map(lambda pair: pair[1])
+                )
 
         if func_type is FuncType.FUNC:
             func = getattr(xp, func_name)
@@ -142,9 +156,7 @@ def make_binary_params(
 
                 def func(l: Array, r: Union[Scalar, Array]) -> Array:
                     locals_ = {}
-                    locals_[left_sym] = ah.asarray(
-                        l, copy=True
-                    )  # prevents left mutating
+                    locals_[left_sym] = ah.asarray(l, copy=True)  # prevents mutating l
                     locals_[right_sym] = r
                     exec(expr, locals_)
                     return locals_[left_sym]
@@ -200,7 +212,25 @@ def assert_binary_param_dtype(
     )
 
 
-@pytest.mark.parametrize(unary_argnames, make_unary_params("abs", dh.numeric_dtypes))
+def assert_binary_param_shape(
+    func_name: str,
+    left: Array,
+    right: Union[Array, Scalar],
+    right_is_scalar: bool,
+    res: Array,
+    res_name: str,
+    expected: Optional[Shape] = None,
+):
+    if right_is_scalar:
+        in_shapes = (left.shape,)
+    else:
+        in_shapes = (left.shape, right.shape)  # type: ignore
+    ph.assert_result_shape(
+        func_name, in_shapes, res.shape, expected, repr_name=f"{res_name}.shape"
+    )
+
+
+@pytest.mark.parametrize(unary_argnames, make_unary_params("abs", xps.numeric_dtypes()))
 @given(data=st.data())
 def test_abs(func_name, func, strat, data):
     x = data.draw(strat, label="x")
@@ -258,7 +288,9 @@ def test_acosh(x):
     ah.assert_exactly_equal(domain, codomain)
 
 
-@pytest.mark.parametrize(binary_argnames, make_binary_params("add", dh.numeric_dtypes))
+@pytest.mark.parametrize(
+    binary_argnames, make_binary_params("add", xps.numeric_dtypes())
+)
 @given(data=st.data())
 def test_add(
     func_name,
@@ -384,7 +416,7 @@ def test_atanh(x):
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("bitwise_and", dh.bool_and_all_int_dtypes)
+    binary_argnames, make_binary_params("bitwise_and", boolean_and_all_integer_dtypes())
 )
 @given(data=st.data())
 def test_bitwise_and(
@@ -432,7 +464,7 @@ def test_bitwise_and(
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("bitwise_left_shift", dh.all_int_dtypes)
+    binary_argnames, make_binary_params("bitwise_left_shift", all_integer_dtypes())
 )
 @given(data=st.data())
 def test_bitwise_left_shift(
@@ -478,7 +510,8 @@ def test_bitwise_left_shift(
 
 
 @pytest.mark.parametrize(
-    unary_argnames, make_unary_params("bitwise_invert", dh.bool_and_all_int_dtypes)
+    unary_argnames,
+    make_unary_params("bitwise_invert", boolean_and_all_integer_dtypes()),
 )
 @given(data=st.data())
 def test_bitwise_invert(func_name, func, strat, data):
@@ -505,7 +538,7 @@ def test_bitwise_invert(func_name, func, strat, data):
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("bitwise_or", dh.bool_and_all_int_dtypes)
+    binary_argnames, make_binary_params("bitwise_or", boolean_and_all_integer_dtypes())
 )
 @given(data=st.data())
 def test_bitwise_or(
@@ -553,7 +586,7 @@ def test_bitwise_or(
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("bitwise_right_shift", dh.all_int_dtypes)
+    binary_argnames, make_binary_params("bitwise_right_shift", all_integer_dtypes())
 )
 @given(data=st.data())
 def test_bitwise_right_shift(
@@ -598,7 +631,7 @@ def test_bitwise_right_shift(
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("bitwise_xor", dh.bool_and_all_int_dtypes)
+    binary_argnames, make_binary_params("bitwise_xor", boolean_and_all_integer_dtypes())
 )
 @given(data=st.data())
 def test_bitwise_xor(
@@ -688,7 +721,9 @@ def test_cosh(x):
     ah.assert_exactly_equal(domain, codomain)
 
 
-@pytest.mark.parametrize(binary_argnames, make_binary_params("divide", dh.float_dtypes))
+@pytest.mark.parametrize(
+    binary_argnames, make_binary_params("divide", xps.floating_dtypes())
+)
 @given(data=st.data())
 def test_divide(
     func_name,
@@ -714,7 +749,9 @@ def test_divide(
     # have those sorts in general for this module.
 
 
-@pytest.mark.parametrize(binary_argnames, make_binary_params("equal", dh.all_dtypes))
+@pytest.mark.parametrize(
+    binary_argnames, make_binary_params("equal", xps.scalar_dtypes())
+)
 @given(data=st.data())
 def test_equal(
     func_name,
@@ -735,45 +772,32 @@ def test_equal(
     assert_binary_param_dtype(
         func_name, left, right, right_is_scalar, out, res_name, xp.bool
     )
-    # NOTE: ah.assert_exactly_equal() itself uses ah.equal(), so we must be careful
-    # not to use it here. Otherwise, the test would be circular and
-    # meaningless. Instead, we implement this by iterating every element of
-    # the arrays and comparing them. The logic here is also used for the tests
-    # for the other elementwise functions that accept any input dtype but
-    # always return bool (greater(), greater_equal(), less(), less_equal(),
-    # and not_equal()).
+    assert_binary_param_shape(func_name, left, right, right_is_scalar, out, res_name)
     if not right_is_scalar:
-        # First we broadcast the arrays so that they can be indexed uniformly.
-        # TODO: it should be possible to skip this step if we instead generate
-        # indices to x1 and x2 that correspond to the broadcasted shapes. This
-        # would avoid the dependence in this test on broadcast_to().
-        shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(func_name, out.shape, shape)
-        _left = xp.broadcast_to(left, shape)
-        _right = xp.broadcast_to(right, shape)
-
-        # Second, manually promote the dtypes. This is important. If the internal
-        # type promotion in ah.equal() is wrong, it will not be directly visible in
-        # the output type, but it can lead to wrong answers. For example,
-        # ah.equal(array(1.0, dtype=xp.float32), array(1.00000001, dtype=xp.float64)) will
-        # be wrong if the float64 is downcast to float32. # be wrong if the
-        # xp.float64 is downcast to float32. See the comment on
-        # test_elementwise_function_two_arg_bool_type_promotion() in
-        # test_type_promotion.py. The type promotion for ah.equal() is not *really*
-        # tested in that file, because doing so requires doing the consistency
-
-        # check we do here rather than just checking the res dtype.
+        # We manually promote the dtypes as incorrect internal type promotion
+        # could lead to erroneous behaviour that we don't catch. For example
+        #
+        #     >>> xp.equal(
+        #     ...     xp.asarray(1.0, dtype=xp.float32),
+        #     ...     xp.asarray(1.00000001, dtype=xp.float64),
+        #     ... )
+        #
+        # would incorrectly be True if float64 downcasts to float32 internally.
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = ah.asarray(_left, dtype=promoted_dtype)
-        _right = ah.asarray(_right, dtype=promoted_dtype)
-
+        _left = xp.astype(left, promoted_dtype)
+        _right = xp.astype(right, promoted_dtype)
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in sh.ndindex(shape):
-            x1_idx = _left[idx]
-            x2_idx = _right[idx]
-            out_idx = out[idx]
-            assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_type(x1_idx) == scalar_type(x2_idx))
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
+            scalar_l = scalar_type(_left[l_idx])
+            scalar_r = scalar_type(_right[r_idx])
+            expected = scalar_l == scalar_r
+            scalar_o = bool(out[o_idx])
+            assert scalar_o == expected, (
+                f"out[{o_idx}]={scalar_o}, but should be "
+                f"{left_sym}[{l_idx}]=={right_sym}[{r_idx}]={expected} "
+                f"({left_sym}[{l_idx}]={scalar_l}, {right_sym}[{r_idx}]={scalar_r}) "
+                f"[{func_name}()]"
+            )
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -821,7 +845,7 @@ def test_floor(x):
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("floor_divide", dh.numeric_dtypes)
+    binary_argnames, make_binary_params("floor_divide", xps.numeric_dtypes())
 )
 @given(data=st.data())
 def test_floor_divide(
@@ -865,7 +889,7 @@ def test_floor_divide(
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("greater", dh.numeric_dtypes)
+    binary_argnames, make_binary_params("greater", xps.numeric_dtypes())
 )
 @given(data=st.data())
 def test_greater(
@@ -908,7 +932,7 @@ def test_greater(
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("greater_equal", dh.numeric_dtypes)
+    binary_argnames, make_binary_params("greater_equal", xps.numeric_dtypes())
 )
 @given(data=st.data())
 def test_greater_equal(
@@ -1007,7 +1031,9 @@ def test_isnan(x):
             assert bool(out[idx]) == math.isnan(s)
 
 
-@pytest.mark.parametrize(binary_argnames, make_binary_params("less", dh.numeric_dtypes))
+@pytest.mark.parametrize(
+    binary_argnames, make_binary_params("less", xps.numeric_dtypes())
+)
 @given(data=st.data())
 def test_less(
     func_name,
@@ -1050,7 +1076,7 @@ def test_less(
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("less_equal", dh.numeric_dtypes)
+    binary_argnames, make_binary_params("less_equal", xps.numeric_dtypes())
 )
 @given(data=st.data())
 def test_less_equal(
@@ -1209,7 +1235,7 @@ def test_logical_xor(x1, x2):
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("multiply", dh.numeric_dtypes)
+    binary_argnames, make_binary_params("multiply", xps.numeric_dtypes())
 )
 @given(data=st.data())
 def test_multiply(
@@ -1236,7 +1262,7 @@ def test_multiply(
 
 
 @pytest.mark.parametrize(
-    unary_argnames, make_unary_params("negative", dh.numeric_dtypes)
+    unary_argnames, make_unary_params("negative", xps.numeric_dtypes())
 )
 @given(data=st.data())
 def test_negative(func_name, func, strat, data):
@@ -1263,7 +1289,7 @@ def test_negative(func_name, func, strat, data):
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("not_equal", dh.all_dtypes)
+    binary_argnames, make_binary_params("not_equal", xps.scalar_dtypes())
 )
 @given(data=st.data())
 def test_not_equal(
@@ -1307,7 +1333,7 @@ def test_not_equal(
 
 
 @pytest.mark.parametrize(
-    unary_argnames, make_unary_params("positive", dh.numeric_dtypes)
+    unary_argnames, make_unary_params("positive", xps.numeric_dtypes())
 )
 @given(data=st.data())
 def test_positive(func_name, func, strat, data):
@@ -1321,7 +1347,9 @@ def test_positive(func_name, func, strat, data):
     ah.assert_exactly_equal(out, x)
 
 
-@pytest.mark.parametrize(binary_argnames, make_binary_params("pow", dh.numeric_dtypes))
+@pytest.mark.parametrize(
+    binary_argnames, make_binary_params("pow", xps.numeric_dtypes())
+)
 @given(data=st.data())
 def test_pow(
     func_name,
@@ -1357,7 +1385,7 @@ def test_pow(
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("remainder", dh.numeric_dtypes)
+    binary_argnames, make_binary_params("remainder", xps.numeric_dtypes())
 )
 @given(data=st.data())
 def test_remainder(
@@ -1456,7 +1484,7 @@ def test_sqrt(x):
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("subtract", dh.numeric_dtypes)
+    binary_argnames, make_binary_params("subtract", xps.numeric_dtypes())
 )
 @given(data=st.data())
 def test_subtract(

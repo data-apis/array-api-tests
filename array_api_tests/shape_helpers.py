@@ -2,6 +2,8 @@ import math
 from itertools import product
 from typing import Iterator, List, Optional, Tuple, Union
 
+from ndindex import iter_indices as _iter_indices
+
 from .typing import Scalar, Shape
 
 __all__ = ["normalise_axis", "ndindex", "axis_ndindex", "axes_ndindex", "reshape"]
@@ -18,12 +20,14 @@ def normalise_axis(
 
 
 def ndindex(shape):
-    """Iterator of n-D indices to an array
+    # TODO: remove
+    return (indices[0] for indices in iter_indices(shape))
 
-    Yields tuples of integers to index every element of an array of shape
-    `shape`. Same as np.ndindex().
-    """
-    return product(*[range(i) for i in shape])
+
+def iter_indices(*shapes, skip_axes=()):
+    """Wrapper for ndindex.iter_indices()"""
+    gen = _iter_indices(*shapes, skip_axes=skip_axes)
+    return ([i.raw for i in indices] for indices in gen)
 
 
 def axis_ndindex(
