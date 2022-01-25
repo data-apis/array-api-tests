@@ -44,7 +44,8 @@ pytestmark = pytest.mark.ci
 # Standin strategy for not yet implemented tests
 todo = none()
 
-def _test_stacks(f, *args, res=None, dims=2, true_val=None, matrix_axes=(-2, -1), **kw):
+def _test_stacks(f, *args, res=None, dims=2, true_val=None, matrix_axes=(-2, -1),
+                 assert_equal=assert_exactly_equal, **kw):
     """
     Test that f(*args, **kw) maps across stacks of matrices
 
@@ -75,9 +76,9 @@ def _test_stacks(f, *args, res=None, dims=2, true_val=None, matrix_axes=(-2, -1)
         res_stack = res[res_idx]
         x_stacks = [x[x_idx] for x, x_idx in zip(args, x_idxes)]
         decomp_res_stack = f(*x_stacks, **kw)
-        assert_exactly_equal(res_stack, decomp_res_stack)
+        assert_equal(res_stack, decomp_res_stack)
         if true_val:
-            assert_exactly_equal(decomp_res_stack, true_val(*x_stacks))
+            assert_equal(decomp_res_stack, true_val(*x_stacks))
 
 def _test_namedtuple(res, fields, func_name):
     """
