@@ -464,10 +464,12 @@ def test_slogdet(x):
 
     # Check that when the determinant is 0, the sign and logabsdet are (0,
     # -inf).
-    d = linalg.det(x)
-    zero_det = equal(d, zero(d.shape, d.dtype))
-    assert_exactly_equal(sign[zero_det], zero(sign[zero_det].shape, x.dtype))
-    assert_exactly_equal(logabsdet[zero_det], -infinity(logabsdet[zero_det].shape, x.dtype))
+    # TODO: This test does not necessarily hold exactly. Update it to test it
+    # approximately.
+    # d = linalg.det(x)
+    # zero_det = equal(d, zero(d.shape, d.dtype))
+    # assert_exactly_equal(sign[zero_det], zero(sign[zero_det].shape, x.dtype))
+    # assert_exactly_equal(logabsdet[zero_det], -infinity(logabsdet[zero_det].shape, x.dtype))
 
     # More generally, det(x) should equal sign*exp(logabsdet), but this does
     # not hold exactly due to floating-point loss of precision.
