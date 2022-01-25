@@ -1,7 +1,7 @@
 # Test Suite for Array API Compliance
 
 This is the test suite for array libraries adopting the [Python Array API
-standard](https://data-apis.org/array-api/).
+standard](https://data-apis.org/array-api/latest).
 
 Note the suite is still a **work in progress**. Feedback and contributions are
 welcome!
