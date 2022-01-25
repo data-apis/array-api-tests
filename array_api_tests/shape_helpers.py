@@ -4,9 +4,16 @@ from typing import Iterator, List, Optional, Tuple, Union
 
 from ndindex import iter_indices as _iter_indices
 
-from .typing import Scalar, Shape
+from .typing import AtomicIndex, Index, Scalar, Shape
 
-__all__ = ["normalise_axis", "ndindex", "axis_ndindex", "axes_ndindex", "reshape"]
+__all__ = [
+    "normalise_axis",
+    "ndindex",
+    "axis_ndindex",
+    "axes_ndindex",
+    "reshape",
+    "fmt_idx",
+]
 
 
 def normalise_axis(
@@ -64,7 +71,7 @@ def axes_ndindex(shape: Shape, axes: Tuple[int, ...]) -> Iterator[List[Shape]]:
         yield list(indices)
 
 
-def reshape(flat_seq: List[Scalar], shape: Shape) -> Union[Scalar, List[Scalar]]:
+def reshape(flat_seq: List[Scalar], shape: Shape) -> Union[Scalar, List]:
     """Reshape a flat sequence"""
     if any(s == 0 for s in shape):
         raise ValueError(
@@ -79,3 +86,33 @@ def reshape(flat_seq: List[Scalar], shape: Shape) -> Union[Scalar, List[Scalar]]
     size = len(flat_seq)
     n = math.prod(shape[1:])
     return [reshape(flat_seq[i * n : (i + 1) * n], shape[1:]) for i in range(size // n)]
+
+
+def fmt_i(i: AtomicIndex) -> str:
+    if isinstance(i, int):
+        return str(i)
+    elif isinstance(i, slice):
+        res = ""
+        if i.start is not None:
+            res += str(i.start)
+        res += ":"
+        if i.stop is not None:
+            res += str(i.stop)
+        if i.step is not None:
+            res += f":{i.step}"
+        return res
+    else:
+        return "..."
+
+
+def fmt_idx(sym: str, idx: Index) -> str:
+    if idx == ():
+        return sym
+    res = f"{sym}["
+    _idx = idx if isinstance(idx, tuple) else (idx,)
+    if len(_idx) == 1:
+        res += fmt_i(_idx[0])
+    else:
+        res += ", ".join(fmt_i(i) for i in _idx)
+    res += "]"
+    return res

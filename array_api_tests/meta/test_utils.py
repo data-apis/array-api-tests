@@ -82,3 +82,22 @@ def test_axes_ndindex(shape, axes, expected):
 )
 def test_roll_ndindex(shape, shifts, axes, expected):
     assert list(roll_ndindex(shape, shifts, axes)) == expected
+
+
+@pytest.mark.parametrize(
+    "idx, expected",
+    [
+        ((), "x"),
+        (42, "x[42]"),
+        ((42,), "x[42]"),
+        (slice(None, 2), "x[:2]"),
+        (slice(2, None), "x[2:]"),
+        (slice(0, 2), "x[0:2]"),
+        (slice(0, 2, -1), "x[0:2:-1]"),
+        (slice(None, None, -1), "x[::-1]"),
+        (slice(None, None), "x[:]"),
+        (..., "x[...]"),
+    ],
+)
+def test_fmt_idx(idx, expected):
+    assert sh.fmt_idx("x", idx) == expected

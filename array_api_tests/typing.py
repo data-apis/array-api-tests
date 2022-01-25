@@ -1,4 +1,4 @@
-from typing import Tuple, Type, Union, Any
+from typing import Any, Tuple, Type, Union
 
 __all__ = [
     "DataType",
@@ -6,6 +6,8 @@ __all__ = [
     "ScalarType",
     "Array",
     "Shape",
+    "AtomicIndex",
+    "Index",
     "Param",
 ]
 
@@ -14,4 +16,6 @@ Scalar = Union[bool, int, float]
 ScalarType = Union[Type[bool], Type[int], Type[float]]
 Array = Any
 Shape = Tuple[int, ...]
+AtomicIndex = Union[int, "ellipsis", slice]  # noqa
+Index = Union[AtomicIndex, Tuple[AtomicIndex, ...]]
 Param = Tuple
