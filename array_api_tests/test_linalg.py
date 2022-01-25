@@ -628,7 +628,7 @@ def test_trace(x, kw):
 
 @given(
     dtypes=mutually_promotable_dtypes(dtypes=dh.numeric_dtypes),
-    shape=shapes(),
+    shape=shapes(min_dims=1),
     data=data(),
 )
 def test_vecdot(dtypes, shape, data):
