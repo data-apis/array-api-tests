@@ -16,10 +16,10 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 import pytest
 from hypothesis import assume, given
 from hypothesis.strategies import (booleans, composite, none, tuples, integers,
-                                   shared, sampled_from, one_of, data, just)
+                                   shared, sampled_from, data, just)
 from ndindex import iter_indices
 
-from .array_helpers import assert_exactly_equal, asarray, equal, zero, infinity
+from .array_helpers import assert_exactly_equal, asarray
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
