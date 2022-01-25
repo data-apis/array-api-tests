@@ -16,7 +16,8 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 import pytest
 from hypothesis import assume, given
 from hypothesis.strategies import (booleans, composite, none, tuples, integers,
-                                   shared, sampled_from, data, just)
+                                   shared, sampled_from, one_of, data, just)
+from ndindex import iter_indices
 
 from .array_helpers import assert_exactly_equal, asarray, equal, zero, infinity
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
@@ -43,25 +44,49 @@ pytestmark = pytest.mark.ci
 # Standin strategy for not yet implemented tests
 todo = none()
 
-def _test_stacks(f, *args, res=None, dims=2, true_val=None, **kw):
+def _test_stacks(f, *args, res=None, dims=2, true_val=None, matrix_axes=(-2, -1), **kw):
     """
     Test that f(*args, **kw) maps across stacks of matrices
 
-    dims is the number of dimensions f should have for a single n x m matrix
-    stack.
+    dims is the number of dimensions f(*args) should have for a single n x m
+    matrix stack.
 
-    true_val may be a function such that true_val(*x_stacks) gives the true
-    value for f on a stack
+    matrix_axes are the axes along which matrices (or vectors) are stacked in
+    the input.
+
+    true_val may be a function such that true_val(*x_stacks, **kw) gives the
+    true value for f on a stack.
+
+    res should be the result of f(*args, **kw). It is computed if not passed
+    in.
+
     """
     if res is None:
         res = f(*args, **kw)
 
-    shape = args[0].shape if len(args) == 1 else broadcast_shapes(*[x.shape
-                                                                    for x in args])
-    for _idx in sh.ndindex(shape[:-2]):
-        idx = _idx + (slice(None),)*dims
-        res_stack = res[idx]
-        x_stacks = [x[_idx + (...,)] for x in args]
+    shapes = [x.shape for x in args]
+
+    for (x_idxes, (res_idx,)) in zip(
+            iter_indices(*shapes, skip_axes=matrix_axes),
+            iter_indices(res.shape, skip_axes=tuple(range(-dims, 0)))):
+        x_idxes = [x_idx.raw for x_idx in x_idxes]
+        res_idx = res_idx.raw
+        # res should have `dims` slices in it. Cases where there are more than
+        # `dims` slices are ambiguous, but that should only occur in cases
+        # where axes = (-2, -1).
+        # res_idx2 = []
+        # d = dims
+        # for i in res_idx:
+        #     if isinstance(i, slice):
+        #         if d:
+        #             res_idx2.append(i)
+        #             d -= 1
+        #     else:
+        #         res_idx2.append(i)
+        # res_idx2 = tuple(res_idx2)
+
+        res_stack = res[res_idx]
+        x_stacks = [x[x_idx] for x, x_idx in zip(args, x_idxes)]
         decomp_res_stack = f(*x_stacks, **kw)
         assert_exactly_equal(res_stack, decomp_res_stack)
         if true_val:
