@@ -11,7 +11,7 @@ special_cases/
 
 import math
 from enum import Enum, auto
-from typing import Callable, List, Optional, Union
+from typing import Callable, List, NamedTuple, Optional, Union
 
 import pytest
 from hypothesis import assume, given
@@ -57,42 +57,32 @@ func_to_op = {v: k for k, v in dh.op_to_func.items()}
 all_op_to_symbol = {**dh.binary_op_to_symbol, **dh.inplace_op_to_symbol}
 finite_kw = {"allow_nan": False, "allow_infinity": False}
 
-unary_argnames = ("func_name", "func", "strat")
-UnaryParam = Param[str, Callable[[Array], Array], st.SearchStrategy[Array]]
+
+class UnaryParamContext(NamedTuple):
+    func_name: str
+    func: Callable[[Array], Array]
+    strat: st.SearchStrategy[Array]
+
+    @property
+    def id(self) -> str:
+        return f"{self.func_name}"
+
+    def __repr__(self):
+        return f"UnaryParamContext(<{self.id}>)"
 
 
 def make_unary_params(
     elwise_func_name: str, dtypes_strat: st.SearchStrategy[DataType]
-) -> List[UnaryParam]:
+) -> List[Param[UnaryParamContext]]:
     strat = xps.arrays(dtype=dtypes_strat, shape=hh.shapes())
-    func = getattr(xp, elwise_func_name)
+    func_ctx = UnaryParamContext(
+        func_name=elwise_func_name, func=getattr(xp, elwise_func_name), strat=strat
+    )
     op_name = func_to_op[elwise_func_name]
-    op = lambda x: getattr(x, op_name)()
-    return [
-        pytest.param(elwise_func_name, func, strat, id=elwise_func_name),
-        pytest.param(op_name, op, strat, id=op_name),
-    ]
-
-
-binary_argnames = (
-    "func_name",
-    "func",
-    "left_sym",
-    "left_strat",
-    "right_sym",
-    "right_strat",
-    "right_is_scalar",
-    "res_name",
-)
-BinaryParam = Param[
-    str,
-    Callable[[Array, Union[Scalar, Array]], Array],
-    str,
-    st.SearchStrategy[Array],
-    str,
-    st.SearchStrategy[Union[Scalar, Array]],
-    bool,
-]
+    op_ctx = UnaryParamContext(
+        func_name=op_name, func=lambda x: getattr(x, op_name)(), strat=strat
+    )
+    return [pytest.param(func_ctx, id=func_ctx.id), pytest.param(op_ctx, id=op_ctx.id)]
 
 
 class FuncType(Enum):
@@ -104,12 +94,30 @@ class FuncType(Enum):
 shapes_kw = {"min_side": 1}
 
 
+class BinaryParamContext(NamedTuple):
+    func_name: str
+    func: Callable[[Array, Union[Scalar, Array]], Array]
+    left_sym: str
+    left_strat: st.SearchStrategy[Array]
+    right_sym: str
+    right_strat: st.SearchStrategy[Union[Scalar, Array]]
+    right_is_scalar: bool
+    res_name: str
+
+    @property
+    def id(self) -> str:
+        return f"{self.func_name}({self.left_sym}, {self.right_sym})"
+
+    def __repr__(self):
+        return f"BinaryParamContext(<{self.id}>)"
+
+
 def make_binary_params(
     elwise_func_name: str, dtypes_strat: st.SearchStrategy[DataType]
-) -> List[BinaryParam]:
+) -> List[Param[BinaryParamContext]]:
     def make_param(
         func_name: str, func_type: FuncType, right_is_scalar: bool
-    ) -> BinaryParam:
+    ) -> Param[BinaryParamContext]:
         if right_is_scalar:
             left_sym = "x"
             right_sym = "s"
@@ -168,7 +176,7 @@ def make_binary_params(
         else:
             res_name = "out"
 
-        return pytest.param(
+        ctx = BinaryParamContext(
             func_name,
             func,
             left_sym,
@@ -177,8 +185,8 @@ def make_binary_params(
             right_strat,
             right_is_scalar,
             res_name,
-            id=f"{func_name}({left_sym}, {right_sym})",
         )
+        return pytest.param(ctx, id=ctx.id)
 
     op_name = func_to_op[elwise_func_name]
     params = [
@@ -195,57 +203,53 @@ def make_binary_params(
 
 
 def assert_binary_param_dtype(
-    func_name: str,
+    ctx: BinaryParamContext,
     left: Array,
     right: Union[Array, Scalar],
-    right_is_scalar: bool,
     res: Array,
-    res_name: str,
     expected: Optional[DataType] = None,
 ):
-    if right_is_scalar:
+    if ctx.right_is_scalar:
         in_dtypes = left.dtype
     else:
         in_dtypes = (left.dtype, right.dtype)  # type: ignore
     ph.assert_dtype(
-        func_name, in_dtypes, res.dtype, expected, repr_name=f"{res_name}.dtype"
+        ctx.func_name, in_dtypes, res.dtype, expected, repr_name=f"{ctx.res_name}.dtype"
     )
 
 
 def assert_binary_param_shape(
-    func_name: str,
+    ctx: BinaryParamContext,
     left: Array,
     right: Union[Array, Scalar],
-    right_is_scalar: bool,
     res: Array,
-    res_name: str,
     expected: Optional[Shape] = None,
 ):
-    if right_is_scalar:
+    if ctx.right_is_scalar:
         in_shapes = (left.shape,)
     else:
         in_shapes = (left.shape, right.shape)  # type: ignore
     ph.assert_result_shape(
-        func_name, in_shapes, res.shape, expected, repr_name=f"{res_name}.shape"
+        ctx.func_name, in_shapes, res.shape, expected, repr_name=f"{ctx.res_name}.shape"
     )
 
 
-@pytest.mark.parametrize(unary_argnames, make_unary_params("abs", xps.numeric_dtypes()))
+@pytest.mark.parametrize("ctx", make_unary_params("abs", xps.numeric_dtypes()))
 @given(data=st.data())
-def test_abs(func_name, func, strat, data):
-    x = data.draw(strat, label="x")
+def test_abs(ctx, data):
+    x = data.draw(ctx.strat, label="x")
     if x.dtype in dh.int_dtypes:
         # abs of the smallest representable negative integer is not defined
         mask = xp.not_equal(
             x, ah.full(x.shape, dh.dtype_ranges[x.dtype].min, dtype=x.dtype)
         )
         x = x[mask]
-    out = func(x)
-    ph.assert_dtype(func_name, x.dtype, out.dtype)
-    ph.assert_shape(func_name, out.shape, x.shape)
+    out = ctx.func(x)
+    ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
+    ph.assert_shape(ctx.func_name, out.shape, x.shape)
     assert ah.all(
         ah.logical_not(ah.negative_mathematical_sign(out))
-    ), f"out elements not all positively signed [{func_name}()]\n{out=}"
+    ), f"out elements not all positively signed [{ctx.func_name}()]\n{out=}"
     less_zero = ah.negative_mathematical_sign(x)
     negx = ah.negative(x)
     # abs(x) = -x for x < 0
@@ -288,34 +292,22 @@ def test_acosh(x):
     ah.assert_exactly_equal(domain, codomain)
 
 
-@pytest.mark.parametrize(
-    binary_argnames, make_binary_params("add", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx,", make_binary_params("add", xps.numeric_dtypes()))
 @given(data=st.data())
-def test_add(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_add(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
     try:
-        res = func(left, right)
+        res = ctx.func(left, right)
     except OverflowError:
         reject()
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
-    if not right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, res)
+    assert_binary_param_shape(ctx, left, right, res)
+    if not ctx.right_is_scalar:
         # add is commutative
-        expected = func(right, left)
+        expected = ctx.func(right, left)
         ah.assert_exactly_equal(res, expected)
 
 
@@ -417,29 +409,19 @@ def test_atanh(x):
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("bitwise_and", boolean_and_all_integer_dtypes())
+    "ctx", make_binary_params("bitwise_and", boolean_and_all_integer_dtypes())
 )
 @given(data=st.data())
-def test_bitwise_and(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_bitwise_and(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    res = func(left, right)
+    res = ctx.func(left, right)
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
+    assert_binary_param_dtype(ctx, left, right, res)
+    assert_binary_param_shape(ctx, left, right, res)
     scalar_type = dh.get_scalar_type(res.dtype)
-    if right_is_scalar:
+    if ctx.right_is_scalar:
         for idx in sh.ndindex(res.shape):
             scalar_l = scalar_type(left[idx])
             if res.dtype == xp.bool:
@@ -454,11 +436,11 @@ def test_bitwise_and(
                     dh.dtype_signed[res.dtype],
                 )
             scalar_o = scalar_type(res[idx])
-            f_l = sh.fmt_idx(left_sym, idx)
-            f_o = sh.fmt_idx(res_name, idx)
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} & {right})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
             )
     else:
         for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
@@ -476,42 +458,32 @@ def test_bitwise_and(
                     dh.dtype_signed[res.dtype],
                 )
             scalar_o = scalar_type(res[o_idx])
-            f_l = sh.fmt_idx(left_sym, l_idx)
-            f_r = sh.fmt_idx(right_sym, r_idx)
-            f_o = sh.fmt_idx(res_name, o_idx)
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} & {f_r})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
             )
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("bitwise_left_shift", all_integer_dtypes())
+    "ctx", make_binary_params("bitwise_left_shift", all_integer_dtypes())
 )
 @given(data=st.data())
-def test_bitwise_left_shift(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
-    if right_is_scalar:
+def test_bitwise_left_shift(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
+    if ctx.right_is_scalar:
         assume(right >= 0)
     else:
         assume(not ah.any(ah.isnegative(right)))
 
-    res = func(left, right)
+    res = ctx.func(left, right)
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
-    if right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, res)
+    assert_binary_param_shape(ctx, left, right, res)
+    if ctx.right_is_scalar:
         for idx in sh.ndindex(res.shape):
             scalar_l = int(left[idx])
             expected = ah.int_to_dtype(
@@ -521,11 +493,11 @@ def test_bitwise_left_shift(
                 dh.dtype_signed[res.dtype],
             )
             scalar_o = int(res[idx])
-            f_l = sh.fmt_idx(left_sym, idx)
-            f_o = sh.fmt_idx(res_name, idx)
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} << {right})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
             )
     else:
         for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
@@ -538,27 +510,27 @@ def test_bitwise_left_shift(
                 dh.dtype_signed[res.dtype],
             )
             scalar_o = int(res[o_idx])
-            f_l = sh.fmt_idx(left_sym, l_idx)
-            f_r = sh.fmt_idx(right_sym, r_idx)
-            f_o = sh.fmt_idx(res_name, o_idx)
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} << {f_r})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
             )
 
 
 @pytest.mark.parametrize(
-    unary_argnames,
+    "ctx",
     make_unary_params("bitwise_invert", boolean_and_all_integer_dtypes()),
 )
 @given(data=st.data())
-def test_bitwise_invert(func_name, func, strat, data):
-    x = data.draw(strat, label="x")
+def test_bitwise_invert(ctx, data):
+    x = data.draw(ctx.strat, label="x")
 
-    out = func(x)
+    out = ctx.func(x)
 
-    ph.assert_dtype(func_name, x.dtype, out.dtype)
-    ph.assert_shape(func_name, out.shape, x.shape)
+    ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
+    ph.assert_shape(ctx.func_name, out.shape, x.shape)
     for idx in sh.ndindex(out.shape):
         if out.dtype == xp.bool:
             scalar_x = bool(x[idx])
@@ -574,33 +546,23 @@ def test_bitwise_invert(func_name, func, strat, data):
         f_o = sh.fmt_idx("out", idx)
         assert scalar_o == expected, (
             f"{f_o}={scalar_o}, but should be ~{f_x}={scalar_x} "
-            f"[{func_name}()]\n{f_x}={scalar_x}"
+            f"[{ctx.func_name}()]\n{f_x}={scalar_x}"
         )
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("bitwise_or", boolean_and_all_integer_dtypes())
+    "ctx", make_binary_params("bitwise_or", boolean_and_all_integer_dtypes())
 )
 @given(data=st.data())
-def test_bitwise_or(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_bitwise_or(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    res = func(left, right)
+    res = ctx.func(left, right)
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
-    if right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, res)
+    assert_binary_param_shape(ctx, left, right, res)
+    if ctx.right_is_scalar:
         for idx in sh.ndindex(res.shape):
             if res.dtype == xp.bool:
                 scalar_l = bool(left[idx])
@@ -614,11 +576,11 @@ def test_bitwise_or(
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
                 )
-            f_l = sh.fmt_idx(left_sym, idx)
-            f_o = sh.fmt_idx(res_name, idx)
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} | {right})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
             )
     else:
         for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
@@ -636,42 +598,32 @@ def test_bitwise_or(
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
                 )
-            f_l = sh.fmt_idx(left_sym, l_idx)
-            f_r = sh.fmt_idx(right_sym, r_idx)
-            f_o = sh.fmt_idx(res_name, o_idx)
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} | {f_r})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
             )
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("bitwise_right_shift", all_integer_dtypes())
+    "ctx", make_binary_params("bitwise_right_shift", all_integer_dtypes())
 )
 @given(data=st.data())
-def test_bitwise_right_shift(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
-    if right_is_scalar:
+def test_bitwise_right_shift(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
+    if ctx.right_is_scalar:
         assume(right >= 0)
     else:
         assume(not ah.any(ah.isnegative(right)))
 
-    res = func(left, right)
+    res = ctx.func(left, right)
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
-    if right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, res)
+    assert_binary_param_shape(ctx, left, right, res)
+    if ctx.right_is_scalar:
         for idx in sh.ndindex(res.shape):
             scalar_l = int(left[idx])
             expected = ah.int_to_dtype(
@@ -680,11 +632,11 @@ def test_bitwise_right_shift(
                 dh.dtype_signed[res.dtype],
             )
             scalar_o = int(res[idx])
-            f_l = sh.fmt_idx(left_sym, idx)
-            f_o = sh.fmt_idx(res_name, idx)
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} >> {right})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
             )
     else:
         for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
@@ -696,38 +648,28 @@ def test_bitwise_right_shift(
                 dh.dtype_signed[res.dtype],
             )
             scalar_o = int(res[o_idx])
-            f_l = sh.fmt_idx(left_sym, l_idx)
-            f_r = sh.fmt_idx(right_sym, r_idx)
-            f_o = sh.fmt_idx(res_name, o_idx)
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} >> {f_r})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
             )
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("bitwise_xor", boolean_and_all_integer_dtypes())
+    "ctx", make_binary_params("bitwise_xor", boolean_and_all_integer_dtypes())
 )
 @given(data=st.data())
-def test_bitwise_xor(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_bitwise_xor(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    res = func(left, right)
+    res = ctx.func(left, right)
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
-    if right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, res)
+    assert_binary_param_shape(ctx, left, right, res)
+    if ctx.right_is_scalar:
         for idx in sh.ndindex(res.shape):
             if res.dtype == xp.bool:
                 scalar_l = bool(left[idx])
@@ -741,11 +683,11 @@ def test_bitwise_xor(
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
                 )
-            f_l = sh.fmt_idx(left_sym, idx)
-            f_o = sh.fmt_idx(res_name, idx)
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} ^ {right})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
             )
     else:
         for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
@@ -763,12 +705,12 @@ def test_bitwise_xor(
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
                 )
-            f_l = sh.fmt_idx(left_sym, l_idx)
-            f_r = sh.fmt_idx(right_sym, r_idx)
-            f_o = sh.fmt_idx(res_name, o_idx)
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} ^ {f_r})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
             )
 
 
@@ -815,27 +757,15 @@ def test_cosh(x):
     ah.assert_exactly_equal(domain, codomain)
 
 
-@pytest.mark.parametrize(
-    binary_argnames, make_binary_params("divide", xps.floating_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("divide", xps.floating_dtypes()))
 @given(data=st.data())
-def test_divide(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_divide(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    res = func(left, right)
+    res = ctx.func(left, right)
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
+    assert_binary_param_dtype(ctx, left, right, res)
     # There isn't much we can test here. The spec doesn't require any behavior
     # beyond the special cases, and indeed, there aren't many mathematical
     # properties of division that strictly hold for floating-point numbers. We
@@ -843,41 +773,27 @@ def test_divide(
     # have those sorts in general for this module.
 
 
-@pytest.mark.parametrize(
-    binary_argnames, make_binary_params("equal", xps.scalar_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("equal", xps.scalar_dtypes()))
 @given(data=st.data())
-def test_equal(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_equal(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    out = func(left, right)
+    out = ctx.func(left, right)
 
-    assert_binary_param_dtype(
-        func_name, left, right, right_is_scalar, out, res_name, xp.bool
-    )
-    assert_binary_param_shape(func_name, left, right, right_is_scalar, out, res_name)
-    if right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, out, xp.bool)
+    assert_binary_param_shape(ctx, left, right, out)
+    if ctx.right_is_scalar:
         scalar_type = dh.get_scalar_type(left.dtype)
         for idx in sh.ndindex(left.shape):
             scalar_l = scalar_type(left[idx])
             expected = scalar_l == right
             scalar_o = bool(out[idx])
-            f_l = sh.fmt_idx(left_sym, idx)
-            f_o = sh.fmt_idx(res_name, idx)
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} == {right})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
             )
     else:
         # We manually promote the dtypes as incorrect internal type promotion
@@ -898,12 +814,12 @@ def test_equal(
             scalar_r = scalar_type(_right[r_idx])
             expected = scalar_l == scalar_r
             scalar_o = bool(out[o_idx])
-            f_l = sh.fmt_idx(left_sym, l_idx)
-            f_r = sh.fmt_idx(right_sym, r_idx)
-            f_o = sh.fmt_idx(res_name, o_idx)
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} == {f_r})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
             )
 
 
@@ -952,31 +868,23 @@ def test_floor(x):
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("floor_divide", xps.numeric_dtypes())
+    "ctx", make_binary_params("floor_divide", xps.numeric_dtypes())
 )
 @given(data=st.data())
-def test_floor_divide(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat.filter(lambda x: not ah.any(x == 0)), label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
-    if right_is_scalar:
+def test_floor_divide(ctx, data):
+    left = data.draw(
+        ctx.left_strat.filter(lambda x: not ah.any(x == 0)), label=ctx.left_sym
+    )
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
+    if ctx.right_is_scalar:
         assume(right != 0)
     else:
         assume(not ah.any(right == 0))
 
-    res = func(left, right)
+    res = ctx.func(left, right)
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    if not right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, res)
+    if not ctx.right_is_scalar:
         if dh.is_int_dtype(left.dtype):
             # The spec does not specify the behavior for division by 0 for integer
             # dtypes. A library may choose to raise an exception in this case, so
@@ -995,33 +903,19 @@ def test_floor_divide(
     # TODO: Test the exact output for floor_divide.
 
 
-@pytest.mark.parametrize(
-    binary_argnames, make_binary_params("greater", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("greater", xps.numeric_dtypes()))
 @given(data=st.data())
-def test_greater(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_greater(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    out = func(left, right)
+    out = ctx.func(left, right)
 
-    assert_binary_param_dtype(
-        func_name, left, right, right_is_scalar, out, res_name, xp.bool
-    )
-    if not right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, out, xp.bool)
+    if not ctx.right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
         shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(func_name, out.shape, shape)
+        ph.assert_shape(ctx.func_name, out.shape, shape)
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
 
@@ -1039,33 +933,21 @@ def test_greater(
 
 
 @pytest.mark.parametrize(
-    binary_argnames, make_binary_params("greater_equal", xps.numeric_dtypes())
+    "ctx", make_binary_params("greater_equal", xps.numeric_dtypes())
 )
 @given(data=st.data())
-def test_greater_equal(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_greater_equal(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    out = func(left, right)
+    out = ctx.func(left, right)
 
-    assert_binary_param_dtype(
-        func_name, left, right, right_is_scalar, out, res_name, xp.bool
-    )
-    if not right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, out, xp.bool)
+    if not ctx.right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
 
         shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(func_name, out.shape, shape)
+        ph.assert_shape(ctx.func_name, out.shape, shape)
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
 
@@ -1138,34 +1020,20 @@ def test_isnan(x):
             assert bool(out[idx]) == math.isnan(s)
 
 
-@pytest.mark.parametrize(
-    binary_argnames, make_binary_params("less", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("less", xps.numeric_dtypes()))
 @given(data=st.data())
-def test_less(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_less(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    out = func(left, right)
+    out = ctx.func(left, right)
 
-    assert_binary_param_dtype(
-        func_name, left, right, right_is_scalar, out, res_name, xp.bool
-    )
-    if not right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, out, xp.bool)
+    if not ctx.right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
 
         shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(func_name, out.shape, shape)
+        ph.assert_shape(ctx.func_name, out.shape, shape)
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
 
@@ -1182,34 +1050,20 @@ def test_less(
             assert bool(out_idx) == (scalar_type(x1_idx) < scalar_type(x2_idx))
 
 
-@pytest.mark.parametrize(
-    binary_argnames, make_binary_params("less_equal", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("less_equal", xps.numeric_dtypes()))
 @given(data=st.data())
-def test_less_equal(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_less_equal(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    out = func(left, right)
+    out = ctx.func(left, right)
 
-    assert_binary_param_dtype(
-        func_name, left, right, right_is_scalar, out, res_name, xp.bool
-    )
-    if not right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, out, xp.bool)
+    if not ctx.right_is_scalar:
         # TODO: generate indices without broadcasting arrays (see test_equal comment)
 
         shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(func_name, out.shape, shape)
+        ph.assert_shape(ctx.func_name, out.shape, shape)
         _left = xp.broadcast_to(left, shape)
         _right = xp.broadcast_to(right, shape)
 
@@ -1341,47 +1195,33 @@ def test_logical_xor(x1, x2):
         assert out[idx] == (bool(_x1[idx]) ^ bool(_x2[idx]))
 
 
-@pytest.mark.parametrize(
-    binary_argnames, make_binary_params("multiply", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("multiply", xps.numeric_dtypes()))
 @given(data=st.data())
-def test_multiply(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_multiply(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    res = func(left, right)
+    res = ctx.func(left, right)
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    if not right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, res)
+    if not ctx.right_is_scalar:
         # multiply is commutative
-        expected = func(right, left)
+        expected = ctx.func(right, left)
         ah.assert_exactly_equal(res, expected)
 
 
-@pytest.mark.parametrize(
-    unary_argnames, make_unary_params("negative", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_unary_params("negative", xps.numeric_dtypes()))
 @given(data=st.data())
-def test_negative(func_name, func, strat, data):
-    x = data.draw(strat, label="x")
+def test_negative(ctx, data):
+    x = data.draw(ctx.strat, label="x")
 
-    out = func(x)
+    out = ctx.func(x)
 
-    ph.assert_dtype(func_name, x.dtype, out.dtype)
-    ph.assert_shape(func_name, out.shape, x.shape)
+    ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
+    ph.assert_shape(ctx.func_name, out.shape, x.shape)
 
     # Negation is an involution
-    ah.assert_exactly_equal(x, func(out))
+    ah.assert_exactly_equal(x, ctx.func(out))
 
     mask = ah.isfinite(x)
     if dh.is_int_dtype(x.dtype):
@@ -1395,41 +1235,27 @@ def test_negative(func_name, func, strat, data):
     ah.assert_exactly_equal(y, ah.zero(x[mask].shape, x.dtype))
 
 
-@pytest.mark.parametrize(
-    binary_argnames, make_binary_params("not_equal", xps.scalar_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("not_equal", xps.scalar_dtypes()))
 @given(data=st.data())
-def test_not_equal(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_not_equal(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    out = func(left, right)
+    out = ctx.func(left, right)
 
-    assert_binary_param_dtype(
-        func_name, left, right, right_is_scalar, out, res_name, xp.bool
-    )
-    assert_binary_param_shape(func_name, left, right, right_is_scalar, out, res_name)
-    if right_is_scalar:
+    assert_binary_param_dtype(ctx, left, right, out, xp.bool)
+    assert_binary_param_shape(ctx, left, right, out)
+    if ctx.right_is_scalar:
         scalar_type = dh.get_scalar_type(left.dtype)
         for idx in sh.ndindex(left.shape):
             scalar_l = scalar_type(left[idx])
             expected = scalar_l != right
             scalar_o = bool(out[idx])
-            f_l = sh.fmt_idx(left_sym, idx)
-            f_o = sh.fmt_idx(res_name, idx)
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} != {right})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
             )
     else:
         # See test_equal note
@@ -1442,48 +1268,34 @@ def test_not_equal(
             scalar_r = scalar_type(_right[r_idx])
             expected = scalar_l != scalar_r
             scalar_o = bool(out[o_idx])
-            f_l = sh.fmt_idx(left_sym, l_idx)
-            f_r = sh.fmt_idx(right_sym, r_idx)
-            f_o = sh.fmt_idx(res_name, o_idx)
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be ({f_l} != {f_r})={expected} "
-                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
             )
 
 
-@pytest.mark.parametrize(
-    unary_argnames, make_unary_params("positive", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_unary_params("positive", xps.numeric_dtypes()))
 @given(data=st.data())
-def test_positive(func_name, func, strat, data):
-    x = data.draw(strat, label="x")
+def test_positive(ctx, data):
+    x = data.draw(ctx.strat, label="x")
 
-    out = func(x)
+    out = ctx.func(x)
 
-    ph.assert_dtype(func_name, x.dtype, out.dtype)
-    ph.assert_shape(func_name, out.shape, x.shape)
+    ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
+    ph.assert_shape(ctx.func_name, out.shape, x.shape)
     # Positive does nothing
     ah.assert_exactly_equal(out, x)
 
 
-@pytest.mark.parametrize(
-    binary_argnames, make_binary_params("pow", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("pow", xps.numeric_dtypes()))
 @given(data=st.data())
-def test_pow(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
-    if right_is_scalar:
+def test_pow(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
+    if ctx.right_is_scalar:
         if isinstance(right, int):
             assume(right >= 0)
     else:
@@ -1491,11 +1303,11 @@ def test_pow(
             assume(xp.all(right >= 0))
 
     try:
-        res = func(left, right)
+        res = ctx.func(left, right)
     except OverflowError:
         reject()
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
+    assert_binary_param_dtype(ctx, left, right, res)
     # There isn't much we can test here. The spec doesn't require any behavior
     # beyond the special cases, and indeed, there aren't many mathematical
     # properties of exponentiation that strictly hold for floating-point
@@ -1503,36 +1315,24 @@ def test_pow(
     # don't yet have those sorts in general for this module.
 
 
-@pytest.mark.parametrize(
-    binary_argnames, make_binary_params("remainder", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("remainder", xps.numeric_dtypes()))
 @given(data=st.data())
-def test_remainder(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
-    if right_is_scalar:
+def test_remainder(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
+    if ctx.right_is_scalar:
         out_dtype = left.dtype
     else:
         out_dtype = dh.result_type(left.dtype, right.dtype)
     if dh.is_int_dtype(out_dtype):
-        if right_is_scalar:
+        if ctx.right_is_scalar:
             assume(right != 0)
         else:
             assume(not ah.any(right == 0))
 
-    res = func(left, right)
+    res = ctx.func(left, right)
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
+    assert_binary_param_dtype(ctx, left, right, res)
     # TODO: test results
 
 
@@ -1602,30 +1402,18 @@ def test_sqrt(x):
     ph.assert_shape("sqrt", out.shape, x.shape)
 
 
-@pytest.mark.parametrize(
-    binary_argnames, make_binary_params("subtract", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("subtract", xps.numeric_dtypes()))
 @given(data=st.data())
-def test_subtract(
-    func_name,
-    func,
-    left_sym,
-    left_strat,
-    right_sym,
-    right_strat,
-    right_is_scalar,
-    res_name,
-    data,
-):
-    left = data.draw(left_strat, label=left_sym)
-    right = data.draw(right_strat, label=right_sym)
+def test_subtract(ctx, data):
+    left = data.draw(ctx.left_strat, label=ctx.left_sym)
+    right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
     try:
-        res = func(left, right)
+        res = ctx.func(left, right)
     except OverflowError:
         reject()
 
-    assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
+    assert_binary_param_dtype(ctx, left, right, res)
     # TODO
 
 
