@@ -39,6 +39,12 @@ def boolean_and_all_integer_dtypes() -> st.SearchStrategy[DataType]:
     return xps.boolean_dtypes() | all_integer_dtypes()
 
 
+def isclose(n1: float, n2: float):
+    if not (math.isfinite(n1) and math.isfinite(n2)):
+        raise ValueError(f"{n1=} and {n1=}, but input must be finite")
+    return math.isclose(n1, n2, rel_tol=0.25, abs_tol=1)
+
+
 # When appropiate, this module tests operators alongside their respective
 # elementwise methods. We do this by parametrizing a generalised test method
 # with every relevant method and operator.
@@ -766,6 +772,7 @@ def test_divide(ctx, data):
     res = ctx.func(left, right)
 
     assert_binary_param_dtype(ctx, left, right, res)
+    assert_binary_param_shape(ctx, left, right, res)
     # There isn't much we can test here. The spec doesn't require any behavior
     # beyond the special cases, and indeed, there aren't many mathematical
     # properties of division that strictly hold for floating-point numbers. We
@@ -884,23 +891,38 @@ def test_floor_divide(ctx, data):
     res = ctx.func(left, right)
 
     assert_binary_param_dtype(ctx, left, right, res)
-    if not ctx.right_is_scalar:
-        if dh.is_int_dtype(left.dtype):
-            # The spec does not specify the behavior for division by 0 for integer
-            # dtypes. A library may choose to raise an exception in this case, so
-            # we avoid passing it in entirely.
-            div = xp.divide(
-                ah.asarray(left, dtype=xp.float64),
-                ah.asarray(right, dtype=xp.float64),
+    assert_binary_param_shape(ctx, left, right, res)
+    scalar_type = dh.get_scalar_type(res.dtype)
+    if ctx.right_is_scalar:
+        for idx in sh.ndindex(res.shape):
+            scalar_l = scalar_type(left[idx])
+            expected = scalar_l // right
+            scalar_o = scalar_type(res[idx])
+            if not all(math.isfinite(n) for n in [scalar_l, right, scalar_o, expected]):
+                continue
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
+            assert isclose(scalar_o, expected), (
+                f"{f_o}={scalar_o}, but should be roughly ({f_l} // {right})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
             )
-        else:
-            div = xp.divide(left, right)
-
-        # TODO: The spec doesn't clearly specify the behavior of floor_divide on
-        # infinities. See https://github.com/data-apis/array-api/issues/199.
-        finite = ah.isfinite(div)
-        ah.assert_integral(res[finite])
-    # TODO: Test the exact output for floor_divide.
+    else:
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
+            scalar_l = scalar_type(left[l_idx])
+            scalar_r = scalar_type(right[r_idx])
+            expected = scalar_l // scalar_r
+            scalar_o = scalar_type(res[o_idx])
+            if not all(
+                math.isfinite(n) for n in [scalar_l, scalar_r, scalar_o, expected]
+            ):
+                continue
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
+            assert isclose(scalar_o, expected), (
+                f"{f_o}={scalar_o}, but should be roughly ({f_l} // {f_r})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("greater", xps.numeric_dtypes()))
@@ -912,24 +934,37 @@ def test_greater(ctx, data):
     out = ctx.func(left, right)
 
     assert_binary_param_dtype(ctx, left, right, out, xp.bool)
-    if not ctx.right_is_scalar:
-        # TODO: generate indices without broadcasting arrays (see test_equal comment)
-        shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(ctx.func_name, out.shape, shape)
-        _left = xp.broadcast_to(left, shape)
-        _right = xp.broadcast_to(right, shape)
-
+    assert_binary_param_shape(ctx, left, right, out)
+    if ctx.right_is_scalar:
+        scalar_type = dh.get_scalar_type(left.dtype)
+        for idx in sh.ndindex(left.shape):
+            scalar_l = scalar_type(left[idx])
+            expected = scalar_l > right
+            scalar_o = bool(out[idx])
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} > {right})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        # See test_equal note
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = ah.asarray(_left, dtype=promoted_dtype)
-        _right = ah.asarray(_right, dtype=promoted_dtype)
-
+        _left = xp.astype(left, promoted_dtype)
+        _right = xp.astype(right, promoted_dtype)
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in sh.ndindex(shape):
-            out_idx = out[idx]
-            x1_idx = _left[idx]
-            x2_idx = _right[idx]
-            assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_type(x1_idx) > scalar_type(x2_idx))
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
+            scalar_l = scalar_type(_left[l_idx])
+            scalar_r = scalar_type(_right[r_idx])
+            expected = scalar_l > scalar_r
+            scalar_o = bool(out[o_idx])
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} > {f_r})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @pytest.mark.parametrize(
@@ -943,25 +978,37 @@ def test_greater_equal(ctx, data):
     out = ctx.func(left, right)
 
     assert_binary_param_dtype(ctx, left, right, out, xp.bool)
-    if not ctx.right_is_scalar:
-        # TODO: generate indices without broadcasting arrays (see test_equal comment)
-
-        shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(ctx.func_name, out.shape, shape)
-        _left = xp.broadcast_to(left, shape)
-        _right = xp.broadcast_to(right, shape)
-
+    assert_binary_param_shape(ctx, left, right, out)
+    if ctx.right_is_scalar:
+        scalar_type = dh.get_scalar_type(left.dtype)
+        for idx in sh.ndindex(left.shape):
+            scalar_l = scalar_type(left[idx])
+            expected = scalar_l >= right
+            scalar_o = bool(out[idx])
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} >= {right})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        # See test_equal note
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = ah.asarray(_left, dtype=promoted_dtype)
-        _right = ah.asarray(_right, dtype=promoted_dtype)
-
+        _left = xp.astype(left, promoted_dtype)
+        _right = xp.astype(right, promoted_dtype)
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in sh.ndindex(shape):
-            out_idx = out[idx]
-            x1_idx = _left[idx]
-            x2_idx = _right[idx]
-            assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_type(x1_idx) >= scalar_type(x2_idx))
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
+            scalar_l = scalar_type(_left[l_idx])
+            scalar_r = scalar_type(_right[r_idx])
+            expected = scalar_l >= scalar_r
+            scalar_o = bool(out[o_idx])
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} >= {f_r})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -1029,25 +1076,37 @@ def test_less(ctx, data):
     out = ctx.func(left, right)
 
     assert_binary_param_dtype(ctx, left, right, out, xp.bool)
-    if not ctx.right_is_scalar:
-        # TODO: generate indices without broadcasting arrays (see test_equal comment)
-
-        shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(ctx.func_name, out.shape, shape)
-        _left = xp.broadcast_to(left, shape)
-        _right = xp.broadcast_to(right, shape)
-
+    assert_binary_param_shape(ctx, left, right, out)
+    if ctx.right_is_scalar:
+        scalar_type = dh.get_scalar_type(left.dtype)
+        for idx in sh.ndindex(left.shape):
+            scalar_l = scalar_type(left[idx])
+            expected = scalar_l < right
+            scalar_o = bool(out[idx])
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} < {right})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        # See test_equal note
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = ah.asarray(_left, dtype=promoted_dtype)
-        _right = ah.asarray(_right, dtype=promoted_dtype)
-
+        _left = xp.astype(left, promoted_dtype)
+        _right = xp.astype(right, promoted_dtype)
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in sh.ndindex(shape):
-            x1_idx = _left[idx]
-            x2_idx = _right[idx]
-            out_idx = out[idx]
-            assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_type(x1_idx) < scalar_type(x2_idx))
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
+            scalar_l = scalar_type(_left[l_idx])
+            scalar_r = scalar_type(_right[r_idx])
+            expected = scalar_l < scalar_r
+            scalar_o = bool(out[o_idx])
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} < {f_r})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("less_equal", xps.numeric_dtypes()))
@@ -1059,25 +1118,37 @@ def test_less_equal(ctx, data):
     out = ctx.func(left, right)
 
     assert_binary_param_dtype(ctx, left, right, out, xp.bool)
-    if not ctx.right_is_scalar:
-        # TODO: generate indices without broadcasting arrays (see test_equal comment)
-
-        shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(ctx.func_name, out.shape, shape)
-        _left = xp.broadcast_to(left, shape)
-        _right = xp.broadcast_to(right, shape)
-
+    assert_binary_param_shape(ctx, left, right, out)
+    if ctx.right_is_scalar:
+        scalar_type = dh.get_scalar_type(left.dtype)
+        for idx in sh.ndindex(left.shape):
+            scalar_l = scalar_type(left[idx])
+            expected = scalar_l <= right
+            scalar_o = bool(out[idx])
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} <= {right})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        # See test_equal note
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = ah.asarray(_left, dtype=promoted_dtype)
-        _right = ah.asarray(_right, dtype=promoted_dtype)
-
+        _left = xp.astype(left, promoted_dtype)
+        _right = xp.astype(right, promoted_dtype)
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in sh.ndindex(shape):
-            x1_idx = _left[idx]
-            x2_idx = _right[idx]
-            out_idx = out[idx]
-            assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_type(x1_idx) <= scalar_type(x2_idx))
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
+            scalar_l = scalar_type(_left[l_idx])
+            scalar_r = scalar_type(_right[r_idx])
+            expected = scalar_l <= scalar_r
+            scalar_o = bool(out[o_idx])
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} <= {f_r})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -1204,6 +1275,7 @@ def test_multiply(ctx, data):
     res = ctx.func(left, right)
 
     assert_binary_param_dtype(ctx, left, right, res)
+    assert_binary_param_shape(ctx, left, right, res)
     if not ctx.right_is_scalar:
         # multiply is commutative
         expected = ctx.func(right, left)
@@ -1308,6 +1380,7 @@ def test_pow(ctx, data):
         reject()
 
     assert_binary_param_dtype(ctx, left, right, res)
+    assert_binary_param_shape(ctx, left, right, res)
     # There isn't much we can test here. The spec doesn't require any behavior
     # beyond the special cases, and indeed, there aren't many mathematical
     # properties of exponentiation that strictly hold for floating-point
@@ -1333,6 +1406,7 @@ def test_remainder(ctx, data):
     res = ctx.func(left, right)
 
     assert_binary_param_dtype(ctx, left, right, res)
+    assert_binary_param_shape(ctx, left, right, res)
     # TODO: test results
 
 
@@ -1414,6 +1488,7 @@ def test_subtract(ctx, data):
         reject()
 
     assert_binary_param_dtype(ctx, left, right, res)
+    assert_binary_param_shape(ctx, left, right, res)
     # TODO
 
 
