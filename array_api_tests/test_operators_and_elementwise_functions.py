@@ -312,6 +312,7 @@ def test_add(
         reject()
 
     assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
+    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
     if not right_is_scalar:
         # add is commutative
         expected = func(right, left)
@@ -773,16 +774,28 @@ def test_equal(
         func_name, left, right, right_is_scalar, out, res_name, xp.bool
     )
     assert_binary_param_shape(func_name, left, right, right_is_scalar, out, res_name)
-    if not right_is_scalar:
+    if right_is_scalar:
+        scalar_type = dh.get_scalar_type(left.dtype)
+        for idx in sh.ndindex(left.shape):
+            scalar_l = scalar_type(left[idx])
+            expected = scalar_l == right
+            scalar_o = bool(out[idx])
+            f_l = sh.fmt_idx(left_sym, idx)
+            f_o = sh.fmt_idx(res_name, idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} == {right})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
         # We manually promote the dtypes as incorrect internal type promotion
-        # could lead to erroneous behaviour that we don't catch. For example
+        # could lead to false positives. For example
         #
         #     >>> xp.equal(
         #     ...     xp.asarray(1.0, dtype=xp.float32),
         #     ...     xp.asarray(1.00000001, dtype=xp.float64),
         #     ... )
         #
-        # would incorrectly be True if float64 downcasts to float32 internally.
+        # would erroneously be True if float64 downcasted to float32.
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
         _left = xp.astype(left, promoted_dtype)
         _right = xp.astype(right, promoted_dtype)
@@ -792,11 +805,12 @@ def test_equal(
             scalar_r = scalar_type(_right[r_idx])
             expected = scalar_l == scalar_r
             scalar_o = bool(out[o_idx])
+            f_l = sh.fmt_idx(left_sym, l_idx)
+            f_r = sh.fmt_idx(right_sym, r_idx)
+            f_o = sh.fmt_idx(res_name, o_idx)
             assert scalar_o == expected, (
-                f"out[{o_idx}]={scalar_o}, but should be "
-                f"{left_sym}[{l_idx}]=={right_sym}[{r_idx}]={expected} "
-                f"({left_sym}[{l_idx}]={scalar_l}, {right_sym}[{r_idx}]={scalar_r}) "
-                f"[{func_name}()]"
+                f"{f_o}={scalar_o}, but should be ({f_l} == {f_r})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
             )
 
 
@@ -1311,25 +1325,37 @@ def test_not_equal(
     assert_binary_param_dtype(
         func_name, left, right, right_is_scalar, out, res_name, xp.bool
     )
-    if not right_is_scalar:
-        # TODO: generate indices without broadcasting arrays (see test_equal comment)
-
-        shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(func_name, out.shape, shape)
-        _left = xp.broadcast_to(left, shape)
-        _right = xp.broadcast_to(right, shape)
-
+    assert_binary_param_shape(func_name, left, right, right_is_scalar, out, res_name)
+    if right_is_scalar:
+        scalar_type = dh.get_scalar_type(left.dtype)
+        for idx in sh.ndindex(left.shape):
+            scalar_l = scalar_type(left[idx])
+            expected = scalar_l != right
+            scalar_o = bool(out[idx])
+            f_l = sh.fmt_idx(left_sym, idx)
+            f_o = sh.fmt_idx(res_name, idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} != {right})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        # See test_equal note
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = ah.asarray(_left, dtype=promoted_dtype)
-        _right = ah.asarray(_right, dtype=promoted_dtype)
-
+        _left = xp.astype(left, promoted_dtype)
+        _right = xp.astype(right, promoted_dtype)
         scalar_type = dh.get_scalar_type(promoted_dtype)
-        for idx in sh.ndindex(shape):
-            out_idx = out[idx]
-            x1_idx = _left[idx]
-            x2_idx = _right[idx]
-            assert out_idx.shape == x1_idx.shape == x2_idx.shape  # sanity check
-            assert bool(out_idx) == (scalar_type(x1_idx) != scalar_type(x2_idx))
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
+            scalar_l = scalar_type(_left[l_idx])
+            scalar_r = scalar_type(_right[r_idx])
+            expected = scalar_l != scalar_r
+            scalar_o = bool(out[o_idx])
+            f_l = sh.fmt_idx(left_sym, l_idx)
+            f_r = sh.fmt_idx(right_sym, r_idx)
+            f_o = sh.fmt_idx(res_name, o_idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} != {f_r})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @pytest.mark.parametrize(
