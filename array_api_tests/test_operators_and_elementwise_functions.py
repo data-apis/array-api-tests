@@ -437,31 +437,52 @@ def test_bitwise_and(
     res = func(left, right)
 
     assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    if not right_is_scalar:
-        # TODO: generate indices without broadcasting arrays (see test_equal comment)
-        shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(func_name, res.shape, shape, repr_name=f"{res_name}.shape")
-        _left = xp.broadcast_to(left, shape)
-        _right = xp.broadcast_to(right, shape)
-
-        # Compare against the Python & operator.
-        if res.dtype == xp.bool:
-            for idx in sh.ndindex(res.shape):
-                s_left = bool(_left[idx])
-                s_right = bool(_right[idx])
-                s_res = bool(res[idx])
-                assert (s_left and s_right) == s_res
-        else:
-            for idx in sh.ndindex(res.shape):
-                s_left = int(_left[idx])
-                s_right = int(_right[idx])
-                s_res = int(res[idx])
-                s_and = ah.int_to_dtype(
-                    s_left & s_right,
+    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
+    scalar_type = dh.get_scalar_type(res.dtype)
+    if right_is_scalar:
+        for idx in sh.ndindex(res.shape):
+            scalar_l = scalar_type(left[idx])
+            if res.dtype == xp.bool:
+                expected = scalar_l and right
+            else:
+                # for mypy
+                assert isinstance(scalar_l, int)
+                assert isinstance(right, int)
+                expected = ah.int_to_dtype(
+                    scalar_l & right,
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
                 )
-                assert s_and == s_res
+            scalar_o = scalar_type(res[idx])
+            f_l = sh.fmt_idx(left_sym, idx)
+            f_o = sh.fmt_idx(res_name, idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} & {right})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
+            scalar_l = scalar_type(left[l_idx])
+            scalar_r = scalar_type(right[r_idx])
+            if res.dtype == xp.bool:
+                expected = scalar_l and scalar_r
+            else:
+                # for mypy
+                assert isinstance(scalar_l, int)
+                assert isinstance(scalar_r, int)
+                expected = ah.int_to_dtype(
+                    scalar_l & scalar_r,
+                    dh.dtype_nbits[res.dtype],
+                    dh.dtype_signed[res.dtype],
+                )
+            scalar_o = scalar_type(res[o_idx])
+            f_l = sh.fmt_idx(left_sym, l_idx)
+            f_r = sh.fmt_idx(right_sym, r_idx)
+            f_o = sh.fmt_idx(res_name, o_idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} & {f_r})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @pytest.mark.parametrize(
@@ -489,25 +510,41 @@ def test_bitwise_left_shift(
     res = func(left, right)
 
     assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    if not right_is_scalar:
-        # TODO: generate indices without broadcasting arrays (see test_equal comment)
-        shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(func_name, res.shape, shape, repr_name=f"{res_name}.shape")
-        _left = xp.broadcast_to(left, shape)
-        _right = xp.broadcast_to(right, shape)
-
-        # Compare against the Python << operator.
+    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
+    if right_is_scalar:
         for idx in sh.ndindex(res.shape):
-            s_left = int(_left[idx])
-            s_right = int(_right[idx])
-            s_res = int(res[idx])
-            s_shift = ah.int_to_dtype(
+            scalar_l = int(left[idx])
+            expected = ah.int_to_dtype(
                 # We avoid shifting very large ints
-                s_left << s_right if s_right < dh.dtype_nbits[res.dtype] else 0,
+                scalar_l << right if right < dh.dtype_nbits[res.dtype] else 0,
                 dh.dtype_nbits[res.dtype],
                 dh.dtype_signed[res.dtype],
             )
-            assert s_shift == s_res
+            scalar_o = int(res[idx])
+            f_l = sh.fmt_idx(left_sym, idx)
+            f_o = sh.fmt_idx(res_name, idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} << {right})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
+            scalar_l = int(left[l_idx])
+            scalar_r = int(right[r_idx])
+            expected = ah.int_to_dtype(
+                # We avoid shifting very large ints
+                scalar_l << scalar_r if scalar_r < dh.dtype_nbits[res.dtype] else 0,
+                dh.dtype_nbits[res.dtype],
+                dh.dtype_signed[res.dtype],
+            )
+            scalar_o = int(res[o_idx])
+            f_l = sh.fmt_idx(left_sym, l_idx)
+            f_r = sh.fmt_idx(right_sym, r_idx)
+            f_o = sh.fmt_idx(res_name, o_idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} << {f_r})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @pytest.mark.parametrize(
@@ -522,20 +559,23 @@ def test_bitwise_invert(func_name, func, strat, data):
 
     ph.assert_dtype(func_name, x.dtype, out.dtype)
     ph.assert_shape(func_name, out.shape, x.shape)
-    # Compare against the Python ~ operator.
-    if out.dtype == xp.bool:
-        for idx in sh.ndindex(out.shape):
-            s_x = bool(x[idx])
-            s_out = bool(out[idx])
-            assert (not s_x) == s_out
-    else:
-        for idx in sh.ndindex(out.shape):
-            s_x = int(x[idx])
-            s_out = int(out[idx])
-            s_invert = ah.int_to_dtype(
-                ~s_x, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype]
+    for idx in sh.ndindex(out.shape):
+        if out.dtype == xp.bool:
+            scalar_x = bool(x[idx])
+            scalar_o = bool(out[idx])
+            expected = not scalar_x
+        else:
+            scalar_x = int(x[idx])
+            scalar_o = int(out[idx])
+            expected = ah.int_to_dtype(
+                ~scalar_x, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype]
             )
-            assert s_invert == s_out
+        f_x = sh.fmt_idx("x", idx)
+        f_o = sh.fmt_idx("out", idx)
+        assert scalar_o == expected, (
+            f"{f_o}={scalar_o}, but should be ~{f_x}={scalar_x} "
+            f"[{func_name}()]\n{f_x}={scalar_x}"
+        )
 
 
 @pytest.mark.parametrize(
@@ -559,31 +599,50 @@ def test_bitwise_or(
     res = func(left, right)
 
     assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    if not right_is_scalar:
-        # TODO: generate indices without broadcasting arrays (see test_equal comment)
-        shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(func_name, res.shape, shape, repr_name=f"{res_name}.shape")
-        _left = xp.broadcast_to(left, shape)
-        _right = xp.broadcast_to(right, shape)
-
-        # Compare against the Python | operator.
-        if res.dtype == xp.bool:
-            for idx in sh.ndindex(res.shape):
-                s_left = bool(_left[idx])
-                s_right = bool(_right[idx])
-                s_res = bool(res[idx])
-                assert (s_left or s_right) == s_res
-        else:
-            for idx in sh.ndindex(res.shape):
-                s_left = int(_left[idx])
-                s_right = int(_right[idx])
-                s_res = int(res[idx])
-                s_or = ah.int_to_dtype(
-                    s_left | s_right,
+    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
+    if right_is_scalar:
+        for idx in sh.ndindex(res.shape):
+            if res.dtype == xp.bool:
+                scalar_l = bool(left[idx])
+                scalar_o = bool(res[idx])
+                expected = scalar_l or right
+            else:
+                scalar_l = int(left[idx])
+                scalar_o = int(res[idx])
+                expected = ah.int_to_dtype(
+                    scalar_l | right,
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
                 )
-                assert s_or == s_res
+            f_l = sh.fmt_idx(left_sym, idx)
+            f_o = sh.fmt_idx(res_name, idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} | {right})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
+            if res.dtype == xp.bool:
+                scalar_l = bool(left[l_idx])
+                scalar_r = bool(right[r_idx])
+                scalar_o = bool(res[o_idx])
+                expected = scalar_l or scalar_r
+            else:
+                scalar_l = int(left[l_idx])
+                scalar_r = int(right[r_idx])
+                scalar_o = int(res[o_idx])
+                expected = ah.int_to_dtype(
+                    scalar_l | scalar_r,
+                    dh.dtype_nbits[res.dtype],
+                    dh.dtype_signed[res.dtype],
+                )
+            f_l = sh.fmt_idx(left_sym, l_idx)
+            f_r = sh.fmt_idx(right_sym, r_idx)
+            f_o = sh.fmt_idx(res_name, o_idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} | {f_r})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @pytest.mark.parametrize(
@@ -611,24 +670,39 @@ def test_bitwise_right_shift(
     res = func(left, right)
 
     assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    if not right_is_scalar:
-        # TODO: generate indices without broadcasting arrays (see test_equal comment)
-        shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(
-            "bitwise_right_shift", res.shape, shape, repr_name=f"{res_name}.shape"
-        )
-        _left = xp.broadcast_to(left, shape)
-        _right = xp.broadcast_to(right, shape)
-
-        # Compare against the Python >> operator.
+    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
+    if right_is_scalar:
         for idx in sh.ndindex(res.shape):
-            s_left = int(_left[idx])
-            s_right = int(_right[idx])
-            s_res = int(res[idx])
-            s_shift = ah.int_to_dtype(
-                s_left >> s_right, dh.dtype_nbits[res.dtype], dh.dtype_signed[res.dtype]
+            scalar_l = int(left[idx])
+            expected = ah.int_to_dtype(
+                scalar_l >> right,
+                dh.dtype_nbits[res.dtype],
+                dh.dtype_signed[res.dtype],
             )
-            assert s_shift == s_res
+            scalar_o = int(res[idx])
+            f_l = sh.fmt_idx(left_sym, idx)
+            f_o = sh.fmt_idx(res_name, idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} >> {right})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
+            scalar_l = int(left[l_idx])
+            scalar_r = int(right[r_idx])
+            expected = ah.int_to_dtype(
+                scalar_l >> scalar_r,
+                dh.dtype_nbits[res.dtype],
+                dh.dtype_signed[res.dtype],
+            )
+            scalar_o = int(res[o_idx])
+            f_l = sh.fmt_idx(left_sym, l_idx)
+            f_r = sh.fmt_idx(right_sym, r_idx)
+            f_o = sh.fmt_idx(res_name, o_idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} >> {f_r})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @pytest.mark.parametrize(
@@ -652,31 +726,50 @@ def test_bitwise_xor(
     res = func(left, right)
 
     assert_binary_param_dtype(func_name, left, right, right_is_scalar, res, res_name)
-    if not right_is_scalar:
-        # TODO: generate indices without broadcasting arrays (see test_equal comment)
-        shape = broadcast_shapes(left.shape, right.shape)
-        ph.assert_shape(func_name, res.shape, shape, repr_name=f"{res_name}.shape")
-        _left = xp.broadcast_to(left, shape)
-        _right = xp.broadcast_to(right, shape)
-
-        # Compare against the Python ^ operator.
-        if res.dtype == xp.bool:
-            for idx in sh.ndindex(res.shape):
-                s_left = bool(_left[idx])
-                s_right = bool(_right[idx])
-                s_res = bool(res[idx])
-                assert (s_left ^ s_right) == s_res
-        else:
-            for idx in sh.ndindex(res.shape):
-                s_left = int(_left[idx])
-                s_right = int(_right[idx])
-                s_res = int(res[idx])
-                s_xor = ah.int_to_dtype(
-                    s_left ^ s_right,
+    assert_binary_param_shape(func_name, left, right, right_is_scalar, res, res_name)
+    if right_is_scalar:
+        for idx in sh.ndindex(res.shape):
+            if res.dtype == xp.bool:
+                scalar_l = bool(left[idx])
+                scalar_o = bool(res[idx])
+                expected = scalar_l ^ right
+            else:
+                scalar_l = int(left[idx])
+                scalar_o = int(res[idx])
+                expected = ah.int_to_dtype(
+                    scalar_l ^ right,
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
                 )
-                assert s_xor == s_res
+            f_l = sh.fmt_idx(left_sym, idx)
+            f_o = sh.fmt_idx(res_name, idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} ^ {right})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
+            if res.dtype == xp.bool:
+                scalar_l = bool(left[l_idx])
+                scalar_r = bool(right[r_idx])
+                scalar_o = bool(res[o_idx])
+                expected = scalar_l ^ scalar_r
+            else:
+                scalar_l = int(left[l_idx])
+                scalar_r = int(right[r_idx])
+                scalar_o = int(res[o_idx])
+                expected = ah.int_to_dtype(
+                    scalar_l ^ scalar_r,
+                    dh.dtype_nbits[res.dtype],
+                    dh.dtype_signed[res.dtype],
+                )
+            f_l = sh.fmt_idx(left_sym, l_idx)
+            f_r = sh.fmt_idx(right_sym, r_idx)
+            f_o = sh.fmt_idx(res_name, o_idx)
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be ({f_l} ^ {f_r})={expected} "
+                f"[{func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
