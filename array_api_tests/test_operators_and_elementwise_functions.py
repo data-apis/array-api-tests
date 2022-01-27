@@ -1473,7 +1473,23 @@ def test_sign(x):
     out = xp.sign(x)
     ph.assert_dtype("sign", x.dtype, out.dtype)
     ph.assert_shape("sign", out.shape, x.shape)
-    # TODO
+    scalar_type = dh.get_scalar_type(x.dtype)
+    for idx in sh.ndindex(x.shape):
+        scalar_x = scalar_type(x[idx])
+        f_x = sh.fmt_idx("x", idx)
+        if math.isnan(scalar_x):
+            continue
+        if scalar_x == 0:
+            expected = 0
+            expr = f"{f_x}=0"
+        else:
+            expected = 1 if scalar_x > 0 else -1
+            expr = f"({f_x} / |{f_x}|)={expected}"
+        scalar_o = scalar_type(out[idx])
+        f_o = sh.fmt_idx("out", idx)
+        assert scalar_o == expected, (
+            f"{f_o}={scalar_o}, but should be {expr} [sign()]\n{f_x}={scalar_x}"
+        )
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
