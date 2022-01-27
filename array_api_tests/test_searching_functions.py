@@ -8,7 +8,6 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .algos import broadcast_shapes
 
 pytestmark = pytest.mark.ci
 
@@ -134,7 +133,7 @@ def test_where(shapes, dtypes, data):
 
     out = xp.where(cond, x1, x2)
 
-    shape = broadcast_shapes(*shapes)
+    shape = sh.broadcast_shapes(*shapes)
     ph.assert_shape("where", out.shape, shape)
     # TODO: generate indices without broadcasting arrays
     _cond = xp.broadcast_to(cond, shape)

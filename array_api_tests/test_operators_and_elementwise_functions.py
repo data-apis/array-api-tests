@@ -25,7 +25,6 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .algos import broadcast_shapes
 from .typing import Array, DataType, Param, Scalar, Shape
 
 pytestmark = pytest.mark.ci
@@ -1223,7 +1222,7 @@ def test_logical_and(x1, x2):
     out = ah.logical_and(x1, x2)
     ph.assert_dtype("logical_and", (x1.dtype, x2.dtype), out.dtype)
     # See the comments in test_equal
-    shape = broadcast_shapes(x1.shape, x2.shape)
+    shape = sh.broadcast_shapes(x1.shape, x2.shape)
     ph.assert_shape("logical_and", out.shape, shape)
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
@@ -1245,7 +1244,7 @@ def test_logical_or(x1, x2):
     out = ah.logical_or(x1, x2)
     ph.assert_dtype("logical_or", (x1.dtype, x2.dtype), out.dtype)
     # See the comments in test_equal
-    shape = broadcast_shapes(x1.shape, x2.shape)
+    shape = sh.broadcast_shapes(x1.shape, x2.shape)
     ph.assert_shape("logical_or", out.shape, shape)
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)
@@ -1258,7 +1257,7 @@ def test_logical_xor(x1, x2):
     out = xp.logical_xor(x1, x2)
     ph.assert_dtype("logical_xor", (x1.dtype, x2.dtype), out.dtype)
     # See the comments in test_equal
-    shape = broadcast_shapes(x1.shape, x2.shape)
+    shape = sh.broadcast_shapes(x1.shape, x2.shape)
     ph.assert_shape("logical_xor", out.shape, shape)
     _x1 = xp.broadcast_to(x1, shape)
     _x2 = xp.broadcast_to(x2, shape)

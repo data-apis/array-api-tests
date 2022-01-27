@@ -6,7 +6,7 @@ from . import _array_module as xp
 from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import function_stubs
-from .algos import broadcast_shapes
+from . import shape_helpers as sh
 from .typing import Array, DataType, Scalar, ScalarType, Shape
 
 __all__ = [
@@ -159,7 +159,7 @@ def assert_result_shape(
     **kw,
 ):
     if expected is None:
-        expected = broadcast_shapes(*in_shapes)
+        expected = sh.broadcast_shapes(*in_shapes)
     f_in_shapes = " . ".join(str(s) for s in in_shapes)
     f_sig = f" {f_in_shapes} "
     if kw:
