@@ -39,7 +39,7 @@ def boolean_and_all_integer_dtypes() -> st.SearchStrategy[DataType]:
     return xps.boolean_dtypes() | all_integer_dtypes()
 
 
-def isclose(n1: float, n2: float):
+def isclose(n1: Union[int, float], n2: Union[int, float]):
     if not (math.isfinite(n1) and math.isfinite(n2)):
         raise ValueError(f"{n1=} and {n1=}, but input must be finite")
     return math.isclose(n1, n2, rel_tol=0.25, abs_tol=1)
@@ -1394,20 +1394,45 @@ def test_remainder(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
     right = data.draw(ctx.right_strat, label=ctx.right_sym)
     if ctx.right_is_scalar:
-        out_dtype = left.dtype
+        assume(right != 0)
     else:
-        out_dtype = dh.result_type(left.dtype, right.dtype)
-    if dh.is_int_dtype(out_dtype):
-        if ctx.right_is_scalar:
-            assume(right != 0)
-        else:
-            assume(not ah.any(right == 0))
+        assume(not ah.any(right == 0))
 
     res = ctx.func(left, right)
 
     assert_binary_param_dtype(ctx, left, right, res)
     assert_binary_param_shape(ctx, left, right, res)
-    # TODO: test results
+    scalar_type = dh.get_scalar_type(res.dtype)
+    if ctx.right_is_scalar:
+        for idx in sh.ndindex(res.shape):
+            scalar_l = scalar_type(left[idx])
+            expected = scalar_l % right
+            scalar_o = scalar_type(res[idx])
+            if not all(math.isfinite(n) for n in [scalar_l, right, scalar_o, expected]):
+                continue
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
+            assert isclose(scalar_o, expected), (
+                f"{f_o}={scalar_o}, but should be roughly ({f_l} % {right})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
+            scalar_l = scalar_type(left[l_idx])
+            scalar_r = scalar_type(right[r_idx])
+            expected = scalar_l % scalar_r
+            scalar_o = scalar_type(res[o_idx])
+            if not all(
+                math.isfinite(n) for n in [scalar_l, scalar_r, scalar_o, expected]
+            ):
+                continue
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
+            assert isclose(scalar_o, expected), (
+                f"{f_o}={scalar_o}, but should be roughly ({f_l} % {f_r})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
