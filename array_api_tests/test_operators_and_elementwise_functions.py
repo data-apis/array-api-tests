@@ -310,10 +310,37 @@ def test_add(ctx, data):
 
     assert_binary_param_dtype(ctx, left, right, res)
     assert_binary_param_shape(ctx, left, right, res)
-    if not ctx.right_is_scalar:
-        # add is commutative
-        expected = ctx.func(right, left)
-        ah.assert_exactly_equal(res, expected)
+    m, M = dh.dtype_ranges[res.dtype]
+    scalar_type = dh.get_scalar_type(res.dtype)
+    if ctx.right_is_scalar:
+        for idx in sh.ndindex(res.shape):
+            scalar_l = scalar_type(left[idx])
+            expected = scalar_l + right
+            if not math.isfinite(expected) or expected <= m or expected >= M:
+                continue
+            scalar_o = scalar_type(res[idx])
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
+            assert isclose(scalar_o, expected), (
+                f"{f_o}={scalar_o}, but should be roughly ({f_l} + {right})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        ph.assert_array(ctx.func_name, res, ctx.func(right, left))  # cumulative
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
+            scalar_l = scalar_type(left[l_idx])
+            scalar_r = scalar_type(right[r_idx])
+            expected = scalar_l + scalar_r
+            if not math.isfinite(expected) or expected <= m or expected >= M:
+                continue
+            scalar_o = scalar_type(res[o_idx])
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
+            assert isclose(scalar_o, expected), (
+                f"{f_o}={scalar_o}, but should be roughly ({f_l} + {f_r})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -1487,9 +1514,9 @@ def test_sign(x):
             expr = f"({f_x} / |{f_x}|)={expected}"
         scalar_o = scalar_type(out[idx])
         f_o = sh.fmt_idx("out", idx)
-        assert scalar_o == expected, (
-            f"{f_o}={scalar_o}, but should be {expr} [sign()]\n{f_x}={scalar_x}"
-        )
+        assert (
+            scalar_o == expected
+        ), f"{f_o}={scalar_o}, but should be {expr} [sign()]\n{f_x}={scalar_x}"
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -1535,7 +1562,36 @@ def test_subtract(ctx, data):
 
     assert_binary_param_dtype(ctx, left, right, res)
     assert_binary_param_shape(ctx, left, right, res)
-    # TODO
+    m, M = dh.dtype_ranges[res.dtype]
+    scalar_type = dh.get_scalar_type(res.dtype)
+    if ctx.right_is_scalar:
+        for idx in sh.ndindex(res.shape):
+            scalar_l = scalar_type(left[idx])
+            expected = scalar_l - right
+            if not math.isfinite(expected) or expected <= m or expected >= M:
+                continue
+            scalar_o = scalar_type(res[idx])
+            f_l = sh.fmt_idx(ctx.left_sym, idx)
+            f_o = sh.fmt_idx(ctx.res_name, idx)
+            assert isclose(scalar_o, expected), (
+                f"{f_o}={scalar_o}, but should be roughly ({f_l} - {right})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
+            )
+    else:
+        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
+            scalar_l = scalar_type(left[l_idx])
+            scalar_r = scalar_type(right[r_idx])
+            expected = scalar_l - scalar_r
+            if not math.isfinite(expected) or expected <= m or expected >= M:
+                continue
+            scalar_o = scalar_type(res[o_idx])
+            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
+            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
+            f_o = sh.fmt_idx(ctx.res_name, o_idx)
+            assert isclose(scalar_o, expected), (
+                f"{f_o}={scalar_o}, but should be roughly ({f_l} - {f_r})={expected} "
+                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+            )
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
