@@ -76,15 +76,21 @@ def normalise_axis(
     return axes
 
 
-def ndindex(shape):
-    """Yield every index of shape"""
+def ndindex(shape: Shape) -> Iterator[Index]:
+    """Yield every index of a shape"""
     return (indices[0] for indices in iter_indices(shape))
 
 
-def iter_indices(*shapes, skip_axes=()):
+def iter_indices(
+    *shapes: Shape, skip_axes: Tuple[int, ...] = ()
+) -> Iterator[Tuple[Index, ...]]:
     """Wrapper for ndindex.iter_indices()"""
-    gen = _iter_indices(*shapes, skip_axes=skip_axes)
-    return ([i.raw for i in indices] for indices in gen)
+    # Prevent iterations if any shape has 0-sides
+    for shape in shapes:
+        if 0 in shape:
+            return
+    for indices in _iter_indices(*shapes, skip_axes=skip_axes):
+        yield tuple(i.raw for i in indices)  # type: ignore
 
 
 def axis_ndindex(

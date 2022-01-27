@@ -1221,13 +1221,19 @@ def test_logaddexp(x1, x2):
 def test_logical_and(x1, x2):
     out = ah.logical_and(x1, x2)
     ph.assert_dtype("logical_and", (x1.dtype, x2.dtype), out.dtype)
-    # See the comments in test_equal
-    shape = sh.broadcast_shapes(x1.shape, x2.shape)
-    ph.assert_shape("logical_and", out.shape, shape)
-    _x1 = xp.broadcast_to(x1, shape)
-    _x2 = xp.broadcast_to(x2, shape)
-    for idx in sh.ndindex(shape):
-        assert out[idx] == (bool(_x1[idx]) and bool(_x2[idx]))
+    ph.assert_result_shape("logical_and", (x1.shape, x2.shape), out.shape)
+    for l_idx, r_idx, o_idx in sh.iter_indices(x1.shape, x2.shape, out.shape):
+        scalar_l = bool(x1[l_idx])
+        scalar_r = bool(x2[r_idx])
+        expected = scalar_l and scalar_r
+        scalar_o = bool(out[o_idx])
+        f_l = sh.fmt_idx("x1", l_idx)
+        f_r = sh.fmt_idx("x2", r_idx)
+        f_o = sh.fmt_idx("out", o_idx)
+        assert scalar_o == expected, (
+            f"{f_o}={scalar_o}, but should be ({f_l} and {f_r})={expected} "
+            f"[logical_and()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
+        )
 
 
 @given(xps.arrays(dtype=xp.bool, shape=hh.shapes()))
