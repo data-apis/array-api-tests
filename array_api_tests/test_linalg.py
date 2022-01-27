@@ -39,18 +39,17 @@ from ._array_module import linalg
 
 pytestmark = pytest.mark.ci
 
-
-
 # Standin strategy for not yet implemented tests
 todo = none()
 
-def _test_stacks(f, *args, res=None, dims=2, true_val=None, matrix_axes=(-2, -1),
+def _test_stacks(f, *args, res=None, dims=2, true_val=None,
+                 matrix_axes=(-2, -1),
                  assert_equal=assert_exactly_equal, **kw):
     """
     Test that f(*args, **kw) maps across stacks of matrices
 
-    dims is the number of dimensions f(*args) should have for a single n x m
-    matrix stack.
+    dims is the number of dimensions f(*args, *kw) should have for a single n
+    x m matrix stack.
 
     matrix_axes are the axes along which matrices (or vectors) are stacked in
     the input.
@@ -67,9 +66,13 @@ def _test_stacks(f, *args, res=None, dims=2, true_val=None, matrix_axes=(-2, -1)
 
     shapes = [x.shape for x in args]
 
+    # Assume the result is stacked along the last 'dims' axes of matrix_axes.
+    # This holds for all the functions tested in this file
+    res_axes = matrix_axes[::-1][:dims]
+
     for (x_idxes, (res_idx,)) in zip(
             iter_indices(*shapes, skip_axes=matrix_axes),
-            iter_indices(res.shape, skip_axes=tuple(range(-dims, 0)))):
+            iter_indices(res.shape, skip_axes=res_axes)):
         x_idxes = [x_idx.raw for x_idx in x_idxes]
         res_idx = res_idx.raw
 
