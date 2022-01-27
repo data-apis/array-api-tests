@@ -16,7 +16,7 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 import pytest
 from hypothesis import assume, given
 from hypothesis.strategies import (booleans, composite, none, tuples, integers,
-                                   shared, sampled_from, data, just)
+                                   shared, sampled_from, one_of, data, just)
 from ndindex import iter_indices
 
 from .array_helpers import assert_exactly_equal, asarray
@@ -29,7 +29,6 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  SQRT_MAX_ARRAY_SIZE, finite_matrices)
 from . import dtype_helpers as dh
 from . import pytest_helpers as ph
-from . import shape_helpers as sh
 
 from .algos import broadcast_shapes
 
@@ -164,26 +163,18 @@ def test_cross(x1_x2_kw):
     assert res.dtype == dh.result_type(x1.dtype, x2.dtype), "cross() did not return the correct dtype"
     assert res.shape == shape, "cross() did not return the correct shape"
 
-    # cross is too different from other functions to use _test_stacks, and it
-    # is the only function that works the way it does, so it's not really
-    # worth generalizing _test_stacks to handle it.
-    a = axis if axis >= 0 else axis + len(shape)
-    for _idx in sh.ndindex(shape[:a] + shape[a+1:]):
-        idx = _idx[:a] + (slice(None),) + _idx[a:]
-        assert len(idx) == len(shape), "Invalid index. This indicates a bug in the test suite."
-        res_stack = res[idx]
-        x1_stack = x1[idx]
-        x2_stack = x2[idx]
-        assert x1_stack.shape == x2_stack.shape == (3,), "Invalid cross() stack shapes. This indicates a bug in the test suite."
-        decomp_res_stack = linalg.cross(x1_stack, x2_stack)
-        assert_exactly_equal(res_stack, decomp_res_stack)
+    def exact_cross(a, b):
+        assert a.shape == b.shape == (3,), "Invalid cross() stack shapes. This indicates a bug in the test suite."
+        return asarray([
+            a[1]*b[2] - a[2]*b[1],
+            a[2]*b[0] - a[0]*b[2],
+            a[0]*b[1] - a[1]*b[0],
+        ], dtype=res.dtype)
 
-        exact_cross = asarray([
-            x1_stack[1]*x2_stack[2] - x1_stack[2]*x2_stack[1],
-            x1_stack[2]*x2_stack[0] - x1_stack[0]*x2_stack[2],
-            x1_stack[0]*x2_stack[1] - x1_stack[1]*x2_stack[0],
-            ], dtype=res.dtype)
-        assert_exactly_equal(res_stack, exact_cross)
+    # We don't want to pass in **kw here because that would pass axis to
+    # cross() on a single stack, but the axis is not meaningful on unstacked
+    # vectors.
+    _test_stacks(linalg.cross, x1, x2, dims=1, matrix_axes=(axis,), res=res, true_val=exact_cross)
 
 @pytest.mark.xp_extension('linalg')
 @given(
