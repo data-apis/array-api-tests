@@ -297,7 +297,7 @@ def test_matmul(x1, x2):
     else:
         res = _array_module.matmul(x1, x2)
 
-    ph.assert_dtype("matmul", (x1.dtype, x2.dtype), res.dtype)
+    ph.assert_dtype("matmul", [x1.dtype, x2.dtype], res.dtype)
 
     if len(x1.shape) == len(x2.shape) == 1:
         assert res.shape == ()

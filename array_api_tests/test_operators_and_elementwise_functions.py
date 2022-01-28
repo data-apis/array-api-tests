@@ -273,7 +273,7 @@ def assert_binary_param_dtype(
     if ctx.right_is_scalar:
         in_dtypes = left.dtype
     else:
-        in_dtypes = (left.dtype, right.dtype)  # type: ignore
+        in_dtypes = [left.dtype, right.dtype]  # type: ignore
     ph.assert_dtype(
         ctx.func_name, in_dtypes, res.dtype, expected, repr_name=f"{ctx.res_name}.dtype"
     )
@@ -443,7 +443,7 @@ def test_atan(x):
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_atan2(x1, x2):
     out = xp.atan2(x1, x2)
-    ph.assert_dtype("atan2", (x1.dtype, x2.dtype), out.dtype)
+    ph.assert_dtype("atan2", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("atan2", (x1.shape, x2.shape), out.shape)
     INFINITY1 = ah.infinity(x1.shape, x1.dtype)
     INFINITY2 = ah.infinity(x2.shape, x2.dtype)
@@ -1294,7 +1294,7 @@ def test_log10(x):
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_logaddexp(x1, x2):
     out = xp.logaddexp(x1, x2)
-    ph.assert_dtype("logaddexp", (x1.dtype, x2.dtype), out.dtype)
+    ph.assert_dtype("logaddexp", [x1.dtype, x2.dtype], out.dtype)
     # The spec doesn't require any behavior for this function. We could test
     # that this is indeed an approximation of log(exp(x1) + exp(x2)), but we
     # don't have tests for this sort of thing for any functions yet.
@@ -1303,7 +1303,7 @@ def test_logaddexp(x1, x2):
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_and(x1, x2):
     out = ah.logical_and(x1, x2)
-    ph.assert_dtype("logical_and", (x1.dtype, x2.dtype), out.dtype)
+    ph.assert_dtype("logical_and", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("logical_and", (x1.shape, x2.shape), out.shape)
     binary_assert_against_refimpl(
         "logical_and",
@@ -1329,7 +1329,7 @@ def test_logical_not(x):
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_or(x1, x2):
     out = ah.logical_or(x1, x2)
-    ph.assert_dtype("logical_or", (x1.dtype, x2.dtype), out.dtype)
+    ph.assert_dtype("logical_or", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("logical_or", (x1.shape, x2.shape), out.shape)
     binary_assert_against_refimpl(
         "logical_or", bool, x1, x2, out, lambda l, r: l or r, "({} or {})={}"
@@ -1339,7 +1339,7 @@ def test_logical_or(x1, x2):
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_xor(x1, x2):
     out = xp.logical_xor(x1, x2)
-    ph.assert_dtype("logical_xor", (x1.dtype, x2.dtype), out.dtype)
+    ph.assert_dtype("logical_xor", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("logical_xor", (x1.shape, x2.shape), out.shape)
     binary_assert_against_refimpl(
         "logical_xor", bool, x1, x2, out, lambda l, r: l ^ r, "({} ^ {})={}"

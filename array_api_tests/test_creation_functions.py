@@ -152,7 +152,7 @@ def test_arange(dtype, data):
         else:
             ph.assert_default_float("arange", out.dtype)
     else:
-        ph.assert_dtype("arange", (out.dtype,), dtype)
+        ph.assert_kw_dtype("arange", dtype, out.dtype)
     f_sig = ", ".join(str(n) for n in args)
     if len(kwargs) > 0:
         f_sig += f", {ph.fmt_kw(kwargs)}"
@@ -302,7 +302,7 @@ def test_empty(shape, kw):
 def test_empty_like(x, kw):
     out = xp.empty_like(x, **kw)
     if kw.get("dtype", None) is None:
-        ph.assert_dtype("empty_like", (x.dtype,), out.dtype)
+        ph.assert_dtype("empty_like", x.dtype, out.dtype)
     else:
         ph.assert_kw_dtype("empty_like", kw["dtype"], out.dtype)
     ph.assert_shape("empty_like", out.shape, x.shape)
@@ -399,7 +399,7 @@ def test_full_like(x, fill_value, kw):
     out = xp.full_like(x, fill_value, **kw)
     dtype = kw.get("dtype", None) or x.dtype
     if kw.get("dtype", None) is None:
-        ph.assert_dtype("full_like", (x.dtype,), out.dtype)
+        ph.assert_dtype("full_like", x.dtype, out.dtype)
     else:
         ph.assert_kw_dtype("full_like", kw["dtype"], out.dtype)
     ph.assert_shape("full_like", out.shape, x.shape)
@@ -459,7 +459,7 @@ def test_linspace(num, dtype, endpoint, data):
     if dtype is None:
         ph.assert_default_float("linspace", out.dtype)
     else:
-        ph.assert_dtype("linspace", (out.dtype,), dtype)
+        ph.assert_kw_dtype("linspace", dtype, out.dtype)
     ph.assert_shape("linspace", out.shape, num, start=stop, stop=stop, num=num)
     f_func = f"[linspace({start}, {stop}, {num})]"
     if num > 0:
@@ -529,7 +529,7 @@ def test_ones(shape, kw):
 def test_ones_like(x, kw):
     out = xp.ones_like(x, **kw)
     if kw.get("dtype", None) is None:
-        ph.assert_dtype("ones_like", (x.dtype,), out.dtype)
+        ph.assert_dtype("ones_like", x.dtype, out.dtype)
     else:
         ph.assert_kw_dtype("ones_like", kw["dtype"], out.dtype)
     ph.assert_shape("ones_like", out.shape, x.shape)
@@ -565,7 +565,7 @@ def test_zeros(shape, kw):
 def test_zeros_like(x, kw):
     out = xp.zeros_like(x, **kw)
     if kw.get("dtype", None) is None:
-        ph.assert_dtype("zeros_like", (x.dtype,), out.dtype)
+        ph.assert_dtype("zeros_like", x.dtype, out.dtype)
     else:
         ph.assert_kw_dtype("zeros_like", kw["dtype"], out.dtype)
     ph.assert_shape("zeros_like", out.shape, x.shape)

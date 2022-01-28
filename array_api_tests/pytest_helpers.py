@@ -1,6 +1,6 @@
 import math
 from inspect import getfullargspec
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 from . import _array_module as xp
 from . import array_helpers as ah
@@ -71,15 +71,14 @@ def fmt_kw(kw: Dict[str, Any]) -> str:
 
 def assert_dtype(
     func_name: str,
-    in_dtypes: Union[DataType, Tuple[DataType, ...]],
+    in_dtype: Union[DataType, Sequence[DataType]],
     out_dtype: DataType,
     expected: Optional[DataType] = None,
     *,
     repr_name: str = "out.dtype",
 ):
-    if not isinstance(in_dtypes, tuple):
-        in_dtypes = (in_dtypes,)
-    f_in_dtypes = dh.fmt_types(in_dtypes)
+    in_dtypes = in_dtype if isinstance(in_dtype, Sequence) else [in_dtype]
+    f_in_dtypes = dh.fmt_types(tuple(in_dtypes))
     f_out_dtype = dh.dtype_to_name[out_dtype]
     if expected is None:
         expected = dh.result_type(*in_dtypes)
