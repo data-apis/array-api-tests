@@ -26,7 +26,8 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  invertible_matrices, two_mutual_arrays,
                                  mutually_promotable_dtypes, one_d_shapes,
                                  two_mutually_broadcastable_shapes,
-                                 SQRT_MAX_ARRAY_SIZE, finite_matrices)
+                                 SQRT_MAX_ARRAY_SIZE, finite_matrices,
+                                 rtol_shared_matrix_shapes, rtols)
 from . import dtype_helpers as dh
 from . import pytest_helpers as ph
 
@@ -312,7 +313,7 @@ matrix_norm_shapes = shared(matrix_shapes())
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=finite_matrices,
+    x=finite_matrices(),
     kw=kwargs(keepdims=booleans(),
               ord=sampled_from([-float('inf'), -2, -2, 1, 2, float('inf'), 'fro', 'nuc']))
 )
@@ -358,12 +359,11 @@ def test_matrix_power(x, n):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
-    kw=kwargs(rtol=todo)
+    x=finite_matrices(shape=rtol_shared_matrix_shapes),
+    kw=kwargs(rtol=rtols)
 )
 def test_matrix_rank(x, kw):
-    # res = linalg.matrix_rank(x, **kw)
-    pass
+    res = linalg.matrix_rank(x, **kw)
 
 @given(
     x=xps.arrays(dtype=dtypes, shape=matrix_shapes()),
@@ -408,12 +408,11 @@ def test_outer(x1, x2):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
-    kw=kwargs(rtol=todo)
+    x=finite_matrices(shape=rtol_shared_matrix_shapes),
+    kw=kwargs(rtol=rtols)
 )
 def test_pinv(x, kw):
-    # res = linalg.pinv(x, **kw)
-    pass
+    res = linalg.pinv(x, **kw)
 
 @pytest.mark.xp_extension('linalg')
 @given(
@@ -526,7 +525,7 @@ def test_solve(x1, x2):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=finite_matrices,
+    x=finite_matrices(),
     kw=kwargs(full_matrices=booleans())
 )
 def test_svd(x, kw):
@@ -562,7 +561,7 @@ def test_svd(x, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=finite_matrices,
+    x=finite_matrices(),
 )
 def test_svdvals(x):
     res = linalg.svdvals(x)
