@@ -320,7 +320,15 @@ def test_matrix_norm(x, kw):
     res = linalg.matrix_norm(x, **kw)
 
     keepdims = kw.get('keepdims', False)
-    ord = kw.get('ord', 'fro')
+    # TODO: Check that the ord values give the correct norms.
+    # ord = kw.get('ord', 'fro')
+
+    if keepdims:
+        expected_shape = x.shape[:-2] + (1, 1)
+    else:
+        expected_shape = x.shape[:-2]
+    assert res.shape == expected_shape, f"matrix_norm({keepdims=}) did not return the correct shape"
+    assert res.dtype == x.dtype, "matrix_norm() did not return the correct dtype"
 
     _test_stacks(linalg.matrix_norm, x, **kw, dims=2 if keepdims else 0,
                  res=res)
