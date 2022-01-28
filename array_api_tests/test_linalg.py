@@ -313,7 +313,7 @@ matrix_norm_shapes = shared(matrix_shapes())
 @given(
     x=finite_matrices,
     kw=kwargs(keepdims=booleans(),
-              ord=sampled_from([1, 2, float('inf'), -float('inf'), 'fro', 'nuc']))
+              ord=sampled_from([-float('inf'), -2, -2, 1, 2, float('inf'), 'fro', 'nuc']))
 )
 def test_matrix_norm(x, kw):
     res = linalg.matrix_norm(x, **kw)
