@@ -308,14 +308,22 @@ def test_matmul(x1, x2):
         assert res.shape == stack_shape + (x1.shape[-2], x2.shape[-1])
         _test_stacks(_array_module.matmul, x1, x2, res=res)
 
+matrix_norm_shapes = shared(matrix_shapes())
+
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
-    kw=kwargs(axis=todo, keepdims=todo, ord=todo)
+    x=finite_matrices,
+    kw=kwargs(keepdims=booleans(),
+              ord=sampled_from([1, 2, float('inf'), -float('inf'), 'fro', 'nuc']))
 )
 def test_matrix_norm(x, kw):
-    # res = linalg.matrix_norm(x, **kw)
-    pass
+    res = linalg.matrix_norm(x, **kw)
+
+    keepdims = kw.get('keepdims', False)
+    ord = kw.get('ord', 'fro')
+
+    _test_stacks(linalg.matrix_norm, x, **kw, dims=2 if keepdims else 0,
+                 res=res)
 
 matrix_power_n = shared(integers(-1000, 1000), key='matrix_power n')
 @pytest.mark.xp_extension('linalg')
