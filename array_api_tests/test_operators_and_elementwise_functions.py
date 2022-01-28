@@ -10,6 +10,7 @@ special_cases/
 """
 
 import math
+import operator
 from enum import Enum, auto
 from typing import Callable, List, NamedTuple, Optional, Union
 
@@ -44,6 +45,18 @@ def isclose(n1: Union[int, float], n2: Union[int, float]) -> bool:
     return math.isclose(n1, n2, rel_tol=0.25, abs_tol=1)
 
 
+def mock_int_dtype(n: int, dtype: DataType) -> int:
+    """Returns equivalent of `n` that mocks `dtype` behaviour"""
+    nbits = dh.dtype_nbits[dtype]
+    mask = (1 << nbits) - 1
+    n &= mask
+    if dh.dtype_signed[dtype]:
+        highest_bit = 1 << (nbits - 1)
+        if n & highest_bit:
+            n = -((~n & mask) + 1)
+    return n
+
+
 def unary_assert_against_refimpl(
     func_name: str,
     in_stype: ScalarType,
@@ -52,6 +65,7 @@ def unary_assert_against_refimpl(
     refimpl: Callable[[Scalar], Scalar],
     expr_template: str,
     res_stype: Optional[ScalarType] = None,
+    ignorer: Callable[[Scalar], bool] = bool,
 ):
     if in_.shape != res.shape:
         raise ValueError(f"{res.shape=}, but should be {in_.shape=}")
@@ -59,6 +73,8 @@ def unary_assert_against_refimpl(
         res_stype = in_stype
     for idx in sh.ndindex(in_.shape):
         scalar_i = in_stype(in_[idx])
+        if ignorer(scalar_i):
+            continue
         expected = refimpl(scalar_i)
         scalar_o = res_stype(res[idx])
         f_i = sh.fmt_idx("x", idx)
@@ -299,25 +315,22 @@ def assert_binary_param_shape(
 @given(data=st.data())
 def test_abs(ctx, data):
     x = data.draw(ctx.strat, label="x")
+    # abs of the smallest negative integer is out-of-scope
     if x.dtype in dh.int_dtypes:
-        # abs of the smallest representable negative integer is not defined
-        mask = xp.not_equal(
-            x, ah.full(x.shape, dh.dtype_ranges[x.dtype].min, dtype=x.dtype)
-        )
-        x = x[mask]
+        assume(xp.all(x > dh.dtype_ranges[x.dtype].min))
+
     out = ctx.func(x)
+
     ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
     ph.assert_shape(ctx.func_name, out.shape, x.shape)
-    assert ah.all(
-        ah.logical_not(ah.negative_mathematical_sign(out))
-    ), f"out elements not all positively signed [{ctx.func_name}()]\n{out=}"
-    less_zero = ah.negative_mathematical_sign(x)
-    negx = ah.negative(x)
-    # abs(x) = -x for x < 0
-    ah.assert_exactly_equal(out[less_zero], negx[less_zero])
-    # abs(x) = x for x >= 0
-    ah.assert_exactly_equal(
-        out[ah.logical_not(less_zero)], x[ah.logical_not(less_zero)]
+    unary_assert_against_refimpl(
+        ctx.func_name,
+        dh.get_scalar_type(x.dtype),
+        x,
+        out,
+        abs,
+        "abs({})={}",
+        ignorer=lambda s: math.isnan(s) or s is -0.0 or s == float("-infinity"),
     )
 
 
@@ -518,7 +531,7 @@ def test_bitwise_and(ctx, data):
                 # for mypy
                 assert isinstance(scalar_l, int)
                 assert isinstance(right, int)
-                expected = ah.int_to_dtype(
+                expected = ah.mock_int_dtype(
                     scalar_l & right,
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
@@ -540,7 +553,7 @@ def test_bitwise_and(ctx, data):
                 # for mypy
                 assert isinstance(scalar_l, int)
                 assert isinstance(scalar_r, int)
-                expected = ah.int_to_dtype(
+                expected = ah.mock_int_dtype(
                     scalar_l & scalar_r,
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
@@ -574,7 +587,7 @@ def test_bitwise_left_shift(ctx, data):
     if ctx.right_is_scalar:
         for idx in sh.ndindex(res.shape):
             scalar_l = int(left[idx])
-            expected = ah.int_to_dtype(
+            expected = ah.mock_int_dtype(
                 # We avoid shifting very large ints
                 scalar_l << right if right < dh.dtype_nbits[res.dtype] else 0,
                 dh.dtype_nbits[res.dtype],
@@ -591,7 +604,7 @@ def test_bitwise_left_shift(ctx, data):
         for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
             scalar_l = int(left[l_idx])
             scalar_r = int(right[r_idx])
-            expected = ah.int_to_dtype(
+            expected = ah.mock_int_dtype(
                 # We avoid shifting very large ints
                 scalar_l << scalar_r if scalar_r < dh.dtype_nbits[res.dtype] else 0,
                 dh.dtype_nbits[res.dtype],
@@ -608,8 +621,7 @@ def test_bitwise_left_shift(ctx, data):
 
 
 @pytest.mark.parametrize(
-    "ctx",
-    make_unary_params("bitwise_invert", boolean_and_all_integer_dtypes()),
+    "ctx", make_unary_params("bitwise_invert", boolean_and_all_integer_dtypes())
 )
 @given(data=st.data())
 def test_bitwise_invert(ctx, data):
@@ -619,23 +631,14 @@ def test_bitwise_invert(ctx, data):
 
     ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
     ph.assert_shape(ctx.func_name, out.shape, x.shape)
-    for idx in sh.ndindex(out.shape):
-        if out.dtype == xp.bool:
-            scalar_x = bool(x[idx])
-            scalar_o = bool(out[idx])
-            expected = not scalar_x
-        else:
-            scalar_x = int(x[idx])
-            scalar_o = int(out[idx])
-            expected = ah.int_to_dtype(
-                ~scalar_x, dh.dtype_nbits[out.dtype], dh.dtype_signed[out.dtype]
-            )
-        f_x = sh.fmt_idx("x", idx)
-        f_o = sh.fmt_idx("out", idx)
-        assert scalar_o == expected, (
-            f"{f_o}={scalar_o}, but should be ~{f_x}={scalar_x} "
-            f"[{ctx.func_name}()]\n{f_x}={scalar_x}"
-        )
+    if x.dtype == xp.bool:
+        # invert op for booleans is weird, so use not
+        refimpl = lambda s: not s
+    else:
+        refimpl = lambda s: mock_int_dtype(~s, x.dtype)
+    unary_assert_against_refimpl(
+        ctx.func_name, dh.get_scalar_type(x.dtype), x, out, refimpl, "~{}={}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -659,7 +662,7 @@ def test_bitwise_or(ctx, data):
             else:
                 scalar_l = int(left[idx])
                 scalar_o = int(res[idx])
-                expected = ah.int_to_dtype(
+                expected = ah.mock_int_dtype(
                     scalar_l | right,
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
@@ -681,7 +684,7 @@ def test_bitwise_or(ctx, data):
                 scalar_l = int(left[l_idx])
                 scalar_r = int(right[r_idx])
                 scalar_o = int(res[o_idx])
-                expected = ah.int_to_dtype(
+                expected = ah.mock_int_dtype(
                     scalar_l | scalar_r,
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
@@ -714,7 +717,7 @@ def test_bitwise_right_shift(ctx, data):
     if ctx.right_is_scalar:
         for idx in sh.ndindex(res.shape):
             scalar_l = int(left[idx])
-            expected = ah.int_to_dtype(
+            expected = ah.mock_int_dtype(
                 scalar_l >> right,
                 dh.dtype_nbits[res.dtype],
                 dh.dtype_signed[res.dtype],
@@ -730,7 +733,7 @@ def test_bitwise_right_shift(ctx, data):
         for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
             scalar_l = int(left[l_idx])
             scalar_r = int(right[r_idx])
-            expected = ah.int_to_dtype(
+            expected = ah.mock_int_dtype(
                 scalar_l >> scalar_r,
                 dh.dtype_nbits[res.dtype],
                 dh.dtype_signed[res.dtype],
@@ -766,7 +769,7 @@ def test_bitwise_xor(ctx, data):
             else:
                 scalar_l = int(left[idx])
                 scalar_o = int(res[idx])
-                expected = ah.int_to_dtype(
+                expected = ah.mock_int_dtype(
                     scalar_l ^ right,
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
@@ -788,7 +791,7 @@ def test_bitwise_xor(ctx, data):
                 scalar_l = int(left[l_idx])
                 scalar_r = int(right[r_idx])
                 scalar_o = int(res[o_idx])
-                expected = ah.int_to_dtype(
+                expected = ah.mock_int_dtype(
                     scalar_l ^ scalar_r,
                     dh.dtype_nbits[res.dtype],
                     dh.dtype_signed[res.dtype],
@@ -1366,25 +1369,17 @@ def test_multiply(ctx, data):
 @given(data=st.data())
 def test_negative(ctx, data):
     x = data.draw(ctx.strat, label="x")
+    # negative of the smallest negative integer is out-of-scope
+    if x.dtype in dh.int_dtypes:
+        assume(xp.all(x > dh.dtype_ranges[x.dtype].min))
 
     out = ctx.func(x)
 
     ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
     ph.assert_shape(ctx.func_name, out.shape, x.shape)
-
-    # Negation is an involution
-    ah.assert_exactly_equal(x, ctx.func(out))
-
-    mask = ah.isfinite(x)
-    if dh.is_int_dtype(x.dtype):
-        minval = dh.dtype_ranges[x.dtype][0]
-        if minval < 0:
-            # negative of the smallest representable negative integer is not defined
-            mask = xp.not_equal(x, ah.full(x.shape, minval, dtype=x.dtype))
-
-    # Additive inverse
-    y = xp.add(x[mask], out[mask])
-    ah.assert_exactly_equal(y, ah.zero(x[mask].shape, x.dtype))
+    unary_assert_against_refimpl(
+        ctx.func_name, dh.get_scalar_type(x.dtype), x, out, operator.neg, "-({})={}"
+    )
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("not_equal", xps.scalar_dtypes()))
@@ -1438,8 +1433,7 @@ def test_positive(ctx, data):
 
     ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
     ph.assert_shape(ctx.func_name, out.shape, x.shape)
-    # Positive does nothing
-    ah.assert_exactly_equal(out, x)
+    ph.assert_array(ctx.func_name, out, x)
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("pow", xps.numeric_dtypes()))

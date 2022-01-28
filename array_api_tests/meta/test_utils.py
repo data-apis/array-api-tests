@@ -1,8 +1,13 @@
 import pytest
+from hypothesis import given, reject
+from hypothesis import strategies as st
 
+from .. import _array_module as xp
+from .. import xps
 from .. import shape_helpers as sh
 from ..test_creation_functions import frange
 from ..test_manipulation_functions import roll_ndindex
+from ..test_operators_and_elementwise_functions import mock_int_dtype
 from ..test_signatures import extension_module
 
 
@@ -101,3 +106,12 @@ def test_roll_ndindex(shape, shifts, axes, expected):
 )
 def test_fmt_idx(idx, expected):
     assert sh.fmt_idx("x", idx) == expected
+
+
+@given(x=st.integers(), dtype=xps.unsigned_integer_dtypes() | xps.integer_dtypes())
+def test_int_to_dtype(x, dtype):
+    try:
+        d = xp.asarray(x, dtype=dtype)
+    except OverflowError:
+        reject()
+    assert mock_int_dtype(x, dtype) == d
