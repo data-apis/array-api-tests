@@ -1,5 +1,4 @@
 import math
-from functools import lru_cache
 from itertools import product
 from typing import Iterator, List, Optional, Tuple, Union
 
@@ -161,7 +160,6 @@ def fmt_i(i: AtomicIndex) -> str:
         return "..."
 
 
-@lru_cache
 def fmt_idx(sym: str, idx: Index) -> str:
     if idx == ():
         return sym
