@@ -149,7 +149,7 @@ def assert_shape(
 
 def assert_result_shape(
     func_name: str,
-    in_shapes: Tuple[Shape],
+    in_shapes: Sequence[Shape],
     out_shape: Shape,
     /,
     expected: Optional[Shape] = None,

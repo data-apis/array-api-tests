@@ -287,9 +287,9 @@ def assert_binary_param_shape(
     expected: Optional[Shape] = None,
 ):
     if ctx.right_is_scalar:
-        in_shapes = (left.shape,)
+        in_shapes = [left.shape]
     else:
-        in_shapes = (left.shape, right.shape)  # type: ignore
+        in_shapes = [left.shape, right.shape]  # type: ignore
     ph.assert_result_shape(
         ctx.func_name, in_shapes, res.shape, expected, repr_name=f"{ctx.res_name}.shape"
     )
@@ -444,7 +444,7 @@ def test_atan(x):
 def test_atan2(x1, x2):
     out = xp.atan2(x1, x2)
     ph.assert_dtype("atan2", [x1.dtype, x2.dtype], out.dtype)
-    ph.assert_result_shape("atan2", (x1.shape, x2.shape), out.shape)
+    ph.assert_result_shape("atan2", [x1.shape, x2.shape], out.shape)
     INFINITY1 = ah.infinity(x1.shape, x1.dtype)
     INFINITY2 = ah.infinity(x2.shape, x2.dtype)
     PI = ah.π(out.shape, out.dtype)
@@ -1304,7 +1304,7 @@ def test_logaddexp(x1, x2):
 def test_logical_and(x1, x2):
     out = ah.logical_and(x1, x2)
     ph.assert_dtype("logical_and", [x1.dtype, x2.dtype], out.dtype)
-    ph.assert_result_shape("logical_and", (x1.shape, x2.shape), out.shape)
+    ph.assert_result_shape("logical_and", [x1.shape, x2.shape], out.shape)
     binary_assert_against_refimpl(
         "logical_and",
         bool,
@@ -1330,7 +1330,7 @@ def test_logical_not(x):
 def test_logical_or(x1, x2):
     out = ah.logical_or(x1, x2)
     ph.assert_dtype("logical_or", [x1.dtype, x2.dtype], out.dtype)
-    ph.assert_result_shape("logical_or", (x1.shape, x2.shape), out.shape)
+    ph.assert_result_shape("logical_or", [x1.shape, x2.shape], out.shape)
     binary_assert_against_refimpl(
         "logical_or", bool, x1, x2, out, lambda l, r: l or r, "({} or {})={}"
     )
@@ -1340,7 +1340,7 @@ def test_logical_or(x1, x2):
 def test_logical_xor(x1, x2):
     out = xp.logical_xor(x1, x2)
     ph.assert_dtype("logical_xor", [x1.dtype, x2.dtype], out.dtype)
-    ph.assert_result_shape("logical_xor", (x1.shape, x2.shape), out.shape)
+    ph.assert_result_shape("logical_xor", [x1.shape, x2.shape], out.shape)
     binary_assert_against_refimpl(
         "logical_xor", bool, x1, x2, out, lambda l, r: l ^ r, "({} ^ {})={}"
     )

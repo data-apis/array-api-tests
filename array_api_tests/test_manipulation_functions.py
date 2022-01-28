@@ -142,7 +142,7 @@ def test_expand_dims(x, axis):
     index = axis if axis >= 0 else x.ndim + axis + 1
     shape.insert(index, 1)
     shape = tuple(shape)
-    ph.assert_result_shape("expand_dims", (x.shape,), out.shape, shape)
+    ph.assert_result_shape("expand_dims", [x.shape], out.shape, shape)
 
     assert_array_ndindex(
         "expand_dims", x, sh.ndindex(x.shape), out, sh.ndindex(out.shape)
@@ -181,7 +181,7 @@ def test_squeeze(x, data):
         if i not in axes:
             shape.append(side)
     shape = tuple(shape)
-    ph.assert_result_shape("squeeze", (x.shape,), out.shape, shape, axis=axis)
+    ph.assert_result_shape("squeeze", [x.shape], out.shape, shape, axis=axis)
 
     assert_array_ndindex("squeeze", x, sh.ndindex(x.shape), out, sh.ndindex(out.shape))
 
@@ -230,7 +230,7 @@ def test_permute_dims(x, axes):
         side = x.shape[dim]
         shape[i] = side
     shape = tuple(shape)
-    ph.assert_result_shape("permute_dims", (x.shape,), out.shape, shape, axes=axes)
+    ph.assert_result_shape("permute_dims", [x.shape], out.shape, shape, axes=axes)
 
     indices = list(sh.ndindex(x.shape))
     permuted_indices = [tuple(idx[axis] for axis in axes) for idx in indices]
@@ -265,7 +265,7 @@ def test_reshape(x, data):
         rsize = math.prod(shape) * -1
         _shape[shape.index(-1)] = size / rsize
     _shape = tuple(_shape)
-    ph.assert_result_shape("reshape", (x.shape,), out.shape, _shape, shape=shape)
+    ph.assert_result_shape("reshape", [x.shape], out.shape, _shape, shape=shape)
 
     assert_array_ndindex("reshape", x, sh.ndindex(x.shape), out, sh.ndindex(out.shape))
 
@@ -303,7 +303,7 @@ def test_roll(x, data):
 
     ph.assert_dtype("roll", x.dtype, out.dtype)
 
-    ph.assert_result_shape("roll", (x.shape,), out.shape)
+    ph.assert_result_shape("roll", [x.shape], out.shape)
 
     if kw.get("axis", None) is None:
         assert isinstance(shift, int)  # sanity check
