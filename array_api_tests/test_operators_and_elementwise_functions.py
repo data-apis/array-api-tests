@@ -25,7 +25,7 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .typing import Array, DataType, Param, Scalar, Shape
+from .typing import Array, DataType, Param, Scalar, ScalarType, Shape
 
 pytestmark = pytest.mark.ci
 
@@ -38,10 +38,66 @@ def boolean_and_all_integer_dtypes() -> st.SearchStrategy[DataType]:
     return xps.boolean_dtypes() | all_integer_dtypes()
 
 
-def isclose(n1: Union[int, float], n2: Union[int, float]):
+def isclose(n1: Union[int, float], n2: Union[int, float]) -> bool:
     if not (math.isfinite(n1) and math.isfinite(n2)):
         raise ValueError(f"{n1=} and {n1=}, but input must be finite")
     return math.isclose(n1, n2, rel_tol=0.25, abs_tol=1)
+
+
+def unary_assert_against_refimpl(
+    func_name: str,
+    in_stype: ScalarType,
+    in_: Array,
+    res: Array,
+    refimpl: Callable[[Scalar], Scalar],
+    expr_template: str,
+    res_stype: Optional[ScalarType] = None,
+):
+    if in_.shape != res.shape:
+        raise ValueError(f"{res.shape=}, but should be {in_.shape=}")
+    if res_stype is None:
+        res_stype = in_stype
+    for idx in sh.ndindex(in_.shape):
+        scalar_i = in_stype(in_[idx])
+        expected = refimpl(scalar_i)
+        scalar_o = res_stype(res[idx])
+        f_i = sh.fmt_idx("x", idx)
+        f_o = sh.fmt_idx("out", idx)
+        expr = expr_template.format(scalar_i, expected)
+        assert scalar_o == expected, (
+            f"{f_o}={scalar_o}, but should be {expr} [{func_name}()]\n"
+            f"{f_i}={scalar_i}"
+        )
+
+
+def binary_assert_against_refimpl(
+    func_name: str,
+    in_stype: ScalarType,
+    left: Array,
+    right: Array,
+    res: Array,
+    refimpl: Callable[[Scalar, Scalar], Scalar],
+    expr_template: str,
+    res_stype: Optional[ScalarType] = None,
+    left_sym: str = "x1",
+    right_sym: str = "x2",
+    res_sym: str = "out",
+):
+    if res_stype is None:
+        res_stype = in_stype
+    for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
+        scalar_l = in_stype(left[l_idx])
+        scalar_r = in_stype(right[r_idx])
+        expected = refimpl(scalar_l, scalar_r)
+        scalar_o = res_stype(res[o_idx])
+        f_l = sh.fmt_idx(left_sym, l_idx)
+        f_r = sh.fmt_idx(right_sym, r_idx)
+        f_o = sh.fmt_idx(res_sym, o_idx)
+        expr = expr_template.format(scalar_l, scalar_r, expected)
+        assert scalar_o == expected, (
+            f"{f_o}={scalar_o}, but should be {expr} [{func_name}()]\n"
+            f"{f_l}={scalar_l}, {f_r}={scalar_r}"
+        )
 
 
 # When appropiate, this module tests operators alongside their respective
@@ -1249,18 +1305,15 @@ def test_logical_and(x1, x2):
     out = ah.logical_and(x1, x2)
     ph.assert_dtype("logical_and", (x1.dtype, x2.dtype), out.dtype)
     ph.assert_result_shape("logical_and", (x1.shape, x2.shape), out.shape)
-    for l_idx, r_idx, o_idx in sh.iter_indices(x1.shape, x2.shape, out.shape):
-        scalar_l = bool(x1[l_idx])
-        scalar_r = bool(x2[r_idx])
-        expected = scalar_l and scalar_r
-        scalar_o = bool(out[o_idx])
-        f_l = sh.fmt_idx("x1", l_idx)
-        f_r = sh.fmt_idx("x2", r_idx)
-        f_o = sh.fmt_idx("out", o_idx)
-        assert scalar_o == expected, (
-            f"{f_o}={scalar_o}, but should be ({f_l} and {f_r})={expected} "
-            f"[logical_and()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-        )
+    binary_assert_against_refimpl(
+        "logical_and",
+        bool,
+        x1,
+        x2,
+        out,
+        lambda l, r: l and r,
+        "({} and {})={}",
+    )
 
 
 @given(xps.arrays(dtype=xp.bool, shape=hh.shapes()))
@@ -1268,34 +1321,29 @@ def test_logical_not(x):
     out = ah.logical_not(x)
     ph.assert_dtype("logical_not", x.dtype, out.dtype)
     ph.assert_shape("logical_not", out.shape, x.shape)
-    for idx in sh.ndindex(x.shape):
-        assert out[idx] == (not bool(x[idx]))
+    unary_assert_against_refimpl(
+        "logical_not", bool, x, out, lambda i: not i, "(not {})={}"
+    )
 
 
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_or(x1, x2):
     out = ah.logical_or(x1, x2)
     ph.assert_dtype("logical_or", (x1.dtype, x2.dtype), out.dtype)
-    # See the comments in test_equal
-    shape = sh.broadcast_shapes(x1.shape, x2.shape)
-    ph.assert_shape("logical_or", out.shape, shape)
-    _x1 = xp.broadcast_to(x1, shape)
-    _x2 = xp.broadcast_to(x2, shape)
-    for idx in sh.ndindex(shape):
-        assert out[idx] == (bool(_x1[idx]) or bool(_x2[idx]))
+    ph.assert_result_shape("logical_or", (x1.shape, x2.shape), out.shape)
+    binary_assert_against_refimpl(
+        "logical_or", bool, x1, x2, out, lambda l, r: l or r, "({} or {})={}"
+    )
 
 
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_xor(x1, x2):
     out = xp.logical_xor(x1, x2)
     ph.assert_dtype("logical_xor", (x1.dtype, x2.dtype), out.dtype)
-    # See the comments in test_equal
-    shape = sh.broadcast_shapes(x1.shape, x2.shape)
-    ph.assert_shape("logical_xor", out.shape, shape)
-    _x1 = xp.broadcast_to(x1, shape)
-    _x2 = xp.broadcast_to(x2, shape)
-    for idx in sh.ndindex(shape):
-        assert out[idx] == (bool(_x1[idx]) ^ bool(_x2[idx]))
+    ph.assert_result_shape("logical_xor", (x1.shape, x2.shape), out.shape)
+    binary_assert_against_refimpl(
+        "logical_xor", bool, x1, x2, out, lambda l, r: l ^ r, "({} ^ {})={}"
+    )
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("multiply", xps.numeric_dtypes()))
