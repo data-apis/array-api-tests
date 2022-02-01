@@ -32,17 +32,20 @@ pytestmark = pytest.mark.ci
 
 
 def all_integer_dtypes() -> st.SearchStrategy[DataType]:
+    """Returns a strategy for signed and unsigned integer dtype objects."""
     return xps.unsigned_integer_dtypes() | xps.integer_dtypes()
 
 
 def boolean_and_all_integer_dtypes() -> st.SearchStrategy[DataType]:
+    """Returns a strategy for boolean and all integer dtype objects."""
     return xps.boolean_dtypes() | all_integer_dtypes()
 
 
-def isclose(n1: Union[int, float], n2: Union[int, float]) -> bool:
-    if not (math.isfinite(n1) and math.isfinite(n2)):
-        raise ValueError(f"{n1=} and {n1=}, but input must be finite")
-    return math.isclose(n1, n2, rel_tol=0.25, abs_tol=1)
+def isclose(a: float, b: float, rel_tol: float = 0.25, abs_tol: float = 1) -> bool:
+    """Wraps math.isclose with more generous defaults."""
+    if not (math.isfinite(a) and math.isfinite(b)):
+        raise ValueError(f"{a=} and {b=}, but input must be finite")
+    return math.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol)
 
 
 def mock_int_dtype(n: int, dtype: DataType) -> int:
@@ -65,7 +68,7 @@ def unary_assert_against_refimpl(
     expr_template: str,
     in_stype: Optional[ScalarType] = None,
     res_stype: Optional[ScalarType] = None,
-    ignorer: Callable[[Scalar], bool] = bool,
+    filter_: Callable[[Scalar], bool] = math.isfinite,
 ):
     if in_.shape != res.shape:
         raise ValueError(f"{res.shape=}, but should be {in_.shape=}")
@@ -75,13 +78,13 @@ def unary_assert_against_refimpl(
         res_stype = in_stype
     for idx in sh.ndindex(in_.shape):
         scalar_i = in_stype(in_[idx])
-        if ignorer(scalar_i):
+        if not filter_(scalar_i):
             continue
         expected = refimpl(scalar_i)
         scalar_o = res_stype(res[idx])
         f_i = sh.fmt_idx("x", idx)
         f_o = sh.fmt_idx("out", idx)
-        expr = expr_template.format(scalar_i, expected)
+        expr = expr_template.format(f_i, expected)
         assert scalar_o == expected, (
             f"{f_o}={scalar_o}, but should be {expr} [{func_name}()]\n"
             f"{f_i}={scalar_i}"
@@ -100,7 +103,7 @@ def binary_assert_against_refimpl(
     left_sym: str = "x1",
     right_sym: str = "x2",
     res_name: str = "out",
-    ignorer: Callable[[Scalar], bool] = bool,
+    filter_: Callable[[Scalar], bool] = math.isfinite,
 ):
     if in_stype is None:
         in_stype = dh.get_scalar_type(left.dtype)
@@ -112,7 +115,7 @@ def binary_assert_against_refimpl(
     for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
         scalar_l = in_stype(left[l_idx])
         scalar_r = in_stype(right[r_idx])
-        if any(ignorer(s) for s in [scalar_l, scalar_r]):
+        if not (filter_(scalar_l) and filter_(scalar_r)):
             continue
         expected = refimpl(scalar_l, scalar_r)
         if result_dtype != xp.bool:
@@ -122,7 +125,7 @@ def binary_assert_against_refimpl(
         f_l = sh.fmt_idx(left_sym, l_idx)
         f_r = sh.fmt_idx(right_sym, r_idx)
         f_o = sh.fmt_idx(res_name, o_idx)
-        expr = expr_template.format(scalar_l, scalar_r, expected)
+        expr = expr_template.format(f_l, f_r, expected)
         if dh.is_float_dtype(result_dtype):
             assert isclose(scalar_o, expected), (
                 f"{f_o}={scalar_o}, but should be roughly {expr} [{func_name}()]\n"
@@ -339,9 +342,10 @@ def binary_param_assert_against_refimpl(
     expr_template: str,
     in_stype: Optional[ScalarType] = None,
     res_stype: Optional[ScalarType] = None,
-    ignorer: Callable[[Scalar], Scalar] = bool,
+    filter_: Callable[[Scalar], bool] = math.isfinite,
 ):
     if ctx.right_is_scalar:
+        assert filter_(right)  # sanity check
         if left.dtype != xp.bool:
             m, M = dh.dtype_ranges[left.dtype]
         if in_stype is None:
@@ -350,7 +354,7 @@ def binary_param_assert_against_refimpl(
             res_stype = in_stype
         for idx in sh.ndindex(res.shape):
             scalar_l = in_stype(left[idx])
-            if any(ignorer(s) for s in [scalar_l, right]):
+            if not filter_(scalar_l):
                 continue
             expected = refimpl(scalar_l, right)
             if left.dtype != xp.bool:
@@ -359,7 +363,7 @@ def binary_param_assert_against_refimpl(
             scalar_o = res_stype(res[idx])
             f_l = sh.fmt_idx(ctx.left_sym, idx)
             f_o = sh.fmt_idx(ctx.res_name, idx)
-            expr = expr_template.format(scalar_l, right, expected)
+            expr = expr_template.format(f_l, right, expected)
             if dh.is_float_dtype(left.dtype):
                 assert isclose(scalar_o, expected), (
                     f"{f_o}={scalar_o}, but should be roughly {expr} "
@@ -375,15 +379,17 @@ def binary_param_assert_against_refimpl(
     else:
         binary_assert_against_refimpl(
             func_name=ctx.func_name,
+            in_stype=in_stype,
             left_sym=ctx.left_sym,
             left=left,
             right_sym=ctx.right_sym,
             right=right,
+            res_stype=res_stype,
             res_name=ctx.res_name,
             res=res,
-            refimpl=operator.add,
+            refimpl=refimpl,
             expr_template=expr_template,
-            ignorer=lambda s: not math.isfinite(s),
+            filter_=filter_,
         )
 
 
@@ -405,7 +411,9 @@ def test_abs(ctx, data):
         out,
         abs,
         "abs({})={}",
-        ignorer=lambda s: math.isnan(s) or s is -0.0 or s == float("-infinity"),
+        filter_=lambda s: (
+            s == float("infinity") or (math.isfinite(s) and s is not -0.0)
+        ),
     )
 
 
@@ -455,13 +463,7 @@ def test_add(ctx, data):
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
     binary_param_assert_against_refimpl(
-        ctx,
-        left,
-        right,
-        res,
-        operator.add,
-        "({} + {})={}",
-        ignorer=lambda s: not math.isfinite(s),
+        ctx, left, right, res, operator.add, "({} + {})={}"
     )
 
 
@@ -574,43 +576,11 @@ def test_bitwise_and(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    scalar_type = dh.get_scalar_type(res.dtype)
-    if ctx.right_is_scalar:
-        for idx in sh.ndindex(res.shape):
-            scalar_l = scalar_type(left[idx])
-            if res.dtype == xp.bool:
-                expected = scalar_l and right
-            else:
-                # for mypy
-                assert isinstance(scalar_l, int)
-                assert isinstance(right, int)
-                expected = mock_int_dtype(scalar_l & right, res.dtype)
-            scalar_o = scalar_type(res[idx])
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} & {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
+    if left.dtype == xp.bool:
+        refimpl = lambda l, r: l and r
     else:
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
-            scalar_l = scalar_type(left[l_idx])
-            scalar_r = scalar_type(right[r_idx])
-            if res.dtype == xp.bool:
-                expected = scalar_l and scalar_r
-            else:
-                # for mypy
-                assert isinstance(scalar_l, int)
-                assert isinstance(scalar_r, int)
-                expected = mock_int_dtype(scalar_l & scalar_r, res.dtype)
-            scalar_o = scalar_type(res[o_idx])
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} & {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+        refimpl = lambda l, r: mock_int_dtype(l & r, res.dtype)
+    binary_param_assert_against_refimpl(ctx, left, right, res, refimpl, "({} & {})={}")
 
 
 @pytest.mark.parametrize(
@@ -629,38 +599,16 @@ def test_bitwise_left_shift(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    if ctx.right_is_scalar:
-        for idx in sh.ndindex(res.shape):
-            scalar_l = int(left[idx])
-            expected = mock_int_dtype(
-                # We avoid shifting very large ints
-                scalar_l << right if right < dh.dtype_nbits[res.dtype] else 0,
-                res.dtype,
-            )
-            scalar_o = int(res[idx])
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} << {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
-    else:
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
-            scalar_l = int(left[l_idx])
-            scalar_r = int(right[r_idx])
-            expected = mock_int_dtype(
-                # We avoid shifting very large ints
-                scalar_l << scalar_r if scalar_r < dh.dtype_nbits[res.dtype] else 0,
-                res.dtype,
-            )
-            scalar_o = int(res[o_idx])
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} << {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+    binary_param_assert_against_refimpl(
+        ctx,
+        left,
+        right,
+        res,
+        lambda l, r: mock_int_dtype(l << r, res.dtype)
+        if r < dh.dtype_nbits[res.dtype]
+        else 0,
+        "({} << {})={}",
+    )
 
 
 @pytest.mark.parametrize(
@@ -675,7 +623,6 @@ def test_bitwise_invert(ctx, data):
     ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
     ph.assert_shape(ctx.func_name, out.shape, x.shape)
     if x.dtype == xp.bool:
-        # invert op for booleans is weird, so use not
         refimpl = lambda s: not s
     else:
         refimpl = lambda s: mock_int_dtype(~s, x.dtype)
@@ -694,41 +641,11 @@ def test_bitwise_or(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    if ctx.right_is_scalar:
-        for idx in sh.ndindex(res.shape):
-            if res.dtype == xp.bool:
-                scalar_l = bool(left[idx])
-                scalar_o = bool(res[idx])
-                expected = scalar_l or right
-            else:
-                scalar_l = int(left[idx])
-                scalar_o = int(res[idx])
-                expected = mock_int_dtype(scalar_l | right, res.dtype)
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} | {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
+    if left.dtype == xp.bool:
+        refimpl = lambda l, r: l or r
     else:
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
-            if res.dtype == xp.bool:
-                scalar_l = bool(left[l_idx])
-                scalar_r = bool(right[r_idx])
-                scalar_o = bool(res[o_idx])
-                expected = scalar_l or scalar_r
-            else:
-                scalar_l = int(left[l_idx])
-                scalar_r = int(right[r_idx])
-                scalar_o = int(res[o_idx])
-                expected = mock_int_dtype(scalar_l | scalar_r, res.dtype)
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} | {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+        refimpl = lambda l, r: mock_int_dtype(l | r, res.dtype)
+    binary_param_assert_against_refimpl(ctx, left, right, res, refimpl, "({} | {})={}")
 
 
 @pytest.mark.parametrize(
@@ -747,30 +664,14 @@ def test_bitwise_right_shift(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    if ctx.right_is_scalar:
-        for idx in sh.ndindex(res.shape):
-            scalar_l = int(left[idx])
-            expected = mock_int_dtype(scalar_l >> right, res.dtype)
-            scalar_o = int(res[idx])
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} >> {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
-    else:
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
-            scalar_l = int(left[l_idx])
-            scalar_r = int(right[r_idx])
-            expected = mock_int_dtype(scalar_l >> scalar_r, res.dtype)
-            scalar_o = int(res[o_idx])
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} >> {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+    binary_param_assert_against_refimpl(
+        ctx,
+        left,
+        right,
+        res,
+        lambda l, r: mock_int_dtype(l >> r, res.dtype),
+        "({} >> {})={}",
+    )
 
 
 @pytest.mark.parametrize(
@@ -785,41 +686,11 @@ def test_bitwise_xor(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    if ctx.right_is_scalar:
-        for idx in sh.ndindex(res.shape):
-            if res.dtype == xp.bool:
-                scalar_l = bool(left[idx])
-                scalar_o = bool(res[idx])
-                expected = scalar_l ^ right
-            else:
-                scalar_l = int(left[idx])
-                scalar_o = int(res[idx])
-                expected = mock_int_dtype(scalar_l ^ right, res.dtype)
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} ^ {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
+    if left.dtype == xp.bool:
+        refimpl = lambda l, r: l ^ r
     else:
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
-            if res.dtype == xp.bool:
-                scalar_l = bool(left[l_idx])
-                scalar_r = bool(right[r_idx])
-                scalar_o = bool(res[o_idx])
-                expected = scalar_l ^ scalar_r
-            else:
-                scalar_l = int(left[l_idx])
-                scalar_r = int(right[r_idx])
-                scalar_o = int(res[o_idx])
-                expected = mock_int_dtype(scalar_l ^ scalar_r, res.dtype)
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} ^ {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+        refimpl = lambda l, r: mock_int_dtype(l ^ r, res.dtype)
+    binary_param_assert_against_refimpl(ctx, left, right, res, refimpl, "({} ^ {})={}")
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -892,19 +763,7 @@ def test_equal(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, out, xp.bool)
     binary_param_assert_shape(ctx, left, right, out)
-    if ctx.right_is_scalar:
-        scalar_type = dh.get_scalar_type(left.dtype)
-        for idx in sh.ndindex(left.shape):
-            scalar_l = scalar_type(left[idx])
-            expected = scalar_l == right
-            scalar_o = bool(out[idx])
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} == {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
-    else:
+    if not ctx.right_is_scalar:
         # We manually promote the dtypes as incorrect internal type promotion
         # could lead to false positives. For example
         #
@@ -915,21 +774,11 @@ def test_equal(ctx, data):
         #
         # would erroneously be True if float64 downcasted to float32.
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = xp.astype(left, promoted_dtype)
-        _right = xp.astype(right, promoted_dtype)
-        scalar_type = dh.get_scalar_type(promoted_dtype)
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
-            scalar_l = scalar_type(_left[l_idx])
-            scalar_r = scalar_type(_right[r_idx])
-            expected = scalar_l == scalar_r
-            scalar_o = bool(out[o_idx])
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} == {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+        left = xp.astype(left, promoted_dtype)
+        right = xp.astype(right, promoted_dtype)
+    binary_param_assert_against_refimpl(
+        ctx, left, right, out, operator.eq, "({} == {})={}", res_stype=bool
+    )
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -994,37 +843,9 @@ def test_floor_divide(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    scalar_type = dh.get_scalar_type(res.dtype)
-    if ctx.right_is_scalar:
-        for idx in sh.ndindex(res.shape):
-            scalar_l = scalar_type(left[idx])
-            expected = scalar_l // right
-            scalar_o = scalar_type(res[idx])
-            if not all(math.isfinite(n) for n in [scalar_l, right, scalar_o, expected]):
-                continue
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert isclose(scalar_o, expected), (
-                f"{f_o}={scalar_o}, but should be roughly ({f_l} // {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
-    else:
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
-            scalar_l = scalar_type(left[l_idx])
-            scalar_r = scalar_type(right[r_idx])
-            expected = scalar_l // scalar_r
-            scalar_o = scalar_type(res[o_idx])
-            if not all(
-                math.isfinite(n) for n in [scalar_l, scalar_r, scalar_o, expected]
-            ):
-                continue
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert isclose(scalar_o, expected), (
-                f"{f_o}={scalar_o}, but should be roughly ({f_l} // {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+    binary_param_assert_against_refimpl(
+        ctx, left, right, res, operator.floordiv, "({} // {})={}"
+    )
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("greater", xps.numeric_dtypes()))
@@ -1037,36 +858,14 @@ def test_greater(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, out, xp.bool)
     binary_param_assert_shape(ctx, left, right, out)
-    if ctx.right_is_scalar:
-        scalar_type = dh.get_scalar_type(left.dtype)
-        for idx in sh.ndindex(left.shape):
-            scalar_l = scalar_type(left[idx])
-            expected = scalar_l > right
-            scalar_o = bool(out[idx])
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} > {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
-    else:
+    if not ctx.right_is_scalar:
         # See test_equal note
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = xp.astype(left, promoted_dtype)
-        _right = xp.astype(right, promoted_dtype)
-        scalar_type = dh.get_scalar_type(promoted_dtype)
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
-            scalar_l = scalar_type(_left[l_idx])
-            scalar_r = scalar_type(_right[r_idx])
-            expected = scalar_l > scalar_r
-            scalar_o = bool(out[o_idx])
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} > {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+        left = xp.astype(left, promoted_dtype)
+        right = xp.astype(right, promoted_dtype)
+    binary_param_assert_against_refimpl(
+        ctx, left, right, out, operator.gt, "({} > {})={}", res_stype=bool
+    )
 
 
 @pytest.mark.parametrize(
@@ -1081,36 +880,14 @@ def test_greater_equal(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, out, xp.bool)
     binary_param_assert_shape(ctx, left, right, out)
-    if ctx.right_is_scalar:
-        scalar_type = dh.get_scalar_type(left.dtype)
-        for idx in sh.ndindex(left.shape):
-            scalar_l = scalar_type(left[idx])
-            expected = scalar_l >= right
-            scalar_o = bool(out[idx])
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} >= {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
-    else:
+    if not ctx.right_is_scalar:
         # See test_equal note
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = xp.astype(left, promoted_dtype)
-        _right = xp.astype(right, promoted_dtype)
-        scalar_type = dh.get_scalar_type(promoted_dtype)
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
-            scalar_l = scalar_type(_left[l_idx])
-            scalar_r = scalar_type(_right[r_idx])
-            expected = scalar_l >= scalar_r
-            scalar_o = bool(out[o_idx])
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} >= {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+        left = xp.astype(left, promoted_dtype)
+        right = xp.astype(right, promoted_dtype)
+    binary_param_assert_against_refimpl(
+        ctx, left, right, out, operator.ge, "({} >= {})={}", res_stype=bool
+    )
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -1179,36 +956,14 @@ def test_less(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, out, xp.bool)
     binary_param_assert_shape(ctx, left, right, out)
-    if ctx.right_is_scalar:
-        scalar_type = dh.get_scalar_type(left.dtype)
-        for idx in sh.ndindex(left.shape):
-            scalar_l = scalar_type(left[idx])
-            expected = scalar_l < right
-            scalar_o = bool(out[idx])
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} < {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
-    else:
+    if not ctx.right_is_scalar:
         # See test_equal note
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = xp.astype(left, promoted_dtype)
-        _right = xp.astype(right, promoted_dtype)
-        scalar_type = dh.get_scalar_type(promoted_dtype)
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
-            scalar_l = scalar_type(_left[l_idx])
-            scalar_r = scalar_type(_right[r_idx])
-            expected = scalar_l < scalar_r
-            scalar_o = bool(out[o_idx])
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} < {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+        left = xp.astype(left, promoted_dtype)
+        right = xp.astype(right, promoted_dtype)
+    binary_param_assert_against_refimpl(
+        ctx, left, right, out, operator.lt, "({} < {})={}", res_stype=bool
+    )
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("less_equal", xps.numeric_dtypes()))
@@ -1221,36 +976,14 @@ def test_less_equal(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, out, xp.bool)
     binary_param_assert_shape(ctx, left, right, out)
-    if ctx.right_is_scalar:
-        scalar_type = dh.get_scalar_type(left.dtype)
-        for idx in sh.ndindex(left.shape):
-            scalar_l = scalar_type(left[idx])
-            expected = scalar_l <= right
-            scalar_o = bool(out[idx])
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} <= {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
-    else:
+    if not ctx.right_is_scalar:
         # See test_equal note
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = xp.astype(left, promoted_dtype)
-        _right = xp.astype(right, promoted_dtype)
-        scalar_type = dh.get_scalar_type(promoted_dtype)
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
-            scalar_l = scalar_type(_left[l_idx])
-            scalar_r = scalar_type(_right[r_idx])
-            expected = scalar_l <= scalar_r
-            scalar_o = bool(out[o_idx])
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} <= {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+        left = xp.astype(left, promoted_dtype)
+        right = xp.astype(right, promoted_dtype)
+    binary_param_assert_against_refimpl(
+        ctx, left, right, out, operator.le, "({} <= {})={}", res_stype=bool
+    )
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -1368,13 +1101,14 @@ def test_multiply(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    if not ctx.right_is_scalar:
-        # multiply is commutative
-        expected = ctx.func(right, left)
-        ah.assert_exactly_equal(res, expected)
+    binary_param_assert_against_refimpl(
+        ctx, left, right, res, operator.mul, "({} * {})={}"
+    )
 
 
-@pytest.mark.parametrize("ctx", make_unary_params("negative", xps.numeric_dtypes()))
+@pytest.mark.parametrize(
+    "ctx", make_unary_params("negative", xps.integer_dtypes() | xps.floating_dtypes())
+)
 @given(data=st.data())
 def test_negative(ctx, data):
     x = data.draw(ctx.strat, label="x")
@@ -1399,36 +1133,14 @@ def test_not_equal(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, out, xp.bool)
     binary_param_assert_shape(ctx, left, right, out)
-    if ctx.right_is_scalar:
-        scalar_type = dh.get_scalar_type(left.dtype)
-        for idx in sh.ndindex(left.shape):
-            scalar_l = scalar_type(left[idx])
-            expected = scalar_l != right
-            scalar_o = bool(out[idx])
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} != {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
-    else:
+    if not ctx.right_is_scalar:
         # See test_equal note
         promoted_dtype = dh.promotion_table[left.dtype, right.dtype]
-        _left = xp.astype(left, promoted_dtype)
-        _right = xp.astype(right, promoted_dtype)
-        scalar_type = dh.get_scalar_type(promoted_dtype)
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, out.shape):
-            scalar_l = scalar_type(_left[l_idx])
-            scalar_r = scalar_type(_right[r_idx])
-            expected = scalar_l != scalar_r
-            scalar_o = bool(out[o_idx])
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert scalar_o == expected, (
-                f"{f_o}={scalar_o}, but should be ({f_l} != {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+        left = xp.astype(left, promoted_dtype)
+        right = xp.astype(right, promoted_dtype)
+    binary_param_assert_against_refimpl(
+        ctx, left, right, out, operator.ne, "({} != {})={}", res_stype=bool
+    )
 
 
 @pytest.mark.parametrize("ctx", make_unary_params("positive", xps.numeric_dtypes()))
@@ -1483,37 +1195,9 @@ def test_remainder(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    scalar_type = dh.get_scalar_type(res.dtype)
-    if ctx.right_is_scalar:
-        for idx in sh.ndindex(res.shape):
-            scalar_l = scalar_type(left[idx])
-            expected = scalar_l % right
-            scalar_o = scalar_type(res[idx])
-            if not all(math.isfinite(n) for n in [scalar_l, right, scalar_o, expected]):
-                continue
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert isclose(scalar_o, expected), (
-                f"{f_o}={scalar_o}, but should be roughly ({f_l} % {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
-    else:
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
-            scalar_l = scalar_type(left[l_idx])
-            scalar_r = scalar_type(right[r_idx])
-            expected = scalar_l % scalar_r
-            scalar_o = scalar_type(res[o_idx])
-            if not all(
-                math.isfinite(n) for n in [scalar_l, scalar_r, scalar_o, expected]
-            ):
-                continue
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert isclose(scalar_o, expected), (
-                f"{f_o}={scalar_o}, but should be roughly ({f_l} % {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+    binary_param_assert_against_refimpl(
+        ctx, left, right, res, operator.mod, "({} % {})={}"
+    )
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -1611,36 +1295,9 @@ def test_subtract(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    m, M = dh.dtype_ranges[res.dtype]
-    scalar_type = dh.get_scalar_type(res.dtype)
-    if ctx.right_is_scalar:
-        for idx in sh.ndindex(res.shape):
-            scalar_l = scalar_type(left[idx])
-            expected = scalar_l - right
-            if not math.isfinite(expected) or expected <= m or expected >= M:
-                continue
-            scalar_o = scalar_type(res[idx])
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            assert isclose(scalar_o, expected), (
-                f"{f_o}={scalar_o}, but should be roughly ({f_l} - {right})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}"
-            )
-    else:
-        for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
-            scalar_l = scalar_type(left[l_idx])
-            scalar_r = scalar_type(right[r_idx])
-            expected = scalar_l - scalar_r
-            if not math.isfinite(expected) or expected <= m or expected >= M:
-                continue
-            scalar_o = scalar_type(res[o_idx])
-            f_l = sh.fmt_idx(ctx.left_sym, l_idx)
-            f_r = sh.fmt_idx(ctx.right_sym, r_idx)
-            f_o = sh.fmt_idx(ctx.res_name, o_idx)
-            assert isclose(scalar_o, expected), (
-                f"{f_o}={scalar_o}, but should be roughly ({f_l} - {f_r})={expected} "
-                f"[{ctx.func_name}()]\n{f_l}={scalar_l}, {f_r}={scalar_r}"
-            )
+    binary_param_assert_against_refimpl(
+        ctx, left, right, res, operator.sub, "({} - {})={}"
+    )
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
