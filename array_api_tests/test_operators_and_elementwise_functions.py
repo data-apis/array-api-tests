@@ -1,14 +1,3 @@
-"""
-Tests for elementwise functions
-
-https://data-apis.github.io/array-api/latest/API_specification/elementwise_functions.html
-
-This tests behavior that is explicitly mentioned in the spec. Note that the
-spec does not make any accuracy requirements for functions, so this does not
-test that. Tests for the special cases are generated and tested separately in
-special_cases/
-"""
-
 import math
 import operator
 from enum import Enum, auto
@@ -41,13 +30,6 @@ def boolean_and_all_integer_dtypes() -> st.SearchStrategy[DataType]:
     return xps.boolean_dtypes() | all_integer_dtypes()
 
 
-def isclose(a: float, b: float, rel_tol: float = 0.25, abs_tol: float = 1) -> bool:
-    """Wraps math.isclose with more generous defaults."""
-    if not (math.isfinite(a) and math.isfinite(b)):
-        raise ValueError(f"{a=} and {b=}, but input must be finite")
-    return math.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol)
-
-
 def mock_int_dtype(n: int, dtype: DataType) -> int:
     """Returns equivalent of `n` that mocks `dtype` behaviour."""
     nbits = dh.dtype_nbits[dtype]
@@ -58,6 +40,40 @@ def mock_int_dtype(n: int, dtype: DataType) -> int:
         if n & highest_bit:
             n = -((~n & mask) + 1)
     return n
+
+
+# This module tests elementwise functions/operators against a reference
+# implementation. We iterate through the input array(s) and resulting array,
+# casting the indexed arrays to Python scalars and calculating the expected
+# output with `refimpl` function.
+#
+# This is finicky to refactor, but possible and ultimately worthwhile - hence
+# why these *_assert_again_refimpl() utilities exist.
+#
+# Values which are special-cased are generated and passed, but are filtered by
+# the `filter_` callable before they can be asserted against `refimpl`. We
+# automatically generate tests for special cases in the special_cases/ dir. We
+# still pass them here so as to ensure their presence doesn't affect the outputs
+# respective to non-special-cased elements.
+#
+# By default, results are casted to scalars the same way that the inputs are.
+# You can specify a cast via `res_stype, i.e. when a function accepts numerical
+# inputs but returns boolean arrays.
+#
+# By default, floating-point functions/methods are loosely asserted against. Use
+# `strict_check=True` when they should be strictly asserted against, i.e.
+# when a function should return intergrals.
+
+
+def isclose(a: float, b: float, rel_tol: float = 0.25, abs_tol: float = 1) -> bool:
+    """Wraps math.isclose with very generous defaults.
+
+    This is useful for many floating-point operations where the spec does not
+    make accuracy requirements.
+    """
+    if not (math.isfinite(a) and math.isfinite(b)):
+        raise ValueError(f"{a=} and {b=}, but input must be finite")
+    return math.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol)
 
 
 def default_filter(s: Scalar) -> bool:
@@ -168,14 +184,14 @@ def binary_assert_against_refimpl(
 # elementwise methods. We do this by parametrizing a generalised test method
 # with every relevant method and operator.
 #
-# Notable arguments in the parameter:
+# Notable arguments in the parameter's context object:
 # - The function object, which for operator test cases is a wrapper that allows
 #   test logic to be generalised.
 # - The argument strategies, which can be used to draw arguments for the test
 #   case. They may require additional filtering for certain test cases.
-# - right_is_scalar (binary parameters), which denotes if the right argument is
-#   a scalar in a test case. This can be used to appropiately adjust draw
-#   filtering and test logic.
+# - right_is_scalar (binary parameters only), which denotes if the right
+#   argument is a scalar in a test case. This can be used to appropiately adjust
+#   draw filtering and test logic.
 
 
 func_to_op = {v: k for k, v in dh.op_to_func.items()}
