@@ -76,14 +76,14 @@ def unary_assert_against_refimpl(
         in_stype = dh.get_scalar_type(in_.dtype)
     if res_stype is None:
         res_stype = in_stype
-    if res.dtype != xp.bool:
-        m, M = dh.dtype_ranges[res.dtype]
+    m, M = dh.dtype_ranges.get(res.dtype, (None, None))
     for idx in sh.ndindex(in_.shape):
         scalar_i = in_stype(in_[idx])
         if not filter_(scalar_i):
             continue
         expected = refimpl(scalar_i)
         if res.dtype != xp.bool:
+            assert m is not None and M is not None  # for mypy
             if expected <= m or expected >= M:
                 continue
         scalar_o = res_stype(res[idx])
@@ -105,7 +105,7 @@ def unary_assert_against_refimpl(
 def binary_assert_against_refimpl(
     func_name: str,
     left: Array,
-    right: Union[Scalar, Array],
+    right: Array,
     res: Array,
     refimpl: Callable[[Scalar, Scalar], Scalar],
     expr_template: str,
@@ -120,16 +120,15 @@ def binary_assert_against_refimpl(
         in_stype = dh.get_scalar_type(left.dtype)
     if res_stype is None:
         res_stype = in_stype
-    result_dtype = dh.result_type(left.dtype, right.dtype)
-    if result_dtype != xp.bool:
-        m, M = dh.dtype_ranges[result_dtype]
+    m, M = dh.dtype_ranges.get(res.dtype, (None, None))
     for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
         scalar_l = in_stype(left[l_idx])
         scalar_r = in_stype(right[r_idx])
         if not (filter_(scalar_l) and filter_(scalar_r)):
             continue
         expected = refimpl(scalar_l, scalar_r)
-        if result_dtype != xp.bool:
+        if res.dtype != xp.bool:
+            assert m is not None and M is not None  # for mypy
             if expected <= m or expected >= M:
                 continue
         scalar_o = res_stype(res[o_idx])
@@ -137,7 +136,7 @@ def binary_assert_against_refimpl(
         f_r = sh.fmt_idx(right_sym, r_idx)
         f_o = sh.fmt_idx(res_name, o_idx)
         expr = expr_template.format(f_l, f_r, expected)
-        if dh.is_float_dtype(result_dtype):
+        if dh.is_float_dtype(res.dtype):
             assert isclose(scalar_o, expected), (
                 f"{f_o}={scalar_o}, but should be roughly {expr} [{func_name}()]\n"
                 f"{f_l}={scalar_l}, {f_r}={scalar_r}"
@@ -357,18 +356,18 @@ def binary_param_assert_against_refimpl(
 ):
     if ctx.right_is_scalar:
         assert filter_(right)  # sanity check
-        if left.dtype != xp.bool:
-            m, M = dh.dtype_ranges[left.dtype]
         if in_stype is None:
             in_stype = dh.get_scalar_type(left.dtype)
         if res_stype is None:
             res_stype = in_stype
+        m, M = dh.dtype_ranges.get(left.dtype, (None, None))
         for idx in sh.ndindex(res.shape):
             scalar_l = in_stype(left[idx])
             if not filter_(scalar_l):
                 continue
             expected = refimpl(scalar_l, right)
             if left.dtype != xp.bool:
+                assert m is not None and M is not None  # for mypy
                 if expected <= m or expected >= M:
                     continue
             scalar_o = res_stype(res[idx])
