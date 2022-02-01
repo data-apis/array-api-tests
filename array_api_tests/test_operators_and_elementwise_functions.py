@@ -76,19 +76,30 @@ def unary_assert_against_refimpl(
         in_stype = dh.get_scalar_type(in_.dtype)
     if res_stype is None:
         res_stype = in_stype
+    if res.dtype != xp.bool:
+        m, M = dh.dtype_ranges[res.dtype]
     for idx in sh.ndindex(in_.shape):
         scalar_i = in_stype(in_[idx])
         if not filter_(scalar_i):
             continue
         expected = refimpl(scalar_i)
+        if res.dtype != xp.bool:
+            if expected <= m or expected >= M:
+                continue
         scalar_o = res_stype(res[idx])
         f_i = sh.fmt_idx("x", idx)
         f_o = sh.fmt_idx("out", idx)
         expr = expr_template.format(f_i, expected)
-        assert scalar_o == expected, (
-            f"{f_o}={scalar_o}, but should be {expr} [{func_name}()]\n"
-            f"{f_i}={scalar_i}"
-        )
+        if dh.is_float_dtype(res.dtype):
+            assert isclose(scalar_o, expected), (
+                f"{f_o}={scalar_o}, but should be roughly {expr} [{func_name}()]\n"
+                f"{f_i}={scalar_i}"
+            )
+        else:
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be {expr} [{func_name}()]\n"
+                f"{f_i}={scalar_i}"
+            )
 
 
 def binary_assert_against_refimpl(
@@ -1257,7 +1268,7 @@ def test_sin(x):
     out = xp.sin(x)
     ph.assert_dtype("sin", x.dtype, out.dtype)
     ph.assert_shape("sin", out.shape, x.shape)
-    # TODO
+    unary_assert_against_refimpl("sin", x, out, math.sin, "sin({})={}")
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -1265,7 +1276,7 @@ def test_sinh(x):
     out = xp.sinh(x)
     ph.assert_dtype("sinh", x.dtype, out.dtype)
     ph.assert_shape("sinh", out.shape, x.shape)
-    # TODO
+    unary_assert_against_refimpl("sinh", x, out, math.sinh, "sinh({})={}")
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -1273,13 +1284,19 @@ def test_square(x):
     out = xp.square(x)
     ph.assert_dtype("square", x.dtype, out.dtype)
     ph.assert_shape("square", out.shape, x.shape)
+    unary_assert_against_refimpl("square", x, out, lambda s: s ** 2, "{}²={}")
 
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
+@given(
+    xps.arrays(
+        dtype=xps.floating_dtypes(), shape=hh.shapes(), elements={"min_value": 0}
+    )
+)
 def test_sqrt(x):
     out = xp.sqrt(x)
     ph.assert_dtype("sqrt", x.dtype, out.dtype)
     ph.assert_shape("sqrt", out.shape, x.shape)
+    unary_assert_against_refimpl("sqrt", x, out, math.sqrt, "sqrt({})={}")
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("subtract", xps.numeric_dtypes()))
@@ -1305,7 +1322,7 @@ def test_tan(x):
     out = xp.tan(x)
     ph.assert_dtype("tan", x.dtype, out.dtype)
     ph.assert_shape("tan", out.shape, x.shape)
-    # TODO
+    unary_assert_against_refimpl("tan", x, out, math.tan, "tan({})={}")
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -1313,7 +1330,7 @@ def test_tanh(x):
     out = xp.tanh(x)
     ph.assert_dtype("tanh", x.dtype, out.dtype)
     ph.assert_shape("tanh", out.shape, x.shape)
-    # TODO
+    unary_assert_against_refimpl("tanh", x, out, math.tanh, "tanh({})={}")
 
 
 @given(xps.arrays(dtype=hh.numeric_dtypes, shape=xps.array_shapes()))
