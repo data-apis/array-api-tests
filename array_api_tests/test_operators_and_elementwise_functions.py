@@ -73,12 +73,14 @@ def unary_assert_against_refimpl(
     in_: Array,
     res: Array,
     refimpl: Callable[[Scalar], Scalar],
-    expr_template: str,
+    expr_template: Optional[str] = None,
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = default_filter,
 ):
     if in_.shape != res.shape:
         raise ValueError(f"{res.shape=}, but should be {in_.shape=}")
+    if expr_template is None:
+        expr_template = func_name + "({})={}"
     in_stype = dh.get_scalar_type(in_.dtype)
     if res_stype is None:
         res_stype = in_stype
@@ -117,13 +119,15 @@ def binary_assert_against_refimpl(
     right: Array,
     res: Array,
     refimpl: Callable[[Scalar, Scalar], Scalar],
-    expr_template: str,
+    expr_template: Optional[str] = None,
     res_stype: Optional[ScalarType] = None,
     left_sym: str = "x1",
     right_sym: str = "x2",
     res_name: str = "out",
     filter_: Callable[[Scalar], bool] = default_filter,
 ):
+    if expr_template is None:
+        expr_template = func_name + "({}, {})={}"
     in_stype = dh.get_scalar_type(left.dtype)
     if res_stype is None:
         res_stype = in_stype
@@ -358,11 +362,12 @@ def binary_param_assert_against_refimpl(
     left: Array,
     right: Union[Array, Scalar],
     res: Array,
+    op_sym: str,
     refimpl: Callable[[Scalar, Scalar], Scalar],
-    expr_template: str,
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = default_filter,
 ):
+    expr_template = "({} " + op_sym + " {})={}"
     if ctx.right_is_scalar:
         assert filter_(right)  # sanity check
         in_stype = dh.get_scalar_type(left.dtype)
@@ -430,7 +435,7 @@ def test_abs(ctx, data):
         x,
         out,
         abs,
-        "abs({})={}",
+        expr_template="abs({})={}",
         filter_=lambda s: (
             s == float("infinity") or (math.isfinite(s) and s is not -0.0)
         ),
@@ -448,7 +453,7 @@ def test_acos(x):
     out = xp.acos(x)
     ph.assert_dtype("acos", x.dtype, out.dtype)
     ph.assert_shape("acos", out.shape, x.shape)
-    unary_assert_against_refimpl("acos", x, out, math.acos, "acos({})={}")
+    unary_assert_against_refimpl("acos", x, out, math.acos)
 
 
 @given(
@@ -460,7 +465,7 @@ def test_acosh(x):
     out = xp.acosh(x)
     ph.assert_dtype("acosh", x.dtype, out.dtype)
     ph.assert_shape("acosh", out.shape, x.shape)
-    unary_assert_against_refimpl("acosh", x, out, math.acosh, "acosh({})={}")
+    unary_assert_against_refimpl("acosh", x, out, math.acosh)
 
 
 @pytest.mark.parametrize("ctx,", make_binary_params("add", xps.numeric_dtypes()))
@@ -476,9 +481,7 @@ def test_add(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    binary_param_assert_against_refimpl(
-        ctx, left, right, res, operator.add, "({} + {})={}"
-    )
+    binary_param_assert_against_refimpl(ctx, left, right, res, "+", operator.add)
 
 
 @given(
@@ -492,7 +495,7 @@ def test_asin(x):
     out = xp.asin(x)
     ph.assert_dtype("asin", x.dtype, out.dtype)
     ph.assert_shape("asin", out.shape, x.shape)
-    unary_assert_against_refimpl("asin", x, out, math.asin, "asin({})={}")
+    unary_assert_against_refimpl("asin", x, out, math.asin)
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -500,7 +503,7 @@ def test_asinh(x):
     out = xp.asinh(x)
     ph.assert_dtype("asinh", x.dtype, out.dtype)
     ph.assert_shape("asinh", out.shape, x.shape)
-    unary_assert_against_refimpl("asinh", x, out, math.asinh, "asinh({})={}")
+    unary_assert_against_refimpl("asinh", x, out, math.asinh)
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -508,7 +511,7 @@ def test_atan(x):
     out = xp.atan(x)
     ph.assert_dtype("atan", x.dtype, out.dtype)
     ph.assert_shape("atan", out.shape, x.shape)
-    unary_assert_against_refimpl("atan", x, out, math.atan, "atan({})={}")
+    unary_assert_against_refimpl("atan", x, out, math.atan)
 
 
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
@@ -516,7 +519,7 @@ def test_atan2(x1, x2):
     out = xp.atan2(x1, x2)
     ph.assert_dtype("atan2", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("atan2", [x1.shape, x2.shape], out.shape)
-    binary_assert_against_refimpl("atan2", x1, x2, out, math.atan2, "atan2({})={}")
+    binary_assert_against_refimpl("atan2", x1, x2, out, math.atan2)
 
 
 @given(
@@ -530,7 +533,7 @@ def test_atanh(x):
     out = xp.atanh(x)
     ph.assert_dtype("atanh", x.dtype, out.dtype)
     ph.assert_shape("atanh", out.shape, x.shape)
-    unary_assert_against_refimpl("atanh", x, out, math.atanh, "atanh({})={}")
+    unary_assert_against_refimpl("atanh", x, out, math.atanh)
 
 
 @pytest.mark.parametrize(
@@ -549,7 +552,7 @@ def test_bitwise_and(ctx, data):
         refimpl = lambda l, r: l and r
     else:
         refimpl = lambda l, r: mock_int_dtype(l & r, res.dtype)
-    binary_param_assert_against_refimpl(ctx, left, right, res, refimpl, "({} & {})={}")
+    binary_param_assert_against_refimpl(ctx, left, right, res, "&", refimpl)
 
 
 @pytest.mark.parametrize(
@@ -573,10 +576,10 @@ def test_bitwise_left_shift(ctx, data):
         left,
         right,
         res,
-        lambda l, r: mock_int_dtype(l << r, res.dtype)
-        if r < dh.dtype_nbits[res.dtype]
-        else 0,
-        "({} << {})={}",
+        "<<",
+        lambda l, r: (
+            mock_int_dtype(l << r, res.dtype) if r < dh.dtype_nbits[res.dtype] else 0
+        ),
     )
 
 
@@ -595,7 +598,7 @@ def test_bitwise_invert(ctx, data):
         refimpl = lambda s: not s
     else:
         refimpl = lambda s: mock_int_dtype(~s, x.dtype)
-    unary_assert_against_refimpl(ctx.func_name, x, out, refimpl, "~{}={}")
+    unary_assert_against_refimpl(ctx.func_name, x, out, refimpl, expr_template="~{}={}")
 
 
 @pytest.mark.parametrize(
@@ -614,7 +617,7 @@ def test_bitwise_or(ctx, data):
         refimpl = lambda l, r: l or r
     else:
         refimpl = lambda l, r: mock_int_dtype(l | r, res.dtype)
-    binary_param_assert_against_refimpl(ctx, left, right, res, refimpl, "({} | {})={}")
+    binary_param_assert_against_refimpl(ctx, left, right, res, "|", refimpl)
 
 
 @pytest.mark.parametrize(
@@ -638,8 +641,8 @@ def test_bitwise_right_shift(ctx, data):
         left,
         right,
         res,
+        ">>",
         lambda l, r: mock_int_dtype(l >> r, res.dtype),
-        "({} >> {})={}",
     )
 
 
@@ -656,10 +659,10 @@ def test_bitwise_xor(ctx, data):
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
     if left.dtype == xp.bool:
-        refimpl = lambda l, r: l ^ r
+        refimpl = operator.xor
     else:
         refimpl = lambda l, r: mock_int_dtype(l ^ r, res.dtype)
-    binary_param_assert_against_refimpl(ctx, left, right, res, refimpl, "({} ^ {})={}")
+    binary_param_assert_against_refimpl(ctx, left, right, res, "^", refimpl)
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -746,7 +749,7 @@ def test_equal(ctx, data):
         left = xp.astype(left, promoted_dtype)
         right = xp.astype(right, promoted_dtype)
     binary_param_assert_against_refimpl(
-        ctx, left, right, out, operator.eq, "({} == {})={}", res_stype=bool
+        ctx, left, right, out, "==", operator.eq, res_stype=bool
     )
 
 
@@ -812,9 +815,7 @@ def test_floor_divide(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    binary_param_assert_against_refimpl(
-        ctx, left, right, res, operator.floordiv, "({} // {})={}"
-    )
+    binary_param_assert_against_refimpl(ctx, left, right, res, "//", operator.floordiv)
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("greater", xps.numeric_dtypes()))
@@ -833,7 +834,7 @@ def test_greater(ctx, data):
         left = xp.astype(left, promoted_dtype)
         right = xp.astype(right, promoted_dtype)
     binary_param_assert_against_refimpl(
-        ctx, left, right, out, operator.gt, "({} > {})={}", res_stype=bool
+        ctx, left, right, out, ">", operator.gt, res_stype=bool
     )
 
 
@@ -855,7 +856,7 @@ def test_greater_equal(ctx, data):
         left = xp.astype(left, promoted_dtype)
         right = xp.astype(right, promoted_dtype)
     binary_param_assert_against_refimpl(
-        ctx, left, right, out, operator.ge, "({} >= {})={}", res_stype=bool
+        ctx, left, right, out, ">=", operator.ge, res_stype=bool
     )
 
 
@@ -931,7 +932,7 @@ def test_less(ctx, data):
         left = xp.astype(left, promoted_dtype)
         right = xp.astype(right, promoted_dtype)
     binary_param_assert_against_refimpl(
-        ctx, left, right, out, operator.lt, "({} < {})={}", res_stype=bool
+        ctx, left, right, out, "<", operator.lt, res_stype=bool
     )
 
 
@@ -951,7 +952,7 @@ def test_less_equal(ctx, data):
         left = xp.astype(left, promoted_dtype)
         right = xp.astype(right, promoted_dtype)
     binary_param_assert_against_refimpl(
-        ctx, left, right, out, operator.le, "({} <= {})={}", res_stype=bool
+        ctx, left, right, out, "<=", operator.le, res_stype=bool
     )
 
 
@@ -1028,7 +1029,7 @@ def test_logical_and(x1, x2):
     ph.assert_dtype("logical_and", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("logical_and", [x1.shape, x2.shape], out.shape)
     binary_assert_against_refimpl(
-        "logical_and", x1, x2, out, lambda l, r: l and r, "({} and {})={}"
+        "logical_and", x1, x2, out, lambda l, r: l and r, expr_template="({} and {})={}"
     )
 
 
@@ -1037,7 +1038,9 @@ def test_logical_not(x):
     out = ah.logical_not(x)
     ph.assert_dtype("logical_not", x.dtype, out.dtype)
     ph.assert_shape("logical_not", out.shape, x.shape)
-    unary_assert_against_refimpl("logical_not", x, out, lambda i: not i, "(not {})={}")
+    unary_assert_against_refimpl(
+        "logical_not", x, out, lambda i: not i, expr_template="(not {})={}"
+    )
 
 
 @given(*hh.two_mutual_arrays([xp.bool]))
@@ -1046,7 +1049,7 @@ def test_logical_or(x1, x2):
     ph.assert_dtype("logical_or", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("logical_or", [x1.shape, x2.shape], out.shape)
     binary_assert_against_refimpl(
-        "logical_or", x1, x2, out, lambda l, r: l or r, "({} or {})={}"
+        "logical_or", x1, x2, out, lambda l, r: l or r, expr_template="({} or {})={}"
     )
 
 
@@ -1056,7 +1059,7 @@ def test_logical_xor(x1, x2):
     ph.assert_dtype("logical_xor", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("logical_xor", [x1.shape, x2.shape], out.shape)
     binary_assert_against_refimpl(
-        "logical_xor", x1, x2, out, lambda l, r: l ^ r, "({} ^ {})={}"
+        "logical_xor", x1, x2, out, operator.xor, expr_template="({} ^ {})={}"
     )
 
 
@@ -1070,11 +1073,10 @@ def test_multiply(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    binary_param_assert_against_refimpl(
-        ctx, left, right, res, operator.mul, "({} * {})={}"
-    )
+    binary_param_assert_against_refimpl(ctx, left, right, res, "*", operator.mul)
 
 
+# TODO: clarify if uints are acceptable, adjust accordingly
 @pytest.mark.parametrize(
     "ctx", make_unary_params("negative", xps.integer_dtypes() | xps.floating_dtypes())
 )
@@ -1089,7 +1091,9 @@ def test_negative(ctx, data):
 
     ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
     ph.assert_shape(ctx.func_name, out.shape, x.shape)
-    unary_assert_against_refimpl(ctx.func_name, x, out, operator.neg, "-({})={}")
+    unary_assert_against_refimpl(
+        ctx.func_name, x, out, operator.neg, expr_template="-({})={}"
+    )
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("not_equal", xps.scalar_dtypes()))
@@ -1108,7 +1112,7 @@ def test_not_equal(ctx, data):
         left = xp.astype(left, promoted_dtype)
         right = xp.astype(right, promoted_dtype)
     binary_param_assert_against_refimpl(
-        ctx, left, right, out, operator.ne, "({} != {})={}", res_stype=bool
+        ctx, left, right, out, "!=", operator.ne, res_stype=bool
     )
 
 
@@ -1164,9 +1168,7 @@ def test_remainder(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    binary_param_assert_against_refimpl(
-        ctx, left, right, res, operator.mod, "({} % {})={}"
-    )
+    binary_param_assert_against_refimpl(ctx, left, right, res, "%", operator.mod)
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -1226,7 +1228,7 @@ def test_sin(x):
     out = xp.sin(x)
     ph.assert_dtype("sin", x.dtype, out.dtype)
     ph.assert_shape("sin", out.shape, x.shape)
-    unary_assert_against_refimpl("sin", x, out, math.sin, "sin({})={}")
+    unary_assert_against_refimpl("sin", x, out, math.sin)
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -1234,7 +1236,7 @@ def test_sinh(x):
     out = xp.sinh(x)
     ph.assert_dtype("sinh", x.dtype, out.dtype)
     ph.assert_shape("sinh", out.shape, x.shape)
-    unary_assert_against_refimpl("sinh", x, out, math.sinh, "sinh({})={}")
+    unary_assert_against_refimpl("sinh", x, out, math.sinh)
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -1242,7 +1244,9 @@ def test_square(x):
     out = xp.square(x)
     ph.assert_dtype("square", x.dtype, out.dtype)
     ph.assert_shape("square", out.shape, x.shape)
-    unary_assert_against_refimpl("square", x, out, lambda s: s ** 2, "{}²={}")
+    unary_assert_against_refimpl(
+        "square", x, out, lambda s: s ** 2, expr_template="{}²={}"
+    )
 
 
 @given(
@@ -1254,7 +1258,7 @@ def test_sqrt(x):
     out = xp.sqrt(x)
     ph.assert_dtype("sqrt", x.dtype, out.dtype)
     ph.assert_shape("sqrt", out.shape, x.shape)
-    unary_assert_against_refimpl("sqrt", x, out, math.sqrt, "sqrt({})={}")
+    unary_assert_against_refimpl("sqrt", x, out, math.sqrt)
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("subtract", xps.numeric_dtypes()))
@@ -1270,9 +1274,7 @@ def test_subtract(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    binary_param_assert_against_refimpl(
-        ctx, left, right, res, operator.sub, "({} - {})={}"
-    )
+    binary_param_assert_against_refimpl(ctx, left, right, res, "-", operator.sub)
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -1280,7 +1282,7 @@ def test_tan(x):
     out = xp.tan(x)
     ph.assert_dtype("tan", x.dtype, out.dtype)
     ph.assert_shape("tan", out.shape, x.shape)
-    unary_assert_against_refimpl("tan", x, out, math.tan, "tan({})={}")
+    unary_assert_against_refimpl("tan", x, out, math.tan)
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -1288,7 +1290,7 @@ def test_tanh(x):
     out = xp.tanh(x)
     ph.assert_dtype("tanh", x.dtype, out.dtype)
     ph.assert_shape("tanh", out.shape, x.shape)
-    unary_assert_against_refimpl("tanh", x, out, math.tanh, "tanh({})={}")
+    unary_assert_against_refimpl("tanh", x, out, math.tanh)
 
 
 @given(xps.arrays(dtype=hh.numeric_dtypes, shape=xps.array_shapes()))
