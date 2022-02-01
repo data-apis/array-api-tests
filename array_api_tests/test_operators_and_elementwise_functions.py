@@ -446,30 +446,24 @@ def test_abs(ctx, data):
     )
 
 
-@given(
-    xps.arrays(
-        dtype=xps.floating_dtypes(),
-        shape=hh.shapes(),
-        elements={"min_value": -1, "max_value": 1},
-    )
-)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_acos(x):
     out = xp.acos(x)
     ph.assert_dtype("acos", x.dtype, out.dtype)
     ph.assert_shape("acos", out.shape, x.shape)
-    unary_assert_against_refimpl("acos", x, out, math.acos)
-
-
-@given(
-    xps.arrays(
-        dtype=xps.floating_dtypes(), shape=hh.shapes(), elements={"min_value": 1}
+    unary_assert_against_refimpl(
+        "acos", x, out, math.acos, filter_=lambda s: default_filter(s) and -1 <= s <= 1
     )
-)
+
+
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_acosh(x):
     out = xp.acosh(x)
     ph.assert_dtype("acosh", x.dtype, out.dtype)
     ph.assert_shape("acosh", out.shape, x.shape)
-    unary_assert_against_refimpl("acosh", x, out, math.acosh)
+    unary_assert_against_refimpl(
+        "acosh", x, out, math.acosh, filter_=lambda s: default_filter(s) and s >= 1
+    )
 
 
 @pytest.mark.parametrize("ctx,", make_binary_params("add", xps.numeric_dtypes()))
@@ -488,18 +482,14 @@ def test_add(ctx, data):
     binary_param_assert_against_refimpl(ctx, left, right, res, "+", operator.add)
 
 
-@given(
-    xps.arrays(
-        dtype=xps.floating_dtypes(),
-        shape=hh.shapes(),
-        elements={"min_value": -1, "max_value": 1},
-    )
-)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_asin(x):
     out = xp.asin(x)
     ph.assert_dtype("asin", x.dtype, out.dtype)
     ph.assert_shape("asin", out.shape, x.shape)
-    unary_assert_against_refimpl("asin", x, out, math.asin)
+    unary_assert_against_refimpl(
+        "asin", x, out, math.asin, filter_=lambda s: default_filter(s) and -1 <= s <= 1
+    )
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -526,18 +516,18 @@ def test_atan2(x1, x2):
     binary_assert_against_refimpl("atan2", x1, x2, out, math.atan2)
 
 
-@given(
-    xps.arrays(
-        dtype=xps.floating_dtypes(),
-        shape=hh.shapes(),
-        elements={"min_value": -1, "max_value": 1},
-    )
-)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_atanh(x):
     out = xp.atanh(x)
     ph.assert_dtype("atanh", x.dtype, out.dtype)
     ph.assert_shape("atanh", out.shape, x.shape)
-    unary_assert_against_refimpl("atanh", x, out, math.atanh)
+    unary_assert_against_refimpl(
+        "atanh",
+        x,
+        out,
+        math.atanh,
+        filter_=lambda s: default_filter(s) and -1 <= s <= 1,
+    )
 
 
 @pytest.mark.parametrize(
@@ -899,56 +889,44 @@ def test_less_equal(ctx, data):
     )
 
 
-@given(
-    xps.arrays(
-        dtype=xps.floating_dtypes(), shape=hh.shapes(), elements={"min_value": 1}
-    )
-)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log(x):
     out = xp.log(x)
     ph.assert_dtype("log", x.dtype, out.dtype)
     ph.assert_shape("log", out.shape, x.shape)
-    unary_assert_against_refimpl("log", x, out, math.log)
-
-
-@given(
-    xps.arrays(
-        dtype=xps.floating_dtypes(), shape=hh.shapes(), elements={"min_value": 1}
+    unary_assert_against_refimpl(
+        "log", x, out, math.log, filter_=lambda s: default_filter(s) and s >= 1
     )
-)
+
+
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log1p(x):
     out = xp.log1p(x)
     ph.assert_dtype("log1p", x.dtype, out.dtype)
     ph.assert_shape("log1p", out.shape, x.shape)
-    unary_assert_against_refimpl("log1p", x, out, math.log1p)
-
-
-@given(
-    xps.arrays(
-        dtype=xps.floating_dtypes(),
-        shape=hh.shapes(),
-        elements={"min_value": 0, "exclude_min": True},
+    unary_assert_against_refimpl(
+        "log1p", x, out, math.log1p, filter_=lambda s: default_filter(s) and s >= 1
     )
-)
+
+
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log2(x):
     out = xp.log2(x)
     ph.assert_dtype("log2", x.dtype, out.dtype)
     ph.assert_shape("log2", out.shape, x.shape)
-    unary_assert_against_refimpl("log2", x, out, math.log2)
-
-
-@given(
-    xps.arrays(
-        dtype=xps.floating_dtypes(),
-        shape=hh.shapes(),
-        elements={"min_value": 0, "exclude_min": True},
+    unary_assert_against_refimpl(
+        "log2", x, out, math.log2, filter_=lambda s: default_filter(s) and s > 1
     )
-)
+
+
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_log10(x):
     out = xp.log10(x)
     ph.assert_dtype("log10", x.dtype, out.dtype)
     ph.assert_shape("log10", out.shape, x.shape)
-    unary_assert_against_refimpl("log10", x, out, math.log10)
+    unary_assert_against_refimpl(
+        "log10", x, out, math.log10, filter_=lambda s: default_filter(s) and s > 0
+    )
 
 
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
@@ -1166,16 +1144,14 @@ def test_square(x):
     )
 
 
-@given(
-    xps.arrays(
-        dtype=xps.floating_dtypes(), shape=hh.shapes(), elements={"min_value": 0}
-    )
-)
+@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
 def test_sqrt(x):
     out = xp.sqrt(x)
     ph.assert_dtype("sqrt", x.dtype, out.dtype)
     ph.assert_shape("sqrt", out.shape, x.shape)
-    unary_assert_against_refimpl("sqrt", x, out, math.sqrt)
+    unary_assert_against_refimpl(
+        "sqrt", x, out, math.sqrt, filter_=lambda s: default_filter(s) and s >= 0
+    )
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("subtract", xps.numeric_dtypes()))
