@@ -66,14 +66,12 @@ def unary_assert_against_refimpl(
     res: Array,
     refimpl: Callable[[Scalar], Scalar],
     expr_template: str,
-    in_stype: Optional[ScalarType] = None,
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = math.isfinite,
 ):
     if in_.shape != res.shape:
         raise ValueError(f"{res.shape=}, but should be {in_.shape=}")
-    if in_stype is None:
-        in_stype = dh.get_scalar_type(in_.dtype)
+    in_stype = dh.get_scalar_type(in_.dtype)
     if res_stype is None:
         res_stype = in_stype
     m, M = dh.dtype_ranges.get(res.dtype, (None, None))
@@ -109,15 +107,13 @@ def binary_assert_against_refimpl(
     res: Array,
     refimpl: Callable[[Scalar, Scalar], Scalar],
     expr_template: str,
-    in_stype: Optional[ScalarType] = None,
     res_stype: Optional[ScalarType] = None,
     left_sym: str = "x1",
     right_sym: str = "x2",
     res_name: str = "out",
     filter_: Callable[[Scalar], bool] = math.isfinite,
 ):
-    if in_stype is None:
-        in_stype = dh.get_scalar_type(left.dtype)
+    in_stype = dh.get_scalar_type(left.dtype)
     if res_stype is None:
         res_stype = in_stype
     m, M = dh.dtype_ranges.get(res.dtype, (None, None))
@@ -350,14 +346,12 @@ def binary_param_assert_against_refimpl(
     res: Array,
     refimpl: Callable[[Scalar, Scalar], Scalar],
     expr_template: str,
-    in_stype: Optional[ScalarType] = None,
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = math.isfinite,
 ):
     if ctx.right_is_scalar:
         assert filter_(right)  # sanity check
-        if in_stype is None:
-            in_stype = dh.get_scalar_type(left.dtype)
+        in_stype = dh.get_scalar_type(left.dtype)
         if res_stype is None:
             res_stype = in_stype
         m, M = dh.dtype_ranges.get(left.dtype, (None, None))
@@ -389,7 +383,6 @@ def binary_param_assert_against_refimpl(
     else:
         binary_assert_against_refimpl(
             func_name=ctx.func_name,
-            in_stype=in_stype,
             left_sym=ctx.left_sym,
             left=left,
             right_sym=ctx.right_sym,
