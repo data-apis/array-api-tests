@@ -49,7 +49,7 @@ def isclose(a: float, b: float, rel_tol: float = 0.25, abs_tol: float = 1) -> bo
 
 
 def mock_int_dtype(n: int, dtype: DataType) -> int:
-    """Returns equivalent of `n` that mocks `dtype` behaviour"""
+    """Returns equivalent of `n` that mocks `dtype` behaviour."""
     nbits = dh.dtype_nbits[dtype]
     mask = (1 << nbits) - 1
     n &= mask
@@ -76,6 +76,7 @@ def unary_assert_against_refimpl(
     expr_template: Optional[str] = None,
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = default_filter,
+    strict_check: bool = False,
 ):
     if in_.shape != res.shape:
         raise ValueError(f"{res.shape=}, but should be {in_.shape=}")
@@ -101,7 +102,7 @@ def unary_assert_against_refimpl(
         f_i = sh.fmt_idx("x", idx)
         f_o = sh.fmt_idx("out", idx)
         expr = expr_template.format(f_i, expected)
-        if dh.is_float_dtype(res.dtype):
+        if not strict_check and dh.is_float_dtype(res.dtype):
             assert isclose(scalar_o, expected), (
                 f"{f_o}={scalar_o}, but should be roughly {expr} [{func_name}()]\n"
                 f"{f_i}={scalar_i}"
@@ -125,6 +126,7 @@ def binary_assert_against_refimpl(
     right_sym: str = "x2",
     res_name: str = "out",
     filter_: Callable[[Scalar], bool] = default_filter,
+    strict_check: bool = False,
 ):
     if expr_template is None:
         expr_template = func_name + "({}, {})={}"
@@ -150,7 +152,7 @@ def binary_assert_against_refimpl(
         f_r = sh.fmt_idx(right_sym, r_idx)
         f_o = sh.fmt_idx(res_name, o_idx)
         expr = expr_template.format(f_l, f_r, expected)
-        if dh.is_float_dtype(res.dtype):
+        if not strict_check and dh.is_float_dtype(res.dtype):
             assert isclose(scalar_o, expected), (
                 f"{f_o}={scalar_o}, but should be roughly {expr} [{func_name}()]\n"
                 f"{f_l}={scalar_l}, {f_r}={scalar_r}"
@@ -366,6 +368,7 @@ def binary_param_assert_against_refimpl(
     refimpl: Callable[[Scalar, Scalar], Scalar],
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = default_filter,
+    strict_check: bool = False,
 ):
     expr_template = "({} " + op_sym + " {})={}"
     if ctx.right_is_scalar:
@@ -390,7 +393,7 @@ def binary_param_assert_against_refimpl(
             f_l = sh.fmt_idx(ctx.left_sym, idx)
             f_o = sh.fmt_idx(ctx.res_name, idx)
             expr = expr_template.format(f_l, right, expected)
-            if dh.is_float_dtype(left.dtype):
+            if not strict_check and dh.is_float_dtype(left.dtype):
                 assert isclose(scalar_o, expected), (
                     f"{f_o}={scalar_o}, but should be roughly {expr} "
                     f"[{ctx.func_name}()]\n"
@@ -415,6 +418,7 @@ def binary_param_assert_against_refimpl(
             refimpl=refimpl,
             expr_template=expr_template,
             filter_=filter_,
+            strict_check=strict_check,
         )
 
 
@@ -670,14 +674,7 @@ def test_ceil(x):
     out = xp.ceil(x)
     ph.assert_dtype("ceil", x.dtype, out.dtype)
     ph.assert_shape("ceil", out.shape, x.shape)
-    finite = ah.isfinite(x)
-    ah.assert_integral(out[finite])
-    assert ah.all(ah.less_equal(x[finite], out[finite]))
-    assert ah.all(
-        ah.less_equal(out[finite] - x[finite], ah.one(x[finite].shape, x.dtype))
-    )
-    integers = ah.isintegral(x)
-    ah.assert_exactly_equal(out[integers], x[integers])
+    unary_assert_against_refimpl("ceil", x, out, math.ceil, strict_check=True)
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -759,18 +756,10 @@ def test_expm1(x):
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_floor(x):
-    # This test is almost identical to test_ceil
     out = xp.floor(x)
     ph.assert_dtype("floor", x.dtype, out.dtype)
     ph.assert_shape("floor", out.shape, x.shape)
-    finite = ah.isfinite(x)
-    ah.assert_integral(out[finite])
-    assert ah.all(ah.less_equal(out[finite], x[finite]))
-    assert ah.all(
-        ah.less_equal(x[finite] - out[finite], ah.one(x[finite].shape, x.dtype))
-    )
-    integers = ah.isintegral(x)
-    ah.assert_exactly_equal(out[integers], x[integers])
+    unary_assert_against_refimpl("floor", x, out, math.floor, strict_check=True)
 
 
 @pytest.mark.parametrize(
@@ -1122,29 +1111,9 @@ def test_remainder(ctx, data):
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_round(x):
     out = xp.round(x)
-
     ph.assert_dtype("round", x.dtype, out.dtype)
-
     ph.assert_shape("round", out.shape, x.shape)
-
-    # Test that the out is integral
-    finite = ah.isfinite(x)
-    ah.assert_integral(out[finite])
-
-    # round(x) should be the neaoutt integer to x. The case where there is a
-    # tie (round to even) is already handled by the special cases tests.
-
-    # This is the same strategy used in the mask in the
-    # test_round_special_cases_one_arg_two_integers_equally_close special
-    # cases test.
-    floor = xp.floor(x)
-    ceil = xp.ceil(x)
-    over = xp.subtract(x, floor)
-    under = xp.subtract(ceil, x)
-    round_down = ah.less(over, under)
-    round_up = ah.less(under, over)
-    ah.assert_exactly_equal(out[round_down], floor[round_down])
-    ah.assert_exactly_equal(out[round_up], ceil[round_up])
+    unary_assert_against_refimpl("round", x, out, round, strict_check=True)
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -1246,8 +1215,4 @@ def test_trunc(x):
     out = xp.trunc(x)
     ph.assert_dtype("trunc", x.dtype, out.dtype)
     ph.assert_shape("trunc", out.shape, x.shape)
-    if dh.is_int_dtype(x.dtype):
-        ah.assert_exactly_equal(out, x)
-    else:
-        finite = ah.isfinite(x)
-        ah.assert_integral(out[finite])
+    unary_assert_against_refimpl("trunc", x, out, math.trunc, strict_check=True)
