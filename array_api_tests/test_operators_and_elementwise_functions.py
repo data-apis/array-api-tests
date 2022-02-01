@@ -79,7 +79,10 @@ def unary_assert_against_refimpl(
         scalar_i = in_stype(in_[idx])
         if not filter_(scalar_i):
             continue
-        expected = refimpl(scalar_i)
+        try:
+            expected = refimpl(scalar_i)
+        except OverflowError:
+            continue
         if res.dtype != xp.bool:
             assert m is not None and M is not None  # for mypy
             if expected <= m or expected >= M:
@@ -122,7 +125,10 @@ def binary_assert_against_refimpl(
         scalar_r = in_stype(right[r_idx])
         if not (filter_(scalar_l) and filter_(scalar_r)):
             continue
-        expected = refimpl(scalar_l, scalar_r)
+        try:
+            expected = refimpl(scalar_l, scalar_r)
+        except OverflowError:
+            continue
         if res.dtype != xp.bool:
             assert m is not None and M is not None  # for mypy
             if expected <= m or expected >= M:
@@ -359,7 +365,10 @@ def binary_param_assert_against_refimpl(
             scalar_l = in_stype(left[idx])
             if not filter_(scalar_l):
                 continue
-            expected = refimpl(scalar_l, right)
+            try:
+                expected = refimpl(scalar_l, right)
+            except OverflowError:
+                continue
             if left.dtype != xp.bool:
                 assert m is not None and M is not None  # for mypy
                 if expected <= m or expected >= M:
