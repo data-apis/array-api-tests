@@ -60,6 +60,14 @@ def mock_int_dtype(n: int, dtype: DataType) -> int:
     return n
 
 
+def default_filter(s: Scalar) -> bool:
+    """Returns False when s is a non-finite or a signed zero.
+
+    Used by default as these values are typically special-cased.
+    """
+    return math.isfinite(s) and s is not -0.0 and s is not +0.0
+
+
 def unary_assert_against_refimpl(
     func_name: str,
     in_: Array,
@@ -67,7 +75,7 @@ def unary_assert_against_refimpl(
     refimpl: Callable[[Scalar], Scalar],
     expr_template: str,
     res_stype: Optional[ScalarType] = None,
-    filter_: Callable[[Scalar], bool] = math.isfinite,
+    filter_: Callable[[Scalar], bool] = default_filter,
 ):
     if in_.shape != res.shape:
         raise ValueError(f"{res.shape=}, but should be {in_.shape=}")
@@ -114,7 +122,7 @@ def binary_assert_against_refimpl(
     left_sym: str = "x1",
     right_sym: str = "x2",
     res_name: str = "out",
-    filter_: Callable[[Scalar], bool] = math.isfinite,
+    filter_: Callable[[Scalar], bool] = default_filter,
 ):
     in_stype = dh.get_scalar_type(left.dtype)
     if res_stype is None:
@@ -353,7 +361,7 @@ def binary_param_assert_against_refimpl(
     refimpl: Callable[[Scalar, Scalar], Scalar],
     expr_template: str,
     res_stype: Optional[ScalarType] = None,
-    filter_: Callable[[Scalar], bool] = math.isfinite,
+    filter_: Callable[[Scalar], bool] = default_filter,
 ):
     if ctx.right_is_scalar:
         assert filter_(right)  # sanity check
@@ -429,36 +437,30 @@ def test_abs(ctx, data):
     )
 
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
+@given(
+    xps.arrays(
+        dtype=xps.floating_dtypes(),
+        shape=hh.shapes(),
+        elements={"min_value": -1, "max_value": 1},
+    )
+)
 def test_acos(x):
-    res = xp.acos(x)
-    ph.assert_dtype("acos", x.dtype, res.dtype)
-    ph.assert_shape("acos", res.shape, x.shape)
-    ONE = ah.one(x.shape, x.dtype)
-    # Here (and elsewhere), should technically be res.dtype, but this is the
-    # same as x.dtype, as tested by the type_promotion tests.
-    PI = ah.π(x.shape, x.dtype)
-    ZERO = ah.zero(x.shape, x.dtype)
-    domain = ah.inrange(x, -ONE, ONE)
-    codomain = ah.inrange(res, ZERO, PI)
-    # acos maps [-1, 1] to [0, pi]. Values outside this domain are mapped to
-    # nan, which is already tested in the special cases.
-    ah.assert_exactly_equal(domain, codomain)
+    out = xp.acos(x)
+    ph.assert_dtype("acos", x.dtype, out.dtype)
+    ph.assert_shape("acos", out.shape, x.shape)
+    unary_assert_against_refimpl("acos", x, out, math.acos, "acos({})={}")
 
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
+@given(
+    xps.arrays(
+        dtype=xps.floating_dtypes(), shape=hh.shapes(), elements={"min_value": 1}
+    )
+)
 def test_acosh(x):
-    res = xp.acosh(x)
-    ph.assert_dtype("acosh", x.dtype, res.dtype)
-    ph.assert_shape("acosh", res.shape, x.shape)
-    ONE = ah.one(x.shape, x.dtype)
-    INFINITY = ah.infinity(x.shape, x.dtype)
-    ZERO = ah.zero(x.shape, x.dtype)
-    domain = ah.inrange(x, ONE, INFINITY)
-    codomain = ah.inrange(res, ZERO, INFINITY)
-    # acosh maps [-1, inf] to [0, inf]. Values outside this domain are mapped
-    # to nan, which is already tested in the special cases.
-    ah.assert_exactly_equal(domain, codomain)
+    out = xp.acosh(x)
+    ph.assert_dtype("acosh", x.dtype, out.dtype)
+    ph.assert_shape("acosh", out.shape, x.shape)
+    unary_assert_against_refimpl("acosh", x, out, math.acosh, "acosh({})={}")
 
 
 @pytest.mark.parametrize("ctx,", make_binary_params("add", xps.numeric_dtypes()))
@@ -479,18 +481,18 @@ def test_add(ctx, data):
     )
 
 
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
+@given(
+    xps.arrays(
+        dtype=xps.floating_dtypes(),
+        shape=hh.shapes(),
+        elements={"min_value": -1, "max_value": 1},
+    )
+)
 def test_asin(x):
     out = xp.asin(x)
     ph.assert_dtype("asin", x.dtype, out.dtype)
     ph.assert_shape("asin", out.shape, x.shape)
-    ONE = ah.one(x.shape, x.dtype)
-    PI = ah.π(x.shape, x.dtype)
-    domain = ah.inrange(x, -ONE, ONE)
-    codomain = ah.inrange(out, -PI / 2, PI / 2)
-    # asin maps [-1, 1] to [-pi/2, pi/2]. Values outside this domain are
-    # mapped to nan, which is already tested in the special cases.
-    ah.assert_exactly_equal(domain, codomain)
+    unary_assert_against_refimpl("asin", x, out, math.asin, "asin({})={}")
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -498,12 +500,7 @@ def test_asinh(x):
     out = xp.asinh(x)
     ph.assert_dtype("asinh", x.dtype, out.dtype)
     ph.assert_shape("asinh", out.shape, x.shape)
-    INFINITY = ah.infinity(x.shape, x.dtype)
-    domain = ah.inrange(x, -INFINITY, INFINITY)
-    codomain = ah.inrange(out, -INFINITY, INFINITY)
-    # asinh maps [-inf, inf] to [-inf, inf]. Values outside this domain are
-    # mapped to nan, which is already tested in the special cases.
-    ah.assert_exactly_equal(domain, codomain)
+    unary_assert_against_refimpl("asinh", x, out, math.asinh, "asinh({})={}")
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
@@ -511,13 +508,7 @@ def test_atan(x):
     out = xp.atan(x)
     ph.assert_dtype("atan", x.dtype, out.dtype)
     ph.assert_shape("atan", out.shape, x.shape)
-    INFINITY = ah.infinity(x.shape, x.dtype)
-    PI = ah.π(x.shape, x.dtype)
-    domain = ah.inrange(x, -INFINITY, INFINITY)
-    codomain = ah.inrange(out, -PI / 2, PI / 2)
-    # atan maps [-inf, inf] to [-pi/2, pi/2]. Values outside this domain are
-    # mapped to nan, which is already tested in the special cases.
-    ah.assert_exactly_equal(domain, codomain)
+    unary_assert_against_refimpl("atan", x, out, math.atan, "atan({})={}")
 
 
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
@@ -525,55 +516,21 @@ def test_atan2(x1, x2):
     out = xp.atan2(x1, x2)
     ph.assert_dtype("atan2", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("atan2", [x1.shape, x2.shape], out.shape)
-    INFINITY1 = ah.infinity(x1.shape, x1.dtype)
-    INFINITY2 = ah.infinity(x2.shape, x2.dtype)
-    PI = ah.π(out.shape, out.dtype)
-    domainx1 = ah.inrange(x1, -INFINITY1, INFINITY1)
-    domainx2 = ah.inrange(x2, -INFINITY2, INFINITY2)
-    # codomain = ah.inrange(out, -PI, PI, 1e-5)
-    codomain = ah.inrange(out, -PI, PI)
-    # atan2 maps [-inf, inf] x [-inf, inf] to [-pi, pi]. Values outside
-    # this domain are mapped to nan, which is already tested in the special
-    # cases.
-    ah.assert_exactly_equal(ah.logical_and(domainx1, domainx2), codomain)
-    # From the spec:
-    #
-    # The mathematical signs of `x1_i` and `x2_i` determine the quadrant of
-    # each element-wise out. The quadrant (i.e., branch) is chosen such
-    # that each element-wise out is the signed angle in radians between the
-    # ray ending at the origin and passing through the point `(1,0)` and the
-    # ray ending at the origin and passing through the point `(x2_i, x1_i)`.
+    binary_assert_against_refimpl("atan2", x1, x2, out, math.atan2, "atan2({})={}")
 
-    # This is equivalent to atan2(x1, x2) has the same sign as x1 when x2 is
-    # finite.
-    pos_x1 = ah.positive_mathematical_sign(x1)
-    neg_x1 = ah.negative_mathematical_sign(x1)
-    pos_x2 = ah.positive_mathematical_sign(x2)
-    neg_x2 = ah.negative_mathematical_sign(x2)
-    pos_out = ah.positive_mathematical_sign(out)
-    neg_out = ah.negative_mathematical_sign(out)
-    ah.assert_exactly_equal(
-        ah.logical_or(ah.logical_and(pos_x1, pos_x2), ah.logical_and(pos_x1, neg_x2)),
-        pos_out,
+
+@given(
+    xps.arrays(
+        dtype=xps.floating_dtypes(),
+        shape=hh.shapes(),
+        elements={"min_value": -1, "max_value": 1},
     )
-    ah.assert_exactly_equal(
-        ah.logical_or(ah.logical_and(neg_x1, pos_x2), ah.logical_and(neg_x1, neg_x2)),
-        neg_out,
-    )
-
-
-@given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
+)
 def test_atanh(x):
     out = xp.atanh(x)
     ph.assert_dtype("atanh", x.dtype, out.dtype)
     ph.assert_shape("atanh", out.shape, x.shape)
-    ONE = ah.one(x.shape, x.dtype)
-    INFINITY = ah.infinity(x.shape, x.dtype)
-    domain = ah.inrange(x, -ONE, ONE)
-    codomain = ah.inrange(out, -INFINITY, INFINITY)
-    # atanh maps [-1, 1] to [-inf, inf]. Values outside this domain are
-    # mapped to nan, which is already tested in the special cases.
-    ah.assert_exactly_equal(domain, codomain)
+    unary_assert_against_refimpl("atanh", x, out, math.atanh, "atanh({})={}")
 
 
 @pytest.mark.parametrize(
