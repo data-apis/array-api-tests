@@ -184,6 +184,53 @@ def binary_assert_against_refimpl(
             )
 
 
+def right_scalar_assert_against_refimpl(
+    func_name: str,
+    left: Array,
+    right: Scalar,
+    res: Array,
+    refimpl: Callable[[T, T], T],
+    expr_template: str = None,
+    res_stype: Optional[ScalarType] = None,
+    left_sym: str = "x1",
+    res_name: str = "out",
+    filter_: Callable[[Scalar], bool] = default_filter,
+    strict_check: Optional[bool] = None,
+):
+    if filter_(right):
+        return  # short-circuit here as there will be nothing to test
+    in_stype = dh.get_scalar_type(left.dtype)
+    if res_stype is None:
+        res_stype = in_stype
+    m, M = dh.dtype_ranges.get(left.dtype, (None, None))
+    for idx in sh.ndindex(res.shape):
+        scalar_l = in_stype(left[idx])
+        if not filter_(scalar_l):
+            continue
+        try:
+            expected = refimpl(scalar_l, right)
+        except Exception:
+            continue
+        if left.dtype != xp.bool:
+            assert m is not None and M is not None  # for mypy
+            if expected <= m or expected >= M:
+                continue
+        scalar_o = res_stype(res[idx])
+        f_l = sh.fmt_idx(left_sym, idx)
+        f_o = sh.fmt_idx(res_name, idx)
+        expr = expr_template.format(f_l, right, expected)
+        if strict_check == False or dh.is_float_dtype(res.dtype):
+            assert isclose(scalar_o, expected), (
+                f"{f_o}={scalar_o}, but should be roughly {expr} [{func_name}()]\n"
+                f"{f_l}={scalar_l}"
+            )
+        else:
+            assert scalar_o == expected, (
+                f"{f_o}={scalar_o}, but should be {expr} [{func_name}()]\n"
+                f"{f_l}={scalar_l}"
+            )
+
+
 # When appropiate, this module tests operators alongside their respective
 # elementwise methods. We do this by parametrizing a generalised test method
 # with every relevant method and operator.
@@ -392,40 +439,19 @@ def binary_param_assert_against_refimpl(
 ):
     expr_template = "({} " + op_sym + " {})={}"
     if ctx.right_is_scalar:
-        if filter_(right):
-            return  # short-circuit here as there will be nothing to test
-        in_stype = dh.get_scalar_type(left.dtype)
-        if res_stype is None:
-            res_stype = in_stype
-        m, M = dh.dtype_ranges.get(left.dtype, (None, None))
-        for idx in sh.ndindex(res.shape):
-            scalar_l = in_stype(left[idx])
-            if not filter_(scalar_l):
-                continue
-            try:
-                expected = refimpl(scalar_l, right)
-            except Exception:
-                continue
-            if left.dtype != xp.bool:
-                assert m is not None and M is not None  # for mypy
-                if expected <= m or expected >= M:
-                    continue
-            scalar_o = res_stype(res[idx])
-            f_l = sh.fmt_idx(ctx.left_sym, idx)
-            f_o = sh.fmt_idx(ctx.res_name, idx)
-            expr = expr_template.format(f_l, right, expected)
-            if strict_check == False or dh.is_float_dtype(res.dtype):
-                assert isclose(scalar_o, expected), (
-                    f"{f_o}={scalar_o}, but should be roughly {expr} "
-                    f"[{ctx.func_name}()]\n"
-                    f"{f_l}={scalar_l}"
-                )
-            else:
-                assert scalar_o == expected, (
-                    f"{f_o}={scalar_o}, but should be {expr} "
-                    f"[{ctx.func_name}()]\n"
-                    f"{f_l}={scalar_l}"
-                )
+        right_scalar_assert_against_refimpl(
+            func_name=ctx.func_name,
+            left_sym=ctx.left_sym,
+            left=left,
+            right=right,
+            res_stype=res_stype,
+            res_name=ctx.res_name,
+            res=res,
+            refimpl=refimpl,
+            expr_template=expr_template,
+            filter_=filter_,
+            strict_check=strict_check,
+        )
     else:
         binary_assert_against_refimpl(
             func_name=ctx.func_name,
