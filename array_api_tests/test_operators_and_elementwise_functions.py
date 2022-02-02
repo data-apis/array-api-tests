@@ -1,7 +1,7 @@
 import math
 import operator
 from enum import Enum, auto
-from typing import Callable, List, NamedTuple, Optional, Union
+from typing import Callable, List, NamedTuple, Optional, TypeVar, Union
 
 import pytest
 from hypothesis import assume, given
@@ -85,11 +85,14 @@ def default_filter(s: Scalar) -> bool:
     return math.isfinite(s) and s is not -0.0 and s is not +0.0
 
 
+T = TypeVar("T")
+
+
 def unary_assert_against_refimpl(
     func_name: str,
     in_: Array,
     res: Array,
-    refimpl: Callable[[Scalar], Scalar],
+    refimpl: Callable[[T], T],
     expr_template: Optional[str] = None,
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = default_filter,
@@ -136,7 +139,7 @@ def binary_assert_against_refimpl(
     left: Array,
     right: Array,
     res: Array,
-    refimpl: Callable[[Scalar, Scalar], Scalar],
+    refimpl: Callable[[T, T], T],
     expr_template: Optional[str] = None,
     res_stype: Optional[ScalarType] = None,
     left_sym: str = "x1",
@@ -382,7 +385,7 @@ def binary_param_assert_against_refimpl(
     right: Union[Array, Scalar],
     res: Array,
     op_sym: str,
-    refimpl: Callable[[Scalar, Scalar], Scalar],
+    refimpl: Callable[[T, T], T],
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = default_filter,
     strict_check: Optional[bool] = None,
@@ -456,7 +459,7 @@ def test_abs(ctx, data):
         ctx.func_name,
         x,
         out,
-        abs,
+        abs,  # type: ignore
         expr_template="abs({})={}",
         filter_=lambda s: (
             s == float("infinity") or (math.isfinite(s) and s is not -0.0)
@@ -1013,7 +1016,7 @@ def test_negative(ctx, data):
     ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
     ph.assert_shape(ctx.func_name, out.shape, x.shape)
     unary_assert_against_refimpl(
-        ctx.func_name, x, out, operator.neg, expr_template="-({})={}"
+        ctx.func_name, x, out, operator.neg, expr_template="-({})={}"  # type: ignore
     )
 
 
