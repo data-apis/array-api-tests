@@ -561,7 +561,7 @@ def test_bitwise_and(ctx, data):
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
     if left.dtype == xp.bool:
-        refimpl = lambda l, r: l and r
+        refimpl = operator.and_
     else:
         refimpl = lambda l, r: mock_int_dtype(l & r, res.dtype)
     binary_param_assert_against_refimpl(ctx, left, right, res, "&", refimpl)
@@ -583,15 +583,9 @@ def test_bitwise_left_shift(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
+    nbits = res.dtype
     binary_param_assert_against_refimpl(
-        ctx,
-        left,
-        right,
-        res,
-        "<<",
-        lambda l, r: (
-            mock_int_dtype(l << r, res.dtype) if r < dh.dtype_nbits[res.dtype] else 0
-        ),
+        ctx, left, right, res, "<<", lambda l, r: l << r if r < nbits else 0
     )
 
 
@@ -607,7 +601,7 @@ def test_bitwise_invert(ctx, data):
     ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
     ph.assert_shape(ctx.func_name, out.shape, x.shape)
     if x.dtype == xp.bool:
-        refimpl = lambda s: not s
+        refimpl = operator.not_
     else:
         refimpl = lambda s: mock_int_dtype(~s, x.dtype)
     unary_assert_against_refimpl(ctx.func_name, x, out, refimpl, expr_template="~{}={}")
@@ -626,7 +620,7 @@ def test_bitwise_or(ctx, data):
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
     if left.dtype == xp.bool:
-        refimpl = lambda l, r: l or r
+        refimpl = operator.or_
     else:
         refimpl = lambda l, r: mock_int_dtype(l | r, res.dtype)
     binary_param_assert_against_refimpl(ctx, left, right, res, "|", refimpl)
@@ -649,12 +643,7 @@ def test_bitwise_right_shift(ctx, data):
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
     binary_param_assert_against_refimpl(
-        ctx,
-        left,
-        right,
-        res,
-        ">>",
-        lambda l, r: mock_int_dtype(l >> r, res.dtype),
+        ctx, left, right, res, ">>", lambda l, r: mock_int_dtype(l >> r, res.dtype)
     )
 
 
@@ -943,14 +932,16 @@ def test_log10(x):
     )
 
 
+def logaddexp(l: float, r: float) -> float:
+    return math.log(math.exp(l) + math.exp(r))
+
+
 @given(*hh.two_mutual_arrays(dh.float_dtypes))
 def test_logaddexp(x1, x2):
     out = xp.logaddexp(x1, x2)
     ph.assert_dtype("logaddexp", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("logaddexp", [x1.shape, x2.shape], out.shape)
-    binary_assert_against_refimpl(
-        "logaddexp", x1, x2, out, lambda l, r: math.log(math.exp(l) + math.exp(r))
-    )
+    binary_assert_against_refimpl("logaddexp", x1, x2, out, logaddexp)
 
 
 @given(*hh.two_mutual_arrays([xp.bool]))
@@ -959,7 +950,7 @@ def test_logical_and(x1, x2):
     ph.assert_dtype("logical_and", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("logical_and", [x1.shape, x2.shape], out.shape)
     binary_assert_against_refimpl(
-        "logical_and", x1, x2, out, lambda l, r: l and r, expr_template="({} and {})={}"
+        "logical_and", x1, x2, out, operator.and_, expr_template="({} and {})={}"
     )
 
 
@@ -969,7 +960,7 @@ def test_logical_not(x):
     ph.assert_dtype("logical_not", x.dtype, out.dtype)
     ph.assert_shape("logical_not", out.shape, x.shape)
     unary_assert_against_refimpl(
-        "logical_not", x, out, lambda i: not i, expr_template="(not {})={}"
+        "logical_not", x, out, operator.not_, expr_template="(not {})={}"
     )
 
 
@@ -979,7 +970,7 @@ def test_logical_or(x1, x2):
     ph.assert_dtype("logical_or", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("logical_or", [x1.shape, x2.shape], out.shape)
     binary_assert_against_refimpl(
-        "logical_or", x1, x2, out, lambda l, r: l or r, expr_template="({} or {})={}"
+        "logical_or", x1, x2, out, operator.or_, expr_template="({} or {})={}"
     )
 
 
