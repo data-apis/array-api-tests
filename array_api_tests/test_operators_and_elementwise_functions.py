@@ -30,6 +30,26 @@ def boolean_and_all_integer_dtypes() -> st.SearchStrategy[DataType]:
     return xps.boolean_dtypes() | all_integer_dtypes()
 
 
+class OnewayBroadcastableShapes(NamedTuple):
+    input_shape: Shape
+    result_shape: Shape
+
+
+@st.composite
+def oneway_broadcastable_shapes(draw) -> st.SearchStrategy[OnewayBroadcastableShapes]:
+    """Return a strategy for input shapes that broadcast to result shapes."""
+    result_shape = draw(hh.shapes(min_side=1))
+    input_shape = draw(
+        xps.broadcastable_shapes(
+            result_shape,
+            # Override defaults so bad shapes are less likely to be generated.
+            max_side=None if result_shape == () else max(result_shape),
+            max_dims=len(result_shape),
+        ).filter(lambda s: sh.broadcast_shapes(result_shape, s) == result_shape)
+    )
+    return OnewayBroadcastableShapes(input_shape, result_shape)
+
+
 def mock_int_dtype(n: int, dtype: DataType) -> int:
     """Returns equivalent of `n` that mocks `dtype` behaviour."""
     nbits = dh.dtype_nbits[dtype]
@@ -326,9 +346,15 @@ def make_binary_params(
             )
         else:
             if func_type is FuncType.IOP:
-                shared_shapes = st.shared(hh.shapes(**shapes_kw))
-                left_strat = xps.arrays(dtype=shared_dtypes, shape=shared_shapes)
-                right_strat = xps.arrays(dtype=shared_dtypes, shape=shared_shapes)
+                shared_oneway_shapes = st.shared(oneway_broadcastable_shapes())
+                left_strat = xps.arrays(
+                    dtype=shared_dtypes,
+                    shape=shared_oneway_shapes.map(lambda S: S.result_shape),
+                )
+                right_strat = xps.arrays(
+                    dtype=shared_dtypes,
+                    shape=shared_oneway_shapes.map(lambda S: S.input_shape),
+                )
             else:
                 mutual_shapes = st.shared(
                     hh.mutually_broadcastable_shapes(2, **shapes_kw)
