@@ -369,6 +369,9 @@ def two_mutual_arrays(
 ) -> Tuple[SearchStrategy[Array], SearchStrategy[Array]]:
     if not isinstance(dtypes, Sequence):
         raise TypeError(f"{dtypes=} not a sequence")
+    if FILTER_UNDEFINED_DTYPES:
+        dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
+        assert len(dtypes) > 0  # sanity check
     mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtypes))
     mutual_shapes = shared(two_shapes)
     arrays1 = xps.arrays(
