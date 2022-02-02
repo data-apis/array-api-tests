@@ -30,6 +30,26 @@ def boolean_and_all_integer_dtypes() -> st.SearchStrategy[DataType]:
     return xps.boolean_dtypes() | all_integer_dtypes()
 
 
+class OnewayPromotableDtypes(NamedTuple):
+    input_dtype: DataType
+    result_dtype: DataType
+
+
+@st.composite
+def oneway_promotable_dtypes(
+    draw, dtypes: List[DataType]
+) -> st.SearchStrategy[OnewayPromotableDtypes]:
+    """Return a strategy for input dtypes that promote to result dtypes."""
+    d1, d2 = draw(hh.mutually_promotable_dtypes(dtypes=dtypes))
+    result_dtype = dh.result_type(d1, d2)
+    if d1 == result_dtype:
+        return OnewayPromotableDtypes(d2, d1)
+    elif d2 == result_dtype:
+        return OnewayPromotableDtypes(d1, d2)
+    else:
+        reject()
+
+
 class OnewayBroadcastableShapes(NamedTuple):
     input_shape: Shape
     result_shape: Shape
@@ -326,8 +346,14 @@ class BinaryParamContext(NamedTuple):
 
 
 def make_binary_params(
-    elwise_func_name: str, dtypes_strat: st.SearchStrategy[DataType]
+    elwise_func_name: str, dtypes: List[DataType]
 ) -> List[Param[BinaryParamContext]]:
+    if hh.FILTER_UNDEFINED_DTYPES:
+        dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
+    shared_oneway_dtypes = st.shared(oneway_promotable_dtypes(dtypes))
+    left_dtypes = shared_oneway_dtypes.map(lambda D: D.result_dtype)
+    right_dtypes = shared_oneway_dtypes.map(lambda D: D.input_dtype)
+
     def make_param(
         func_name: str, func_type: FuncType, right_is_scalar: bool
     ) -> Param[BinaryParamContext]:
@@ -338,21 +364,18 @@ def make_binary_params(
             left_sym = "x1"
             right_sym = "x2"
 
-        shared_dtypes = st.shared(dtypes_strat)
         if right_is_scalar:
-            left_strat = xps.arrays(dtype=shared_dtypes, shape=hh.shapes(**shapes_kw))
-            right_strat = shared_dtypes.flatmap(
-                lambda d: xps.from_dtype(d, **finite_kw)
-            )
+            left_strat = xps.arrays(dtype=left_dtypes, shape=hh.shapes(**shapes_kw))
+            right_strat = right_dtypes.flatmap(lambda d: xps.from_dtype(d, **finite_kw))
         else:
             if func_type is FuncType.IOP:
                 shared_oneway_shapes = st.shared(oneway_broadcastable_shapes())
                 left_strat = xps.arrays(
-                    dtype=shared_dtypes,
+                    dtype=left_dtypes,
                     shape=shared_oneway_shapes.map(lambda S: S.result_shape),
                 )
                 right_strat = xps.arrays(
-                    dtype=shared_dtypes,
+                    dtype=right_dtypes,
                     shape=shared_oneway_shapes.map(lambda S: S.input_shape),
                 )
             else:
@@ -360,10 +383,10 @@ def make_binary_params(
                     hh.mutually_broadcastable_shapes(2, **shapes_kw)
                 )
                 left_strat = xps.arrays(
-                    dtype=shared_dtypes, shape=mutual_shapes.map(lambda pair: pair[0])
+                    dtype=left_dtypes, shape=mutual_shapes.map(lambda pair: pair[0])
                 )
                 right_strat = xps.arrays(
-                    dtype=shared_dtypes, shape=mutual_shapes.map(lambda pair: pair[1])
+                    dtype=right_dtypes, shape=mutual_shapes.map(lambda pair: pair[1])
                 )
 
         if func_type is FuncType.FUNC:
@@ -540,7 +563,7 @@ def test_acosh(x):
     )
 
 
-@pytest.mark.parametrize("ctx,", make_binary_params("add", xps.numeric_dtypes()))
+@pytest.mark.parametrize("ctx,", make_binary_params("add", dh.numeric_dtypes))
 @given(data=st.data())
 def test_add(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
@@ -605,7 +628,7 @@ def test_atanh(x):
 
 
 @pytest.mark.parametrize(
-    "ctx", make_binary_params("bitwise_and", boolean_and_all_integer_dtypes())
+    "ctx", make_binary_params("bitwise_and", dh.bool_and_all_int_dtypes)
 )
 @given(data=st.data())
 def test_bitwise_and(ctx, data):
@@ -624,7 +647,7 @@ def test_bitwise_and(ctx, data):
 
 
 @pytest.mark.parametrize(
-    "ctx", make_binary_params("bitwise_left_shift", all_integer_dtypes())
+    "ctx", make_binary_params("bitwise_left_shift", dh.all_int_dtypes)
 )
 @given(data=st.data())
 def test_bitwise_left_shift(ctx, data):
@@ -664,7 +687,7 @@ def test_bitwise_invert(ctx, data):
 
 
 @pytest.mark.parametrize(
-    "ctx", make_binary_params("bitwise_or", boolean_and_all_integer_dtypes())
+    "ctx", make_binary_params("bitwise_or", dh.bool_and_all_int_dtypes)
 )
 @given(data=st.data())
 def test_bitwise_or(ctx, data):
@@ -683,7 +706,7 @@ def test_bitwise_or(ctx, data):
 
 
 @pytest.mark.parametrize(
-    "ctx", make_binary_params("bitwise_right_shift", all_integer_dtypes())
+    "ctx", make_binary_params("bitwise_right_shift", dh.all_int_dtypes)
 )
 @given(data=st.data())
 def test_bitwise_right_shift(ctx, data):
@@ -704,7 +727,7 @@ def test_bitwise_right_shift(ctx, data):
 
 
 @pytest.mark.parametrize(
-    "ctx", make_binary_params("bitwise_xor", boolean_and_all_integer_dtypes())
+    "ctx", make_binary_params("bitwise_xor", dh.bool_and_all_int_dtypes)
 )
 @given(data=st.data())
 def test_bitwise_xor(ctx, data):
@@ -746,7 +769,7 @@ def test_cosh(x):
     unary_assert_against_refimpl("cosh", x, out, math.cosh)
 
 
-@pytest.mark.parametrize("ctx", make_binary_params("divide", xps.floating_dtypes()))
+@pytest.mark.parametrize("ctx", make_binary_params("divide", dh.float_dtypes))
 @given(data=st.data())
 def test_divide(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
@@ -769,7 +792,7 @@ def test_divide(ctx, data):
     )
 
 
-@pytest.mark.parametrize("ctx", make_binary_params("equal", xps.scalar_dtypes()))
+@pytest.mark.parametrize("ctx", make_binary_params("equal", dh.all_dtypes))
 @given(data=st.data())
 def test_equal(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
@@ -821,9 +844,7 @@ def test_floor(x):
     unary_assert_against_refimpl("floor", x, out, math.floor, strict_check=True)
 
 
-@pytest.mark.parametrize(
-    "ctx", make_binary_params("floor_divide", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("floor_divide", dh.numeric_dtypes))
 @given(data=st.data())
 def test_floor_divide(ctx, data):
     left = data.draw(
@@ -842,7 +863,7 @@ def test_floor_divide(ctx, data):
     binary_param_assert_against_refimpl(ctx, left, right, res, "//", operator.floordiv)
 
 
-@pytest.mark.parametrize("ctx", make_binary_params("greater", xps.numeric_dtypes()))
+@pytest.mark.parametrize("ctx", make_binary_params("greater", dh.numeric_dtypes))
 @given(data=st.data())
 def test_greater(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
@@ -862,9 +883,7 @@ def test_greater(ctx, data):
     )
 
 
-@pytest.mark.parametrize(
-    "ctx", make_binary_params("greater_equal", xps.numeric_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_binary_params("greater_equal", dh.numeric_dtypes))
 @given(data=st.data())
 def test_greater_equal(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
@@ -908,7 +927,7 @@ def test_isnan(x):
     unary_assert_against_refimpl("isnan", x, out, math.isnan, res_stype=bool)
 
 
-@pytest.mark.parametrize("ctx", make_binary_params("less", xps.numeric_dtypes()))
+@pytest.mark.parametrize("ctx", make_binary_params("less", dh.numeric_dtypes))
 @given(data=st.data())
 def test_less(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
@@ -928,7 +947,7 @@ def test_less(ctx, data):
     )
 
 
-@pytest.mark.parametrize("ctx", make_binary_params("less_equal", xps.numeric_dtypes()))
+@pytest.mark.parametrize("ctx", make_binary_params("less_equal", dh.numeric_dtypes))
 @given(data=st.data())
 def test_less_equal(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
@@ -1040,7 +1059,7 @@ def test_logical_xor(x1, x2):
     )
 
 
-@pytest.mark.parametrize("ctx", make_binary_params("multiply", xps.numeric_dtypes()))
+@pytest.mark.parametrize("ctx", make_binary_params("multiply", dh.numeric_dtypes))
 @given(data=st.data())
 def test_multiply(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
@@ -1073,7 +1092,7 @@ def test_negative(ctx, data):
     )
 
 
-@pytest.mark.parametrize("ctx", make_binary_params("not_equal", xps.scalar_dtypes()))
+@pytest.mark.parametrize("ctx", make_binary_params("not_equal", dh.all_dtypes))
 @given(data=st.data())
 def test_not_equal(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
@@ -1105,7 +1124,7 @@ def test_positive(ctx, data):
     ph.assert_array(ctx.func_name, out, x)
 
 
-@pytest.mark.parametrize("ctx", make_binary_params("pow", xps.numeric_dtypes()))
+@pytest.mark.parametrize("ctx", make_binary_params("pow", dh.numeric_dtypes))
 @given(data=st.data())
 def test_pow(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
@@ -1129,7 +1148,7 @@ def test_pow(ctx, data):
     )
 
 
-@pytest.mark.parametrize("ctx", make_binary_params("remainder", xps.numeric_dtypes()))
+@pytest.mark.parametrize("ctx", make_binary_params("remainder", dh.numeric_dtypes))
 @given(data=st.data())
 def test_remainder(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
@@ -1200,7 +1219,7 @@ def test_sqrt(x):
     )
 
 
-@pytest.mark.parametrize("ctx", make_binary_params("subtract", xps.numeric_dtypes()))
+@pytest.mark.parametrize("ctx", make_binary_params("subtract", dh.numeric_dtypes))
 @given(data=st.data())
 def test_subtract(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
