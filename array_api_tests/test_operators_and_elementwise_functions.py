@@ -62,7 +62,8 @@ def mock_int_dtype(n: int, dtype: DataType) -> int:
 #
 # By default, floating-point functions/methods are loosely asserted against. Use
 # `strict_check=True` when they should be strictly asserted against, i.e.
-# when a function should return intergrals.
+# when a function should return intergrals. Likewise, use `strict_check=False`
+# when integer function/methods should be loosely asserted against.
 
 
 def isclose(a: float, b: float, rel_tol: float = 0.25, abs_tol: float = 1) -> bool:
@@ -92,7 +93,7 @@ def unary_assert_against_refimpl(
     expr_template: Optional[str] = None,
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = default_filter,
-    strict_check: bool = False,
+    strict_check: Optional[bool] = None,
 ):
     if in_.shape != res.shape:
         raise ValueError(f"{res.shape=}, but should be {in_.shape=}")
@@ -108,7 +109,7 @@ def unary_assert_against_refimpl(
             continue
         try:
             expected = refimpl(scalar_i)
-        except OverflowError:
+        except Exception:
             continue
         if res.dtype != xp.bool:
             assert m is not None and M is not None  # for mypy
@@ -118,7 +119,7 @@ def unary_assert_against_refimpl(
         f_i = sh.fmt_idx("x", idx)
         f_o = sh.fmt_idx("out", idx)
         expr = expr_template.format(f_i, expected)
-        if not strict_check and dh.is_float_dtype(res.dtype):
+        if strict_check == False or dh.is_float_dtype(res.dtype):
             assert isclose(scalar_o, expected), (
                 f"{f_o}={scalar_o}, but should be roughly {expr} [{func_name}()]\n"
                 f"{f_i}={scalar_i}"
@@ -142,7 +143,7 @@ def binary_assert_against_refimpl(
     right_sym: str = "x2",
     res_name: str = "out",
     filter_: Callable[[Scalar], bool] = default_filter,
-    strict_check: bool = False,
+    strict_check: Optional[bool] = None,
 ):
     if expr_template is None:
         expr_template = func_name + "({}, {})={}"
@@ -157,7 +158,7 @@ def binary_assert_against_refimpl(
             continue
         try:
             expected = refimpl(scalar_l, scalar_r)
-        except OverflowError:
+        except Exception:
             continue
         if res.dtype != xp.bool:
             assert m is not None and M is not None  # for mypy
@@ -168,7 +169,7 @@ def binary_assert_against_refimpl(
         f_r = sh.fmt_idx(right_sym, r_idx)
         f_o = sh.fmt_idx(res_name, o_idx)
         expr = expr_template.format(f_l, f_r, expected)
-        if not strict_check and dh.is_float_dtype(res.dtype):
+        if strict_check == False or dh.is_float_dtype(res.dtype):
             assert isclose(scalar_o, expected), (
                 f"{f_o}={scalar_o}, but should be roughly {expr} [{func_name}()]\n"
                 f"{f_l}={scalar_l}, {f_r}={scalar_r}"
@@ -384,11 +385,12 @@ def binary_param_assert_against_refimpl(
     refimpl: Callable[[Scalar, Scalar], Scalar],
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = default_filter,
-    strict_check: bool = False,
+    strict_check: Optional[bool] = None,
 ):
     expr_template = "({} " + op_sym + " {})={}"
     if ctx.right_is_scalar:
-        assert filter_(right)  # sanity check
+        if filter_(right):
+            return  # short-circuit here as there will be nothing to test
         in_stype = dh.get_scalar_type(left.dtype)
         if res_stype is None:
             res_stype = in_stype
@@ -399,7 +401,7 @@ def binary_param_assert_against_refimpl(
                 continue
             try:
                 expected = refimpl(scalar_l, right)
-            except OverflowError:
+            except Exception:
                 continue
             if left.dtype != xp.bool:
                 assert m is not None and M is not None  # for mypy
@@ -409,7 +411,7 @@ def binary_param_assert_against_refimpl(
             f_l = sh.fmt_idx(ctx.left_sym, idx)
             f_o = sh.fmt_idx(ctx.res_name, idx)
             expr = expr_template.format(f_l, right, expected)
-            if not strict_check and dh.is_float_dtype(left.dtype):
+            if strict_check == False or dh.is_float_dtype(res.dtype):
                 assert isclose(scalar_o, expected), (
                     f"{f_o}={scalar_o}, but should be roughly {expr} "
                     f"[{ctx.func_name}()]\n"
@@ -704,16 +706,22 @@ def test_cosh(x):
 def test_divide(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
     right = data.draw(ctx.right_strat, label=ctx.right_sym)
+    if ctx.right_is_scalar:
+        assume
 
     res = ctx.func(left, right)
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    # There isn't much we can test here. The spec doesn't require any behavior
-    # beyond the special cases, and indeed, there aren't many mathematical
-    # properties of division that strictly hold for floating-point numbers. We
-    # could test that this does implement IEEE 754 division, but we don't yet
-    # have those sorts in general for this module.
+    binary_param_assert_against_refimpl(
+        ctx,
+        left,
+        right,
+        res,
+        "/",
+        operator.truediv,
+        filter_=lambda s: math.isfinite(s) and s != 0,
+    )
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("equal", xps.scalar_dtypes()))
@@ -836,17 +844,7 @@ def test_isfinite(x):
     out = ah.isfinite(x)
     ph.assert_dtype("isfinite", x.dtype, out.dtype, xp.bool)
     ph.assert_shape("isfinite", out.shape, x.shape)
-    if dh.is_int_dtype(x.dtype):
-        ah.assert_exactly_equal(out, ah.true(x.shape))
-    # Test that isfinite, isinf, and isnan are self-consistent.
-    inf = ah.logical_or(xp.isinf(x), ah.isnan(x))
-    ah.assert_exactly_equal(out, ah.logical_not(inf))
-
-    # Test the exact value by comparing to the math version
-    if dh.is_float_dtype(x.dtype):
-        for idx in sh.ndindex(x.shape):
-            s = float(x[idx])
-            assert bool(out[idx]) == math.isfinite(s)
+    unary_assert_against_refimpl("isfinite", x, out, math.isfinite, res_stype=bool)
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -949,9 +947,10 @@ def test_log10(x):
 def test_logaddexp(x1, x2):
     out = xp.logaddexp(x1, x2)
     ph.assert_dtype("logaddexp", [x1.dtype, x2.dtype], out.dtype)
-    # The spec doesn't require any behavior for this function. We could test
-    # that this is indeed an approximation of log(exp(x1) + exp(x2)), but we
-    # don't have tests for this sort of thing for any functions yet.
+    ph.assert_result_shape("logaddexp", [x1.shape, x2.shape], out.shape)
+    binary_assert_against_refimpl(
+        "logaddexp", x1, x2, out, lambda l, r: math.log(math.exp(l) + math.exp(r))
+    )
 
 
 @given(*hh.two_mutual_arrays([xp.bool]))
@@ -1078,11 +1077,9 @@ def test_pow(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    # There isn't much we can test here. The spec doesn't require any behavior
-    # beyond the special cases, and indeed, there aren't many mathematical
-    # properties of exponentiation that strictly hold for floating-point
-    # numbers. We could test that this does implement IEEE 754 pow, but we
-    # don't yet have those sorts in general for this module.
+    binary_param_assert_against_refimpl(
+        ctx, left, right, res, "**", math.pow, strict_check=False
+    )
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("remainder", xps.numeric_dtypes()))
@@ -1110,28 +1107,14 @@ def test_round(x):
     unary_assert_against_refimpl("round", x, out, round, strict_check=True)
 
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(), elements=finite_kw))
 def test_sign(x):
     out = xp.sign(x)
     ph.assert_dtype("sign", x.dtype, out.dtype)
     ph.assert_shape("sign", out.shape, x.shape)
-    scalar_type = dh.get_scalar_type(out.dtype)
-    for idx in sh.ndindex(x.shape):
-        scalar_x = scalar_type(x[idx])
-        f_x = sh.fmt_idx("x", idx)
-        if math.isnan(scalar_x):
-            continue
-        if scalar_x == 0:
-            expected = 0
-            expr = f"{f_x}=0"
-        else:
-            expected = 1 if scalar_x > 0 else -1
-            expr = f"({f_x} / |{f_x}|)={expected}"
-        scalar_o = scalar_type(out[idx])
-        f_o = sh.fmt_idx("out", idx)
-        assert (
-            scalar_o == expected
-        ), f"{f_o}={scalar_o}, but should be {expr} [sign()]\n{f_x}={scalar_x}"
+    unary_assert_against_refimpl(
+        "sign", x, out, lambda s: math.copysign(1, s), filter_=lambda s: s != 0
+    )
 
 
 @given(xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
