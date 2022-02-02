@@ -63,7 +63,8 @@ def mock_int_dtype(n: int, dtype: DataType) -> int:
 # By default, floating-point functions/methods are loosely asserted against. Use
 # `strict_check=True` when they should be strictly asserted against, i.e.
 # when a function should return intergrals. Likewise, use `strict_check=False`
-# when integer function/methods should be loosely asserted against.
+# when integer function/methods should be loosely asserted against, i.e. when
+# floats are used internally for optimisation or legacy reasons.
 
 
 def isclose(a: float, b: float, rel_tol: float = 0.25, abs_tol: float = 1) -> bool:
