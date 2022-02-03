@@ -151,14 +151,73 @@ library to fail.
 
 ### Configuration
 
+#### CI flag
+
 Use the `--ci` flag to run only the primary and special cases tests. You can
 ignore the other test cases as they are redundant for the purposes of checking
 compliance.
+
+#### Extensions
 
 By default, tests for the optional Array API extensions such as
 [`linalg`](https://data-apis.org/array-api/latest/extensions/linear_algebra_functions.html)
 will be skipped if not present in the specified array module. You can purposely
 skip testing extension(s) via the `--disable-extension` option.
+
+#### Skip test cases
+
+Test cases you want to skip can be specified in a `skips.txt` file in the root
+of this repository, e.g.:
+
+```
+# ./skips.txt
+# Line comments can be denoted with the hash symbol (#)
+
+# Skip specific test case, e.g. when argsort() does not respect relative order
+# https://github.com/numpy/numpy/issues/20778
+array_api_tests/test_sorting_functions.py::test_argsort
+
+# Skip specific test case parameter, e.g. you forgot to implement in-place adds
+array_api_tests/test_add[__iadd__(x1, x2)]
+array_api_tests/test_add[__iadd__(x, s)]
+
+# Skip module, e.g. when your set functions treat NaNs as non-distinct
+# https://github.com/numpy/numpy/issues/20326
+array_api_tests/test_set_functions.py
+```
+
+For GitHub Actions, you might like to keep everything in the workflow config
+instead of having a seperate `skips.txt` file, e.g.:
+
+```yaml
+# ./.github/workflows/array_api.yml
+...
+    ...
+    - name: Run the test suite
+      env:
+        ARRAY_API_TESTS_MODULE: your.array.api.namespace
+      run: |
+        # Skip test cases with known issues
+        cat << EOF >> skips.txt
+
+        # Skip specific test case, e.g. when argsort() does not respect relative order
+        # https://github.com/numpy/numpy/issues/20778
+        array_api_tests/test_sorting_functions.py::test_argsort
+
+        # Skip specific test case parameter, e.g. you forgot to implement in-place adds
+        array_api_tests/test_add[__iadd__(x1, x2)]
+        array_api_tests/test_add[__iadd__(x, s)]
+
+        # Skip module, e.g. when your set functions treat NaNs as non-distinct
+        # https://github.com/numpy/numpy/issues/20326
+        array_api_tests/test_set_functions.py
+
+        EOF
+
+        pytest -v -rxXfE --ci
+```
+
+#### Max examples
 
 The tests make heavy use
 [Hypothesis](https://hypothesis.readthedocs.io/en/latest/). You can configure
