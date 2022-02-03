@@ -69,15 +69,7 @@ def test_mean(x, data):
     ph.assert_keepdimable_shape(
         "mean", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
     )
-    for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
-        mean = float(out[out_idx])
-        assume(not math.isinf(mean))  # mean may become inf due to internal overflows
-        elements = []
-        for idx in indices:
-            s = float(x[idx])
-            elements.append(s)
-        expected = sum(elements) / len(elements)
-        ph.assert_scalar_equals("mean", float, out_idx, mean, expected)
+    # Values testing mean is too finicky
 
 
 @given(
