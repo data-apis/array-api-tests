@@ -50,47 +50,6 @@ a specific test case, which is useful when developing functions.
 $ pytest array_api_tests/test_creation_functions.py::test_zeros
 ```
 
-## Releases
-
-The test suite has tagged releases on
-[GitHub](https://github.com/data-apis/array-api-tests/releases). If you run
-the test suite in your CI system, we recommend pinning against a release tag.
-
-We use [calender versioning](https://calver.org/) for the releases. You should
-expect that any version may be "breaking" compared to the previous one, in the
-sense that there may have been additional tests added which cause a previously
-passing library to fail.
-
-For now, the test suite is
-not installable as a Python package. You can use it by cloning the repo and
-running `pytest` as described above. If it would help you to be able to
-install it as a package, [please let us
-know](https://github.com/data-apis/array-api-tests/issues/85).
-
-*Test suite maintainer note:* to make a release of the test suite, make an
-annotated tag with the version:
-
-```
-git tag -a 2022.1
-```
-
-(for the message, just write something like "array-api-tests version 2022.1").
-Be sure to use the calver version number for the tag name. Versioneer will
-automatically set the version number of the `array_api_tests` package based on
-the git tag.
-
-Then push the tag to GitHub
-
-```
-git push --tags origin 2022.1
-```
-
-Finally go to the [tags page on
-GitHub](https://github.com/data-apis/array-api-tests/tags) and convert the tag
-into a release. If you want, you can add release notes to the release page on
-GitHub.
-
-
 ## What the test suite covers
 
 We are interested in array libraries conforming to the
@@ -147,7 +106,7 @@ of the functions and some miscellaneous things.
   functions interact with them correctly.
 
 Be aware that some aspects of the spec are impractical or impossible to actually
-test, so they are not covered in the suite <!-- TODO: note what these are -->
+test, so they are not covered in the suite. <!-- TODO: note what these are -->
 
 ## Interpreting errors
 
@@ -172,7 +131,28 @@ behaviour different from the spec, or test something that is not documented,
 this is a bug—please [report such
 issues](https://github.com/data-apis/array-api-tests/issues/) to us.
 
-## Configuration
+
+## Running on CI
+
+See our existing [GitHub Actions workflow for
+Numpy](https://github.com/data-apis/array-api-tests/blob/master/.github/workflows/numpy.yml)
+for an example of using the test suite on CI.
+
+### Releases
+
+We recommend pinning against a [release tag](https://github.com/data-apis/array-api-tests/releases)
+when running on CI.
+
+We use [calender versioning](https://calver.org/) for the releases. You should
+expect that any version may be "breaking" compared to the previous one, in that
+new tests (or improvements to existing tests) may cause a previously passing
+library to fail.
+
+### Configuration
+
+Use the `--ci` flag to run only the primary and special cases tests. You can
+ignore the other test cases as they are redundant for the purposes of checking
+compliance.
 
 By default, tests for the optional Array API extensions such as
 [`linalg`](https://data-apis.org/array-api/latest/extensions/linear_algebra_functions.html)
@@ -183,10 +163,9 @@ The tests make heavy use
 [Hypothesis](https://hypothesis.readthedocs.io/en/latest/). You can configure
 how many examples are generated using the `--max-examples` flag, which defaults
 to 100. Lower values can be useful for quick checks, and larger values should
-result in more rigorous runs. For example, `--max-examples 10000` may find bugs
-where default runs don't, but will take a much longer time.
+result in more rigorous runs. For example, `--max-examples 10_000` may find bugs
+where default runs don't but will take much longer to run.
 
-<!-- TODO: howto on CI -->
 
 ## Contributing
 
@@ -230,6 +209,31 @@ not be edited directly. To regenerate these files, run the script
 where `path/to/array-api` is the path to a local clone of the [`array-api`
 repo](https://github.com/data-apis/array-api/). Edit `generate_stubs.py` to make
 changes to the generated files.
+
+
+### Release
+
+To make a release, first make an annotated tag with the version, e.g.:
+
+```
+git tag -a 2022.01.01
+```
+
+Be sure to use the calver version number for the tag name. Don't worry too much
+on the tag message, e.g. just write "2022.01.01".
+
+Versioneer will automatically set the version number of the `array_api_tests`
+package based on the git tag. Push the tag to GitHub:
+
+```
+git push --tags upstream 2022.1
+```
+
+Then go to the [tags page on
+GitHub](https://github.com/data-apis/array-api-tests/tags) and convert the tag
+into a release. If you want, you can add release notes, which GitHub can
+generate for you.
+
 
 ## Future plans
 

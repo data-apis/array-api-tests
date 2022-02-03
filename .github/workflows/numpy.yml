@@ -25,7 +25,7 @@ jobs:
       env:
         ARRAY_API_TESTS_MODULE: numpy.array_api
       run: |
-        # Skip test cases with known issues
+        # Skip testing functions with known issues
         cat << EOF >> skips.txt
 
         # copy not implemented
