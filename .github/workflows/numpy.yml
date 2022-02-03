@@ -25,8 +25,8 @@ jobs:
       env:
         ARRAY_API_TESTS_MODULE: numpy.array_api
       run: |
-        # Mark some known issues as XFAIL
-        cat << EOF >> xfails.txt
+        # Skip test cases with known issues
+        cat << EOF >> skips.txt
 
         # copy not implemented
         array_api_tests/test_creation_functions.py::test_asarray_arrays

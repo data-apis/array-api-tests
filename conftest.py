@@ -71,14 +71,14 @@ def xp_has_ext(ext: str) -> bool:
         return False
 
 
-xfail_ids = []
-xfails_path = Path(__file__).parent / "xfails.txt"
-if xfails_path.exists():
-    with open(xfails_path) as f:
+skip_ids = []
+skips_path = Path(__file__).parent / "skips.txt"
+if skips_path.exists():
+    with open(skips_path) as f:
         for line in f:
             if line.startswith("array_api_tests"):
                 id_ = line.strip("\n")
-                xfail_ids.append(id_)
+                skip_ids.append(id_)
 
 
 def pytest_collection_modifyitems(config, items):
@@ -96,10 +96,10 @@ def pytest_collection_modifyitems(config, items):
                 )
             elif not xp_has_ext(ext):
                 item.add_marker(mark.skip(reason=f"{ext} not found in array module"))
-        # xfail if specified in xfails.txt
-        for id_ in xfail_ids:
+        # skip if specified in skips.txt
+        for id_ in skip_ids:
             if item.nodeid.startswith(id_):
-                item.add_marker(mark.xfail(reason="xfails.txt"))
+                item.add_marker(mark.skip(reason="skips.txt"))
                 break
         # skip if test not appropiate for CI
         if ci:
