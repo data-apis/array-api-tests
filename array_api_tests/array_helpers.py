@@ -306,14 +306,3 @@ def same_sign(x, y):
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
 
-def int_to_dtype(x, n, signed):
-    """
-    Convert the Python integer x into an n bit signed or unsigned number.
-    """
-    mask = (1 << n) - 1
-    x &= mask
-    if signed:
-        highest_bit = 1 << (n-1)
-        if x & highest_bit:
-            x = -((~x & mask) + 1)
-    return x

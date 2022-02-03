@@ -1,7 +1,7 @@
 import math
-import pytest
 from typing import Set
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.control import assume

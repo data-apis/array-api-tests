@@ -9,8 +9,8 @@ from . import _array_module as xp
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 from . import xps
-from .algos import broadcast_shapes
 from .typing import DataType
 
 pytestmark = pytest.mark.ci
@@ -70,7 +70,7 @@ def test_broadcast_arrays(shapes, data):
 
     out = xp.broadcast_arrays(*arrays)
 
-    out_shape = broadcast_shapes(*shapes)
+    out_shape = sh.broadcast_shapes(*shapes)
     for i, x in enumerate(arrays):
         ph.assert_dtype(
             "broadcast_arrays", x.dtype, out[i].dtype, repr_name=f"out[{i}].dtype"
@@ -90,7 +90,7 @@ def test_broadcast_to(x, data):
     shape = data.draw(
         hh.mutually_broadcastable_shapes(1, base_shape=x.shape)
         .map(lambda S: S[0])
-        .filter(lambda s: broadcast_shapes(x.shape, s) == s),
+        .filter(lambda s: sh.broadcast_shapes(x.shape, s) == s),
         label="shape",
     )
 

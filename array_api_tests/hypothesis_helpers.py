@@ -16,7 +16,6 @@ from . import xps
 from ._array_module import _UndefinedStub
 from ._array_module import bool as bool_dtype
 from ._array_module import broadcast_to, eye, float32, float64, full
-from .algos import broadcast_shapes
 from .function_stubs import elementwise_functions
 from .pytest_helpers import nargs
 from .typing import Array, DataType, Shape
@@ -243,7 +242,7 @@ def two_broadcastable_shapes(draw):
     broadcast to shape1.
     """
     shape1, shape2 = draw(two_mutually_broadcastable_shapes)
-    assume(broadcast_shapes(shape1, shape2) == shape1)
+    assume(sh.broadcast_shapes(shape1, shape2) == shape1)
     return (shape1, shape2)
 
 sizes = integers(0, MAX_ARRAY_SIZE)
@@ -370,6 +369,9 @@ def two_mutual_arrays(
 ) -> Tuple[SearchStrategy[Array], SearchStrategy[Array]]:
     if not isinstance(dtypes, Sequence):
         raise TypeError(f"{dtypes=} not a sequence")
+    if FILTER_UNDEFINED_DTYPES:
+        dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
+        assert len(dtypes) > 0  # sanity check
     mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtypes))
     mutual_shapes = shared(two_shapes)
     arrays1 = xps.arrays(

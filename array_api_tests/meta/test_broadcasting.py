@@ -4,7 +4,7 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/broadc
 
 import pytest
 
-from ..algos import BroadcastError, _broadcast_shapes
+from .. import shape_helpers as sh
 
 
 @pytest.mark.parametrize(
@@ -19,7 +19,7 @@ from ..algos import BroadcastError, _broadcast_shapes
     ],
 )
 def test_broadcast_shapes(shape1, shape2, expected):
-    assert _broadcast_shapes(shape1, shape2) == expected
+    assert sh._broadcast_shapes(shape1, shape2) == expected
 
 
 @pytest.mark.parametrize(
@@ -31,5 +31,5 @@ def test_broadcast_shapes(shape1, shape2, expected):
     ],
 )
 def test_broadcast_shapes_fails_on_bad_shapes(shape1, shape2):
-    with pytest.raises(BroadcastError):
-        _broadcast_shapes(shape1, shape2)
+    with pytest.raises(sh.BroadcastError):
+        sh._broadcast_shapes(shape1, shape2)

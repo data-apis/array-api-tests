@@ -8,9 +8,9 @@ from .. import _array_module as xp
 from .. import array_helpers as ah
 from .. import dtype_helpers as dh
 from .. import hypothesis_helpers as hh
+from .. import shape_helpers as sh
 from .. import xps
 from .._array_module import _UndefinedStub
-from ..algos import broadcast_shapes
 
 UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in dh.all_dtypes)
 pytestmark = [pytest.mark.skipif(UNDEFINED_DTYPES, reason="undefined dtypes")]
@@ -62,7 +62,7 @@ def test_two_mutually_broadcastable_shapes(pair):
 def test_two_broadcastable_shapes(pair):
     for shape in pair:
         assert valid_shape(shape)
-    assert broadcast_shapes(pair[0], pair[1]) == pair[0]
+    assert sh.broadcast_shapes(pair[0], pair[1]) == pair[0]
 
 
 @given(*hh.two_mutual_arrays())

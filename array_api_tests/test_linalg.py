@@ -31,8 +31,6 @@ from . import dtype_helpers as dh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 
-from .algos import broadcast_shapes
-
 from . import _array_module
 from . import _array_module as xp
 from ._array_module import linalg
@@ -299,7 +297,7 @@ def test_matmul(x1, x2):
     else:
         res = _array_module.matmul(x1, x2)
 
-    ph.assert_dtype("matmul", (x1.dtype, x2.dtype), res.dtype)
+    ph.assert_dtype("matmul", [x1.dtype, x2.dtype], res.dtype)
 
     if len(x1.shape) == len(x2.shape) == 1:
         assert res.shape == ()
@@ -310,7 +308,7 @@ def test_matmul(x1, x2):
         assert res.shape == x1.shape[:-1]
         _test_stacks(_array_module.matmul, x1, x2, res=res, dims=1)
     else:
-        stack_shape = broadcast_shapes(x1.shape[:-2], x2.shape[:-2])
+        stack_shape = sh.broadcast_shapes(x1.shape[:-2], x2.shape[:-2])
         assert res.shape == stack_shape + (x1.shape[-2], x2.shape[-1])
         _test_stacks(_array_module.matmul, x1, x2, res=res)
 

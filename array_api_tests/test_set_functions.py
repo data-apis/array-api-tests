@@ -1,8 +1,8 @@
 # TODO: disable if opted out, refactor things
 import math
-import pytest
 from collections import Counter, defaultdict
 
+import pytest
 from hypothesis import assume, given
 
 from . import _array_module as xp

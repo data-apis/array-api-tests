@@ -271,7 +271,7 @@ def test_op_scalar_promotion(op, expr, in_dtype, in_stype, out_dtype, data):
         out = eval(expr, {"x": x, "s": s})
     except OverflowError:
         reject()
-    ph.assert_dtype(op, (in_dtype, in_stype), out.dtype, out_dtype)
+    ph.assert_dtype(op, [in_dtype, in_stype], out.dtype, out_dtype)
 
 
 inplace_scalar_params: List[Param[str, str, DataType, ScalarType]] = []
@@ -307,7 +307,7 @@ def test_inplace_op_scalar_promotion(op, expr, dtype, in_stype, data):
         reject()
     x = locals_["x"]
     assert x.dtype == dtype, f"{x.dtype=!s}, but should be {dtype}"
-    ph.assert_dtype(op, (dtype, in_stype), x.dtype, dtype, repr_name="x.dtype")
+    ph.assert_dtype(op, [dtype, in_stype], x.dtype, dtype, repr_name="x.dtype")
 
 
 if __name__ == "__main__":

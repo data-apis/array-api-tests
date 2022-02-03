@@ -2,9 +2,67 @@ import math
 from itertools import product
 from typing import Iterator, List, Optional, Tuple, Union
 
-from .typing import Scalar, Shape
+from ndindex import iter_indices as _iter_indices
 
-__all__ = ["normalise_axis", "ndindex", "axis_ndindex", "axes_ndindex", "reshape"]
+from .typing import AtomicIndex, Index, Scalar, Shape
+
+__all__ = [
+    "broadcast_shapes",
+    "normalise_axis",
+    "ndindex",
+    "axis_ndindex",
+    "axes_ndindex",
+    "reshape",
+    "fmt_idx",
+]
+
+
+class BroadcastError(ValueError):
+    """Shapes do not broadcast with eachother"""
+
+
+def _broadcast_shapes(shape1: Shape, shape2: Shape) -> Shape:
+    """Broadcasts `shape1` and `shape2`"""
+    N1 = len(shape1)
+    N2 = len(shape2)
+    N = max(N1, N2)
+    shape = [None for _ in range(N)]
+    i = N - 1
+    while i >= 0:
+        n1 = N1 - N + i
+        if N1 - N + i >= 0:
+            d1 = shape1[n1]
+        else:
+            d1 = 1
+        n2 = N2 - N + i
+        if N2 - N + i >= 0:
+            d2 = shape2[n2]
+        else:
+            d2 = 1
+
+        if d1 == 1:
+            shape[i] = d2
+        elif d2 == 1:
+            shape[i] = d1
+        elif d1 == d2:
+            shape[i] = d1
+        else:
+            raise BroadcastError()
+
+        i = i - 1
+
+    return tuple(shape)
+
+
+def broadcast_shapes(*shapes: Shape):
+    if len(shapes) == 0:
+        raise ValueError("shapes=[] must be non-empty")
+    elif len(shapes) == 1:
+        return shapes[0]
+    result = _broadcast_shapes(shapes[0], shapes[1])
+    for i in range(2, len(shapes)):
+        result = _broadcast_shapes(result, shapes[i])
+    return result
 
 
 def normalise_axis(
@@ -17,13 +75,21 @@ def normalise_axis(
     return axes
 
 
-def ndindex(shape):
-    """Iterator of n-D indices to an array
+def ndindex(shape: Shape) -> Iterator[Index]:
+    """Yield every index of a shape"""
+    return (indices[0] for indices in iter_indices(shape))
 
-    Yields tuples of integers to index every element of an array of shape
-    `shape`. Same as np.ndindex().
-    """
-    return product(*[range(i) for i in shape])
+
+def iter_indices(
+    *shapes: Shape, skip_axes: Tuple[int, ...] = ()
+) -> Iterator[Tuple[Index, ...]]:
+    """Wrapper for ndindex.iter_indices()"""
+    # Prevent iterations if any shape has 0-sides
+    for shape in shapes:
+        if 0 in shape:
+            return
+    for indices in _iter_indices(*shapes, skip_axes=skip_axes):
+        yield tuple(i.raw for i in indices)  # type: ignore
 
 
 def axis_ndindex(
@@ -60,7 +126,7 @@ def axes_ndindex(shape: Shape, axes: Tuple[int, ...]) -> Iterator[List[Shape]]:
         yield list(indices)
 
 
-def reshape(flat_seq: List[Scalar], shape: Shape) -> Union[Scalar, List[Scalar]]:
+def reshape(flat_seq: List[Scalar], shape: Shape) -> Union[Scalar, List]:
     """Reshape a flat sequence"""
     if any(s == 0 for s in shape):
         raise ValueError(
@@ -75,3 +141,33 @@ def reshape(flat_seq: List[Scalar], shape: Shape) -> Union[Scalar, List[Scalar]]
     size = len(flat_seq)
     n = math.prod(shape[1:])
     return [reshape(flat_seq[i * n : (i + 1) * n], shape[1:]) for i in range(size // n)]
+
+
+def fmt_i(i: AtomicIndex) -> str:
+    if isinstance(i, int):
+        return str(i)
+    elif isinstance(i, slice):
+        res = ""
+        if i.start is not None:
+            res += str(i.start)
+        res += ":"
+        if i.stop is not None:
+            res += str(i.stop)
+        if i.step is not None:
+            res += f":{i.step}"
+        return res
+    else:
+        return "..."
+
+
+def fmt_idx(sym: str, idx: Index) -> str:
+    if idx == ():
+        return sym
+    res = f"{sym}["
+    _idx = idx if isinstance(idx, tuple) else (idx,)
+    if len(_idx) == 1:
+        res += fmt_i(_idx[0])
+    else:
+        res += ", ".join(fmt_i(i) for i in _idx)
+    res += "]"
+    return res

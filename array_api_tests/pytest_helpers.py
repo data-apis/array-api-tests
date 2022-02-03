@@ -1,12 +1,12 @@
 import math
 from inspect import getfullargspec
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 from . import _array_module as xp
 from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import function_stubs
-from .algos import broadcast_shapes
+from . import shape_helpers as sh
 from .typing import Array, DataType, Scalar, ScalarType, Shape
 
 __all__ = [
@@ -71,15 +71,14 @@ def fmt_kw(kw: Dict[str, Any]) -> str:
 
 def assert_dtype(
     func_name: str,
-    in_dtypes: Union[DataType, Tuple[DataType, ...]],
+    in_dtype: Union[DataType, Sequence[DataType]],
     out_dtype: DataType,
     expected: Optional[DataType] = None,
     *,
     repr_name: str = "out.dtype",
 ):
-    if not isinstance(in_dtypes, tuple):
-        in_dtypes = (in_dtypes,)
-    f_in_dtypes = dh.fmt_types(in_dtypes)
+    in_dtypes = in_dtype if isinstance(in_dtype, Sequence) else [in_dtype]
+    f_in_dtypes = dh.fmt_types(tuple(in_dtypes))
     f_out_dtype = dh.dtype_to_name[out_dtype]
     if expected is None:
         expected = dh.result_type(*in_dtypes)
@@ -150,7 +149,7 @@ def assert_shape(
 
 def assert_result_shape(
     func_name: str,
-    in_shapes: Tuple[Shape],
+    in_shapes: Sequence[Shape],
     out_shape: Shape,
     /,
     expected: Optional[Shape] = None,
@@ -159,7 +158,7 @@ def assert_result_shape(
     **kw,
 ):
     if expected is None:
-        expected = broadcast_shapes(*in_shapes)
+        expected = sh.broadcast_shapes(*in_shapes)
     f_in_shapes = " . ".join(str(s) for s in in_shapes)
     f_sig = f" {f_in_shapes} "
     if kw:
