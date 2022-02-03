@@ -50,47 +50,6 @@ a specific test case, which is useful when developing functions.
 $ pytest array_api_tests/test_creation_functions.py::test_zeros
 ```
 
-## Releases
-
-The test suite has tagged releases on
-[GitHub](https://github.com/data-apis/array-api-tests/releases). If you run
-the test suite in your CI system, we recommend pinning against a release tag.
-
-We use [calender versioning](https://calver.org/) for the releases. You should
-expect that any version may be "breaking" compared to the previous one, in the
-sense that there may have been additional tests added which cause a previously
-passing library to fail.
-
-For now, the test suite is
-not installable as a Python package. You can use it by cloning the repo and
-running `pytest` as described above. If it would help you to be able to
-install it as a package, [please let us
-know](https://github.com/data-apis/array-api-tests/issues/85).
-
-*Test suite maintainer note:* to make a release of the test suite, make an
-annotated tag with the version:
-
-```
-git tag -a 2022.1
-```
-
-(for the message, just write something like "array-api-tests version 2022.1").
-Be sure to use the calver version number for the tag name. Versioneer will
-automatically set the version number of the `array_api_tests` package based on
-the git tag.
-
-Then push the tag to GitHub
-
-```
-git push --tags origin 2022.1
-```
-
-Finally go to the [tags page on
-GitHub](https://github.com/data-apis/array-api-tests/tags) and convert the tag
-into a release. If you want, you can add release notes to the release page on
-GitHub.
-
-
 ## What the test suite covers
 
 We are interested in array libraries conforming to the
@@ -101,12 +60,13 @@ so as to not unexpectedly fail the suite.
 
 ### Primary tests
 
-Every function—including array object methods—has a respective test method. We
-use [Hypothesis](https://hypothesis.readthedocs.io/en/latest/) to generate a
-diverse set of valid inputs. This means array inputs will cover different dtypes
-and shapes, as well as contain interesting elements. These examples generate
-with interesting arrangements of non-array positional arguments and keyword
-arguments.
+Every function—including array object methods—has a respective test
+method<sup>1</sup>. We use
+[Hypothesis](https://hypothesis.readthedocs.io/en/latest/)
+to generate a diverse set of valid inputs. This means array inputs will cover
+different dtypes and shapes, as well as contain interesting elements. These
+examples generate with interesting arrangements of non-array positional
+arguments and keyword arguments.
 
 Each test case will cover the following areas if relevant:
 
@@ -147,7 +107,7 @@ of the functions and some miscellaneous things.
   functions interact with them correctly.
 
 Be aware that some aspects of the spec are impractical or impossible to actually
-test, so they are not covered in the suite <!-- TODO: note what these are -->
+test, so they are not covered in the suite. <!-- TODO: note what these are -->
 
 ## Interpreting errors
 
@@ -172,21 +132,100 @@ behaviour different from the spec, or test something that is not documented,
 this is a bug—please [report such
 issues](https://github.com/data-apis/array-api-tests/issues/) to us.
 
-## Configuration
+
+## Running on CI
+
+See our existing [GitHub Actions workflow for
+Numpy](https://github.com/data-apis/array-api-tests/blob/master/.github/workflows/numpy.yml)
+for an example of using the test suite on CI.
+
+### Releases
+
+We recommend pinning against a [release tag](https://github.com/data-apis/array-api-tests/releases)
+when running on CI.
+
+We use [calender versioning](https://calver.org/) for the releases. You should
+expect that any version may be "breaking" compared to the previous one, in that
+new tests (or improvements to existing tests) may cause a previously passing
+library to fail.
+
+### Configuration
+
+#### CI flag
+
+Use the `--ci` flag to run only the primary and special cases tests. You can
+ignore the other test cases as they are redundant for the purposes of checking
+compliance.
+
+#### Extensions
 
 By default, tests for the optional Array API extensions such as
 [`linalg`](https://data-apis.org/array-api/latest/extensions/linear_algebra_functions.html)
 will be skipped if not present in the specified array module. You can purposely
 skip testing extension(s) via the `--disable-extension` option.
 
+#### Skip test cases
+
+Test cases you want to skip can be specified in a `skips.txt` file in the root
+of this repository, e.g.:
+
+```
+# ./skips.txt
+# Line comments can be denoted with the hash symbol (#)
+
+# Skip specific test case, e.g. when argsort() does not respect relative order
+# https://github.com/numpy/numpy/issues/20778
+array_api_tests/test_sorting_functions.py::test_argsort
+
+# Skip specific test case parameter, e.g. you forgot to implement in-place adds
+array_api_tests/test_add[__iadd__(x1, x2)]
+array_api_tests/test_add[__iadd__(x, s)]
+
+# Skip module, e.g. when your set functions treat NaNs as non-distinct
+# https://github.com/numpy/numpy/issues/20326
+array_api_tests/test_set_functions.py
+```
+
+For GitHub Actions, you might like to keep everything in the workflow config
+instead of having a seperate `skips.txt` file, e.g.:
+
+```yaml
+# ./.github/workflows/array_api.yml
+...
+    ...
+    - name: Run the test suite
+      env:
+        ARRAY_API_TESTS_MODULE: your.array.api.namespace
+      run: |
+        # Skip test cases with known issues
+        cat << EOF >> skips.txt
+
+        # Skip specific test case, e.g. when argsort() does not respect relative order
+        # https://github.com/numpy/numpy/issues/20778
+        array_api_tests/test_sorting_functions.py::test_argsort
+
+        # Skip specific test case parameter, e.g. you forgot to implement in-place adds
+        array_api_tests/test_add[__iadd__(x1, x2)]
+        array_api_tests/test_add[__iadd__(x, s)]
+
+        # Skip module, e.g. when your set functions treat NaNs as non-distinct
+        # https://github.com/numpy/numpy/issues/20326
+        array_api_tests/test_set_functions.py
+
+        EOF
+
+        pytest -v -rxXfE --ci
+```
+
+#### Max examples
+
 The tests make heavy use
 [Hypothesis](https://hypothesis.readthedocs.io/en/latest/). You can configure
 how many examples are generated using the `--max-examples` flag, which defaults
 to 100. Lower values can be useful for quick checks, and larger values should
-result in more rigorous runs. For example, `--max-examples 10000` may find bugs
-where default runs don't, but will take a much longer time.
+result in more rigorous runs. For example, `--max-examples 10_000` may find bugs
+where default runs don't but will take much longer to run.
 
-<!-- TODO: howto on CI -->
 
 ## Contributing
 
@@ -200,7 +239,7 @@ many utilities that parralel NumPy's own test utils in the `*_helpers.py` files.
 
 ### Tools
 
-Hypothesis should always be used for the primary tests, and can be useful
+Hypothesis should almost always be used for the primary tests, and can be useful
 elsewhere. Effort should be made so drawn arguments are labeled with their
 respective names. For
 [`st.data()`](https://hypothesis.readthedocs.io/en/latest/data.html#hypothesis.strategies.data),
@@ -231,6 +270,31 @@ where `path/to/array-api` is the path to a local clone of the [`array-api`
 repo](https://github.com/data-apis/array-api/). Edit `generate_stubs.py` to make
 changes to the generated files.
 
+
+### Release
+
+To make a release, first make an annotated tag with the version, e.g.:
+
+```
+git tag -a 2022.01.01
+```
+
+Be sure to use the calver version number for the tag name. Don't worry too much
+on the tag message, e.g. just write "2022.01.01".
+
+Versioneer will automatically set the version number of the `array_api_tests`
+package based on the git tag. Push the tag to GitHub:
+
+```
+git push --tags upstream 2022.1
+```
+
+Then go to the [tags page on
+GitHub](https://github.com/data-apis/array-api-tests/tags) and convert the tag
+into a release. If you want, you can add release notes, which GitHub can
+generate for you.
+
+
 ## Future plans
 
 Keeping full coverage of the spec is an on-going priority as the Array API
@@ -250,3 +314,23 @@ come across.
   for output values (particularly epsilons for floating-point outputs), so we
   need to review these and either implement assertions or properly note the lack
   thereof.
+
+---
+
+<sup>1</sup>The only exceptions to having just one primary test per function are:
+
+* [`asarray()`](https://data-apis.org/array-api/latest/API_specification/generated/signatures.creation_functions.asarray.html),
+  which is tested by `test_asarray_scalars` and `test_asarray_arrays` in
+  `test_creation_functions.py`. Testing `asarray()` works with scalars (and
+  nested sequences of scalars) is fundamental to testing that it works with
+  arrays, as said arrays can only be generated by passing scalar sequences to
+  `asarray()`.
+
+* Indexing methods
+  ([`__getitem__()`](https://data-apis.org/array-api/latest/API_specification/generated/signatures.array_object.array.__getitem__.html)
+  and
+  [`__setitem__()`](https://data-apis.org/array-api/latest/API_specification/generated/signatures.array_object.array.__setitem__.html)),
+  which respectively have both a test for non-array indices and a test for
+  boolean array indices. This is because [masking is
+  opt-in](https://data-apis.org/array-api/latest/API_specification/indexing.html#boolean-array-indexing)
+  (and boolean arrays need to be generated by indexing arrays anyway).

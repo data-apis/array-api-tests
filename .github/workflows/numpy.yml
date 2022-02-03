@@ -25,7 +25,7 @@ jobs:
       env:
         ARRAY_API_TESTS_MODULE: numpy.array_api
       run: |
-        # Skip test cases with known issues
+        # Skip testing functions with known issues
         cat << EOF >> skips.txt
 
         # copy not implemented
@@ -35,7 +35,7 @@ jobs:
         # https://github.com/numpy/numpy/issues/20870
         array_api_tests/test_data_type_functions.py::test_can_cast
         # The return dtype for trace is not consistent in the spec
-        # (https://github.com/data-apis/array-api/issues/202#issuecomment-952529197)
+        # https://github.com/data-apis/array-api/issues/202#issuecomment-952529197
         array_api_tests/test_linalg.py::test_trace
         # waiting on NumPy to allow/revert distinct NaNs for np.unique
         # https://github.com/numpy/numpy/issues/20326#issuecomment-1012380448
