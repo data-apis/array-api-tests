@@ -30,6 +30,7 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  rtol_shared_matrix_shapes, rtols)
 from . import dtype_helpers as dh
 from . import pytest_helpers as ph
+from . import shape_helpers as sh
 
 from . import _array_module
 from . import _array_module as xp
@@ -362,7 +363,7 @@ def test_matrix_power(x, n):
     kw=kwargs(rtol=rtols)
 )
 def test_matrix_rank(x, kw):
-    res = linalg.matrix_rank(x, **kw)
+    linalg.matrix_rank(x, **kw)
 
 @given(
     x=xps.arrays(dtype=dtypes, shape=matrix_shapes()),
@@ -411,7 +412,7 @@ def test_outer(x1, x2):
     kw=kwargs(rtol=rtols)
 )
 def test_pinv(x, kw):
-    res = linalg.pinv(x, **kw)
+    linalg.pinv(x, **kw)
 
 @pytest.mark.xp_extension('linalg')
 @given(
@@ -512,7 +513,7 @@ def solve_args():
 @pytest.mark.xp_extension('linalg')
 @given(*solve_args())
 def test_solve(x1, x2):
-    res = linalg.solve(x1, x2)
+    linalg.solve(x1, x2)
 
 @pytest.mark.xp_extension('linalg')
 @given(
