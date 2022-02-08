@@ -1,7 +1,7 @@
 import math
 import operator
 from enum import Enum, auto
-from typing import Callable, List, NamedTuple, Optional, TypeVar, Union
+from typing import Callable, List, NamedTuple, Optional, Sequence, TypeVar, Union
 
 import pytest
 from hypothesis import assume, given
@@ -37,7 +37,7 @@ class OnewayPromotableDtypes(NamedTuple):
 
 @st.composite
 def oneway_promotable_dtypes(
-    draw, dtypes: List[DataType]
+    draw, dtypes: Sequence[DataType]
 ) -> st.SearchStrategy[OnewayPromotableDtypes]:
     """Return a strategy for input dtypes that promote to result dtypes."""
     d1, d2 = draw(hh.mutually_promotable_dtypes(dtypes=dtypes))
@@ -346,7 +346,7 @@ class BinaryParamContext(NamedTuple):
 
 
 def make_binary_params(
-    elwise_func_name: str, dtypes: List[DataType]
+    elwise_func_name: str, dtypes: Sequence[DataType]
 ) -> List[Param[BinaryParamContext]]:
     if hh.FILTER_UNDEFINED_DTYPES:
         dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
