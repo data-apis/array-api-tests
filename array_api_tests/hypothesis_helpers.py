@@ -158,10 +158,21 @@ def matrix_shapes(draw, stack_shapes=shapes()):
 
 square_matrix_shapes = matrix_shapes().filter(lambda shape: shape[-1] == shape[-2])
 
-finite_matrices = xps.arrays(dtype=xps.floating_dtypes(),
-                             shape=matrix_shapes(),
-                             elements=dict(allow_nan=False,
-                                           allow_infinity=False))
+@composite
+def finite_matrices(draw, shape=matrix_shapes()):
+    return draw(xps.arrays(dtype=xps.floating_dtypes(),
+                           shape=shape,
+                           elements=dict(allow_nan=False,
+                                         allow_infinity=False)))
+
+rtol_shared_matrix_shapes = shared(matrix_shapes())
+# Should we set a max_value here?
+_rtol_float_kw = dict(allow_nan=False, allow_infinity=False, min_value=0)
+rtols = one_of(floats(**_rtol_float_kw),
+               xps.arrays(dtype=xps.floating_dtypes(),
+                          shape=rtol_shared_matrix_shapes.map(lambda shape:  shape[:-2]),
+                          elements=_rtol_float_kw))
+
 
 def mutually_broadcastable_shapes(
     num_shapes: int,
