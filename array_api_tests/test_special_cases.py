@@ -6,34 +6,32 @@ from warnings import warn
 
 import pytest
 from attr import dataclass
-from hypothesis import assume, given
+from hypothesis import HealthCheck, assume, given, settings
 
+from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import shape_helpers as sh
 from . import xps
 from ._array_module import mod as xp
 from .stubs import category_to_funcs
 
-repr_to_value = {
-    "NaN": float("nan"),
-    "+infinity": float("infinity"),
-    "infinity": float("infinity"),
-    "-infinity": float("-infinity"),
-    "+0": 0.0,
-    "0": 0.0,
-    "-0": -0.0,
-    "+1": 1.0,
-    "1": 1.0,
-    "-1": -1.0,
-    "+π/2": math.pi / 2,
-    "π/2": math.pi / 2,
-    "-π/2": -math.pi / 2,
-}
+
+def is_pos_zero(n: float) -> bool:
+    return n == 0 and math.copysign(1, n) == 1
+
+
+def is_neg_zero(n: float) -> bool:
+    return n == 0 and math.copysign(1, n) == -1
 
 
 def make_eq(v: float) -> Callable[[float], bool]:
     if math.isnan(v):
         return math.isnan
+    if v == 0:
+        if is_pos_zero(v):
+            return is_pos_zero
+        else:
+            return is_neg_zero
 
     def eq(i: float) -> bool:
         return i == v
@@ -42,6 +40,8 @@ def make_eq(v: float) -> Callable[[float], bool]:
 
 
 def make_rough_eq(v: float) -> Callable[[float], bool]:
+    assert math.isfinite(v)  # sanity check
+
     def rough_eq(i: float) -> bool:
         return math.isclose(i, v, abs_tol=0.01)
 
@@ -73,10 +73,15 @@ def make_or(cond1: Callable, cond2: Callable):
     return or_
 
 
-r_value = re.compile(r"``([^\s]+)``")
-r_approx_value = re.compile(
-    rf"an implementation-dependent approximation to {r_value.pattern}"
-)
+repr_to_value = {
+    "NaN": float("nan"),
+    "infinity": float("infinity"),
+    "0": 0.0,
+    "1": 1.0,
+}
+
+r_value = re.compile(r"([+-]?)(.+)")
+r_pi = re.compile(r"(\d?)π(?:/(\d))?")
 
 
 @dataclass
@@ -84,10 +89,36 @@ class ValueParseError(ValueError):
     value: str
 
 
-def parse_value(value: str) -> float:
-    if m := r_value.match(value):
-        return repr_to_value[m.group(1)]
-    raise ValueParseError(value)
+def parse_value(s_value: str) -> float:
+    assert not s_value.startswith("``") and not s_value.endswith("``")  # sanity check
+    m = r_value.match(s_value)
+    if m is None:
+        raise ValueParseError(s_value)
+    if pi_m := r_pi.match(m.group(2)):
+        value = math.pi
+        if numerator := pi_m.group(1):
+            value *= int(numerator)
+        if denominator := pi_m.group(2):
+            value /= int(denominator)
+    else:
+        value = repr_to_value[m.group(2)]
+    if sign := m.group(1):
+        if sign == "-":
+            value *= -1
+    return value
+
+
+r_inline_code = re.compile(r"``([^\s]+)``")
+r_approx_value = re.compile(
+    rf"an implementation-dependent approximation to {r_inline_code.pattern}"
+)
+
+
+def parse_inline_code(inline_code: str) -> float:
+    if m := r_inline_code.match(inline_code):
+        return parse_value(m.group(1))
+    else:
+        raise ValueParseError(inline_code)
 
 
 class Result(NamedTuple):
@@ -96,22 +127,24 @@ class Result(NamedTuple):
     strict_check: bool
 
 
-def parse_result(result: str) -> Result:
-    if m := r_value.match(result):
-        repr_ = m.group(1)
+def parse_result(s_result: str) -> Result:
+    match = None
+    if m := r_inline_code.match(s_result):
+        match = m
         strict_check = True
-    elif m := r_approx_value.match(result):
-        repr_ = m.group(1)
+    elif m := r_approx_value.match(s_result):
+        match = m
         strict_check = False
     else:
-        raise ValueParseError(result)
-    value = repr_to_value[repr_]
+        raise ValueParseError(s_result)
+    value = parse_value(match.group(1))
+    repr_ = match.group(1)
     return Result(value, repr_, strict_check)
 
 
 r_special_cases = re.compile(
-    r"\*\*Special [Cc]ases\*\*\n\n\s*"
-    r"For floating-point operands,\n\n"
+    r"\*\*Special [Cc]ases\*\*\n+\s*"
+    r"For floating-point operands,\n+"
     r"((?:\s*-\s*.*\n)+)"
 )
 r_case = re.compile(r"\s+-\s*(.*)\.\n?")
@@ -148,7 +181,7 @@ def parse_unary_docstring(docstring: str) -> Dict[Callable, Result]:
             if m := pattern.search(case):
                 *s_values, s_result = m.groups()
                 try:
-                    values = [parse_value(v) for v in s_values]
+                    values = [parse_inline_code(v) for v in s_values]
                 except ValueParseError as e:
                     warn(f"value not machine-readable: '{e.value}'")
                     break
@@ -166,7 +199,56 @@ def parse_unary_docstring(docstring: str) -> Dict[Callable, Result]:
     return condition_to_result
 
 
+binary_pattern_to_condition_factory: Dict[Pattern, Callable] = {
+    re.compile(
+        "If ``x1_i`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
+    ): lambda v1, v2: lambda i1, i2: make_eq(v1)(i1)
+    and make_eq(v2)(i2),
+}
+
+
+def parse_binary_docstring(docstring: str) -> Dict[Callable, Result]:
+    match = r_special_cases.search(docstring)
+    if match is None:
+        return {}
+    cases = match.group(1).split("\n")[:-1]
+    condition_to_result = {}
+    for line in cases:
+        if m := r_case.match(line):
+            case = m.group(1)
+        else:
+            warn(f"line not machine-readable: '{line}'")
+            continue
+        for pattern, make_cond in binary_pattern_to_condition_factory.items():
+            if m := pattern.search(case):
+                *s_values, s_result = m.groups()
+                try:
+                    values = [parse_inline_code(v) for v in s_values]
+                except ValueParseError as e:
+                    warn(f"value not machine-readable: '{e.value}'")
+                    break
+                cond = make_cond(*values)
+                if (
+                    "atan2" in docstring
+                    and is_pos_zero(values[0])
+                    and is_neg_zero(values[1])
+                ):
+                    breakpoint()
+                try:
+                    result = parse_result(s_result)
+                except ValueParseError as e:
+                    warn(f"result not machine-readable: '{e.value}'")
+                    break
+                condition_to_result[cond] = result
+                break
+        else:
+            if not r_remaining_case.search(case):
+                warn(f"case not machine-readable: '{case}'")
+    return condition_to_result
+
+
 unary_params = []
+binary_params = []
 for stub in category_to_funcs["elementwise"]:
     if stub.__doc__ is None:
         warn(f"{stub.__name__}() stub has no docstring")
@@ -193,7 +275,10 @@ for stub in category_to_funcs["elementwise"]:
         warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
         continue
     if param_names[0] == "x1" and param_names[1] == "x2":
-        pass  # TODO
+        if condition_to_result := parse_binary_docstring(stub.__doc__):
+            p = pytest.param(stub.__name__, func, condition_to_result, id=stub.__name__)
+            binary_params.append(p)
+        continue
     else:
         warn(
             f"{func=} starts with two parameters '{param_names[0]}' and "
@@ -209,7 +294,7 @@ for stub in category_to_funcs["elementwise"]:
 
 @pytest.mark.parametrize("func_name, func, condition_to_result", unary_params)
 @given(x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)))
-def test_unary_special_cases(func_name, func, condition_to_result, x):
+def test_unary(func_name, func, condition_to_result, x):
     res = func(x)
     good_example = False
     for idx in sh.ndindex(res.shape):
@@ -235,6 +320,47 @@ def test_unary_special_cases(func_name, func, condition_to_result, x):
                         f"{f_out}, but should be roughly {result.repr_}={result.value} "
                         f"[{func_name}()]\n"
                         f"{f_in}"
+                    )
+                break
+    assume(good_example)
+
+
+@pytest.mark.parametrize("func_name, func, condition_to_result", binary_params)
+@given(
+    *hh.two_mutual_arrays(
+        dtypes=dh.float_dtypes,
+        two_shapes=hh.mutually_broadcastable_shapes(2, min_side=1),
+    )
+)
+@settings(suppress_health_check=[HealthCheck.filter_too_much])  # TODO: remove
+def test_binary(func_name, func, condition_to_result, x1, x2):
+    res = func(x1, x2)
+    good_example = False
+    for l_idx, r_idx, o_idx in sh.iter_indices(x1.shape, x2.shape, res.shape):
+        l = float(x1[l_idx])
+        r = float(x2[r_idx])
+        for cond, result in condition_to_result.items():
+            if cond(l, r):
+                good_example = True
+                out = float(res[o_idx])
+                f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
+                f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
+                f_out = f"{sh.fmt_idx('out', o_idx)}={out}"
+                if result.strict_check:
+                    msg = (
+                        f"{f_out}, but should be {result.repr_} [{func_name}()]\n"
+                        f"{f_left}, {f_right}"
+                    )
+                    if math.isnan(result.value):
+                        assert math.isnan(out), msg
+                    else:
+                        assert out == result.value, msg
+                else:
+                    assert math.isfinite(result.value)  # sanity check
+                    assert math.isclose(out, result.value, abs_tol=0.1), (
+                        f"{f_out}, but should be roughly {result.repr_}={result.value} "
+                        f"[{func_name}()]\n"
+                        f"{f_left}, {f_right}"
                     )
                 break
     assume(good_example)
