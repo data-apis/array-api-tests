@@ -123,7 +123,10 @@ def default_filter(s: Scalar) -> bool:
 
     Used by default as these values are typically special-cased.
     """
-    return math.isfinite(s) and s is not -0.0 and s is not +0.0
+    if isinstance(s, int):  # note bools are ints
+        return True
+    else:
+        return math.isfinite(s) and s != 0
 
 
 T = TypeVar("T")
@@ -538,7 +541,7 @@ def test_abs(ctx, data):
         abs,  # type: ignore
         expr_template="abs({})={}",
         filter_=lambda s: (
-            s == float("infinity") or (math.isfinite(s) and s is not -0.0)
+            s == float("infinity") or (math.isfinite(s) and not ph.is_neg_zero(s))
         ),
     )
 

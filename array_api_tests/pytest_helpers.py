@@ -14,6 +14,8 @@ __all__ = [
     "doesnt_raise",
     "nargs",
     "fmt_kw",
+    "is_pos_zero",
+    "is_neg_zero",
     "assert_dtype",
     "assert_kw_dtype",
     "assert_default_float",
@@ -67,6 +69,14 @@ def nargs(func_name):
 
 def fmt_kw(kw: Dict[str, Any]) -> str:
     return ", ".join(f"{k}={v}" for k, v in kw.items())
+
+
+def is_pos_zero(n: float) -> bool:
+    return n == 0 and math.copysign(1, n) == 1
+
+
+def is_neg_zero(n: float) -> bool:
+    return n == 0 and math.copysign(1, n) == -1
 
 
 def assert_dtype(
