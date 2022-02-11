@@ -10,28 +10,21 @@ from hypothesis import HealthCheck, assume, given, settings
 
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
+from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 from ._array_module import mod as xp
 from .stubs import category_to_funcs
 
 
-def is_pos_zero(n: float) -> bool:
-    return n == 0 and math.copysign(1, n) == 1
-
-
-def is_neg_zero(n: float) -> bool:
-    return n == 0 and math.copysign(1, n) == -1
-
-
 def make_eq(v: float) -> Callable[[float], bool]:
     if math.isnan(v):
         return math.isnan
     if v == 0:
-        if is_pos_zero(v):
-            return is_pos_zero
+        if ph.is_pos_zero(v):
+            return ph.is_pos_zero
         else:
-            return is_neg_zero
+            return ph.is_neg_zero
 
     def eq(i: float) -> bool:
         return i == v
@@ -230,8 +223,8 @@ def parse_binary_docstring(docstring: str) -> Dict[Callable, Result]:
                 cond = make_cond(*values)
                 if (
                     "atan2" in docstring
-                    and is_pos_zero(values[0])
-                    and is_neg_zero(values[1])
+                    and ph.is_pos_zero(values[0])
+                    and ph.is_neg_zero(values[1])
                 ):
                     breakpoint()
                 try:
