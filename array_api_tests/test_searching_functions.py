@@ -21,13 +21,10 @@ pytestmark = pytest.mark.ci
     data=st.data(),
 )
 def test_argmax(x, data):
-    kw = data.draw(
-        hh.kwargs(
-            axis=st.none() | st.integers(-x.ndim, max(x.ndim - 1, 0)),
-            keepdims=st.booleans(),
-        ),
-        label="kw",
-    )
+    axis_strat = st.none()
+    if x.ndim > 0:
+        axis_strat |= st.integers(-x.ndim, max(x.ndim - 1, 0))
+    kw = data.draw(hh.kwargs(axis=axis_strat, keepdims=st.booleans()), label="kw")
 
     out = xp.argmax(x, **kw)
 
@@ -56,13 +53,10 @@ def test_argmax(x, data):
     data=st.data(),
 )
 def test_argmin(x, data):
-    kw = data.draw(
-        hh.kwargs(
-            axis=st.none() | st.integers(-x.ndim, max(x.ndim - 1, 0)),
-            keepdims=st.booleans(),
-        ),
-        label="kw",
-    )
+    axis_strat = st.none()
+    if x.ndim > 0:
+        axis_strat |= st.integers(-x.ndim, max(x.ndim - 1, 0))
+    kw = data.draw(hh.kwargs(axis=axis_strat, keepdims=st.booleans()), label="kw")
 
     out = xp.argmin(x, **kw)
 
