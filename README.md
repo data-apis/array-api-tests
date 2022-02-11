@@ -157,6 +157,11 @@ Use the `--ci` flag to run only the primary and special cases tests. You can
 ignore the other test cases as they are redundant for the purposes of checking
 compliance.
 
+#### Data-dependent shapes
+
+Use the `--disable-data-dependent-shapes` flag to skip testing functions which have
+[data-dependent shapes](https://data-apis.org/array-api/latest/design_topics/data_dependent_output_shapes.html).
+
 #### Extensions
 
 By default, tests for the optional Array API extensions such as
@@ -200,16 +205,10 @@ instead of having a seperate `skips.txt` file, e.g.:
         # Skip test cases with known issues
         cat << EOF >> skips.txt
 
-        # Skip specific test case, e.g. when argsort() does not respect relative order
-        # https://github.com/numpy/numpy/issues/20778
+        # Comments can still work here
         array_api_tests/test_sorting_functions.py::test_argsort
-
-        # Skip specific test case parameter, e.g. you forgot to implement in-place adds
         array_api_tests/test_add[__iadd__(x1, x2)]
         array_api_tests/test_add[__iadd__(x, s)]
-
-        # Skip module, e.g. when your set functions treat NaNs as non-distinct
-        # https://github.com/numpy/numpy/issues/20326
         array_api_tests/test_set_functions.py
 
         EOF
