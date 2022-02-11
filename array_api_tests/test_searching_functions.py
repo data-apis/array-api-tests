@@ -15,7 +15,7 @@ pytestmark = pytest.mark.ci
 @given(
     x=xps.arrays(
         dtype=xps.numeric_dtypes(),
-        shape=hh.shapes(min_side=1),
+        shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
     data=st.data(),
@@ -47,7 +47,7 @@ def test_argmax(x, data):
 @given(
     x=xps.arrays(
         dtype=xps.numeric_dtypes(),
-        shape=hh.shapes(min_side=1),
+        shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
     data=st.data(),
