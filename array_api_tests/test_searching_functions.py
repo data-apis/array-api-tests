@@ -76,7 +76,7 @@ def test_argmin(x, data):
         ph.assert_scalar_equals("argmin", int, out_idx, min_i, expected)
 
 
-# TODO: skip if opted out
+@pytest.mark.data_dependent_shapes
 @given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
 def test_nonzero(x):
     out = xp.nonzero(x)
