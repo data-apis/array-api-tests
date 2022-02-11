@@ -35,6 +35,13 @@ def pytest_addoption(parser):
         default=[],
         help="disable testing for Array API extension(s)",
     )
+    # data-dependent shape
+    parser.addoption(
+        "--disable-data-dependent-shapes",
+        "--disable-dds",
+        action="store_true",
+        help="disable testing functions with output shapes dependent on input",
+    )
     # CI
     parser.addoption(
         "--ci",
@@ -46,6 +53,9 @@ def pytest_addoption(parser):
 def pytest_configure(config):
     config.addinivalue_line(
         "markers", "xp_extension(ext): tests an Array API extension"
+    )
+    config.addinivalue_line(
+        "markers", "data_dependent_shapes: output shapes are dependent on inputs"
     )
     config.addinivalue_line("markers", "ci: primary test")
     # Hypothesis
@@ -83,9 +93,15 @@ if skips_path.exists():
 
 def pytest_collection_modifyitems(config, items):
     disabled_exts = config.getoption("--disable-extension")
+    disabled_dds = config.getoption("--disable-data-dependent-shapes")
     ci = config.getoption("--ci")
     for item in items:
         markers = list(item.iter_markers())
+        # skip if specified in skips.txt
+        for id_ in skip_ids:
+            if item.nodeid.startswith(id_):
+                item.add_marker(mark.skip(reason="skips.txt"))
+                break
         # skip if disabled or non-existent extension
         ext_mark = next((m for m in markers if m.name == "xp_extension"), None)
         if ext_mark is not None:
@@ -96,11 +112,14 @@ def pytest_collection_modifyitems(config, items):
                 )
             elif not xp_has_ext(ext):
                 item.add_marker(mark.skip(reason=f"{ext} not found in array module"))
-        # skip if specified in skips.txt
-        for id_ in skip_ids:
-            if item.nodeid.startswith(id_):
-                item.add_marker(mark.skip(reason="skips.txt"))
-                break
+        # skip if disabled by dds flag
+        if disabled_dds:
+            for m in markers:
+                if m.name == "data_dependent_shapes":
+                    item.add_marker(
+                        mark.skip(reason="disabled via --disable-data-dependent-shapes")
+                    )
+                    break
         # skip if test not appropiate for CI
         if ci:
             ci_mark = next((m for m in markers if m.name == "ci"), None)

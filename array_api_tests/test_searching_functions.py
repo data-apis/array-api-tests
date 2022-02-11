@@ -21,13 +21,10 @@ pytestmark = pytest.mark.ci
     data=st.data(),
 )
 def test_argmax(x, data):
-    kw = data.draw(
-        hh.kwargs(
-            axis=st.none() | st.integers(-x.ndim, max(x.ndim - 1, 0)),
-            keepdims=st.booleans(),
-        ),
-        label="kw",
-    )
+    axis_strat = st.none()
+    if x.ndim > 0:
+        axis_strat |= st.integers(-x.ndim, max(x.ndim - 1, 0))
+    kw = data.draw(hh.kwargs(axis=axis_strat, keepdims=st.booleans()), label="kw")
 
     out = xp.argmax(x, **kw)
 
@@ -56,13 +53,10 @@ def test_argmax(x, data):
     data=st.data(),
 )
 def test_argmin(x, data):
-    kw = data.draw(
-        hh.kwargs(
-            axis=st.none() | st.integers(-x.ndim, max(x.ndim - 1, 0)),
-            keepdims=st.booleans(),
-        ),
-        label="kw",
-    )
+    axis_strat = st.none()
+    if x.ndim > 0:
+        axis_strat |= st.integers(-x.ndim, max(x.ndim - 1, 0))
+    kw = data.draw(hh.kwargs(axis=axis_strat, keepdims=st.booleans()), label="kw")
 
     out = xp.argmin(x, **kw)
 
@@ -82,7 +76,7 @@ def test_argmin(x, data):
         ph.assert_scalar_equals("argmin", int, out_idx, min_i, expected)
 
 
-# TODO: skip if opted out
+@pytest.mark.data_dependent_shapes
 @given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
 def test_nonzero(x):
     out = xp.nonzero(x)

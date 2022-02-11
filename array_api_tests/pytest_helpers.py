@@ -14,6 +14,8 @@ __all__ = [
     "doesnt_raise",
     "nargs",
     "fmt_kw",
+    "is_pos_zero",
+    "is_neg_zero",
     "assert_dtype",
     "assert_kw_dtype",
     "assert_default_float",
@@ -22,6 +24,7 @@ __all__ = [
     "assert_shape",
     "assert_result_shape",
     "assert_keepdimable_shape",
+    "assert_0d_equals",
     "assert_fill",
     "assert_array",
 ]
@@ -67,6 +70,14 @@ def nargs(func_name):
 
 def fmt_kw(kw: Dict[str, Any]) -> str:
     return ", ".join(f"{k}={v}" for k, v in kw.items())
+
+
+def is_pos_zero(n: float) -> bool:
+    return n == 0 and math.copysign(1, n) == 1
+
+
+def is_neg_zero(n: float) -> bool:
+    return n == 0 and math.copysign(1, n) == -1
 
 
 def assert_dtype(
@@ -232,15 +243,28 @@ def assert_fill(
 def assert_array(func_name: str, out: Array, expected: Array, /, **kw):
     assert_dtype(func_name, out.dtype, expected.dtype)
     assert_shape(func_name, out.shape, expected.shape, **kw)
-    msg = f"out not as expected [{func_name}({fmt_kw(kw)})]\n{out=}\n{expected=}"
+    f_func = f"[{func_name}({fmt_kw(kw)})]"
     if dh.is_float_dtype(out.dtype):
-        neg_zeros = expected == -0.0
-        assert xp.all((out == -0.0) == neg_zeros), msg
-        pos_zeros = expected == +0.0
-        assert xp.all((out == +0.0) == pos_zeros), msg
-        nans = xp.isnan(expected)
-        assert xp.all(xp.isnan(out) == nans), msg
-        mask = ~(neg_zeros | pos_zeros | nans)
-        assert xp.all(out[mask] == expected[mask]), msg
+        for idx in sh.ndindex(out.shape):
+            at_out = out[idx]
+            at_expected = expected[idx]
+            msg = (
+                f"{sh.fmt_idx('out', idx)}={at_out}, should be {at_expected} "
+                f"{f_func}"
+            )
+            if xp.isnan(at_expected):
+                assert xp.isnan(at_out), msg
+            elif at_expected == 0.0 or at_expected == -0.0:
+                scalar_at_expected = float(at_expected)
+                scalar_at_out = float(at_out)
+                if is_pos_zero(scalar_at_expected):
+                    assert is_pos_zero(scalar_at_out), msg
+                else:
+                    assert is_neg_zero(scalar_at_expected)  # sanity check
+                    assert is_neg_zero(scalar_at_out), msg
+            else:
+                assert at_out == at_expected, msg
     else:
-        assert xp.all(out == expected), msg
+        assert xp.all(out == expected), (
+            f"out not as expected {f_func}\n" f"{out=}\n{expected=}"
+        )

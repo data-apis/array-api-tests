@@ -280,7 +280,7 @@ def test_asarray_arrays(x, data):
         if copy:
             assert not xp.all(
                 out == x
-            ), "xp.all(out == x)=True, but should be False after x was mutated\n{out=}"
+            ), f"xp.all(out == x)=True, but should be False after x was mutated\n{out=}"
         elif copy is False:
             pass  # TODO
 
