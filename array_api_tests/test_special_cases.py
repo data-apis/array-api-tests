@@ -1,7 +1,7 @@
 import inspect
 import math
 import re
-from typing import Callable, Dict, NamedTuple, Pattern
+from typing import Callable, Dict, List, NamedTuple, Pattern
 from warnings import warn
 
 import pytest
@@ -15,6 +15,9 @@ from . import shape_helpers as sh
 from . import xps
 from ._array_module import mod as xp
 from .stubs import category_to_funcs
+
+# Condition factories
+# ------------------------------------------------------------------------------
 
 
 def make_eq(v: float) -> Callable[[float], bool]:
@@ -30,6 +33,15 @@ def make_eq(v: float) -> Callable[[float], bool]:
         return i == v
 
     return eq
+
+
+def make_neq(v: float) -> Callable[[float], bool]:
+    eq = make_eq(v)
+
+    def neq(i: float) -> bool:
+        return not eq(i)
+
+    return neq
 
 
 def make_rough_eq(v: float) -> Callable[[float], bool]:
@@ -64,6 +76,71 @@ def make_or(cond1: Callable, cond2: Callable):
         return cond1(i) or cond2(i)
 
     return or_
+
+
+def make_and(cond1: Callable, cond2: Callable) -> Callable:
+    def and_(i: float) -> bool:
+        return cond1(i) or cond2(i)
+
+    return and_
+
+
+def make_bin_and_factory(make_cond1: Callable, make_cond2: Callable) -> Callable:
+    def make_bin_and(v1: float, v2: float) -> Callable:
+        cond1 = make_cond1(v1)
+        cond2 = make_cond2(v2)
+
+        def bin_and(i1: float, i2: float) -> bool:
+            return cond1(i1) and cond2(i2)
+
+        return bin_and
+
+    return make_bin_and
+
+
+def make_bin_or_factory(make_cond: Callable) -> Callable:
+    def make_bin_or(v: float) -> Callable:
+        cond = make_cond(v)
+
+        def bin_or(i1: float, i2: float) -> bool:
+            return cond(i1) or cond(i2)
+
+        return bin_or
+
+    return make_bin_or
+
+
+def absify_cond_factory(make_cond):
+    def make_abs_cond(v: float):
+        cond = make_cond(v)
+
+        def abs_cond(i: float) -> bool:
+            i = abs(i)
+            return cond(i)
+
+        return abs_cond
+
+    return make_abs_cond
+
+
+def make_bin_multi_and_factory(
+    make_conds1: List[Callable], make_conds2: List[Callable]
+) -> Callable:
+    def make_bin_multi_and(*values: float) -> Callable:
+        assert len(values) == len(make_conds1) + len(make_conds2)
+        conds1 = [make_cond(v) for make_cond, v in zip(make_conds1, values)]
+        conds2 = [make_cond(v) for make_cond, v in zip(make_conds2, values[::-1])]
+
+        def bin_multi_and(i1: float, i2: float) -> bool:
+            return all(cond(i1) for cond in conds1) and all(cond(i2) for cond in conds2)
+
+        return bin_multi_and
+
+    return make_bin_multi_and
+
+
+# Parse utils
+# ------------------------------------------------------------------------------
 
 
 repr_to_value = {
@@ -183,6 +260,7 @@ def parse_unary_docstring(docstring: str) -> Dict[Callable, Result]:
                     result = parse_result(s_result)
                 except ValueParseError as e:
                     warn(f"result not machine-readable: '{e.value}'")
+
                     break
                 condition_to_result[cond] = result
                 break
@@ -194,9 +272,96 @@ def parse_unary_docstring(docstring: str) -> Dict[Callable, Result]:
 
 binary_pattern_to_condition_factory: Dict[Pattern, Callable] = {
     re.compile(
+        "If ``x1_i`` is (.+) and ``x2_i`` is not equal to (.+), the result is (.+)"
+    ): make_bin_and_factory(make_eq, lambda v: lambda i: i != v),
+    re.compile(
+        "If ``x1_i`` is greater than (.+), ``x1_i`` is (.+), "
+        "and ``x2_i`` is (.+), the result is (.+)"
+    ): make_bin_multi_and_factory([make_gt, make_eq], [make_eq]),
+    re.compile(
+        "If ``x1_i`` is less than (.+), ``x1_i`` is (.+), "
+        "and ``x2_i`` is (.+), the result is (.+)"
+    ): make_bin_multi_and_factory([make_lt, make_eq], [make_eq]),
+    re.compile(
+        "If ``x1_i`` is less than (.+), ``x1_i`` is (.+), ``x2_i`` is (.+), "
+        "and ``x2_i`` is not (.+), the result is (.+)"
+    ): make_bin_multi_and_factory([make_lt, make_eq], [make_eq, make_neq]),
+    re.compile(
+        "If ``x1_i`` is (.+), ``x2_i`` is less than (.+), "
+        "and ``x2_i`` is (.+), the result is (.+)"
+    ): make_bin_multi_and_factory([make_eq], [make_lt, make_eq]),
+    re.compile(
+        "If ``x1_i`` is (.+), ``x2_i`` is less than (.+), "
+        "and ``x2_i`` is not (.+), the result is (.+)"
+    ): make_bin_multi_and_factory([make_eq], [make_lt, make_neq]),
+    re.compile(
+        "If ``x1_i`` is (.+), ``x2_i`` is greater than (.+), "
+        "and ``x2_i`` is (.+), the result is (.+)"
+    ): make_bin_multi_and_factory([make_eq], [make_gt, make_eq]),
+    re.compile(
+        "If ``x1_i`` is (.+), ``x2_i`` is greater than (.+), "
+        "and ``x2_i`` is not (.+), the result is (.+)"
+    ): make_bin_multi_and_factory([make_eq], [make_gt, make_neq]),
+    re.compile(
+        "If ``x1_i`` is greater than (.+) and ``x2_i`` is (.+), the result is (.+)"
+    ): make_bin_and_factory(make_gt, make_eq),
+    re.compile(
+        "If ``x1_i`` is (.+) and ``x2_i`` is greater than (.+), the result is (.+)"
+    ): make_bin_and_factory(make_eq, make_gt),
+    re.compile(
+        "If ``x1_i`` is less than (.+) and ``x2_i`` is (.+), the result is (.+)"
+    ): make_bin_and_factory(make_lt, make_eq),
+    re.compile(
+        "If ``x1_i`` is (.+) and ``x2_i`` is less than (.+), the result is (.+)"
+    ): make_bin_and_factory(make_eq, make_lt),
+    re.compile(
+        "If ``x1_i`` is not (?:equal to )?(.+) and ``x2_i`` is (.+), the result is (.+)"
+    ): make_bin_and_factory(make_neq, make_eq),
+    re.compile(
+        "If ``x1_i`` is (.+) and ``x2_i`` is not (?:equal to )?(.+), the result is (.+)"
+    ): make_bin_and_factory(make_eq, make_neq),
+    re.compile(
+        r"If `abs\(x1_i\)` is greater than (.+) and ``x2_i`` is (.+), "
+        "the result is (.+)"
+    ): make_bin_and_factory(absify_cond_factory(make_gt), make_eq),
+    re.compile(
+        r"If `abs\(x1_i\)` is less than (.+) and ``x2_i`` is (.+), the result is (.+)"
+    ): make_bin_and_factory(absify_cond_factory(make_lt), make_eq),
+    re.compile(
+        r"If `abs\(x1_i\)` is (.+) and ``x2_i`` is (.+), the result is (.+)"
+    ): make_bin_and_factory(absify_cond_factory(make_eq), make_eq),
+    re.compile(
         "If ``x1_i`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
-    ): lambda v1, v2: lambda i1, i2: make_eq(v1)(i1)
-    and make_eq(v2)(i2),
+    ): make_bin_and_factory(make_eq, make_eq),
+    re.compile(
+        "If either ``x1_i`` or ``x2_i`` is (.+), the result is (.+)"
+    ): make_bin_or_factory(make_eq),
+    re.compile(
+        "If ``x1_i`` is either (.+) or (.+) and ``x2_i`` is (.+), the result is (.+)"
+    ): lambda v1, v2, v3: (
+        lambda i1, i2: make_or(make_eq(v1), make_eq(v2))(i1) and make_eq(v3)(i2)
+    ),
+    re.compile(
+        "If ``x1_i`` is (.+) and ``x2_i`` is either (.+) or (.+), the result is (.+)"
+    ): lambda v1, v2, v3: (
+        lambda i1, i2: make_eq(v1)(i1) and make_or(make_eq(v2), make_eq(v3))(i2)
+    ),
+    re.compile(
+        "If ``x1_i`` is either (.+) or (.+) and "
+        "``x2_i`` is either (.+) or (.+), the result is (.+)"
+    ): lambda v1, v2, v3, v4: (
+        lambda i1, i2: (
+            make_or(make_eq(v1), make_eq(v2))(i1)
+            and make_or(make_eq(v3), make_eq(v4))(i2)
+        )
+    ),
+    # re.compile("If ``x1_i`` and ``x2_i`` have the same mathematical sign, the result has a (.+)")
+    # re.compile("If ``x1_i`` and ``x2_i`` have the same mathematical sign, the result has a (.+), unless the result is (.+)\. If the result is (.+), the "sign" of (.+) is implementation-defined")
+    # re.compile("If ``x1_i`` and ``x2_i`` have the same mathematical sign and are both (.+), the result has a (.+)")
+    # re.compile("If ``x1_i`` and ``x2_i`` have different mathematical signs, the result has a (.+)")
+    # re.compile("If ``x1_i`` and ``x2_i`` have different mathematical signs, the result has a (.+), unless the result is (.+)\. If the result is (.+), the "sign" of (.+) is implementation-defined")
+    # re.compile("If ``x1_i`` and ``x2_i`` have different mathematical signs and are both (.+), the result has a (.+)")
+    # re.compile("If ``x2_i`` is (.+), the result is (.+), even if ``x1_i`` is .+")
 }
 
 
@@ -221,12 +386,6 @@ def parse_binary_docstring(docstring: str) -> Dict[Callable, Result]:
                     warn(f"value not machine-readable: '{e.value}'")
                     break
                 cond = make_cond(*values)
-                if (
-                    "atan2" in docstring
-                    and ph.is_pos_zero(values[0])
-                    and ph.is_neg_zero(values[1])
-                ):
-                    breakpoint()
                 try:
                     result = parse_result(s_result)
                 except ValueParseError as e:
@@ -238,6 +397,10 @@ def parse_binary_docstring(docstring: str) -> Dict[Callable, Result]:
             if not r_remaining_case.search(case):
                 warn(f"case not machine-readable: '{case}'")
     return condition_to_result
+
+
+# Here be the tests
+# ------------------------------------------------------------------------------
 
 
 unary_params = []
