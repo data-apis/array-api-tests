@@ -20,7 +20,11 @@ from .stubs import category_to_funcs
 # ------------------------------------------------------------------------------
 
 
-def make_eq(v: float) -> Callable[[float], bool]:
+UnaryCheck = Callable[[float], bool]
+BinaryCheck = Callable[[float, float], bool]
+
+
+def make_eq(v: float) -> UnaryCheck:
     if math.isnan(v):
         return math.isnan
     if v == 0:
@@ -35,7 +39,7 @@ def make_eq(v: float) -> Callable[[float], bool]:
     return eq
 
 
-def make_neq(v: float) -> Callable[[float], bool]:
+def make_neq(v: float) -> UnaryCheck:
     eq = make_eq(v)
 
     def neq(i: float) -> bool:
@@ -44,7 +48,7 @@ def make_neq(v: float) -> Callable[[float], bool]:
     return neq
 
 
-def make_rough_eq(v: float) -> Callable[[float], bool]:
+def make_rough_eq(v: float) -> UnaryCheck:
     assert math.isfinite(v)  # sanity check
 
     def rough_eq(i: float) -> bool:
@@ -53,40 +57,42 @@ def make_rough_eq(v: float) -> Callable[[float], bool]:
     return rough_eq
 
 
-def make_gt(v: float):
+def make_gt(v: float) -> UnaryCheck:
     assert not math.isnan(v)  # sanity check
 
-    def gt(i: float):
+    def gt(i: float) -> bool:
         return i > v
 
     return gt
 
 
-def make_lt(v: float):
+def make_lt(v: float) -> UnaryCheck:
     assert not math.isnan(v)  # sanity check
 
-    def lt(i: float):
+    def lt(i: float) -> bool:
         return i < v
 
     return lt
 
 
-def make_or(cond1: Callable, cond2: Callable):
-    def or_(i: float):
+def make_or(cond1: UnaryCheck, cond2: UnaryCheck) -> UnaryCheck:
+    def or_(i: float) -> bool:
         return cond1(i) or cond2(i)
 
     return or_
 
 
-def make_and(cond1: Callable, cond2: Callable) -> Callable:
+def make_and(cond1: UnaryCheck, cond2: UnaryCheck) -> UnaryCheck:
     def and_(i: float) -> bool:
         return cond1(i) or cond2(i)
 
     return and_
 
 
-def make_bin_and_factory(make_cond1: Callable, make_cond2: Callable) -> Callable:
-    def make_bin_and(v1: float, v2: float) -> Callable:
+def make_bin_and_factory(
+    make_cond1: Callable[[float], UnaryCheck], make_cond2: Callable[[float], UnaryCheck]
+) -> Callable[[float, float], BinaryCheck]:
+    def make_bin_and(v1: float, v2: float) -> BinaryCheck:
         cond1 = make_cond1(v1)
         cond2 = make_cond2(v2)
 
@@ -98,8 +104,10 @@ def make_bin_and_factory(make_cond1: Callable, make_cond2: Callable) -> Callable
     return make_bin_and
 
 
-def make_bin_or_factory(make_cond: Callable) -> Callable:
-    def make_bin_or(v: float) -> Callable:
+def make_bin_or_factory(
+    make_cond: Callable[[float], UnaryCheck]
+) -> Callable[[float], BinaryCheck]:
+    def make_bin_or(v: float) -> BinaryCheck:
         cond = make_cond(v)
 
         def bin_or(i1: float, i2: float) -> bool:
@@ -110,8 +118,10 @@ def make_bin_or_factory(make_cond: Callable) -> Callable:
     return make_bin_or
 
 
-def absify_cond_factory(make_cond):
-    def make_abs_cond(v: float):
+def absify_cond_factory(
+    make_cond: Callable[[float], UnaryCheck]
+) -> Callable[[float], UnaryCheck]:
+    def make_abs_cond(v: float) -> UnaryCheck:
         cond = make_cond(v)
 
         def abs_cond(i: float) -> bool:
@@ -124,9 +134,10 @@ def absify_cond_factory(make_cond):
 
 
 def make_bin_multi_and_factory(
-    make_conds1: List[Callable], make_conds2: List[Callable]
+    make_conds1: List[Callable[[float], UnaryCheck]],
+    make_conds2: List[Callable[[float], UnaryCheck]],
 ) -> Callable:
-    def make_bin_multi_and(*values: float) -> Callable:
+    def make_bin_multi_and(*values: float) -> BinaryCheck:
         assert len(values) == len(make_conds1) + len(make_conds2)
         conds1 = [make_cond(v) for make_cond, v in zip(make_conds1, values)]
         conds2 = [make_cond(v) for make_cond, v in zip(make_conds2, values[::-1])]
@@ -137,6 +148,14 @@ def make_bin_multi_and_factory(
         return bin_multi_and
 
     return make_bin_multi_and
+
+
+def same_sign(i1: float, i2: float) -> bool:
+    return math.copysign(1, i1) == math.copysign(1, i2)
+
+
+def diff_sign(i1: float, i2: float) -> bool:
+    return not same_sign(i1, i2)
 
 
 # Parse utils
@@ -272,6 +291,9 @@ def parse_unary_docstring(docstring: str) -> Dict[Callable, Result]:
 
 binary_pattern_to_condition_factory: Dict[Pattern, Callable] = {
     re.compile(
+        "If ``x2_i`` is (.+), the result is (.+), even if ``x1_i`` is .+"
+    ): lambda v: lambda _, i2: make_eq(v)(i2),
+    re.compile(
         "If ``x1_i`` is (.+) and ``x2_i`` is not equal to (.+), the result is (.+)"
     ): make_bin_and_factory(make_eq, lambda v: lambda i: i != v),
     re.compile(
@@ -355,13 +377,29 @@ binary_pattern_to_condition_factory: Dict[Pattern, Callable] = {
             and make_or(make_eq(v3), make_eq(v4))(i2)
         )
     ),
-    # re.compile("If ``x1_i`` and ``x2_i`` have the same mathematical sign, the result has a (.+)")
-    # re.compile("If ``x1_i`` and ``x2_i`` have the same mathematical sign, the result has a (.+), unless the result is (.+)\. If the result is (.+), the "sign" of (.+) is implementation-defined")
-    # re.compile("If ``x1_i`` and ``x2_i`` have the same mathematical sign and are both (.+), the result has a (.+)")
-    # re.compile("If ``x1_i`` and ``x2_i`` have different mathematical signs, the result has a (.+)")
-    # re.compile("If ``x1_i`` and ``x2_i`` have different mathematical signs, the result has a (.+), unless the result is (.+)\. If the result is (.+), the "sign" of (.+) is implementation-defined")
-    # re.compile("If ``x1_i`` and ``x2_i`` have different mathematical signs and are both (.+), the result has a (.+)")
-    # re.compile("If ``x2_i`` is (.+), the result is (.+), even if ``x1_i`` is .+")
+    re.compile(
+        "If ``x1_i`` and ``x2_i`` have the same mathematical sign, "
+        "the result has a (.+)"
+    ): lambda: same_sign,
+    re.compile(
+        "If ``x1_i`` and ``x2_i`` have different mathematical signs, "
+        "the result has a (.+)"
+    ): lambda: diff_sign,
+    re.compile(
+        "If ``x1_i`` and ``x2_i`` have the same mathematical sign and "
+        "are both (.+), the result has a (.+)"
+    ): lambda v: lambda i1, i2: same_sign(i1, i2)
+    and make_eq(v)(i1)
+    and make_eq(v)(i2),
+    re.compile(
+        "If ``x1_i`` and ``x2_i`` have different mathematical signs and "
+        "are both (.+), the result has a (.+)"
+    ): lambda v: lambda i1, i2: diff_sign(i1, i2)
+    and make_eq(v)(i1)
+    and make_eq(v)(i2),
+    # TODO: support capturing values that come after the result
+    # re.compile(r"If ``x1_i`` and ``x2_i`` have the same mathematical sign, the result has a (.+), unless the result is (.+)\. If the result is .+, the \"sign\" of .+ is implementation-defined")
+    # re.compile(r"If ``x1_i`` and ``x2_i`` have different mathematical signs, the result has a (.+), unless the result is (.+)\. If the result is (.+), the \"sign\" of (.+) is implementation-defined")
 }
 
 
