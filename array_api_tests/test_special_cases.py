@@ -174,7 +174,7 @@ def diff_sign(i1: float, i2: float) -> bool:
 
 repr_to_value = {
     "NaN": float("nan"),
-    "infinity": float("infinity"),
+    "infinity": float("inf"),
     "0": 0.0,
     "1": 1.0,
 }
@@ -581,6 +581,9 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
 }
 
 
+r_redundant_case = re.compile("result.+determined by the rule already stated above")
+
+
 def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
     match = r_special_cases.search(docstring)
     if match is None:
@@ -592,6 +595,8 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
             case = m.group(1)
         else:
             warn(f"line not machine-readable: '{line}'")
+            continue
+        if r_redundant_case.search(case):
             continue
         for pattern, make_case in binary_pattern_to_case_factory.items():
             if m := pattern.search(case):
