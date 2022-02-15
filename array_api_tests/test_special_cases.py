@@ -305,7 +305,7 @@ class CondFactory(Protocol):
 
 
 r_not_code = re.compile(f"not (?:equal to )?{r_code.pattern}")
-r_array_element = re.compile(r"``([+-]?)x[12]_i``")
+r_array_element = re.compile(r"``([+-]?)x([12])_i``")
 r_gt = re.compile(f"greater than {r_code.pattern}")
 r_lt = re.compile(f"less than {r_code.pattern}")
 r_either_code = re.compile(f"either {r_code.pattern} or {r_code.pattern}")
@@ -333,8 +333,8 @@ class ValueCondFactory(NamedTuple):  # TODO: inherit from CondFactory as well
                     return _cond(i2)
 
             return cond
-        # this branch must come after checking for array elements
-        elif m := r_code.match(group):
+
+        if m := r_code.match(group):
             value = parse_value(m.group(1))
             _cond = make_eq(value)
         elif m := r_not_code.match(group):
@@ -398,39 +398,75 @@ class AndCondFactory(CondFactory):
 
         return cond
 
+    def __repr__(self) -> str:
+        f_cond_factories = ", ".join(
+            repr(cond_factory) for cond_factory in self.cond_factories
+        )
+        return f"{self.__class__.__name__}({f_cond_factories})"
+
+
+BinaryResultCheck = Callable[[float, float, float], bool]
+
+
+class ResultCheckFactory(NamedTuple):
+    re_group: int
+
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryResultCheck:
+        group = groups[self.re_group]
+
+        if m := r_array_element.match(group):
+            cond_factory = make_eq if m.group(1) != "-" else make_neq
+
+            if m.group(2) == "1":
+
+                def cond(i1: float, i2: float, result: float) -> bool:
+                    _cond = cond_factory(i1)
+                    return _cond(result)
+
+            else:
+
+                def cond(i1: float, i2: float, result: float) -> bool:
+                    _cond = cond_factory(i2)
+                    return _cond(result)
+
+            return cond
+
+        if m := r_code.match(group):
+            value = parse_value(m.group(1))
+            _cond = make_eq(value)
+        elif m := r_approx_value.match(group):
+            value = parse_value(m.group(1))
+            _cond = make_rough_eq(value)
+        else:
+            raise ValueParseError(group)
+
+        def cond(i1: float, i2: float, result: float) -> bool:
+            return _cond(result)
+
+        return cond
+
 
 class BinaryCase(NamedTuple):
     cond: BinaryCheck
-    check_result: Callable[[float], bool]
+    check_result: BinaryResultCheck
 
 
 class BinaryCaseFactory(NamedTuple):
     cond_factory: CondFactory
-    result_re_group: int
+    check_result_factory: ResultCheckFactory
 
     def __call__(self, groups: Tuple[str, ...]) -> BinaryCase:
-        in_cond = self.cond_factory(groups)
-
-        s_result = groups[self.result_re_group]
-        if m := r_array_element.match(s_result):
-            raise ValueParseError(s_result)  # TODO
-        elif m := r_code.match(s_result):
-            value = parse_value(m.group(1))
-            out_cond = make_eq(value)
-        elif m := r_approx_value.match(s_result):
-            value = parse_value(m.group(1))
-            out_cond = make_rough_eq(value)
-        else:
-            raise ValueParseError(s_result)
-
-        return BinaryCase(in_cond, out_cond)
+        cond = self.cond_factory(groups)
+        check_result = self.check_result_factory(groups)
+        return BinaryCase(cond, check_result)
 
 
 binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
     re.compile(
         "If ``x1_i`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
     ): BinaryCaseFactory(
-        AndCondFactory(ValueCondFactory("i1", 0), ValueCondFactory("i2", 1)), 2
+        AndCondFactory(ValueCondFactory("i1", 0), ValueCondFactory("i2", 1)),
+        ResultCheckFactory(2),
     ),
     # re.compile(
     #     "If ``x2_i`` is (.+), the result is (.+), even if ``x1_i`` is .+"
@@ -671,8 +707,8 @@ def test_binary(func_name, func, cases, x1, x2):
         for case in cases:
             if case.cond(l, r):
                 good_example = True
-                out = float(res[o_idx])
-                assert case.check_result(out)
+                o = float(res[o_idx])
+                assert case.check_result(l, r, o)
                 # f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
                 # f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
                 # f_out = f"{sh.fmt_idx('out', o_idx)}={out}"
