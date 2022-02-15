@@ -313,11 +313,11 @@ r_lt = re.compile(f"less than {r_code.pattern}")
 
 @dataclass
 class ValueCondFactory(CondFactory):
-    input_: Union[Literal["i1"], Literal["i2"], Literal["either"]]
-    groups_i: int
+    input_: Union[Literal["i1"], Literal["i2"], Literal["either"], Literal["both"]]
+    re_groups_i: int
 
     def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
-        group = groups[self.groups_i]
+        group = groups[self.re_groups_i]
 
         if m := r_array_element.match(group):
             cond_factory = make_eq if m.group(1) != "-" else make_neq
@@ -390,10 +390,15 @@ class ValueCondFactory(CondFactory):
             def cond(i1: float, i2: float) -> bool:
                 return final_cond(i2)
 
-        else:
+        elif self.input_ == "either":
 
             def cond(i1: float, i2: float) -> bool:
                 return final_cond(i1) or final_cond(i2)
+
+        else:
+
+            def cond(i1: float, i2: float) -> bool:
+                return final_cond(i1) and final_cond(i2)
 
         return cond
 
@@ -417,14 +422,28 @@ class AndCondFactory(CondFactory):
         return f"{self.__class__.__name__}({f_cond_factories})"
 
 
+@dataclass
+class SignCondFactory(CondFactory):
+    re_groups_i: int
+
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
+        group = groups[self.re_groups_i]
+        if group == "the same mathematical sign":
+            return same_sign
+        elif group == "different mathematical signs":
+            return diff_sign
+        else:
+            raise ValueParseError(group)
+
+
 BinaryResultCheck = Callable[[float, float, float], bool]
 
 
 class ResultCheckFactory(NamedTuple):
-    groups_i: int
+    re_groups_i: int
 
     def __call__(self, groups: Tuple[str, ...]) -> BinaryResultCheck:
-        group = groups[self.groups_i]
+        group = groups[self.re_groups_i]
 
         if m := r_array_element.match(group):
             cond_factory = make_eq if m.group(1) != "-" else make_neq
@@ -458,6 +477,29 @@ class ResultCheckFactory(NamedTuple):
         return cond
 
 
+class ResultSignCheckFactory(ResultCheckFactory):
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryResultCheck:
+        group = groups[self.re_groups_i]
+        if group == "positive":
+
+            def cond(i1: float, i2: float, result: float) -> bool:
+                if math.isnan(result):
+                    return True
+                return result > 0 or ph.is_pos_zero(result)
+
+        elif group == "negative":
+
+            def cond(i1: float, i2: float, result: float) -> bool:
+                if math.isnan(result):
+                    return True
+                return result < 0 or ph.is_neg_zero(result)
+
+        else:
+            raise ValueParseError(group)
+
+        return cond
+
+
 class BinaryCase(NamedTuple):
     cond: BinaryCheck
     check_result: BinaryResultCheck
@@ -472,6 +514,8 @@ class BinaryCaseFactory(NamedTuple):
         check_result = self.check_result_factory(groups)
         return BinaryCase(cond, check_result)
 
+
+r_result_sign = re.compile("([a-z]+) mathematical sign")
 
 binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
     re.compile(
@@ -499,32 +543,23 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
     # ): make_bin_and_factory(absify_cond_factory(make_eq), make_eq),
     re.compile(
         "If either ``x1_i`` or ``x2_i`` is (.+), the result is (.+)"
+    ): BinaryCaseFactory(ValueCondFactory("either", 0), ResultCheckFactory(1)),
+    re.compile(
+        "If ``x1_i`` and ``x2_i`` have (.+signs?), "
+        f"the result has a {r_result_sign.pattern}"
+    ): BinaryCaseFactory(SignCondFactory(0), ResultSignCheckFactory(1)),
+    re.compile(
+        "If ``x1_i`` and ``x2_i`` have (.+signs?) and are both (.+), "
+        f"the result has a {r_result_sign.pattern}"
     ): BinaryCaseFactory(
-        ValueCondFactory("either", 0),
-        ResultCheckFactory(1),
+        AndCondFactory(SignCondFactory(0), ValueCondFactory("both", 1)),
+        ResultSignCheckFactory(2),
     ),
-    # re.compile(
-    #     "If ``x1_i`` and ``x2_i`` have the same mathematical sign, "
-    #     "the result has a (.+)"
-    # ): lambda: same_sign,
-    # re.compile(
-    #     "If ``x1_i`` and ``x2_i`` have different mathematical signs, "
-    #     "the result has a (.+)"
-    # ): lambda: diff_sign,
-    # re.compile(
-    #     "If ``x1_i`` and ``x2_i`` have the same mathematical sign and "
-    #     "are both (.+), the result has a (.+)"
-    # ): lambda v: (
-    #     lambda i1, i2: same_sign(i1, i2) and make_eq(v)(i1) and make_eq(v)(i2)
-    # ),
-    # re.compile(
-    #     "If ``x1_i`` and ``x2_i`` have different mathematical signs and "
-    #     "are both (.+), the result has a (.+)"
-    # ): lambda v: (
-    #     lambda i1, i2: diff_sign(i1, i2) and make_eq(v)(i1) and make_eq(v)(i2)
-    # ),
-    # re.compile(r"If ``x1_i`` and ``x2_i`` have the same mathematical sign, the result has a (.+), unless the result is (.+)\. If the result is .+, the \"sign\" of .+ is implementation-defined")
-    # re.compile(r"If ``x1_i`` and ``x2_i`` have different mathematical signs, the result has a (.+), unless the result is (.+)\. If the result is (.+), the \"sign\" of (.+) is implementation-defined")
+    re.compile(
+        "If ``x1_i`` and ``x2_i`` have (.+signs?), the result has a "
+        rf"{r_result_sign.pattern} , unless the result is (.+)\. If the result "
+        r"is ``NaN``, the \"sign\" of ``NaN`` is implementation-defined\."
+    ): BinaryCaseFactory(SignCondFactory(0), ResultSignCheckFactory(1)),
 }
 
 
@@ -682,9 +717,3 @@ def test_binary(func_name, func, cases, x1, x2):
                 #     )
                 break
     assume(good_example)
-
-
-# TODO: remove
-print(
-    f"no. of cases={sum(len(cases) for _, _, cases in binary_params)}"
-)
