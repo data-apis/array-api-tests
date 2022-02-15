@@ -306,13 +306,14 @@ class CondFactory(Protocol):
 
 r_not = re.compile("not (?:equal to )?(.+)")
 r_array_element = re.compile(r"``([+-]?)x([12])_i``")
+r_either_code = re.compile(f"either {r_code.pattern} or {r_code.pattern}")
 r_gt = re.compile(f"greater than {r_code.pattern}")
 r_lt = re.compile(f"less than {r_code.pattern}")
-r_either_code = re.compile(f"either {r_code.pattern} or {r_code.pattern}")
 
 
-class ValueCondFactory(NamedTuple):  # TODO: inherit from CondFactory as well
-    input_: Union[Literal["i1"], Literal["i2"]]
+@dataclass
+class ValueCondFactory(CondFactory):
+    input_: Union[Literal["i1"], Literal["i2"], Literal["either"]]
     groups_i: int
 
     def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
@@ -327,6 +328,7 @@ class ValueCondFactory(NamedTuple):  # TODO: inherit from CondFactory as well
                     return _cond(i1)
 
             else:
+                assert self.input_ == "i2"  # sanity check
 
                 def cond(i1: float, i2: float) -> bool:
                     _cond = cond_factory(i1)
@@ -383,10 +385,15 @@ class ValueCondFactory(NamedTuple):  # TODO: inherit from CondFactory as well
             def cond(i1: float, i2: float) -> bool:
                 return final_cond(i1)
 
-        else:
+        elif self.input_ == "i2":
 
             def cond(i1: float, i2: float) -> bool:
                 return final_cond(i2)
+
+        else:
+
+            def cond(i1: float, i2: float) -> bool:
+                return final_cond(i1) or final_cond(i2)
 
         return cond
 
@@ -490,12 +497,12 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
     # re.compile(
     #     r"If `abs\(x1_i\)` is (.+) and ``x2_i`` is (.+), the result is (.+)"
     # ): make_bin_and_factory(absify_cond_factory(make_eq), make_eq),
-    # re.compile(
-    #     "If ``x1_i`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
-    # ): make_bin_and_factory(make_eq, make_eq),
-    # re.compile(
-    #     "If either ``x1_i`` or ``x2_i`` is (.+), the result is (.+)"
-    # ): make_bin_or_factory(make_eq),
+    re.compile(
+        "If either ``x1_i`` or ``x2_i`` is (.+), the result is (.+)"
+    ): BinaryCaseFactory(
+        ValueCondFactory("either", 0),
+        ResultCheckFactory(1),
+    ),
     # re.compile(
     #     "If ``x1_i`` and ``x2_i`` have the same mathematical sign, "
     #     "the result has a (.+)"
@@ -516,7 +523,6 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
     # ): lambda v: (
     #     lambda i1, i2: diff_sign(i1, i2) and make_eq(v)(i1) and make_eq(v)(i2)
     # ),
-    # TODO: support capturing values that come after the result
     # re.compile(r"If ``x1_i`` and ``x2_i`` have the same mathematical sign, the result has a (.+), unless the result is (.+)\. If the result is .+, the \"sign\" of .+ is implementation-defined")
     # re.compile(r"If ``x1_i`` and ``x2_i`` have different mathematical signs, the result has a (.+), unless the result is (.+)\. If the result is (.+), the \"sign\" of (.+) is implementation-defined")
 }
@@ -676,3 +682,9 @@ def test_binary(func_name, func, cases, x1, x2):
                 #     )
                 break
     assume(good_example)
+
+
+# TODO: remove
+print(
+    f"no. of cases={sum(len(cases) for _, _, cases in binary_params)}"
+)
