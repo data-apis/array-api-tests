@@ -1,7 +1,17 @@
 import inspect
 import math
 import re
-from typing import Callable, Dict, List, NamedTuple, Pattern
+from typing import (
+    Callable,
+    Dict,
+    List,
+    Literal,
+    NamedTuple,
+    Pattern,
+    Protocol,
+    Tuple,
+    Union,
+)
 from warnings import warn
 
 import pytest
@@ -197,14 +207,14 @@ def parse_value(s_value: str) -> float:
     return value
 
 
-r_inline_code = re.compile(r"``([^\s]+)``")
+r_code = re.compile(r"``([^\s]+)``")
 r_approx_value = re.compile(
-    rf"an implementation-dependent approximation to {r_inline_code.pattern}"
+    rf"an implementation-dependent approximation to {r_code.pattern}"
 )
 
 
 def parse_inline_code(inline_code: str) -> float:
-    if m := r_inline_code.match(inline_code):
+    if m := r_code.match(inline_code):
         return parse_value(m.group(1))
     else:
         raise ValueParseError(inline_code)
@@ -218,7 +228,7 @@ class Result(NamedTuple):
 
 def parse_result(s_result: str) -> Result:
     match = None
-    if m := r_inline_code.match(s_result):
+    if m := r_code.match(s_result):
         match = m
         strict_check = True
     elif m := r_approx_value.match(s_result):
@@ -259,7 +269,7 @@ def parse_unary_docstring(docstring: str) -> Dict[Callable, Result]:
     if match is None:
         return {}
     cases = match.group(1).split("\n")[:-1]
-    condition_to_result = {}
+    cases = {}
     for line in cases:
         if m := r_case.match(line):
             case = m.group(1)
@@ -281,160 +291,285 @@ def parse_unary_docstring(docstring: str) -> Dict[Callable, Result]:
                     warn(f"result not machine-readable: '{e.value}'")
 
                     break
-                condition_to_result[cond] = result
+                cases[cond] = result
                 break
         else:
             if not r_remaining_case.search(case):
                 warn(f"case not machine-readable: '{case}'")
-    return condition_to_result
+    return cases
 
 
-binary_pattern_to_condition_factory: Dict[Pattern, Callable] = {
-    re.compile(
-        "If ``x2_i`` is (.+), the result is (.+), even if ``x1_i`` is .+"
-    ): lambda v: lambda _, i2: make_eq(v)(i2),
-    re.compile(
-        "If ``x1_i`` is (.+) and ``x2_i`` is not equal to (.+), the result is (.+)"
-    ): make_bin_and_factory(make_eq, lambda v: lambda i: i != v),
-    re.compile(
-        "If ``x1_i`` is greater than (.+), ``x1_i`` is (.+), "
-        "and ``x2_i`` is (.+), the result is (.+)"
-    ): make_bin_multi_and_factory([make_gt, make_eq], [make_eq]),
-    re.compile(
-        "If ``x1_i`` is less than (.+), ``x1_i`` is (.+), "
-        "and ``x2_i`` is (.+), the result is (.+)"
-    ): make_bin_multi_and_factory([make_lt, make_eq], [make_eq]),
-    re.compile(
-        "If ``x1_i`` is less than (.+), ``x1_i`` is (.+), ``x2_i`` is (.+), "
-        "and ``x2_i`` is not (.+), the result is (.+)"
-    ): make_bin_multi_and_factory([make_lt, make_eq], [make_eq, make_neq]),
-    re.compile(
-        "If ``x1_i`` is (.+), ``x2_i`` is less than (.+), "
-        "and ``x2_i`` is (.+), the result is (.+)"
-    ): make_bin_multi_and_factory([make_eq], [make_lt, make_eq]),
-    re.compile(
-        "If ``x1_i`` is (.+), ``x2_i`` is less than (.+), "
-        "and ``x2_i`` is not (.+), the result is (.+)"
-    ): make_bin_multi_and_factory([make_eq], [make_lt, make_neq]),
-    re.compile(
-        "If ``x1_i`` is (.+), ``x2_i`` is greater than (.+), "
-        "and ``x2_i`` is (.+), the result is (.+)"
-    ): make_bin_multi_and_factory([make_eq], [make_gt, make_eq]),
-    re.compile(
-        "If ``x1_i`` is (.+), ``x2_i`` is greater than (.+), "
-        "and ``x2_i`` is not (.+), the result is (.+)"
-    ): make_bin_multi_and_factory([make_eq], [make_gt, make_neq]),
-    re.compile(
-        "If ``x1_i`` is greater than (.+) and ``x2_i`` is (.+), the result is (.+)"
-    ): make_bin_and_factory(make_gt, make_eq),
-    re.compile(
-        "If ``x1_i`` is (.+) and ``x2_i`` is greater than (.+), the result is (.+)"
-    ): make_bin_and_factory(make_eq, make_gt),
-    re.compile(
-        "If ``x1_i`` is less than (.+) and ``x2_i`` is (.+), the result is (.+)"
-    ): make_bin_and_factory(make_lt, make_eq),
-    re.compile(
-        "If ``x1_i`` is (.+) and ``x2_i`` is less than (.+), the result is (.+)"
-    ): make_bin_and_factory(make_eq, make_lt),
-    re.compile(
-        "If ``x1_i`` is not (?:equal to )?(.+) and ``x2_i`` is (.+), the result is (.+)"
-    ): make_bin_and_factory(make_neq, make_eq),
-    re.compile(
-        "If ``x1_i`` is (.+) and ``x2_i`` is not (?:equal to )?(.+), the result is (.+)"
-    ): make_bin_and_factory(make_eq, make_neq),
-    re.compile(
-        r"If `abs\(x1_i\)` is greater than (.+) and ``x2_i`` is (.+), "
-        "the result is (.+)"
-    ): make_bin_and_factory(absify_cond_factory(make_gt), make_eq),
-    re.compile(
-        r"If `abs\(x1_i\)` is less than (.+) and ``x2_i`` is (.+), the result is (.+)"
-    ): make_bin_and_factory(absify_cond_factory(make_lt), make_eq),
-    re.compile(
-        r"If `abs\(x1_i\)` is (.+) and ``x2_i`` is (.+), the result is (.+)"
-    ): make_bin_and_factory(absify_cond_factory(make_eq), make_eq),
+class CondFactory(Protocol):
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
+        ...
+
+
+r_not_code = re.compile(f"not (?:equal to )?{r_code.pattern}")
+r_array_element = re.compile(r"``([+-]?)x[12]_i``")
+r_gt = re.compile(f"greater than {r_code.pattern}")
+r_lt = re.compile(f"less than {r_code.pattern}")
+r_either_code = re.compile(f"either {r_code.pattern} or {r_code.pattern}")
+
+
+class ValueCondFactory(NamedTuple):  # TODO: inherit from CondFactory as well
+    input_: Union[Literal["i1"], Literal["i2"]]
+    re_group: int
+
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
+        group = groups[self.re_group]
+
+        if m := r_array_element.match(group):
+            cond_factory = make_eq if m.group(1) != "-" else make_neq
+            if self.input_ == "i1":
+
+                def cond(i1: float, i2: float) -> bool:
+                    _cond = cond_factory(i2)
+                    return _cond(i1)
+
+            else:
+
+                def cond(i1: float, i2: float) -> bool:
+                    _cond = cond_factory(i1)
+                    return _cond(i2)
+
+            return cond
+        # this branch must come after checking for array elements
+        elif m := r_code.match(group):
+            value = parse_value(m.group(1))
+            _cond = make_eq(value)
+        elif m := r_not_code.match(group):
+            value = parse_value(m.group(1))
+            _cond = make_neq(value)
+        elif m := r_gt.match(group):
+            value = parse_value(m.group(1))
+            _cond = make_gt(value)
+        elif m := r_lt.match(group):
+            value = parse_value(m.group(1))
+            _cond = make_lt(value)
+        elif m := r_either_code.match(group):
+            v1 = parse_value(m.group(1))
+            v2 = parse_value(m.group(2))
+            _cond = make_or(make_eq(v1), make_eq(v2))
+        elif group in ["finite", "a finite number"]:
+            _cond = math.isfinite
+        elif group in "a positive (i.e., greater than ``0``) finite number":
+            _cond = lambda i: math.isfinite(i) and i > 0
+        elif group == "a negative (i.e., less than ``0``) finite number":
+            _cond = lambda i: math.isfinite(i) and i < 0
+        elif group == "positive":
+            _cond = lambda i: math.copysign(1, i) == 1
+        elif group == "negative":
+            _cond = lambda i: math.copysign(1, i) == -1
+        elif "nonzero finite" in group:
+            _cond = lambda i: math.isfinite(i) and i != 0
+        elif group == "an integer value":
+            _cond = lambda i: i.is_integer()
+        elif group == "not an integer value":
+            _cond = lambda i: not i.is_integer()
+        elif group == "an odd integer value":
+            _cond = lambda i: i.is_integer() and i % 2 == 1
+        elif group == "not an odd integer value":
+            _cond = lambda i: not (i.is_integer() and i % 2 == 1)
+        else:
+            raise ValueParseError(group)
+
+        if self.input_ == "i1":
+
+            def cond(i1: float, i2: float) -> bool:
+                return _cond(i1)
+
+        else:
+
+            def cond(i1: float, i2: float) -> bool:
+                return _cond(i2)
+
+        return cond
+
+
+class AndCondFactory(CondFactory):
+    def __init__(self, *cond_factories: CondFactory):
+        self.cond_factories = cond_factories
+
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
+        conds = [cond_factory(groups) for cond_factory in self.cond_factories]
+
+        def cond(i1: float, i2: float) -> bool:
+            return all(cond(i1, i2) for cond in conds)
+
+        return cond
+
+
+class BinaryCase(NamedTuple):
+    cond: BinaryCheck
+    check_result: Callable[[float], bool]
+
+
+class BinaryCaseFactory(NamedTuple):
+    cond_factory: CondFactory
+    result_re_group: int
+
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryCase:
+        in_cond = self.cond_factory(groups)
+
+        s_result = groups[self.result_re_group]
+        if m := r_array_element.match(s_result):
+            raise ValueParseError(s_result)  # TODO
+        elif m := r_code.match(s_result):
+            value = parse_value(m.group(1))
+            out_cond = make_eq(value)
+        elif m := r_approx_value.match(s_result):
+            value = parse_value(m.group(1))
+            out_cond = make_rough_eq(value)
+        else:
+            raise ValueParseError(s_result)
+
+        return BinaryCase(in_cond, out_cond)
+
+
+binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
     re.compile(
         "If ``x1_i`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
-    ): make_bin_and_factory(make_eq, make_eq),
-    re.compile(
-        "If either ``x1_i`` or ``x2_i`` is (.+), the result is (.+)"
-    ): make_bin_or_factory(make_eq),
-    re.compile(
-        "If ``x1_i`` is either (.+) or (.+) and ``x2_i`` is (.+), the result is (.+)"
-    ): lambda v1, v2, v3: (
-        lambda i1, i2: make_or(make_eq(v1), make_eq(v2))(i1) and make_eq(v3)(i2)
+    ): BinaryCaseFactory(
+        AndCondFactory(ValueCondFactory("i1", 0), ValueCondFactory("i2", 1)), 2
     ),
-    re.compile(
-        "If ``x1_i`` is (.+) and ``x2_i`` is either (.+) or (.+), the result is (.+)"
-    ): lambda v1, v2, v3: (
-        lambda i1, i2: make_eq(v1)(i1) and make_or(make_eq(v2), make_eq(v3))(i2)
-    ),
-    re.compile(
-        "If ``x1_i`` is either (.+) or (.+) and "
-        "``x2_i`` is either (.+) or (.+), the result is (.+)"
-    ): lambda v1, v2, v3, v4: (
-        lambda i1, i2: (
-            make_or(make_eq(v1), make_eq(v2))(i1)
-            and make_or(make_eq(v3), make_eq(v4))(i2)
-        )
-    ),
-    re.compile(
-        "If ``x1_i`` and ``x2_i`` have the same mathematical sign, "
-        "the result has a (.+)"
-    ): lambda: same_sign,
-    re.compile(
-        "If ``x1_i`` and ``x2_i`` have different mathematical signs, "
-        "the result has a (.+)"
-    ): lambda: diff_sign,
-    re.compile(
-        "If ``x1_i`` and ``x2_i`` have the same mathematical sign and "
-        "are both (.+), the result has a (.+)"
-    ): lambda v: lambda i1, i2: same_sign(i1, i2)
-    and make_eq(v)(i1)
-    and make_eq(v)(i2),
-    re.compile(
-        "If ``x1_i`` and ``x2_i`` have different mathematical signs and "
-        "are both (.+), the result has a (.+)"
-    ): lambda v: lambda i1, i2: diff_sign(i1, i2)
-    and make_eq(v)(i1)
-    and make_eq(v)(i2),
+    # re.compile(
+    #     "If ``x2_i`` is (.+), the result is (.+), even if ``x1_i`` is .+"
+    # ): lambda v: lambda _, i2: make_eq(v)(i2),
+    # re.compile(
+    #     "If ``x1_i`` is (.+) and ``x2_i`` is not equal to (.+), the result is (.+)"
+    # ): make_bin_and_factory(make_eq, lambda v: lambda i: i != v),
+    # re.compile(
+    #     "If ``x1_i`` is greater than (.+), ``x1_i`` is (.+), "
+    #     "and ``x2_i`` is (.+), the result is (.+)"
+    # ): make_bin_multi_and_factory([make_gt, make_eq], [make_eq]),
+    # re.compile(
+    #     "If ``x1_i`` is less than (.+), ``x1_i`` is (.+), "
+    #     "and ``x2_i`` is (.+), the result is (.+)"
+    # ): make_bin_multi_and_factory([make_lt, make_eq], [make_eq]),
+    # re.compile(
+    #     "If ``x1_i`` is less than (.+), ``x1_i`` is (.+), ``x2_i`` is (.+), "
+    #     "and ``x2_i`` is not (.+), the result is (.+)"
+    # ): make_bin_multi_and_factory([make_lt, make_eq], [make_eq, make_neq]),
+    # re.compile(
+    #     "If ``x1_i`` is (.+), ``x2_i`` is less than (.+), "
+    #     "and ``x2_i`` is (.+), the result is (.+)"
+    # ): make_bin_multi_and_factory([make_eq], [make_lt, make_eq]),
+    # re.compile(
+    #     "If ``x1_i`` is (.+), ``x2_i`` is less than (.+), "
+    #     "and ``x2_i`` is not (.+), the result is (.+)"
+    # ): make_bin_multi_and_factory([make_eq], [make_lt, make_neq]),
+    # re.compile(
+    #     "If ``x1_i`` is (.+), ``x2_i`` is greater than (.+), "
+    #     "and ``x2_i`` is (.+), the result is (.+)"
+    # ): make_bin_multi_and_factory([make_eq], [make_gt, make_eq]),
+    # re.compile(
+    #     "If ``x1_i`` is (.+), ``x2_i`` is greater than (.+), "
+    #     "and ``x2_i`` is not (.+), the result is (.+)"
+    # ): make_bin_multi_and_factory([make_eq], [make_gt, make_neq]),
+    # re.compile(
+    #     "If ``x1_i`` is greater than (.+) and ``x2_i`` is (.+), the result is (.+)"
+    # ): make_bin_and_factory(make_gt, make_eq),
+    # re.compile(
+    #     "If ``x1_i`` is (.+) and ``x2_i`` is greater than (.+), the result is (.+)"
+    # ): make_bin_and_factory(make_eq, make_gt),
+    # re.compile(
+    #     "If ``x1_i`` is less than (.+) and ``x2_i`` is (.+), the result is (.+)"
+    # ): make_bin_and_factory(make_lt, make_eq),
+    # re.compile(
+    #     "If ``x1_i`` is (.+) and ``x2_i`` is less than (.+), the result is (.+)"
+    # ): make_bin_and_factory(make_eq, make_lt),
+    # re.compile(
+    #     "If ``x1_i`` is not (?:equal to )?(.+) and ``x2_i`` is (.+), the result is (.+)"
+    # ): make_bin_and_factory(make_neq, make_eq),
+    # re.compile(
+    #     "If ``x1_i`` is (.+) and ``x2_i`` is not (?:equal to )?(.+), the result is (.+)"
+    # ): make_bin_and_factory(make_eq, make_neq),
+    # re.compile(
+    #     r"If `abs\(x1_i\)` is greater than (.+) and ``x2_i`` is (.+), "
+    #     "the result is (.+)"
+    # ): make_bin_and_factory(absify_cond_factory(make_gt), make_eq),
+    # re.compile(
+    #     r"If `abs\(x1_i\)` is less than (.+) and ``x2_i`` is (.+), the result is (.+)"
+    # ): make_bin_and_factory(absify_cond_factory(make_lt), make_eq),
+    # re.compile(
+    #     r"If `abs\(x1_i\)` is (.+) and ``x2_i`` is (.+), the result is (.+)"
+    # ): make_bin_and_factory(absify_cond_factory(make_eq), make_eq),
+    # re.compile(
+    #     "If ``x1_i`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
+    # ): make_bin_and_factory(make_eq, make_eq),
+    # re.compile(
+    #     "If either ``x1_i`` or ``x2_i`` is (.+), the result is (.+)"
+    # ): make_bin_or_factory(make_eq),
+    # re.compile(
+    #     "If ``x1_i`` is either (.+) or (.+) and ``x2_i`` is (.+), the result is (.+)"
+    # ): lambda v1, v2, v3: (
+    #     lambda i1, i2: make_or(make_eq(v1), make_eq(v2))(i1) and make_eq(v3)(i2)
+    # ),
+    # re.compile(
+    #     "If ``x1_i`` is (.+) and ``x2_i`` is either (.+) or (.+), the result is (.+)"
+    # ): lambda v1, v2, v3: (
+    #     lambda i1, i2: make_eq(v1)(i1) and make_or(make_eq(v2), make_eq(v3))(i2)
+    # ),
+    # re.compile(
+    #     "If ``x1_i`` is either (.+) or (.+) and "
+    #     "``x2_i`` is either (.+) or (.+), the result is (.+)"
+    # ): lambda v1, v2, v3, v4: (
+    #     lambda i1, i2: (
+    #         make_or(make_eq(v1), make_eq(v2))(i1)
+    #         and make_or(make_eq(v3), make_eq(v4))(i2)
+    #     )
+    # ),
+    # re.compile(
+    #     "If ``x1_i`` and ``x2_i`` have the same mathematical sign, "
+    #     "the result has a (.+)"
+    # ): lambda: same_sign,
+    # re.compile(
+    #     "If ``x1_i`` and ``x2_i`` have different mathematical signs, "
+    #     "the result has a (.+)"
+    # ): lambda: diff_sign,
+    # re.compile(
+    #     "If ``x1_i`` and ``x2_i`` have the same mathematical sign and "
+    #     "are both (.+), the result has a (.+)"
+    # ): lambda v: (
+    #     lambda i1, i2: same_sign(i1, i2) and make_eq(v)(i1) and make_eq(v)(i2)
+    # ),
+    # re.compile(
+    #     "If ``x1_i`` and ``x2_i`` have different mathematical signs and "
+    #     "are both (.+), the result has a (.+)"
+    # ): lambda v: (
+    #     lambda i1, i2: diff_sign(i1, i2) and make_eq(v)(i1) and make_eq(v)(i2)
+    # ),
     # TODO: support capturing values that come after the result
     # re.compile(r"If ``x1_i`` and ``x2_i`` have the same mathematical sign, the result has a (.+), unless the result is (.+)\. If the result is .+, the \"sign\" of .+ is implementation-defined")
     # re.compile(r"If ``x1_i`` and ``x2_i`` have different mathematical signs, the result has a (.+), unless the result is (.+)\. If the result is (.+), the \"sign\" of (.+) is implementation-defined")
 }
 
 
-def parse_binary_docstring(docstring: str) -> Dict[Callable, Result]:
+def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
     match = r_special_cases.search(docstring)
     if match is None:
-        return {}
-    cases = match.group(1).split("\n")[:-1]
-    condition_to_result = {}
-    for line in cases:
+        return []
+    lines = match.group(1).split("\n")[:-1]
+    cases = []
+    for line in lines:
         if m := r_case.match(line):
             case = m.group(1)
         else:
             warn(f"line not machine-readable: '{line}'")
             continue
-        for pattern, make_cond in binary_pattern_to_condition_factory.items():
+        for pattern, make_case in binary_pattern_to_case_factory.items():
             if m := pattern.search(case):
-                *s_values, s_result = m.groups()
                 try:
-                    values = [parse_inline_code(v) for v in s_values]
+                    case = make_case(m.groups())
                 except ValueParseError as e:
-                    warn(f"value not machine-readable: '{e.value}'")
+                    warn(f"not machine-readable: '{e.value}'")
                     break
-                cond = make_cond(*values)
-                try:
-                    result = parse_result(s_result)
-                except ValueParseError as e:
-                    warn(f"result not machine-readable: '{e.value}'")
-                    break
-                condition_to_result[cond] = result
+                cases.append(case)
                 break
         else:
             if not r_remaining_case.search(case):
                 warn(f"case not machine-readable: '{case}'")
-    return condition_to_result
+    return cases
 
 
 # Here be the tests
@@ -461,16 +596,16 @@ for stub in category_to_funcs["elementwise"]:
         warn(f"{func=} has no parameters")
         continue
     if param_names[0] == "x":
-        if condition_to_result := parse_unary_docstring(stub.__doc__):
-            p = pytest.param(stub.__name__, func, condition_to_result, id=stub.__name__)
-            unary_params.append(p)
+        # if cases := parse_unary_docstring(stub.__doc__):
+        #     p = pytest.param(stub.__name__, func, cases, id=stub.__name__)
+        #     unary_params.append(p)
         continue
     if len(sig.parameters) == 1:
         warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
         continue
     if param_names[0] == "x1" and param_names[1] == "x2":
-        if condition_to_result := parse_binary_docstring(stub.__doc__):
-            p = pytest.param(stub.__name__, func, condition_to_result, id=stub.__name__)
+        if cases := parse_binary_docstring(stub.__doc__):
+            p = pytest.param(stub.__name__, func, cases, id=stub.__name__)
             binary_params.append(p)
         continue
     else:
@@ -486,14 +621,14 @@ for stub in category_to_funcs["elementwise"]:
 # indicating we should modify the array strategy being used.
 
 
-@pytest.mark.parametrize("func_name, func, condition_to_result", unary_params)
+@pytest.mark.parametrize("func_name, func, cases", unary_params)
 @given(x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)))
-def test_unary(func_name, func, condition_to_result, x):
+def test_unary(func_name, func, cases, x):
     res = func(x)
     good_example = False
     for idx in sh.ndindex(res.shape):
         in_ = float(x[idx])
-        for cond, result in condition_to_result.items():
+        for cond, result in cases.items():
             if cond(in_):
                 good_example = True
                 out = float(res[idx])
@@ -519,7 +654,7 @@ def test_unary(func_name, func, condition_to_result, x):
     assume(good_example)
 
 
-@pytest.mark.parametrize("func_name, func, condition_to_result", binary_params)
+@pytest.mark.parametrize("func_name, func, cases", binary_params)
 @given(
     *hh.two_mutual_arrays(
         dtypes=dh.float_dtypes,
@@ -527,34 +662,35 @@ def test_unary(func_name, func, condition_to_result, x):
     )
 )
 @settings(suppress_health_check=[HealthCheck.filter_too_much])  # TODO: remove
-def test_binary(func_name, func, condition_to_result, x1, x2):
+def test_binary(func_name, func, cases, x1, x2):
     res = func(x1, x2)
     good_example = False
     for l_idx, r_idx, o_idx in sh.iter_indices(x1.shape, x2.shape, res.shape):
         l = float(x1[l_idx])
         r = float(x2[r_idx])
-        for cond, result in condition_to_result.items():
-            if cond(l, r):
+        for case in cases:
+            if case.cond(l, r):
                 good_example = True
                 out = float(res[o_idx])
-                f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
-                f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
-                f_out = f"{sh.fmt_idx('out', o_idx)}={out}"
-                if result.strict_check:
-                    msg = (
-                        f"{f_out}, but should be {result.repr_} [{func_name}()]\n"
-                        f"{f_left}, {f_right}"
-                    )
-                    if math.isnan(result.value):
-                        assert math.isnan(out), msg
-                    else:
-                        assert out == result.value, msg
-                else:
-                    assert math.isfinite(result.value)  # sanity check
-                    assert math.isclose(out, result.value, abs_tol=0.1), (
-                        f"{f_out}, but should be roughly {result.repr_}={result.value} "
-                        f"[{func_name}()]\n"
-                        f"{f_left}, {f_right}"
-                    )
+                assert case.check_result(out)
+                # f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
+                # f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
+                # f_out = f"{sh.fmt_idx('out', o_idx)}={out}"
+                # if result.strict_check:
+                #     msg = (
+                #         f"{f_out}, but should be {result.repr_} [{func_name}()]\n"
+                #         f"{f_left}, {f_right}"
+                #     )
+                #     if math.isnan(result.value):
+                #         assert math.isnan(out), msg
+                #     else:
+                #         assert out == result.value, msg
+                # else:
+                #     assert math.isfinite(result.value)  # sanity check
+                #     assert math.isclose(out, result.value, abs_tol=0.1), (
+                #         f"{f_out}, but should be roughly {result.repr_}={result.value} "
+                #         f"[{func_name}()]\n"
+                #         f"{f_left}, {f_right}"
+                #     )
                 break
     assume(good_example)
