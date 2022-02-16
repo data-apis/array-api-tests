@@ -1,6 +1,7 @@
 import inspect
 import math
 import re
+from dataclasses import dataclass
 from typing import (
     Callable,
     Dict,
@@ -15,7 +16,6 @@ from typing import (
 from warnings import warn
 
 import pytest
-from attr import dataclass
 from hypothesis import HealthCheck, assume, given, settings
 
 from . import dtype_helpers as dh
@@ -524,13 +524,28 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
         AndCondFactory(ValueCondFactory("i1", 0), ValueCondFactory("i2", 1)),
         ResultCheckFactory(2),
     ),
-    # re.compile(
-    #     "If ``x2_i`` is (.+), the result is (.+), even if ``x1_i`` is .+"
-    # ): lambda v: lambda _, i2: make_eq(v)(i2),
-    # re.compile(
-    #     "If ``x1_i`` is (.+), ``x1_i`` (.+), "
-    #     "and ``x2_i`` is (.+), the result is (.+)"
-    # )
+    re.compile(
+        "If ``x1_i`` is (.+), ``x1_i`` (.+), "
+        "and ``x2_i`` is (.+), the result is (.+)"
+    ): BinaryCaseFactory(
+        AndCondFactory(
+            ValueCondFactory("i1", 0),
+            ValueCondFactory("i1", 1),
+            ValueCondFactory("i2", 2),
+        ),
+        ResultCheckFactory(3),
+    ),
+    re.compile(
+        "If ``x1_i`` is (.+), ``x2_i`` (.+), "
+        "and ``x2_i`` is (.+), the result is (.+)"
+    ): BinaryCaseFactory(
+        AndCondFactory(
+            ValueCondFactory("i1", 0),
+            ValueCondFactory("i2", 1),
+            ValueCondFactory("i2", 2),
+        ),
+        ResultCheckFactory(3),
+    ),
     # re.compile(
     #     r"If `abs\(x1_i\)` is greater than (.+) and ``x2_i`` is (.+), "
     #     "the result is (.+)"
@@ -560,6 +575,9 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
         rf"{r_result_sign.pattern} , unless the result is (.+)\. If the result "
         r"is ``NaN``, the \"sign\" of ``NaN`` is implementation-defined\."
     ): BinaryCaseFactory(SignCondFactory(0), ResultSignCheckFactory(1)),
+    re.compile(
+        "If ``x2_i`` is (.+), the result is (.+), even if ``x1_i`` is .+"
+    ): BinaryCaseFactory(ValueCondFactory("i2", 0), ResultCheckFactory(1)),
 }
 
 
