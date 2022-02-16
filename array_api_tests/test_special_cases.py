@@ -299,8 +299,19 @@ def parse_unary_docstring(docstring: str) -> Dict[Callable, Result]:
     return cases
 
 
-class CondFactory(Protocol):
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
+class BinaryCond(NamedTuple):
+    cond: BinaryCheck
+    repr_: str
+
+    def __call__(self, i1: float, i2: float) -> bool:
+        return self.cond(i1, i2)
+
+    def __repr__(self):
+        return self.repr_
+
+
+class BinaryCondFactory(Protocol):
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryCond:
         ...
 
 
@@ -310,31 +321,43 @@ r_either_code = re.compile(f"either {r_code.pattern} or {r_code.pattern}")
 r_gt = re.compile(f"greater than {r_code.pattern}")
 r_lt = re.compile(f"less than {r_code.pattern}")
 
+x1_i = "x1ᵢ"
+x2_i = "x2ᵢ"
+
 
 @dataclass
-class ValueCondFactory(CondFactory):
+class ValueCondFactory(BinaryCondFactory):
     input_: Union[Literal["i1"], Literal["i2"], Literal["either"], Literal["both"]]
     re_groups_i: int
+    abs_: bool = False
 
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryCond:
         group = groups[self.re_groups_i]
 
         if m := r_array_element.match(group):
-            cond_factory = make_eq if m.group(1) != "-" else make_neq
+            assert not self.abs_  # sanity check
+            sign = m.group(1)
+            if sign == "-":
+                signer = lambda i: -i
+            else:
+                signer = lambda i: i
+
             if self.input_ == "i1":
+                repr_ = f"{x1_i} == {sign}{x2_i}"
 
                 def cond(i1: float, i2: float) -> bool:
-                    _cond = cond_factory(i2)
+                    _cond = make_eq(signer(i2))
                     return _cond(i1)
 
             else:
                 assert self.input_ == "i2"  # sanity check
+                repr_ = f"{x2_i} == {sign}{x1_i}"
 
                 def cond(i1: float, i2: float) -> bool:
-                    _cond = cond_factory(i1)
+                    _cond = make_eq(signer(i1))
                     return _cond(i2)
 
-            return cond
+            return BinaryCond(cond, repr_)
 
         if m := r_not.match(group):
             group = m.group(1)
@@ -345,34 +368,45 @@ class ValueCondFactory(CondFactory):
         if m := r_code.match(group):
             value = parse_value(m.group(1))
             _cond = make_eq(value)
+            repr_template = "{} == " + str(value)
         elif m := r_gt.match(group):
             value = parse_value(m.group(1))
             _cond = make_gt(value)
+            repr_template = "{} > " + str(value)
         elif m := r_lt.match(group):
             value = parse_value(m.group(1))
             _cond = make_lt(value)
+            repr_template = "{} < " + str(value)
         elif m := r_either_code.match(group):
             v1 = parse_value(m.group(1))
             v2 = parse_value(m.group(2))
             _cond = make_or(make_eq(v1), make_eq(v2))
+            repr_template = "{} == " + str(v1) + " or {} == " + str(v2)
         elif group in ["finite", "a finite number"]:
             _cond = math.isfinite
+            repr_template = "isfinite({})"
         elif group in "a positive (i.e., greater than ``0``) finite number":
             _cond = lambda i: math.isfinite(i) and i > 0
+            repr_template = "isfinite({}) and {} > 0"
         elif group == "a negative (i.e., less than ``0``) finite number":
             _cond = lambda i: math.isfinite(i) and i < 0
+            repr_template = "isfinite({}) and {} < 0"
         elif group == "positive":
             _cond = lambda i: math.copysign(1, i) == 1
+            repr_template = "copysign(1, {}) == 1"
         elif group == "negative":
             _cond = lambda i: math.copysign(1, i) == -1
+            repr_template = "copysign(1, {}) == -1"
         elif "nonzero finite" in group:
             _cond = lambda i: math.isfinite(i) and i != 0
+            repr_template = "copysign(1, {}) == -1"
         elif group == "an integer value":
             _cond = lambda i: i.is_integer()
+            repr_template = "{}.is_integer()"
         elif group == "an odd integer value":
             _cond = lambda i: i.is_integer() and i % 2 == 1
+            repr_template = "{}.is_integer() and {} % 2 == 1"
         else:
-            print(f"{group=}")
             raise ValueParseError(group)
 
         if notify:
@@ -380,65 +414,59 @@ class ValueCondFactory(CondFactory):
         else:
             final_cond = _cond
 
+        f_i1 = x1_i
+        f_i2 = x2_i
+        if self.abs_:
+            f_i1 = f"abs{f_i1}"
+            f_i2 = f"abs{f_i2}"
+
         if self.input_ == "i1":
+            repr_ = repr_template.replace("{}", f_i1)
 
             def cond(i1: float, i2: float) -> bool:
                 return final_cond(i1)
 
         elif self.input_ == "i2":
+            repr_ = repr_template.replace("{}", f_i2)
 
             def cond(i1: float, i2: float) -> bool:
                 return final_cond(i2)
 
         elif self.input_ == "either":
+            repr_ = f"({repr_template.replace('{}', f_i1)}) or ({repr_template.replace('{}', f_i2)})"
 
             def cond(i1: float, i2: float) -> bool:
                 return final_cond(i1) or final_cond(i2)
 
         else:
+            assert self.input_ == "both"  # sanity check
+            repr_ = f"({repr_template.replace('{}', f_i1)}) and ({repr_template.replace('{}', f_i2)})"
 
             def cond(i1: float, i2: float) -> bool:
                 return final_cond(i1) and final_cond(i2)
 
-        return cond
+        if notify:
+            repr_ = f"not ({repr_})"
+
+        return BinaryCond(cond, repr_)
 
 
-@dataclass
-class AbsCondFactory(CondFactory):
-    cond_factory: CondFactory
-
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
-        _cond = self.cond_factory(groups)
-
-        def cond(i1: float, i2: float) -> bool:
-            i1 = abs(i1)
-            i2 = abs(i2)
-            return _cond(i1, i2)
-
-        return cond
-
-
-class AndCondFactory(CondFactory):
-    def __init__(self, *cond_factories: CondFactory):
+class AndCondFactory(BinaryCondFactory):
+    def __init__(self, *cond_factories: BinaryCondFactory):
         self.cond_factories = cond_factories
 
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryCond:
         conds = [cond_factory(groups) for cond_factory in self.cond_factories]
+        repr_ = " and ".join(f"({cond!r})" for cond in conds)
 
         def cond(i1: float, i2: float) -> bool:
             return all(cond(i1, i2) for cond in conds)
 
-        return cond
-
-    def __repr__(self) -> str:
-        f_cond_factories = ", ".join(
-            repr(cond_factory) for cond_factory in self.cond_factories
-        )
-        return f"{self.__class__.__name__}({f_cond_factories})"
+        return BinaryCond(cond, repr_)
 
 
 @dataclass
-class SignCondFactory(CondFactory):
+class SignCondFactory(BinaryCondFactory):
     re_groups_i: int
 
     def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
@@ -451,45 +479,67 @@ class SignCondFactory(CondFactory):
             raise ValueParseError(group)
 
 
-BinaryResultCheck = Callable[[float, float, float], bool]
+class BinaryResultCheck(NamedTuple):
+    check_result: Callable[[float, float, float], bool]
+    repr_: str
+
+    def __call__(self, i1: float, i2: float, result: float) -> bool:
+        return self.check_result(i1, i2, result)
+
+    def __repr__(self):
+        return self.repr_
 
 
-class ResultCheckFactory(NamedTuple):
+class BinaryResultCheckFactory(Protocol):
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryCond:
+        ...
+
+
+@dataclass
+class ResultCheckFactory(BinaryResultCheckFactory):
     re_groups_i: int
 
     def __call__(self, groups: Tuple[str, ...]) -> BinaryResultCheck:
         group = groups[self.re_groups_i]
 
         if m := r_array_element.match(group):
-            cond_factory = make_eq if m.group(1) != "-" else make_neq
+            sign, input_ = m.groups()
+            if sign == "-":
+                signer = lambda i: -i
+            else:
+                signer = lambda i: i
 
-            if m.group(2) == "1":
+            if input_ == "1":
+                repr_ = f"{sign}{x1_i}"
 
-                def cond(i1: float, i2: float, result: float) -> bool:
-                    _cond = cond_factory(i1)
-                    return _cond(result)
+                def check_result(i1: float, i2: float, result: float) -> bool:
+                    _check_result = make_eq(signer(i1))
+                    return _check_result(result)
 
             else:
+                repr_ = f"{sign}{x2_i}"
 
-                def cond(i1: float, i2: float, result: float) -> bool:
-                    _cond = cond_factory(i2)
-                    return _cond(result)
+                def check_result(i1: float, i2: float, result: float) -> bool:
+                    _check_result = make_eq(signer(i2))
+                    return _check_result(result)
 
-            return cond
+            return BinaryResultCheck(check_result, repr_)
 
         if m := r_code.match(group):
             value = parse_value(m.group(1))
-            _cond = make_eq(value)
+            _check_result = make_eq(value)
+            repr_ = str(value)
         elif m := r_approx_value.match(group):
             value = parse_value(m.group(1))
-            _cond = make_rough_eq(value)
+            _check_result = make_rough_eq(value)
+            repr_ = f"~{value}"
         else:
             raise ValueParseError(group)
 
-        def cond(i1: float, i2: float, result: float) -> bool:
-            return _cond(result)
+        def check_result(i1: float, i2: float, result: float) -> bool:
+            return _check_result(result)
 
-        return cond
+        return BinaryResultCheck(check_result, repr_)
 
 
 class ResultSignCheckFactory(ResultCheckFactory):
@@ -516,12 +566,15 @@ class ResultSignCheckFactory(ResultCheckFactory):
 
 
 class BinaryCase(NamedTuple):
-    cond: BinaryCheck
+    cond: BinaryCond
     check_result: BinaryResultCheck
+
+    def __repr__(self):
+        return f"BinaryCase(<{self.cond} -> {self.check_result}>)"
 
 
 class BinaryCaseFactory(NamedTuple):
-    cond_factory: CondFactory
+    cond_factory: BinaryCondFactory
     check_result_factory: ResultCheckFactory
 
     def __call__(self, groups: Tuple[str, ...]) -> BinaryCase:
@@ -564,9 +617,7 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
     re.compile(
         r"If ``abs\(x1_i\)`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
     ): BinaryCaseFactory(
-        AndCondFactory(
-            AbsCondFactory(ValueCondFactory("i1", 0)), ValueCondFactory("i2", 1)
-        ),
+        AndCondFactory(ValueCondFactory("i1", 0, abs_=True), ValueCondFactory("i2", 1)),
         ResultCheckFactory(2),
     ),
     re.compile(
@@ -726,25 +777,11 @@ def test_binary(func_name, func, cases, x1, x2):
             if case.cond(l, r):
                 good_example = True
                 o = float(res[o_idx])
-                assert case.check_result(l, r, o)
-                # f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
-                # f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
-                # f_out = f"{sh.fmt_idx('out', o_idx)}={out}"
-                # if result.strict_check:
-                #     msg = (
-                #         f"{f_out}, but should be {result.repr_} [{func_name}()]\n"
-                #         f"{f_left}, {f_right}"
-                #     )
-                #     if math.isnan(result.value):
-                #         assert math.isnan(out), msg
-                #     else:
-                #         assert out == result.value, msg
-                # else:
-                #     assert math.isfinite(result.value)  # sanity check
-                #     assert math.isclose(out, result.value, abs_tol=0.1), (
-                #         f"{f_out}, but should be roughly {result.repr_}={result.value} "
-                #         f"[{func_name}()]\n"
-                #         f"{f_left}, {f_right}"
-                #     )
+                f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
+                f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
+                f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
+                assert case.check_result(l, r, o), (
+                    f"{f_out} not good [{func_name}()]\n" f"{f_left}, {f_right}"
+                )
                 break
     assume(good_example)
