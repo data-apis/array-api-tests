@@ -403,6 +403,21 @@ class ValueCondFactory(CondFactory):
         return cond
 
 
+@dataclass
+class AbsCondFactory(CondFactory):
+    cond_factory: CondFactory
+
+    def __call__(self, groups: Tuple[str, ...]) -> BinaryCheck:
+        _cond = self.cond_factory(groups)
+
+        def cond(i1: float, i2: float) -> bool:
+            i1 = abs(i1)
+            i2 = abs(i2)
+            return _cond(i1, i2)
+
+        return cond
+
+
 class AndCondFactory(CondFactory):
     def __init__(self, *cond_factories: CondFactory):
         self.cond_factories = cond_factories
@@ -546,16 +561,14 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
         ),
         ResultCheckFactory(3),
     ),
-    # re.compile(
-    #     r"If `abs\(x1_i\)` is greater than (.+) and ``x2_i`` is (.+), "
-    #     "the result is (.+)"
-    # ): make_bin_and_factory(absify_cond_factory(make_gt), make_eq),
-    # re.compile(
-    #     r"If `abs\(x1_i\)` is less than (.+) and ``x2_i`` is (.+), the result is (.+)"
-    # ): make_bin_and_factory(absify_cond_factory(make_lt), make_eq),
-    # re.compile(
-    #     r"If `abs\(x1_i\)` is (.+) and ``x2_i`` is (.+), the result is (.+)"
-    # ): make_bin_and_factory(absify_cond_factory(make_eq), make_eq),
+    re.compile(
+        r"If ``abs\(x1_i\)`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
+    ): BinaryCaseFactory(
+        AndCondFactory(
+            AbsCondFactory(ValueCondFactory("i1", 0)), ValueCondFactory("i2", 1)
+        ),
+        ResultCheckFactory(2),
+    ),
     re.compile(
         "If either ``x1_i`` or ``x2_i`` is (.+), the result is (.+)"
     ): BinaryCaseFactory(ValueCondFactory("either", 0), ResultCheckFactory(1)),
