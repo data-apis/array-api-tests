@@ -15,8 +15,9 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 
 import pytest
 from hypothesis import assume, given
-from hypothesis.strategies import (booleans, composite, none, tuples, integers,
-                                   shared, sampled_from, one_of, data, just)
+from hypothesis.strategies import (booleans, composite, none, tuples, floats,
+                                   integers, shared, sampled_from, one_of,
+                                   data, just)
 from ndindex import iter_indices
 
 from .array_helpers import assert_exactly_equal, asarray
@@ -27,7 +28,7 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  mutually_promotable_dtypes, one_d_shapes,
                                  two_mutually_broadcastable_shapes,
                                  SQRT_MAX_ARRAY_SIZE, finite_matrices,
-                                 rtol_shared_matrix_shapes, rtols)
+                                 rtol_shared_matrix_shapes, rtols, axes)
 from . import dtype_helpers as dh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
@@ -645,11 +646,44 @@ def test_vecdot(dtypes, shape, data):
     # TODO: assert shape and elements
 
 
+# Insanely large orders might not work. There isn't a limit specified in the
+# spec, so we just limit to reasonable values here.
+max_ord = 100
+
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
-    kw=kwargs(axis=todo, keepdims=todo, ord=todo)
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes(min_side=1)),
+    data=data(),
 )
-def test_vector_norm(x, kw):
-    # res = linalg.vector_norm(x, **kw)
-    pass
+def test_vector_norm(x, data):
+    kw = data.draw(
+        # We use data because axes is parameterized on x.ndim
+        kwargs(axis=axes(x.ndim),
+               keepdims=booleans(),
+               ord=one_of(
+                   just(1),
+                   just(2),
+                   just(float('inf')),
+                   integers(1, max_ord),
+                   floats(1, max_ord, allow_nan=False,
+                          allow_infinity=False),
+                   just(0),
+                   just(-1),
+                   just(-2),
+                   just(float('-inf')),
+                   integers(-max_ord, -1),
+                   floats(-max_ord, -1, allow_nan=False,
+                          allow_infinity=False),
+               )), label="kw")
+
+
+    res = linalg.vector_norm(x, **kw)
+    axis = kw.get('axis', None)
+    keepdims = kw.get('keepdims', False)
+    # TODO: Check that the ord values give the correct norms.
+    # ord = kw.get('ord', 2)
+
+    _axes = sh.normalise_axis(axis, x.ndim)
+
+    ph.assert_keepdimable_shape('linalg.vector_norm', res.shape, x.shape,
+                                _axes, keepdims, **kw)
