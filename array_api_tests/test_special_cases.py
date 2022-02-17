@@ -26,6 +26,8 @@ from . import xps
 from ._array_module import mod as xp
 from .stubs import category_to_funcs
 
+pytestmark = pytest.mark.ci
+
 # Condition factories
 # ------------------------------------------------------------------------------
 
