@@ -580,12 +580,6 @@ r_result_sign = re.compile("([a-z]+) mathematical sign")
 
 binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
     re.compile(
-        "If ``x1_i`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
-    ): BinaryCaseFactory(
-        AndCondFactory(ValueCondFactory("i1", 0), ValueCondFactory("i2", 1)),
-        ResultCheckFactory(2),
-    ),
-    re.compile(
         "If ``x1_i`` is (.+), ``x1_i`` (.+), "
         "and ``x2_i`` is (.+), the result is (.+)"
     ): BinaryCaseFactory(
@@ -606,6 +600,13 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
             ValueCondFactory("i2", 2),
         ),
         ResultCheckFactory(3),
+    ),
+    # This case must come after the above to avoid false matches
+    re.compile(
+        "If ``x1_i`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
+    ): BinaryCaseFactory(
+        AndCondFactory(ValueCondFactory("i1", 0), ValueCondFactory("i2", 1)),
+        ResultCheckFactory(2),
     ),
     re.compile(
         r"If ``abs\(x1_i\)`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
