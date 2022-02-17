@@ -396,8 +396,11 @@ class ValueCondFactory(BinaryCondFactory):
         else:
             raise ValueParseError(group)
 
+        assert not (notify and self.abs_)  # sanity check
         if notify:
             final_cond = lambda i: not _cond(i)
+        elif self.abs_:
+            final_cond = lambda i: _cond(abs(i))
         else:
             final_cond = _cond
 
