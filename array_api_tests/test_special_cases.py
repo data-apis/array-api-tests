@@ -16,7 +16,7 @@ from typing import (
 from warnings import warn
 
 import pytest
-from hypothesis import HealthCheck, assume, given, settings
+from hypothesis import assume, given
 
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
@@ -580,7 +580,19 @@ r_result_sign = re.compile("([a-z]+) mathematical sign")
 
 binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
     re.compile(
-        "If ``x1_i`` is (.+), ``x1_i`` (.+), "
+        "If ``x1_i`` is (.+), ``x1_i`` is (.+), ``x2_i`` is (.+), "
+        "and ``x2_i`` is (.+), the result is (.+)"
+    ): BinaryCaseFactory(
+        AndCondFactory(
+            ValueCondFactory("i1", 0),
+            ValueCondFactory("i1", 1),
+            ValueCondFactory("i2", 2),
+            ValueCondFactory("i2", 3),
+        ),
+        ResultCheckFactory(4),
+    ),
+    re.compile(
+        "If ``x1_i`` is (.+), ``x1_i`` is (.+), "
         "and ``x2_i`` is (.+), the result is (.+)"
     ): BinaryCaseFactory(
         AndCondFactory(
@@ -591,7 +603,7 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
         ResultCheckFactory(3),
     ),
     re.compile(
-        "If ``x1_i`` is (.+), ``x2_i`` (.+), "
+        "If ``x1_i`` is (.+), ``x2_i`` is (.+), "
         "and ``x2_i`` is (.+), the result is (.+)"
     ): BinaryCaseFactory(
         AndCondFactory(
@@ -601,7 +613,7 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
         ),
         ResultCheckFactory(3),
     ),
-    # This case must come after the above to avoid false matches
+    # This pattern must come after the above to avoid false matches
     re.compile(
         "If ``x1_i`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
     ): BinaryCaseFactory(
@@ -760,7 +772,6 @@ def test_unary(func_name, func, cases, x):
         two_shapes=hh.mutually_broadcastable_shapes(2, min_side=1),
     )
 )
-@settings(suppress_health_check=[HealthCheck.filter_too_much])  # TODO: remove
 def test_binary(func_name, func, cases, x1, x2):
     res = func(x1, x2)
     good_example = False
