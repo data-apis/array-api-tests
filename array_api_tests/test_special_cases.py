@@ -2,6 +2,7 @@ import inspect
 import math
 import re
 from dataclasses import dataclass
+from decimal import ROUND_HALF_EVEN, Decimal
 from typing import (
     Callable,
     Dict,
@@ -236,7 +237,7 @@ def parse_inline_code(inline_code: str) -> float:
 
 
 r_special_cases = re.compile(
-    r"\*\*Special [Cc]ases\*\*\n+\s*"
+    r"\*\*Special [Cc]ases\*\*(?:\n.*)+"
     r"For floating-point operands,\n+"
     r"((?:\s*-\s*.*\n)+)"
 )
@@ -342,8 +343,8 @@ class UnaryResultCheck:
     check_result: Callable
     expr: str
 
-    def __call__(self, result: float) -> bool:
-        return self.check_result(result)
+    def __call__(self, i: float, result: float) -> bool:
+        return self.check_result(i, result)
 
 
 class Case(Protocol):
@@ -366,7 +367,7 @@ class UnaryCase(Case):
         check_result, check_result_expr = parse_result(result_str)
         return cls(
             UnaryCond(cond, cond_expr),
-            UnaryResultCheck(check_result, check_result_expr),
+            UnaryResultCheck(lambda _, r: check_result(r), check_result_expr),
         )
 
     def __repr__(self):
@@ -374,9 +375,18 @@ class UnaryCase(Case):
 
 
 r_unary_case = re.compile("If ``x_i`` is (.+), the result is (.+)")
-# re.compile(
-#     "If two integers are equally close to ``x_i``, the result is (.+)"
-# ): lambda: (lambda i: (abs(i) - math.floor(abs(i))) == 0.5),
+r_even_int_round_case = re.compile(
+    "If two integers are equally close to ``x_i``, "
+    "the result is the even integer closest to ``x_i``"
+)
+
+even_int_round_case = UnaryCase(
+    cond=UnaryCond(lambda i: i % 0.5 == 0, "i % 0.5 == 0"),
+    check_result=UnaryResultCheck(
+        lambda i, r: r == float(Decimal(i).to_integral_exact(ROUND_HALF_EVEN)),
+        "Decimal(i).to_integral_exact(ROUND_HALF_EVEN)",
+    ),
+)
 
 
 def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
@@ -398,6 +408,8 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
                 warn(f"not machine-readable: '{e.value}'")
                 continue
             cases.append(case)
+        elif m := r_even_int_round_case.search(case):
+            cases.append(even_int_round_case)
         else:
             if not r_remaining_case.search(case):
                 warn(f"case not machine-readable: '{case}'")
@@ -795,7 +807,7 @@ def test_unary(func_name, func, cases, x):
                 f_in = f"{sh.fmt_idx('x', idx)}={in_}"
                 f_out = f"{sh.fmt_idx('out', idx)}={out}"
                 assert case.check_result(
-                    out
+                    in_, out
                 ), f"{f_out} not good [{func_name}()]\n{f_in}"
                 break
     assume(good_example)
