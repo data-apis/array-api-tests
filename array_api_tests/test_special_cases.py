@@ -130,6 +130,20 @@ def make_bin_or_factory(
     return make_bin_or
 
 
+def notify_cond(cond: UnaryCheck) -> UnaryCheck:
+    def not_cond(i: float) -> bool:
+        return not cond(i)
+
+    return not_cond
+
+
+def absify_cond(cond: UnaryCheck) -> UnaryCheck:
+    def abs_cond(i: float) -> bool:
+        return cond(abs(i))
+
+    return abs_cond
+
+
 def absify_cond_factory(
     make_cond: Callable[[float], UnaryCheck]
 ) -> Callable[[float], UnaryCheck]:
@@ -190,11 +204,10 @@ class ValueParseError(ValueError):
     value: str
 
 
-def parse_value(s_value: str) -> float:
-    assert not s_value.startswith("``") and not s_value.endswith("``")  # sanity check
-    m = r_value.match(s_value)
+def parse_value(value_str: str) -> float:
+    m = r_value.match(value_str)
     if m is None:
-        raise ValueParseError(s_value)
+        raise ValueParseError(value_str)
     if pi_m := r_pi.match(m.group(2)):
         value = math.pi
         if numerator := pi_m.group(1):
@@ -230,58 +243,82 @@ r_special_cases = re.compile(
 r_case = re.compile(r"\s+-\s*(.*)\.\n?")
 r_remaining_case = re.compile("In the remaining cases.+")
 
-
-# unary_pattern_to_condition_factory: Dict[Pattern, Callable] = {
-#     re.compile("If ``x_i`` is greater than (.+), the result is (.+)"): make_gt,
-#     re.compile("If ``x_i`` is less than (.+), the result is (.+)"): make_lt,
-#     re.compile("If ``x_i`` is either (.+) or (.+), the result is (.+)"): (
-#         lambda v1, v2: make_or(make_eq(v1), make_eq(v2))
-#     ),
-#     # This pattern must come after the previous patterns to avoid unwanted matches
-#     re.compile("If ``x_i`` is (.+), the result is (.+)"): make_eq,
-#     re.compile(
-#         "If two integers are equally close to ``x_i``, the result is (.+)"
-#     ): lambda: (lambda i: (abs(i) - math.floor(abs(i))) == 0.5),
-# }
-
-
-# def parse_unary_docstring(docstring: str) -> Dict[Callable, Result]:
-#     match = r_special_cases.search(docstring)
-#     if match is None:
-#         return {}
-#     cases = match.group(1).split("\n")[:-1]
-#     cases = {}
-#     for line in cases:
-#         if m := r_case.match(line):
-#             case = m.group(1)
-#         else:
-#             warn(f"line not machine-readable: '{line}'")
-#             continue
-#         for pattern, make_cond in unary_pattern_to_condition_factory.items():
-#             if m := pattern.search(case):
-#                 *s_values, s_result = m.groups()
-#                 try:
-#                     values = [parse_inline_code(v) for v in s_values]
-#                 except ValueParseError as e:
-#                     warn(f"value not machine-readable: '{e.value}'")
-#                     break
-#                 cond = make_cond(*values)
-#                 try:
-#                     result = parse_result(s_result)
-#                 except ValueParseError as e:
-#                     warn(f"result not machine-readable: '{e.value}'")
-
-#                     break
-#                 cases[cond] = result
-#                 break
-#         else:
-#             if not r_remaining_case.search(case):
-#                 warn(f"case not machine-readable: '{case}'")
-#     return cases
-
 x_i = "xᵢ"
 x1_i = "x1ᵢ"
 x2_i = "x2ᵢ"
+
+
+def parse_cond(cond_str: str):
+    if m := r_not.match(cond_str):
+        cond_str = m.group(1)
+        notify = True
+    else:
+        notify = False
+
+    if m := r_code.match(cond_str):
+        value = parse_value(m.group(1))
+        cond = make_eq(value)
+        expr_template = "{} == " + str(value)
+    elif m := r_gt.match(cond_str):
+        value = parse_value(m.group(1))
+        cond = make_gt(value)
+        expr_template = "{} > " + str(value)
+    elif m := r_lt.match(cond_str):
+        value = parse_value(m.group(1))
+        cond = make_lt(value)
+        expr_template = "{} < " + str(value)
+    elif m := r_either_code.match(cond_str):
+        v1 = parse_value(m.group(1))
+        v2 = parse_value(m.group(2))
+        cond = make_or(make_eq(v1), make_eq(v2))
+        expr_template = "{} == " + str(v1) + " or {} == " + str(v2)
+    elif cond_str in ["finite", "a finite number"]:
+        cond = math.isfinite
+        expr_template = "isfinite({})"
+    elif cond_str in "a positive (i.e., greater than ``0``) finite number":
+        cond = lambda i: math.isfinite(i) and i > 0
+        expr_template = "isfinite({}) and {} > 0"
+    elif cond_str == "a negative (i.e., less than ``0``) finite number":
+        cond = lambda i: math.isfinite(i) and i < 0
+        expr_template = "isfinite({}) and {} < 0"
+    elif cond_str == "positive":
+        cond = lambda i: math.copysign(1, i) == 1
+        expr_template = "copysign(1, {}) == 1"
+    elif cond_str == "negative":
+        cond = lambda i: math.copysign(1, i) == -1
+        expr_template = "copysign(1, {}) == -1"
+    elif "nonzero finite" in cond_str:
+        cond = lambda i: math.isfinite(i) and i != 0
+        expr_template = "copysign(1, {}) == -1"
+    elif cond_str == "an integer value":
+        cond = lambda i: i.is_integer()
+        expr_template = "{}.is_integer()"
+    elif cond_str == "an odd integer value":
+        cond = lambda i: i.is_integer() and i % 2 == 1
+        expr_template = "{}.is_integer() and {} % 2 == 1"
+    else:
+        raise ValueParseError(cond_str)
+
+    if notify:
+        cond = notify_cond(cond)
+        expr_template = f"not ({expr_template})"
+
+    return cond, expr_template
+
+
+def parse_result(result_str: str):
+    if m := r_code.match(result_str):
+        value = parse_value(m.group(1))
+        check_result = make_eq(value)
+        expr = str(value)
+    elif m := r_approx_value.match(result_str):
+        value = parse_value(m.group(1))
+        check_result = make_rough_eq(value)
+        expr = f"~{value}"
+    else:
+        raise ValueParseError(result_str)
+
+    return check_result, expr
 
 
 class Cond(Protocol):
@@ -289,6 +326,82 @@ class Cond(Protocol):
 
     def __call__(self, *args) -> bool:
         ...
+
+
+@dataclass
+class UnaryCond(Cond):
+    cond: UnaryCheck
+    expr: str
+
+    def __call__(self, i: float) -> bool:
+        return self.cond(i)
+
+
+@dataclass
+class UnaryResultCheck:
+    check_result: Callable
+    expr: str
+
+    def __call__(self, result: float) -> bool:
+        return self.check_result(result)
+
+
+class Case(Protocol):
+    def cond(self, *args) -> bool:
+        ...
+
+    def check_result(self, *args) -> bool:
+        ...
+
+
+@dataclass
+class UnaryCase(Case):
+    cond: UnaryCond
+    check_result: UnaryResultCheck
+
+    @classmethod
+    def from_strings(cls, cond_str: str, result_str: str):
+        cond, cond_expr_template = parse_cond(cond_str)
+        cond_expr = cond_expr_template.replace("{}", x_i)
+        check_result, check_result_expr = parse_result(result_str)
+        return cls(
+            UnaryCond(cond, cond_expr),
+            UnaryResultCheck(check_result, check_result_expr),
+        )
+
+    def __repr__(self):
+        return f"UnaryCase(<{self.cond.expr} -> {self.check_result.expr}>)"
+
+
+r_unary_case = re.compile("If ``x_i`` is (.+), the result is (.+)")
+# re.compile(
+#     "If two integers are equally close to ``x_i``, the result is (.+)"
+# ): lambda: (lambda i: (abs(i) - math.floor(abs(i))) == 0.5),
+
+
+def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
+    match = r_special_cases.search(docstring)
+    if match is None:
+        return []
+    lines = match.group(1).split("\n")[:-1]
+    cases = []
+    for line in lines:
+        if m := r_case.match(line):
+            case = m.group(1)
+        else:
+            warn(f"line not machine-readable: '{line}'")
+            continue
+        if m := r_unary_case.search(case):
+            try:
+                case = UnaryCase.from_strings(*m.groups())
+            except ValueParseError as e:
+                warn(f"not machine-readable: '{e.value}'")
+                continue
+            cases.append(case)
+        else:
+            if not r_remaining_case.search(case):
+                warn(f"case not machine-readable: '{case}'")
+    return cases
 
 
 @dataclass
@@ -346,63 +459,10 @@ class ValueCondFactory(BinaryCondFactory):
 
             return BinaryCond(cond, expr)
 
-        if m := r_not.match(group):
-            group = m.group(1)
-            notify = True
-        else:
-            notify = False
+        _cond, expr_template = parse_cond(group)
 
-        if m := r_code.match(group):
-            value = parse_value(m.group(1))
-            _cond = make_eq(value)
-            repr_template = "{} == " + str(value)
-        elif m := r_gt.match(group):
-            value = parse_value(m.group(1))
-            _cond = make_gt(value)
-            repr_template = "{} > " + str(value)
-        elif m := r_lt.match(group):
-            value = parse_value(m.group(1))
-            _cond = make_lt(value)
-            repr_template = "{} < " + str(value)
-        elif m := r_either_code.match(group):
-            v1 = parse_value(m.group(1))
-            v2 = parse_value(m.group(2))
-            _cond = make_or(make_eq(v1), make_eq(v2))
-            repr_template = "{} == " + str(v1) + " or {} == " + str(v2)
-        elif group in ["finite", "a finite number"]:
-            _cond = math.isfinite
-            repr_template = "isfinite({})"
-        elif group in "a positive (i.e., greater than ``0``) finite number":
-            _cond = lambda i: math.isfinite(i) and i > 0
-            repr_template = "isfinite({}) and {} > 0"
-        elif group == "a negative (i.e., less than ``0``) finite number":
-            _cond = lambda i: math.isfinite(i) and i < 0
-            repr_template = "isfinite({}) and {} < 0"
-        elif group == "positive":
-            _cond = lambda i: math.copysign(1, i) == 1
-            repr_template = "copysign(1, {}) == 1"
-        elif group == "negative":
-            _cond = lambda i: math.copysign(1, i) == -1
-            repr_template = "copysign(1, {}) == -1"
-        elif "nonzero finite" in group:
-            _cond = lambda i: math.isfinite(i) and i != 0
-            repr_template = "copysign(1, {}) == -1"
-        elif group == "an integer value":
-            _cond = lambda i: i.is_integer()
-            repr_template = "{}.is_integer()"
-        elif group == "an odd integer value":
-            _cond = lambda i: i.is_integer() and i % 2 == 1
-            repr_template = "{}.is_integer() and {} % 2 == 1"
-        else:
-            raise ValueParseError(group)
-
-        assert not (notify and self.abs_)  # sanity check
-        if notify:
-            final_cond = lambda i: not _cond(i)
-        elif self.abs_:
-            final_cond = lambda i: _cond(abs(i))
-        else:
-            final_cond = _cond
+        if self.abs_:
+            _cond = absify_cond(_cond)
 
         f_i1 = x1_i
         f_i2 = x2_i
@@ -411,32 +471,29 @@ class ValueCondFactory(BinaryCondFactory):
             f_i2 = f"abs({f_i2})"
 
         if self.input_ == "i1":
-            expr = repr_template.replace("{}", f_i1)
+            expr = expr_template.replace("{}", f_i1)
 
             def cond(i1: float, i2: float) -> bool:
-                return final_cond(i1)
+                return _cond(i1)
 
         elif self.input_ == "i2":
-            expr = repr_template.replace("{}", f_i2)
+            expr = expr_template.replace("{}", f_i2)
 
             def cond(i1: float, i2: float) -> bool:
-                return final_cond(i2)
+                return _cond(i2)
 
         elif self.input_ == "either":
-            expr = f"({repr_template.replace('{}', f_i1)}) or ({repr_template.replace('{}', f_i2)})"
+            expr = f"({expr_template.replace('{}', f_i1)}) or ({expr_template.replace('{}', f_i2)})"
 
             def cond(i1: float, i2: float) -> bool:
-                return final_cond(i1) or final_cond(i2)
+                return _cond(i1) or _cond(i2)
 
         else:
             assert self.input_ == "both"  # sanity check
-            expr = f"({repr_template.replace('{}', f_i1)}) and ({repr_template.replace('{}', f_i2)})"
+            expr = f"({expr_template.replace('{}', f_i1)}) and ({expr_template.replace('{}', f_i2)})"
 
             def cond(i1: float, i2: float) -> bool:
-                return final_cond(i1) and final_cond(i2)
-
-        if notify:
-            expr = f"not ({expr})"
+                return _cond(i1) and _cond(i2)
 
         return BinaryCond(cond, expr)
 
@@ -518,16 +575,7 @@ class ResultCheckFactory(BinaryResultCheckFactory):
 
             return BinaryResultCheck(check_result, expr)
 
-        if m := r_code.match(group):
-            value = parse_value(m.group(1))
-            _check_result = make_eq(value)
-            expr = str(value)
-        elif m := r_approx_value.match(group):
-            value = parse_value(m.group(1))
-            _check_result = make_rough_eq(value)
-            expr = f"~{value}"
-        else:
-            raise ValueParseError(group)
+        _check_result, expr = parse_result(group)
 
         def check_result(i1: float, i2: float, result: float) -> bool:
             return _check_result(result)
@@ -558,7 +606,8 @@ class ResultSignCheckFactory(ResultCheckFactory):
         return cond
 
 
-class BinaryCase(NamedTuple):
+@dataclass
+class BinaryCase(Case):
     cond: BinaryCond
     check_result: BinaryResultCheck
 
@@ -707,9 +756,9 @@ for stub in category_to_funcs["elementwise"]:
         warn(f"{func=} has no parameters")
         continue
     if param_names[0] == "x":
-        # if cases := parse_unary_docstring(stub.__doc__):
-        #     p = pytest.param(stub.__name__, func, cases, id=stub.__name__)
-        #     unary_params.append(p)
+        if cases := parse_unary_docstring(stub.__doc__):
+            p = pytest.param(stub.__name__, func, cases, id=stub.__name__)
+            unary_params.append(p)
         continue
     if len(sig.parameters) == 1:
         warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
@@ -739,28 +788,15 @@ def test_unary(func_name, func, cases, x):
     good_example = False
     for idx in sh.ndindex(res.shape):
         in_ = float(x[idx])
-        for cond, result in cases.items():
-            if cond(in_):
+        for case in cases:
+            if case.cond(in_):
                 good_example = True
                 out = float(res[idx])
                 f_in = f"{sh.fmt_idx('x', idx)}={in_}"
                 f_out = f"{sh.fmt_idx('out', idx)}={out}"
-                if result.strict_check:
-                    msg = (
-                        f"{f_out}, but should be {result.expr} [{func_name}()]\n"
-                        f"{f_in}"
-                    )
-                    if math.isnan(result.value):
-                        assert math.isnan(out), msg
-                    else:
-                        assert out == result.value, msg
-                else:
-                    assert math.isfinite(result.value)  # sanity check
-                    assert math.isclose(out, result.value, abs_tol=0.1), (
-                        f"{f_out}, but should be roughly {result.expr}={result.value} "
-                        f"[{func_name}()]\n"
-                        f"{f_in}"
-                    )
+                assert case.check_result(
+                    out
+                ), f"{f_out} not good [{func_name}()]\n{f_in}"
                 break
     assume(good_example)
 
@@ -785,8 +821,8 @@ def test_binary(func_name, func, cases, x1, x2):
                 f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
                 f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
                 f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
-                assert case.check_result(l, r, o), (
-                    f"{f_out} not good [{func_name}()]\n" f"{f_left}, {f_right}"
-                )
+                assert case.check_result(
+                    l, r, o
+                ), f"{f_out} not good [{func_name}()]\n{f_left}, {f_right}"
                 break
     assume(good_example)
