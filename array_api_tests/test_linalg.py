@@ -310,8 +310,6 @@ def test_matmul(x1, x2):
         assert res.shape == stack_shape + (x1.shape[-2], x2.shape[-1])
         _test_stacks(_array_module.matmul, x1, x2, res=res)
 
-matrix_norm_shapes = shared(matrix_shapes())
-
 @pytest.mark.xp_extension('linalg')
 @given(
     x=finite_matrices(),
