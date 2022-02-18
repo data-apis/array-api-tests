@@ -687,3 +687,11 @@ def test_vector_norm(x, data):
 
     ph.assert_keepdimable_shape('linalg.vector_norm', res.shape, x.shape,
                                 _axes, keepdims, **kw)
+    ph.assert_dtype('linalg.vector_norm', x.dtype, res.dtype)
+
+    _kw = kw.copy()
+    _kw.pop('axis', None)
+    _test_stacks(linalg.vector_norm, x, res=res,
+                 dims=x.ndim if keepdims else 0,
+                 matrix_axes=_axes, **_kw
+                 )
