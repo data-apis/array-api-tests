@@ -29,10 +29,6 @@ from .stubs import category_to_funcs
 
 pytestmark = pytest.mark.ci
 
-# Condition factories
-# ------------------------------------------------------------------------------
-
-
 UnaryCheck = Callable[[float], bool]
 BinaryCheck = Callable[[float, float], bool]
 
@@ -102,35 +98,6 @@ def make_and(cond1: UnaryCheck, cond2: UnaryCheck) -> UnaryCheck:
     return and_
 
 
-def make_bin_and_factory(
-    make_cond1: Callable[[float], UnaryCheck], make_cond2: Callable[[float], UnaryCheck]
-) -> Callable[[float, float], BinaryCheck]:
-    def make_bin_and(v1: float, v2: float) -> BinaryCheck:
-        cond1 = make_cond1(v1)
-        cond2 = make_cond2(v2)
-
-        def bin_and(i1: float, i2: float) -> bool:
-            return cond1(i1) and cond2(i2)
-
-        return bin_and
-
-    return make_bin_and
-
-
-def make_bin_or_factory(
-    make_cond: Callable[[float], UnaryCheck]
-) -> Callable[[float], BinaryCheck]:
-    def make_bin_or(v: float) -> BinaryCheck:
-        cond = make_cond(v)
-
-        def bin_or(i1: float, i2: float) -> bool:
-            return cond(i1) or cond(i2)
-
-        return bin_or
-
-    return make_bin_or
-
-
 def notify_cond(cond: UnaryCheck) -> UnaryCheck:
     def not_cond(i: float) -> bool:
         return not cond(i)
@@ -145,57 +112,12 @@ def absify_cond(cond: UnaryCheck) -> UnaryCheck:
     return abs_cond
 
 
-def absify_cond_factory(
-    make_cond: Callable[[float], UnaryCheck]
-) -> Callable[[float], UnaryCheck]:
-    def make_abs_cond(v: float) -> UnaryCheck:
-        cond = make_cond(v)
-
-        def abs_cond(i: float) -> bool:
-            i = abs(i)
-            return cond(i)
-
-        return abs_cond
-
-    return make_abs_cond
-
-
-def make_bin_multi_and_factory(
-    make_conds1: List[Callable[[float], UnaryCheck]],
-    make_conds2: List[Callable[[float], UnaryCheck]],
-) -> Callable:
-    def make_bin_multi_and(*values: float) -> BinaryCheck:
-        assert len(values) == len(make_conds1) + len(make_conds2)
-        conds1 = [make_cond(v) for make_cond, v in zip(make_conds1, values)]
-        conds2 = [make_cond(v) for make_cond, v in zip(make_conds2, values[::-1])]
-
-        def bin_multi_and(i1: float, i2: float) -> bool:
-            return all(cond(i1) for cond in conds1) and all(cond(i2) for cond in conds2)
-
-        return bin_multi_and
-
-    return make_bin_multi_and
-
-
-def same_sign(i1: float, i2: float) -> bool:
-    return math.copysign(1, i1) == math.copysign(1, i2)
-
-
-def diff_sign(i1: float, i2: float) -> bool:
-    return not same_sign(i1, i2)
-
-
-# Parse utils
-# ------------------------------------------------------------------------------
-
-
 repr_to_value = {
     "NaN": float("nan"),
     "infinity": float("inf"),
     "0": 0.0,
     "1": 1.0,
 }
-
 r_value = re.compile(r"([+-]?)(.+)")
 r_pi = re.compile(r"(\d?)π(?:/(\d))?")
 
@@ -244,12 +166,8 @@ r_special_cases = re.compile(
 r_case = re.compile(r"\s+-\s*(.*)\.\n?")
 r_remaining_case = re.compile("In the remaining cases.+")
 
-x_i = "xᵢ"
-x1_i = "x1ᵢ"
-x2_i = "x2ᵢ"
 
-
-def parse_cond(cond_str: str):
+def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str]:
     if m := r_not.match(cond_str):
         cond_str = m.group(1)
         notify = True
@@ -290,7 +208,7 @@ def parse_cond(cond_str: str):
         expr_template = "copysign(1, {}) == -1"
     elif "nonzero finite" in cond_str:
         cond = lambda i: math.isfinite(i) and i != 0
-        expr_template = "copysign(1, {}) == -1"
+        expr_template = "isfinite({}) and {} != 0"
     elif cond_str == "an integer value":
         cond = lambda i: i.is_integer()
         expr_template = "{}.is_integer()"
@@ -307,7 +225,7 @@ def parse_cond(cond_str: str):
     return cond, expr_template
 
 
-def parse_result(result_str: str):
+def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
     if m := r_code.match(result_str):
         value = parse_value(m.group(1))
         check_result = make_eq(value)
@@ -316,62 +234,69 @@ def parse_result(result_str: str):
         value = parse_value(m.group(1))
         check_result = make_rough_eq(value)
         expr = f"~{value}"
+    elif result_str == "positive":
+
+        def check_result(result: float) -> bool:
+            if math.isnan(result):
+                # The sign of NaN is out-of-scope
+                return True
+            return math.copysign(1, result) == 1
+
+        expr = "+"
+    elif result_str == "negative":
+
+        def check_result(result: float) -> bool:
+            if math.isnan(result):
+                # The sign of NaN is out-of-scope
+                return True
+            return math.copysign(1, result) == -1
+
+        expr = "-"
     else:
         raise ValueParseError(result_str)
 
     return check_result, expr
 
 
-class Cond(Protocol):
-    expr: str
-
-    def __call__(self, *args) -> bool:
-        ...
-
-
-@dataclass
-class UnaryCond(Cond):
-    cond: UnaryCheck
-    expr: str
-
-    def __call__(self, i: float) -> bool:
-        return self.cond(i)
-
-
-@dataclass
-class UnaryResultCheck:
-    check_result: Callable
-    expr: str
-
-    def __call__(self, i: float, result: float) -> bool:
-        return self.check_result(i, result)
-
-
 class Case(Protocol):
+    expr: str
+
     def cond(self, *args) -> bool:
         ...
 
     def check_result(self, *args) -> bool:
         ...
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(<{self.expr}>)"
 
-@dataclass
+    def __str__(self):
+        return self.expr
+
+
+class UnaryCond(Protocol):
+    def __call__(self, i: float) -> bool:
+        ...
+
+
+class UnaryResultCheck(Protocol):
+    def __call__(self, i: float, result: float) -> bool:
+        ...
+
+
+@dataclass(repr=False)
 class UnaryCase(Case):
-    cond: UnaryCond
+    expr: str
+    cond: UnaryCheck
     check_result: UnaryResultCheck
 
     @classmethod
     def from_strings(cls, cond_str: str, result_str: str):
         cond, cond_expr_template = parse_cond(cond_str)
-        cond_expr = cond_expr_template.replace("{}", x_i)
         check_result, check_result_expr = parse_result(result_str)
-        return cls(
-            UnaryCond(cond, cond_expr),
-            UnaryResultCheck(lambda _, r: check_result(r), check_result_expr),
-        )
-
-    def __repr__(self):
-        return f"UnaryCase(<{self.cond.expr} -> {self.check_result.expr}>)"
+        cond_expr = cond_expr_template.replace("{}", "xᵢ")
+        expr = f"{cond_expr} -> {check_result_expr}"
+        return cls(expr, cond, lambda i, result: check_result(result))
 
 
 r_unary_case = re.compile("If ``x_i`` is (.+), the result is (.+)")
@@ -379,12 +304,11 @@ r_even_int_round_case = re.compile(
     "If two integers are equally close to ``x_i``, "
     "the result is the even integer closest to ``x_i``"
 )
-
 even_int_round_case = UnaryCase(
-    cond=UnaryCond(lambda i: i % 0.5 == 0, "i % 0.5 == 0"),
-    check_result=UnaryResultCheck(
-        lambda i, r: r == float(Decimal(i).to_integral_exact(ROUND_HALF_EVEN)),
-        "Decimal(i).to_integral_exact(ROUND_HALF_EVEN)",
+    expr="i % 0.5 == 0 -> Decimal(i).to_integral_exact(ROUND_HALF_EVEN)",
+    cond=lambda i: i % 0.5 == 0,
+    check_result=lambda i, result: (
+        result == float(Decimal(i).to_integral_exact(ROUND_HALF_EVEN))
     ),
 )
 
@@ -417,7 +341,7 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
 
 
 @dataclass
-class BinaryCond(Cond):
+class BinaryCond:
     cond: BinaryCheck
     expr: str
 
@@ -455,7 +379,7 @@ class ValueCondFactory(BinaryCondFactory):
                 signer = lambda i: i
 
             if self.input_ == "i1":
-                expr = f"{x1_i} == {sign}{x2_i}"
+                expr = f"x1ᵢ == {sign}x2ᵢ"
 
                 def cond(i1: float, i2: float) -> bool:
                     _cond = make_eq(signer(i2))
@@ -463,7 +387,7 @@ class ValueCondFactory(BinaryCondFactory):
 
             else:
                 assert self.input_ == "i2"  # sanity check
-                expr = f"{x2_i} == {sign}{x1_i}"
+                expr = f"x2ᵢ == {sign}x1ᵢ"
 
                 def cond(i1: float, i2: float) -> bool:
                     _cond = make_eq(signer(i1))
@@ -476,8 +400,8 @@ class ValueCondFactory(BinaryCondFactory):
         if self.abs_:
             _cond = absify_cond(_cond)
 
-        f_i1 = x1_i
-        f_i2 = x2_i
+        f_i1 = "x1ᵢ"
+        f_i2 = "x2ᵢ"
         if self.abs_:
             f_i1 = f"abs({f_i1})"
             f_i2 = f"abs({f_i2})"
@@ -531,11 +455,17 @@ class SignCondFactory(BinaryCondFactory):
     def __call__(self, groups: Tuple[str, ...]) -> BinaryCond:
         group = groups[self.re_groups_i]
         if group == "the same mathematical sign":
-            cond = same_sign
-            expr = f"copysign(1, {x1_i}) == copysign(1, {x2_i})"
+
+            def cond(i1: float, i2: float) -> bool:
+                return math.copysign(1, i1) == math.copysign(1, i2)
+
+            expr = "copysign(1, x1ᵢ) == copysign(1, x2ᵢ)"
         elif group == "different mathematical signs":
-            cond = diff_sign
-            expr = f"copysign(1, {x1_i}) != copysign(1, {x2_i})"
+
+            def cond(i1: float, i2: float) -> bool:
+                return math.copysign(1, i1) != math.copysign(1, i2)
+
+            expr = "copysign(1, x1ᵢ) != copysign(1, x2ᵢ)"
         else:
             raise ValueParseError(group)
         return BinaryCond(cond, expr)
@@ -572,14 +502,14 @@ class ResultCheckFactory(BinaryResultCheckFactory):
                 signer = lambda i: i
 
             if input_ == "1":
-                expr = f"{sign}{x1_i}"
+                expr = f"{sign}x1ᵢ"
 
                 def check_result(i1: float, i2: float, result: float) -> bool:
                     _check_result = make_eq(signer(i1))
                     return _check_result(result)
 
             else:
-                expr = f"{sign}{x2_i}"
+                expr = f"{sign}x2ᵢ"
 
                 def check_result(i1: float, i2: float, result: float) -> bool:
                     _check_result = make_eq(signer(i2))
@@ -595,36 +525,11 @@ class ResultCheckFactory(BinaryResultCheckFactory):
         return BinaryResultCheck(check_result, expr)
 
 
-class ResultSignCheckFactory(ResultCheckFactory):
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryResultCheck:
-        group = groups[self.re_groups_i]
-        if group == "positive":
-
-            def cond(i1: float, i2: float, result: float) -> bool:
-                if math.isnan(result):
-                    return True
-                return result > 0 or ph.is_pos_zero(result)
-
-        elif group == "negative":
-
-            def cond(i1: float, i2: float, result: float) -> bool:
-                if math.isnan(result):
-                    return True
-                return result < 0 or ph.is_neg_zero(result)
-
-        else:
-            raise ValueParseError(group)
-
-        return cond
-
-
-@dataclass
+@dataclass(repr=False)
 class BinaryCase(Case):
+    expr: str
     cond: BinaryCond
     check_result: BinaryResultCheck
-
-    def __repr__(self):
-        return f"BinaryCase(<{self.cond.expr} -> {self.check_result}>)"
 
 
 class BinaryCaseFactory(NamedTuple):
@@ -634,7 +539,8 @@ class BinaryCaseFactory(NamedTuple):
     def __call__(self, groups: Tuple[str, ...]) -> BinaryCase:
         cond = self.cond_factory(groups)
         check_result = self.check_result_factory(groups)
-        return BinaryCase(cond, check_result)
+        expr = f"{cond.expr} -> {check_result.expr}"
+        return BinaryCase(expr, cond, check_result)
 
 
 r_result_sign = re.compile("([a-z]+) mathematical sign")
@@ -693,19 +599,19 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
     re.compile(
         "If ``x1_i`` and ``x2_i`` have (.+signs?), "
         f"the result has a {r_result_sign.pattern}"
-    ): BinaryCaseFactory(SignCondFactory(0), ResultSignCheckFactory(1)),
+    ): BinaryCaseFactory(SignCondFactory(0), ResultCheckFactory(1)),
     re.compile(
         "If ``x1_i`` and ``x2_i`` have (.+signs?) and are both (.+), "
         f"the result has a {r_result_sign.pattern}"
     ): BinaryCaseFactory(
         AndCondFactory(SignCondFactory(0), ValueCondFactory("both", 1)),
-        ResultSignCheckFactory(2),
+        ResultCheckFactory(2),
     ),
     re.compile(
         "If ``x1_i`` and ``x2_i`` have (.+signs?), the result has a "
         rf"{r_result_sign.pattern} , unless the result is (.+)\. If the result "
         r"is ``NaN``, the \"sign\" of ``NaN`` is implementation-defined\."
-    ): BinaryCaseFactory(SignCondFactory(0), ResultSignCheckFactory(1)),
+    ): BinaryCaseFactory(SignCondFactory(0), ResultCheckFactory(1)),
     re.compile(
         "If ``x2_i`` is (.+), the result is (.+), even if ``x1_i`` is .+"
     ): BinaryCaseFactory(ValueCondFactory("i2", 0), ResultCheckFactory(1)),
