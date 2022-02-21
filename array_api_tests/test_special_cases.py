@@ -3,18 +3,7 @@ import math
 import re
 from dataclasses import dataclass
 from decimal import ROUND_HALF_EVEN, Decimal
-from typing import (
-    Callable,
-    Dict,
-    List,
-    Literal,
-    Match,
-    NamedTuple,
-    Pattern,
-    Protocol,
-    Tuple,
-    Union,
-)
+from typing import Callable, List, Match, Protocol, Tuple
 from warnings import warn
 
 import pytest
@@ -159,13 +148,11 @@ def parse_inline_code(inline_code: str) -> float:
         raise ValueParseError(inline_code)
 
 
-r_special_cases = re.compile(
-    r"\*\*Special [Cc]ases\*\*(?:\n.*)+"
-    r"For floating-point operands,\n+"
-    r"((?:\s*-\s*.*\n)+)"
-)
-r_case = re.compile(r"\s+-\s*(.*)\.\n?")
-r_remaining_case = re.compile("In the remaining cases.+")
+r_not = re.compile("not (?:equal to )?(.+)")
+r_array_element = re.compile(r"``([+-]?)x([12])_i``")
+r_either_code = re.compile(f"either {r_code.pattern} or {r_code.pattern}")
+r_gt = re.compile(f"greater than {r_code.pattern}")
+r_lt = re.compile(f"less than {r_code.pattern}")
 
 
 def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str]:
@@ -235,7 +222,7 @@ def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
         value = parse_value(m.group(1))
         check_result = make_rough_eq(value)
         expr = f"~{value}"
-    elif result_str == "positive":
+    elif "positive" in result_str:
 
         def check_result(result: float) -> bool:
             if math.isnan(result):
@@ -244,7 +231,7 @@ def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
             return math.copysign(1, result) == 1
 
         expr = "+"
-    elif result_str == "negative":
+    elif "negative" in result_str:
 
         def check_result(result: float) -> bool:
             if math.isnan(result):
@@ -341,189 +328,14 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
     return cases
 
 
-@dataclass
-class BinaryCond:
-    cond: BinaryCheck
-    expr: str
-
+class BinaryCond(Protocol):
     def __call__(self, i1: float, i2: float) -> bool:
-        return self.cond(i1, i2)
-
-
-class BinaryCondFactory(Protocol):
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryCond:
         ...
 
 
-r_not = re.compile("not (?:equal to )?(.+)")
-r_array_element = re.compile(r"``([+-]?)x([12])_i``")
-r_either_code = re.compile(f"either {r_code.pattern} or {r_code.pattern}")
-r_gt = re.compile(f"greater than {r_code.pattern}")
-r_lt = re.compile(f"less than {r_code.pattern}")
-
-
-@dataclass
-class ValueCondFactory(BinaryCondFactory):
-    input_: Union[Literal["i1"], Literal["i2"], Literal["either"], Literal["both"]]
-    re_groups_i: int
-    abs_: bool = False
-
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryCond:
-        group = groups[self.re_groups_i]
-
-        if m := r_array_element.match(group):
-            assert not self.abs_  # sanity check
-            sign = m.group(1)
-            if sign == "-":
-                signer = lambda i: -i
-            else:
-                signer = lambda i: i
-
-            if self.input_ == "i1":
-                expr = f"x1ᵢ == {sign}x2ᵢ"
-
-                def cond(i1: float, i2: float) -> bool:
-                    _cond = make_eq(signer(i2))
-                    return _cond(i1)
-
-            else:
-                assert self.input_ == "i2"  # sanity check
-                expr = f"x2ᵢ == {sign}x1ᵢ"
-
-                def cond(i1: float, i2: float) -> bool:
-                    _cond = make_eq(signer(i1))
-                    return _cond(i2)
-
-            return BinaryCond(cond, expr)
-
-        _cond, expr_template = parse_cond(group)
-
-        if self.abs_:
-            _cond = absify_cond(_cond)
-
-        f_i1 = "x1ᵢ"
-        f_i2 = "x2ᵢ"
-        if self.abs_:
-            f_i1 = f"abs({f_i1})"
-            f_i2 = f"abs({f_i2})"
-
-        if self.input_ == "i1":
-            expr = expr_template.replace("{}", f_i1)
-
-            def cond(i1: float, i2: float) -> bool:
-                return _cond(i1)
-
-        elif self.input_ == "i2":
-            expr = expr_template.replace("{}", f_i2)
-
-            def cond(i1: float, i2: float) -> bool:
-                return _cond(i2)
-
-        elif self.input_ == "either":
-            expr = f"({expr_template.replace('{}', f_i1)}) or ({expr_template.replace('{}', f_i2)})"
-
-            def cond(i1: float, i2: float) -> bool:
-                return _cond(i1) or _cond(i2)
-
-        else:
-            assert self.input_ == "both"  # sanity check
-            expr = f"({expr_template.replace('{}', f_i1)}) and ({expr_template.replace('{}', f_i2)})"
-
-            def cond(i1: float, i2: float) -> bool:
-                return _cond(i1) and _cond(i2)
-
-        return BinaryCond(cond, expr)
-
-
-class AndCondFactory(BinaryCondFactory):
-    def __init__(self, *cond_factories: BinaryCondFactory):
-        self.cond_factories = cond_factories
-
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryCond:
-        conds = [cond_factory(groups) for cond_factory in self.cond_factories]
-        expr = " and ".join(f"({cond.expr})" for cond in conds)
-
-        def cond(i1: float, i2: float) -> bool:
-            return all(cond(i1, i2) for cond in conds)
-
-        return BinaryCond(cond, expr)
-
-
-@dataclass
-class SignCondFactory(BinaryCondFactory):
-    re_groups_i: int
-
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryCond:
-        group = groups[self.re_groups_i]
-        if group == "the same mathematical sign":
-
-            def cond(i1: float, i2: float) -> bool:
-                return math.copysign(1, i1) == math.copysign(1, i2)
-
-            expr = "copysign(1, x1ᵢ) == copysign(1, x2ᵢ)"
-        elif group == "different mathematical signs":
-
-            def cond(i1: float, i2: float) -> bool:
-                return math.copysign(1, i1) != math.copysign(1, i2)
-
-            expr = "copysign(1, x1ᵢ) != copysign(1, x2ᵢ)"
-        else:
-            raise ValueParseError(group)
-        return BinaryCond(cond, expr)
-
-
-class BinaryResultCheck(NamedTuple):
-    check_result: Callable[[float, float, float], bool]
-    expr: str
-
+class BinaryResultCheck(Protocol):
     def __call__(self, i1: float, i2: float, result: float) -> bool:
-        return self.check_result(i1, i2, result)
-
-    def __repr__(self):
-        return self.expr
-
-
-class BinaryResultCheckFactory(Protocol):
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryCond:
         ...
-
-
-@dataclass
-class ResultCheckFactory(BinaryResultCheckFactory):
-    re_groups_i: int
-
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryResultCheck:
-        group = groups[self.re_groups_i]
-
-        if m := r_array_element.match(group):
-            sign, input_ = m.groups()
-            if sign == "-":
-                signer = lambda i: -i
-            else:
-                signer = lambda i: i
-
-            if input_ == "1":
-                expr = f"{sign}x1ᵢ"
-
-                def check_result(i1: float, i2: float, result: float) -> bool:
-                    _check_result = make_eq(signer(i1))
-                    return _check_result(result)
-
-            else:
-                expr = f"{sign}x2ᵢ"
-
-                def check_result(i1: float, i2: float, result: float) -> bool:
-                    _check_result = make_eq(signer(i2))
-                    return _check_result(result)
-
-            return BinaryResultCheck(check_result, expr)
-
-        _check_result, expr = parse_result(group)
-
-        def check_result(i1: float, i2: float, result: float) -> bool:
-            return _check_result(result)
-
-        return BinaryResultCheck(check_result, expr)
 
 
 @dataclass(repr=False)
@@ -533,104 +345,29 @@ class BinaryCase(Case):
     check_result: BinaryResultCheck
 
 
-class BinaryCaseFactory(NamedTuple):
-    cond_factory: BinaryCondFactory
-    check_result_factory: ResultCheckFactory
-
-    def __call__(self, groups: Tuple[str, ...]) -> BinaryCase:
-        cond = self.cond_factory(groups)
-        check_result = self.check_result_factory(groups)
-        expr = f"{cond.expr} -> {check_result.expr}"
-        return BinaryCase(expr, cond, check_result)
-
-
-r_result_sign = re.compile("([a-z]+) mathematical sign")
-
-binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
-    re.compile(
-        "If ``x1_i`` is (.+), ``x1_i`` is (.+), ``x2_i`` is (.+), "
-        "and ``x2_i`` is (.+), the result is (.+)"
-    ): BinaryCaseFactory(
-        AndCondFactory(
-            ValueCondFactory("i1", 0),
-            ValueCondFactory("i1", 1),
-            ValueCondFactory("i2", 2),
-            ValueCondFactory("i2", 3),
-        ),
-        ResultCheckFactory(4),
-    ),
-    re.compile(
-        "If ``x1_i`` is (.+), ``x1_i`` is (.+), "
-        "and ``x2_i`` is (.+), the result is (.+)"
-    ): BinaryCaseFactory(
-        AndCondFactory(
-            ValueCondFactory("i1", 0),
-            ValueCondFactory("i1", 1),
-            ValueCondFactory("i2", 2),
-        ),
-        ResultCheckFactory(3),
-    ),
-    re.compile(
-        "If ``x1_i`` is (.+), ``x2_i`` is (.+), "
-        "and ``x2_i`` is (.+), the result is (.+)"
-    ): BinaryCaseFactory(
-        AndCondFactory(
-            ValueCondFactory("i1", 0),
-            ValueCondFactory("i2", 1),
-            ValueCondFactory("i2", 2),
-        ),
-        ResultCheckFactory(3),
-    ),
-    # This pattern must come after the above to avoid false matches
-    re.compile(
-        "If ``x1_i`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
-    ): BinaryCaseFactory(
-        AndCondFactory(ValueCondFactory("i1", 0), ValueCondFactory("i2", 1)),
-        ResultCheckFactory(2),
-    ),
-    re.compile(
-        r"If ``abs\(x1_i\)`` is (.+) and ``x2_i`` is (.+), the result is (.+)"
-    ): BinaryCaseFactory(
-        AndCondFactory(ValueCondFactory("i1", 0, abs_=True), ValueCondFactory("i2", 1)),
-        ResultCheckFactory(2),
-    ),
-    re.compile(
-        "If either ``x1_i`` or ``x2_i`` is (.+), the result is (.+)"
-    ): BinaryCaseFactory(ValueCondFactory("either", 0), ResultCheckFactory(1)),
-    re.compile(
-        "If ``x1_i`` and ``x2_i`` have (.+signs?), "
-        f"the result has a {r_result_sign.pattern}"
-    ): BinaryCaseFactory(SignCondFactory(0), ResultCheckFactory(1)),
-    re.compile(
-        "If ``x1_i`` and ``x2_i`` have (.+signs?) and are both (.+), "
-        f"the result has a {r_result_sign.pattern}"
-    ): BinaryCaseFactory(
-        AndCondFactory(SignCondFactory(0), ValueCondFactory("both", 1)),
-        ResultCheckFactory(2),
-    ),
-    re.compile(
-        "If ``x1_i`` and ``x2_i`` have (.+signs?), the result has a "
-        rf"{r_result_sign.pattern} , unless the result is (.+)\. If the result "
-        r"is ``NaN``, the \"sign\" of ``NaN`` is implementation-defined\."
-    ): BinaryCaseFactory(SignCondFactory(0), ResultCheckFactory(1)),
-    re.compile(
-        "If ``x2_i`` is (.+), the result is (.+), even if ``x1_i`` is .+"
-    ): BinaryCaseFactory(ValueCondFactory("i2", 0), ResultCheckFactory(1)),
-}
-
+r_special_cases = re.compile(
+    r"\*\*Special [Cc]ases\*\*(?:\n.*)+"
+    r"For floating-point operands,\n+"
+    r"((?:\s*-\s*.*\n)+)"
+)
+r_case = re.compile(r"\s+-\s*(.*)\.\n?")
 r_binary_case = re.compile("If (.+), the result (.+)")
+r_remaining_case = re.compile("In the remaining cases.+")
 
-r_cond_sep = re.compile(", | and ")
+r_cond_sep = re.compile(r"(?<!``x1_i``),? and |(?<!i\.e\.), ")
 r_cond = re.compile("(.+) (?:is|have) (.+)")
 
 r_element = re.compile("x([12])_i")
 r_input = re.compile(rf"``{r_element.pattern}``")
-r_abs_input = re.compile(r"``abs\({r_element.pattern}\)``")
+r_abs_input = re.compile(rf"``abs\({r_element.pattern}\)``")
 r_and_input = re.compile(f"{r_input.pattern} and {r_input.pattern}")
 r_or_input = re.compile(f"either {r_input.pattern} or {r_input.pattern}")
 
 r_result = re.compile(r"(?:is|has a) (.+)")
 
+r_input_is_array_element = re.compile(
+    f"{r_array_element.pattern} is {r_array_element.pattern}"
+)
 r_both_inputs_are_value = re.compile("are both (.+)")
 
 
@@ -639,50 +376,100 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
     conds = []
     cond_exprs = []
     for cond_str in cond_strs:
-        if m := r_both_inputs_are_value.match(cond_str):
-            raise ValueParseError(cond_str)
+        if m := r_input_is_array_element.match(cond_str):
+            in_sign, input_array, value_sign, value_array = m.groups()
+            assert in_sign == "" and value_array != input_array  # sanity check
+            expr = f"{in_sign}x{input_array}ᵢ == {value_sign}x{value_array}ᵢ"
+            if value_array == "1":
+                if value_sign != "-":
+
+                    def cond(i1: float, i2: float) -> bool:
+                        eq = make_eq(i1)
+                        return eq(i2)
+
+                else:
+
+                    def cond(i1: float, i2: float) -> bool:
+                        eq = make_eq(-i1)
+                        return eq(i2)
+
+            else:
+                if value_sign != "-":
+
+                    def cond(i1: float, i2: float) -> bool:
+                        eq = make_eq(i2)
+                        return eq(i1)
+
+                else:
+
+                    def cond(i1: float, i2: float) -> bool:
+                        eq = make_eq(-i2)
+                        return eq(i1)
+
+        elif m := r_both_inputs_are_value.match(cond_str):
+            unary_cond, expr_template = parse_cond(m.group(1))
+            left_expr = expr_template.replace("{}", "x1ᵢ")
+            right_expr = expr_template.replace("{}", "x2ᵢ")
+            expr = f"({left_expr}) and ({right_expr})"
+
+            def cond(i1: float, i2: float) -> bool:
+                return unary_cond(i1) and unary_cond(i2)
+
         else:
             cond_m = r_cond.match(cond_str)
             if cond_m is None:
                 raise ValueParseError(cond_str)
             input_str, value_str = cond_m.groups()
 
-            unary_cond, expr_template = parse_cond(value_str)
-
-            if m := r_input.match(input_str):
-                x_no = m.group(1)
-                args_i = int(x_no) - 1
-                expr = expr_template.replace("{}", f"x{x_no}ᵢ")
-
-                def cond(*inputs) -> bool:
-                    return unary_cond(inputs[args_i])
-
-            elif m := r_abs_input.match(input_str):
-                x_no = m.group(1)
-                args_i = int(x_no) - 1
-                expr = expr_template.replace("{}", f"abs(x{x_no}ᵢ)")
-
-                def cond(*inputs) -> bool:
-                    return unary_cond(abs(inputs[args_i]))
-
-            elif r_and_input.match(input_str):
-                left_expr = expr_template.replace("{}", "x1ᵢ")
-                right_expr = expr_template.replace("{}", "x2ᵢ")
-                expr = f"({left_expr}) and ({right_expr})"
+            if value_str == "the same mathematical sign":
+                expr = "copysign(1, x1ᵢ) == copysign(1, x2ᵢ)"
 
                 def cond(i1: float, i2: float) -> bool:
-                    return unary_cond(i1) and unary_cond(i2)
+                    return math.copysign(1, i1) == math.copysign(1, i2)
 
-            elif r_or_input.match(input_str):
-                left_expr = expr_template.replace("{}", "x1ᵢ")
-                right_expr = expr_template.replace("{}", "x2ᵢ")
-                expr = f"({left_expr}) and ({right_expr})"
+            elif value_str == "different mathematical signs":
+                expr = "copysign(1, x1ᵢ) != copysign(1, x2ᵢ)"
 
                 def cond(i1: float, i2: float) -> bool:
-                    return unary_cond(i1) or unary_cond(i2)
+                    return math.copysign(1, i1) != math.copysign(1, i2)
 
             else:
-                raise ValueParseError(input_str)
+                unary_cond, expr_template = parse_cond(value_str)
+
+                if m := r_input.match(input_str):
+                    x_no = m.group(1)
+                    args_i = int(x_no) - 1
+                    expr = expr_template.replace("{}", f"x{x_no}ᵢ")
+
+                    def cond(*inputs) -> bool:
+                        return unary_cond(inputs[args_i])
+
+                elif m := r_abs_input.match(input_str):
+                    x_no = m.group(1)
+                    args_i = int(x_no) - 1
+                    expr = expr_template.replace("{}", f"abs(x{x_no}ᵢ)")
+
+                    def cond(*inputs) -> bool:
+                        return unary_cond(abs(inputs[args_i]))
+
+                elif r_and_input.match(input_str):
+                    left_expr = expr_template.replace("{}", "x1ᵢ")
+                    right_expr = expr_template.replace("{}", "x2ᵢ")
+                    expr = f"({left_expr}) and ({right_expr})"
+
+                    def cond(i1: float, i2: float) -> bool:
+                        return unary_cond(i1) and unary_cond(i2)
+
+                elif r_or_input.match(input_str):
+                    left_expr = expr_template.replace("{}", "x1ᵢ")
+                    right_expr = expr_template.replace("{}", "x2ᵢ")
+                    expr = f"({left_expr}) or ({right_expr})"
+
+                    def cond(i1: float, i2: float) -> bool:
+                        return unary_cond(i1) or unary_cond(i2)
+
+                else:
+                    raise ValueParseError(input_str)
 
             conds.append(cond)
             cond_exprs.append(expr)
@@ -690,14 +477,48 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
     result_m = r_result.match(case_m.group(2))
     if result_m is None:
         raise ValueParseError(case_m.group(2))
-    check_result, result_expr = parse_result(result_m.group(1))
+    result_str = result_m.group(1)
+    if m := r_array_element.match(result_str):
+        sign, input_ = m.groups()
+        result_expr = f"{sign}x{input_}ᵢ"
+        if input_ == "1":
+            if sign != "-":
 
-    expr = " and ".join(f"({expr})" for expr in cond_exprs) + " -> " + result_expr
+                def check_result(i1: float, i2: float, result: float) -> bool:
+                    eq = make_eq(i1)
+                    return eq(result)
+
+            else:
+
+                def check_result(i1: float, i2: float, result: float) -> bool:
+                    eq = make_eq(-i1)
+                    return eq(result)
+
+        else:
+            if sign != "-":
+
+                def check_result(i1: float, i2: float, result: float) -> bool:
+                    eq = make_eq(i2)
+                    return eq(result)
+
+            else:
+
+                def check_result(i1: float, i2: float, result: float) -> bool:
+                    eq = make_eq(-i2)
+                    return eq(result)
+
+    else:
+        _check_result, result_expr = parse_result(result_m.group(1))
+
+        def check_result(i1: float, i2: float, result: float) -> bool:
+            return _check_result(result)
+
+    expr = " and ".join(cond_exprs) + " -> " + result_expr
 
     def cond(i1: float, i2: float) -> bool:
         return all(c(i1, i2) for c in conds)
 
-    return BinaryCase(expr, cond, lambda l, r, o: check_result(o))
+    return BinaryCase(expr, cond, check_result)
 
 
 r_redundant_case = re.compile("result.+determined by the rule already stated above")
@@ -717,16 +538,14 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
             continue
         if r_redundant_case.search(case_str):
             continue
-        if m := r_binary_case.search(case_str):
+        if m := r_binary_case.match(case_str):
             try:
                 case = parse_binary_case(m)
+                cases.append(case)
             except ValueParseError as e:
                 warn(f"not machine-readable: '{e.value}'")
-                break
-            cases.append(case)
-            break
         else:
-            if not r_remaining_case.search(case_str):
+            if not r_remaining_case.match(case_str):
                 warn(f"case not machine-readable: '{case_str}'")
     return cases
 
