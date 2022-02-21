@@ -8,6 +8,7 @@ from typing import (
     Dict,
     List,
     Literal,
+    Match,
     NamedTuple,
     Pattern,
     Protocol,
@@ -617,6 +618,87 @@ binary_pattern_to_case_factory: Dict[Pattern, BinaryCaseFactory] = {
     ): BinaryCaseFactory(ValueCondFactory("i2", 0), ResultCheckFactory(1)),
 }
 
+r_binary_case = re.compile("If (.+), the result (.+)")
+
+r_cond_sep = re.compile(", | and ")
+r_cond = re.compile("(.+) (?:is|have) (.+)")
+
+r_element = re.compile("x([12])_i")
+r_input = re.compile(rf"``{r_element.pattern}``")
+r_abs_input = re.compile(r"``abs\({r_element.pattern}\)``")
+r_and_input = re.compile(f"{r_input.pattern} and {r_input.pattern}")
+r_or_input = re.compile(f"either {r_input.pattern} or {r_input.pattern}")
+
+r_result = re.compile(r"(?:is|has a) (.+)")
+
+r_both_inputs_are_value = re.compile("are both (.+)")
+
+
+def parse_binary_case(case_m: Match) -> BinaryCase:
+    cond_strs = r_cond_sep.split(case_m.group(1))
+    conds = []
+    cond_exprs = []
+    for cond_str in cond_strs:
+        if m := r_both_inputs_are_value.match(cond_str):
+            raise ValueParseError(cond_str)
+        else:
+            cond_m = r_cond.match(cond_str)
+            if cond_m is None:
+                raise ValueParseError(cond_str)
+            input_str, value_str = cond_m.groups()
+
+            unary_cond, expr_template = parse_cond(value_str)
+
+            if m := r_input.match(input_str):
+                x_no = m.group(1)
+                args_i = int(x_no) - 1
+                expr = expr_template.replace("{}", f"x{x_no}ᵢ")
+
+                def cond(*inputs) -> bool:
+                    return unary_cond(inputs[args_i])
+
+            elif m := r_abs_input.match(input_str):
+                x_no = m.group(1)
+                args_i = int(x_no) - 1
+                expr = expr_template.replace("{}", f"abs(x{x_no}ᵢ)")
+
+                def cond(*inputs) -> bool:
+                    return unary_cond(abs(inputs[args_i]))
+
+            elif r_and_input.match(input_str):
+                left_expr = expr_template.replace("{}", "x1ᵢ")
+                right_expr = expr_template.replace("{}", "x2ᵢ")
+                expr = f"({left_expr}) and ({right_expr})"
+
+                def cond(i1: float, i2: float) -> bool:
+                    return unary_cond(i1) and unary_cond(i2)
+
+            elif r_or_input.match(input_str):
+                left_expr = expr_template.replace("{}", "x1ᵢ")
+                right_expr = expr_template.replace("{}", "x2ᵢ")
+                expr = f"({left_expr}) and ({right_expr})"
+
+                def cond(i1: float, i2: float) -> bool:
+                    return unary_cond(i1) or unary_cond(i2)
+
+            else:
+                raise ValueParseError(input_str)
+
+            conds.append(cond)
+            cond_exprs.append(expr)
+
+    result_m = r_result.match(case_m.group(2))
+    if result_m is None:
+        raise ValueParseError(case_m.group(2))
+    check_result, result_expr = parse_result(result_m.group(1))
+
+    expr = " and ".join(f"({expr})" for expr in cond_exprs) + " -> " + result_expr
+
+    def cond(i1: float, i2: float) -> bool:
+        return all(c(i1, i2) for c in conds)
+
+    return BinaryCase(expr, cond, lambda l, r, o: check_result(o))
+
 
 r_redundant_case = re.compile("result.+determined by the rule already stated above")
 
@@ -629,24 +711,23 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
     cases = []
     for line in lines:
         if m := r_case.match(line):
-            case = m.group(1)
+            case_str = m.group(1)
         else:
             warn(f"line not machine-readable: '{line}'")
             continue
-        if r_redundant_case.search(case):
+        if r_redundant_case.search(case_str):
             continue
-        for pattern, make_case in binary_pattern_to_case_factory.items():
-            if m := pattern.search(case):
-                try:
-                    case = make_case(m.groups())
-                except ValueParseError as e:
-                    warn(f"not machine-readable: '{e.value}'")
-                    break
-                cases.append(case)
+        if m := r_binary_case.search(case_str):
+            try:
+                case = parse_binary_case(m)
+            except ValueParseError as e:
+                warn(f"not machine-readable: '{e.value}'")
                 break
+            cases.append(case)
+            break
         else:
-            if not r_remaining_case.search(case):
-                warn(f"case not machine-readable: '{case}'")
+            if not r_remaining_case.search(case_str):
+                warn(f"case not machine-readable: '{case_str}'")
     return cases
 
 
