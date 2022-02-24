@@ -106,7 +106,7 @@ def test_setitem(shape, data):
 
 # TODO: make mask tests optional
 
-
+@pytest.mark.data_dependent_shapes
 @given(hh.shapes(), st.data())
 def test_getitem_masking(shape, data):
     x = data.draw(xps.arrays(xps.scalar_dtypes(), shape=shape), label="x")
