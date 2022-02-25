@@ -37,6 +37,9 @@ jobs:
         # The return dtype for trace is not consistent in the spec
         # https://github.com/data-apis/array-api/issues/202#issuecomment-952529197
         array_api_tests/test_linalg.py::test_trace
+        # Various fixes to vector_norm are in
+        # https://github.com/numpy/numpy/pull/21084.
+        array_api_tests/test_linalg.py::test_vector_norm
         # waiting on NumPy to allow/revert distinct NaNs for np.unique
         # https://github.com/numpy/numpy/issues/20326#issuecomment-1012380448
         array_api_tests/test_set_functions.py
