@@ -659,7 +659,7 @@ def test_vector_norm(x, data):
         kwargs(axis=axes(x.ndim),
                keepdims=booleans(),
                ord=one_of(
-                   sampled_from([2, 1, 0, -1, -2, float("inf"), float("-inf")],
+                   sampled_from([2, 1, 0, -1, -2, float("inf"), float("-inf")]),
                    integers(-max_ord, max_ord),
                    floats(-max_ord, max_ord),
                )), label="kw")
