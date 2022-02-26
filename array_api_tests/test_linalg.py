@@ -15,9 +15,9 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 
 import pytest
 from hypothesis import assume, given
-from hypothesis.strategies import (booleans, composite, none, tuples, floats,
-                                   integers, shared, sampled_from, one_of,
-                                   data, just)
+from hypothesis.strategies import (booleans, composite, none, lists, tuples,
+                                   floats, integers, shared, sampled_from,
+                                   one_of, data, just)
 from ndindex import iter_indices
 
 from .array_helpers import assert_exactly_equal, asarray
@@ -570,20 +570,64 @@ def test_svdvals(x):
 
     # TODO: Check that svdvals() is the same as svd().s.
 
+_tensordot_pre_shapes = shared(two_mutually_broadcastable_shapes)
+
+@composite
+def _tensordot_axes(draw):
+    shape1, shape2 = draw(_tensordot_pre_shapes)
+    ndim1, ndim2 = len(shape1), len(shape2)
+    isint = draw(booleans())
+
+    if isint:
+        N = min(ndim1, ndim2)
+        return draw(integers(0, N))
+    else:
+        if ndim1 < ndim2:
+            first = draw(xps.valid_tuple_axes(ndim1))
+            second = draw(xps.valid_tuple_axes(ndim2, min_size=len(first),
+                                               max_size=len(first)))
+        else:
+            second = draw(xps.valid_tuple_axes(ndim2))
+            first = draw(xps.valid_tuple_axes(ndim1, min_size=len(second),
+                                               max_size=len(second)))
+        return (tuple(first), tuple(second))
+
+tensordot_kw = shared(kwargs(axes=_tensordot_axes()))
+
+@composite
+def tensordot_shapes(draw):
+    _shape1, _shape2 = map(list, draw(_tensordot_pre_shapes))
+    ndim1, ndim2 = len(_shape1), len(_shape2)
+    kw = draw(tensordot_kw)
+    if 'axes' not in kw:
+        assume(ndim1 >= 2 and ndim2 >= 2)
+    axes = kw.get('axes', 2)
+
+    if isinstance(axes, int):
+        axes = [list(range(-axes, 0)), list(range(0, axes))]
+
+    first, second = axes
+    for i, j in zip(first, second):
+        try:
+            if -ndim2 <= j < ndim2 and _shape2[j] != 1:
+                _shape1[i] = _shape2[j]
+            if -ndim1 <= i < ndim1 and _shape1[i] != 1:
+                _shape2[j] = _shape1[i]
+        except:
+            raise
+
+    shape1, shape2 = map(tuple, [_shape1, _shape2])
+    return (shape1, shape2)
 
 @given(
-    dtypes=mutually_promotable_dtypes(dtypes=dh.numeric_dtypes),
-    shape=shapes(),
-    data=data(),
+    *two_mutual_arrays(dh.numeric_dtypes, two_shapes=tensordot_shapes()),
+    tensordot_kw,
 )
-def test_tensordot(dtypes, shape, data):
+def test_tensordot(x1, x2, kw):
     # TODO: vary shapes, vary contracted axes, test different axes arguments
-    x1 = data.draw(xps.arrays(dtype=dtypes[0], shape=shape), label="x1")
-    x2 = data.draw(xps.arrays(dtype=dtypes[1], shape=shape), label="x2")
+    out = xp.tensordot(x1, x2, **kw)
 
-    out = xp.tensordot(x1, x2, axes=len(shape))
-
-    ph.assert_dtype("tensordot", dtypes, out.dtype)
+    ph.assert_dtype("tensordot", [x1.dtype, x2.dtype], out.dtype)
     # TODO: assert shape and elements
 
 
