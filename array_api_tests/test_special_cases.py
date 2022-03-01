@@ -166,20 +166,20 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str]:
     if m := r_code.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_eq(value)
-        expr_template = "{} == " + str(value)
+        expr_template = "{} == " + m.group(1)
     elif m := r_gt.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_gt(value)
-        expr_template = "{} > " + str(value)
+        expr_template = "{} > " + m.group(1)
     elif m := r_lt.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_lt(value)
-        expr_template = "{} < " + str(value)
+        expr_template = "{} < " + m.group(1)
     elif m := r_either_code.match(cond_str):
         v1 = parse_value(m.group(1))
         v2 = parse_value(m.group(2))
         cond = make_or(make_eq(v1), make_eq(v2))
-        expr_template = "{} == " + str(v1) + " or {} == " + str(v2)
+        expr_template = "{} == " + m.group(1) + " or {} == " + m.group(2)
     elif cond_str in ["finite", "a finite number"]:
         cond = math.isfinite
         expr_template = "isfinite({})"
@@ -217,12 +217,12 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str]:
 def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
     if m := r_code.match(result_str):
         value = parse_value(m.group(1))
-        check_result = make_eq(value)
-        expr = str(value)
+        check_result = make_eq(value)  # type: ignore
+        expr = m.group(1)
     elif m := r_approx_value.match(result_str):
         value = parse_value(m.group(1))
-        check_result = make_rough_eq(value)
-        expr = f"~{value}"
+        check_result = make_rough_eq(value)  # type: ignore
+        expr = f"roughly {m.group(1)}"
     elif "positive" in result_str:
 
         def check_result(result: float) -> bool:
