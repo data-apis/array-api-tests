@@ -3,6 +3,7 @@ import math
 import re
 from dataclasses import dataclass
 from decimal import ROUND_HALF_EVEN, Decimal
+from enum import Enum, auto
 from typing import Callable, List, Match, Protocol, Tuple
 from warnings import warn
 
@@ -371,38 +372,77 @@ r_input_is_array_element = re.compile(
 r_both_inputs_are_value = re.compile("are both (.+)")
 
 
+class BinaryCondInput(Enum):
+    FIRST = auto()
+    SECOND = auto()
+    BOTH = auto()
+    EITHER = auto()
+
+
+def noop(obj):
+    return obj
+
+
+def make_partial_cond(
+    input_: BinaryCondInput, unary_check: UnaryCheck, *, input_wrapper=None
+) -> BinaryCond:
+    if input_wrapper is None:
+        input_wrapper = noop
+    if input_ == BinaryCondInput.FIRST:
+
+        def partial_cond(i1: float, i2: float) -> bool:
+            return unary_check(input_wrapper(i1))
+
+    elif input_ == BinaryCondInput.SECOND:
+
+        def partial_cond(i1: float, i2: float) -> bool:
+            return unary_check(input_wrapper(i2))
+
+    elif input_ == BinaryCondInput.BOTH:
+
+        def partial_cond(i1: float, i2: float) -> bool:
+            return unary_check(input_wrapper(i1)) and unary_check(input_wrapper(i2))
+
+    else:
+
+        def partial_cond(i1: float, i2: float) -> bool:
+            return unary_check(input_wrapper(i1)) or unary_check(input_wrapper(i2))
+
+    return partial_cond
+
+
 def parse_binary_case(case_m: Match) -> BinaryCase:
     cond_strs = r_cond_sep.split(case_m.group(1))
-    conds = []
-    cond_exprs = []
+    partial_conds = []
+    partial_exprs = []
     for cond_str in cond_strs:
         if m := r_input_is_array_element.match(cond_str):
             in_sign, input_array, value_sign, value_array = m.groups()
             assert in_sign == "" and value_array != input_array  # sanity check
-            expr = f"{in_sign}x{input_array}ᵢ == {value_sign}x{value_array}ᵢ"
+            partial_expr = f"{in_sign}x{input_array}ᵢ == {value_sign}x{value_array}ᵢ"
             if value_array == "1":
                 if value_sign != "-":
 
-                    def cond(i1: float, i2: float) -> bool:
+                    def partial_cond(i1: float, i2: float) -> bool:
                         eq = make_eq(i1)
                         return eq(i2)
 
                 else:
 
-                    def cond(i1: float, i2: float) -> bool:
+                    def partial_cond(i1: float, i2: float) -> bool:
                         eq = make_eq(-i1)
                         return eq(i2)
 
             else:
                 if value_sign != "-":
 
-                    def cond(i1: float, i2: float) -> bool:
+                    def partial_cond(i1: float, i2: float) -> bool:
                         eq = make_eq(i2)
                         return eq(i1)
 
                 else:
 
-                    def cond(i1: float, i2: float) -> bool:
+                    def partial_cond(i1: float, i2: float) -> bool:
                         eq = make_eq(-i2)
                         return eq(i1)
 
@@ -410,10 +450,10 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
             unary_cond, expr_template = parse_cond(m.group(1))
             left_expr = expr_template.replace("{}", "x1ᵢ")
             right_expr = expr_template.replace("{}", "x2ᵢ")
-            expr = f"({left_expr}) and ({right_expr})"
-
-            def cond(i1: float, i2: float) -> bool:
-                return unary_cond(i1) and unary_cond(i2)
+            partial_expr = f"({left_expr}) and ({right_expr})"
+            partial_cond = make_partial_cond(  # type: ignore
+                BinaryCondInput.BOTH, unary_cond
+            )
 
         else:
             cond_m = r_cond.match(cond_str)
@@ -422,57 +462,58 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
             input_str, value_str = cond_m.groups()
 
             if value_str == "the same mathematical sign":
-                expr = "copysign(1, x1ᵢ) == copysign(1, x2ᵢ)"
+                partial_expr = "copysign(1, x1ᵢ) == copysign(1, x2ᵢ)"
 
-                def cond(i1: float, i2: float) -> bool:
+                def partial_cond(i1: float, i2: float) -> bool:
                     return math.copysign(1, i1) == math.copysign(1, i2)
 
             elif value_str == "different mathematical signs":
-                expr = "copysign(1, x1ᵢ) != copysign(1, x2ᵢ)"
+                partial_expr = "copysign(1, x1ᵢ) != copysign(1, x2ᵢ)"
 
-                def cond(i1: float, i2: float) -> bool:
+                def partial_cond(i1: float, i2: float) -> bool:
                     return math.copysign(1, i1) != math.copysign(1, i2)
 
             else:
-                unary_cond, expr_template = parse_cond(value_str)
-
+                unary_check, expr_template = parse_cond(value_str)
+                # Do not define partial_cond via the def keyword, as one
+                # partial_cond definition can mess up previous definitions
+                # in the partial_conds list. This is a hard-limitation of
+                # using local functions with the same name and that use the same
+                # outer variables (i.e. unary_cond).
+                input_wrapper = None
                 if m := r_input.match(input_str):
                     x_no = m.group(1)
-                    args_i = int(x_no) - 1
-                    expr = expr_template.replace("{}", f"x{x_no}ᵢ")
-
-                    def cond(*inputs) -> bool:
-                        return unary_cond(inputs[args_i])
-
+                    partial_expr = expr_template.replace("{}", f"x{x_no}ᵢ")
+                    if x_no == "1":
+                        input_ = BinaryCondInput.FIRST
+                    else:
+                        input_ = BinaryCondInput.SECOND
                 elif m := r_abs_input.match(input_str):
                     x_no = m.group(1)
-                    args_i = int(x_no) - 1
-                    expr = expr_template.replace("{}", f"abs(x{x_no}ᵢ)")
-
-                    def cond(*inputs) -> bool:
-                        return unary_cond(abs(inputs[args_i]))
-
+                    partial_expr = expr_template.replace("{}", f"abs(x{x_no}ᵢ)")
+                    if x_no == "1":
+                        input_ = BinaryCondInput.FIRST
+                    else:
+                        input_ = BinaryCondInput.SECOND
+                    input_wrapper = abs
                 elif r_and_input.match(input_str):
                     left_expr = expr_template.replace("{}", "x1ᵢ")
                     right_expr = expr_template.replace("{}", "x2ᵢ")
-                    expr = f"({left_expr}) and ({right_expr})"
-
-                    def cond(i1: float, i2: float) -> bool:
-                        return unary_cond(i1) and unary_cond(i2)
-
+                    partial_expr = f"({left_expr}) and ({right_expr})"
+                    input_ = BinaryCondInput.BOTH
                 elif r_or_input.match(input_str):
                     left_expr = expr_template.replace("{}", "x1ᵢ")
                     right_expr = expr_template.replace("{}", "x2ᵢ")
-                    expr = f"({left_expr}) or ({right_expr})"
-
-                    def cond(i1: float, i2: float) -> bool:
-                        return unary_cond(i1) or unary_cond(i2)
-
+                    partial_expr = f"({left_expr}) or ({right_expr})"
+                    input_ = BinaryCondInput.EITHER
                 else:
                     raise ValueParseError(input_str)
+                partial_cond = make_partial_cond(  # type: ignore
+                    input_, unary_check, input_wrapper=input_wrapper
+                )
 
-            conds.append(cond)
-            cond_exprs.append(expr)
+        partial_conds.append(partial_cond)
+        partial_exprs.append(partial_expr)
 
     result_m = r_result.match(case_m.group(2))
     if result_m is None:
@@ -513,10 +554,10 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
         def check_result(i1: float, i2: float, result: float) -> bool:
             return _check_result(result)
 
-    expr = " and ".join(cond_exprs) + " -> " + result_expr
+    expr = " and ".join(partial_exprs) + " -> " + result_expr
 
     def cond(i1: float, i2: float) -> bool:
-        return all(c(i1, i2) for c in conds)
+        return all(pc(i1, i2) for pc in partial_conds)
 
     return BinaryCase(expr, cond, check_result)
 
@@ -639,8 +680,10 @@ def test_binary(func_name, func, cases, x1, x2):
                 f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
                 f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
                 f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
-                assert case.check_result(
-                    l, r, o
-                ), f"{f_out} not good [{func_name}()]\n{f_left}, {f_right}"
+                assert case.check_result(l, r, o), (
+                    f"{f_out} not good [{func_name}()]\n"
+                    f"{case.expr}\n"
+                    f"{f_left}, {f_right}"
+                )
                 break
     assume(good_example)
