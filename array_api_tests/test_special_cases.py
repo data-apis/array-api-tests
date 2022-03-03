@@ -1,14 +1,29 @@
+from __future__ import annotations
+
 import inspect
 import math
 import re
 from dataclasses import dataclass
 from decimal import ROUND_HALF_EVEN, Decimal
 from enum import Enum, auto
-from typing import Callable, List, Match, Optional, Protocol, Tuple
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Match,
+    NamedTuple,
+    Optional,
+    Protocol,
+    Tuple,
+)
 from warnings import warn
 
 import pytest
-from hypothesis import assume, given
+from hypothesis import assume, given, note
+from hypothesis import strategies as st
+
+from array_api_tests.typing import Array, DataType
 
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
@@ -89,7 +104,7 @@ def make_and(cond1: UnaryCheck, cond2: UnaryCheck) -> UnaryCheck:
     return and_
 
 
-def notify_cond(cond: UnaryCheck) -> UnaryCheck:
+def make_not_cond(cond: UnaryCheck) -> UnaryCheck:
     def not_cond(i: float) -> bool:
         return not cond(i)
 
@@ -156,62 +171,160 @@ r_gt = re.compile(f"greater than {r_code.pattern}")
 r_lt = re.compile(f"less than {r_code.pattern}")
 
 
-def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str]:
+FromDataType = Callable[[DataType], st.SearchStrategy]
+
+
+class ElementsStrategyFactory(NamedTuple):
+    from_dtype: FromDataType
+    kwargs: Optional[Dict[str, Any]]
+    filter_: Optional[Callable[[Array], bool]]
+
+    def __add__(self, other: ElementsStrategyFactory) -> ElementsStrategyFactory:
+        assert not (
+            isinstance(self.kwargs, Callable) or isinstance(other.kwargs, Callable)
+        ), (
+            f"{self.kwargs=} and {other.kwargs=}, " "but both must be from_dtype kwargs"
+        )
+        kwargs1 = self.kwargs or {}
+        kwargs2 = other.kwargs or {}
+        for k in kwargs1.keys():
+            if k in kwargs2.keys():
+                assert kwargs1[k] == kwargs2[k]  # sanity check
+
+        if self.filter_ is not None and other.filter_ is not None:
+            filter_ = lambda i: self.filter_(i) and other.filter_(i)
+        else:
+            try:
+                filter_ = next(
+                    f for f in [self.filter_, other.filter_] if f is not None
+                )
+            except StopIteration:
+                filter_ = None
+
+        return ElementsStrategyFactory(
+            kwargs={**kwargs1, **kwargs2},
+            filter_=filter_,
+        )
+
+    def to_strategy(self, dtype: DataType) -> st.SearchStrategy[float]:
+        kw = self.kwargs or {}
+        if self.from_dtype != xps.from_dtype:
+            assert kw == {}  # sanity check
+        strat = self.from_dtype(dtype, **kw)
+        if self.filter_ is not None:
+            strat = strat.filter(self.filter_)
+        return strat
+
+
+def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, ElementsStrategyFactory]:
     if m := r_not.match(cond_str):
         cond_str = m.group(1)
-        notify = True
+        not_cond = True
     else:
-        notify = False
+        not_cond = False
 
+    from_dtype = xps.from_dtype  # type: ignore
+    kwargs = None
+    filter_ = None
     if m := r_code.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_eq(value)
         expr_template = "{} == " + m.group(1)
+        if not not_cond:
+            from_dtype = lambda _: st.just(value)  # type: ignore
     elif m := r_gt.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_gt(value)
         expr_template = "{} > " + m.group(1)
+        if not not_cond:
+            kwargs = {"min_value": value, "exclude_min": True}
     elif m := r_lt.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_lt(value)
         expr_template = "{} < " + m.group(1)
+        if not not_cond:
+            kwargs = {"max_value": value, "exclude_max": True}
     elif m := r_either_code.match(cond_str):
         v1 = parse_value(m.group(1))
         v2 = parse_value(m.group(2))
         cond = make_or(make_eq(v1), make_eq(v2))
         expr_template = "{} == " + m.group(1) + " or {} == " + m.group(2)
+        if not not_cond:
+            from_dtype = lambda _: st.sampled_from([v1, v2])  # type: ignore
     elif cond_str in ["finite", "a finite number"]:
         cond = math.isfinite
         expr_template = "isfinite({})"
+        if not not_cond:
+            kwargs = {"allow_nan": False, "allow_infinity": False}
     elif cond_str in "a positive (i.e., greater than ``0``) finite number":
         cond = lambda i: math.isfinite(i) and i > 0
         expr_template = "isfinite({}) and {} > 0"
+        if not not_cond:
+            kwargs = {
+                "allow_nan": False,
+                "allow_infinity": False,
+                "min_value": 0,
+                "exclude_min": True,
+            }
     elif cond_str == "a negative (i.e., less than ``0``) finite number":
         cond = lambda i: math.isfinite(i) and i < 0
         expr_template = "isfinite({}) and {} < 0"
+        if not not_cond:
+            kwargs = {
+                "allow_nan": False,
+                "allow_infinity": False,
+                "max_value": 0,
+                "exclude_max": True,
+            }
     elif cond_str == "positive":
         cond = lambda i: math.copysign(1, i) == 1
         expr_template = "copysign(1, {}) == 1"
+        if not not_cond:
+            # We assume (positive) zero is special cased seperately
+            kwargs = {"min_value": 0, "exclude_min": True}
     elif cond_str == "negative":
         cond = lambda i: math.copysign(1, i) == -1
         expr_template = "copysign(1, {}) == -1"
+        if not not_cond:
+            # We assume (positive) zero is special cased seperately
+            kwargs = {"max_value": 0, "exclude_max": True}
     elif "nonzero finite" in cond_str:
         cond = lambda i: math.isfinite(i) and i != 0
         expr_template = "isfinite({}) and {} != 0"
+        if not not_cond:
+            kwargs = {"allow_nan": False, "allow_infinity": False}
+            filter_ = lambda n: n != 0
     elif cond_str == "an integer value":
         cond = lambda i: i.is_integer()
         expr_template = "{}.is_integer()"
+        if not not_cond:
+
+            def from_dtype(dtype: DataType) -> st.SearchStrategy:
+                m, M = dh.dtype_ranges[dtype]
+                return st.integers(math.ceil(m), math.floor(M)).map(float)
+
     elif cond_str == "an odd integer value":
         cond = lambda i: i.is_integer() and i % 2 == 1
         expr_template = "{}.is_integer() and {} % 2 == 1"
+        if not not_cond:
+
+            def from_dtype(dtype: DataType) -> st.SearchStrategy:
+                m, M = dh.dtype_ranges[dtype]
+                return (
+                    st.integers(math.ceil(m), math.floor(M))
+                    .filter(lambda n: n % 2 == 1)
+                    .map(float)
+                )
+
     else:
         raise ValueParseError(cond_str)
 
-    if notify:
-        cond = notify_cond(cond)
-        expr_template = f"not ({expr_template})"
+    if not_cond:
+        expr_template = f"not {expr_template}"
+        cond = make_not_cond(cond)
+        filter_ = cond
 
-    return cond, expr_template
+    return cond, expr_template, ElementsStrategyFactory(from_dtype, kwargs, filter_)
 
 
 def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
@@ -222,7 +335,8 @@ def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
     elif m := r_approx_value.match(result_str):
         value = parse_value(m.group(1))
         check_result = make_rough_eq(value)  # type: ignore
-        expr = f"roughly {m.group(1)}"
+        repr_ = m.group(1).replace("π", "pi")  # for pytest param names
+        expr = f"roughly {repr_}"
     elif "positive" in result_str:
 
         def check_result(result: float) -> bool:
@@ -248,7 +362,8 @@ def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
 
 
 class Case(Protocol):
-    expr: str
+    cond_expr: str
+    result_expr: str
 
     def cond(self, *args) -> bool:
         ...
@@ -256,11 +371,11 @@ class Case(Protocol):
     def check_result(self, *args) -> bool:
         ...
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}(<{self.expr}>)"
+    def __str__(self) -> str:
+        return f"{self.cond_expr} -> {self.result_expr}"
 
-    def __str__(self):
-        return self.expr
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(<{self}>)"
 
 
 class UnaryCond(Protocol):
@@ -275,17 +390,29 @@ class UnaryResultCheck(Protocol):
 
 @dataclass(repr=False)
 class UnaryCase(Case):
-    expr: str
+    cond_expr: str
+    result_expr: str
+    cond_strat: FromDataType
     cond: UnaryCheck
     check_result: UnaryResultCheck
 
     @classmethod
     def from_strings(cls, cond_str: str, result_str: str):
-        cond, cond_expr_template = parse_cond(cond_str)
-        check_result, check_result_expr = parse_result(result_str)
-        cond_expr = cond_expr_template.replace("{}", "xᵢ")
-        expr = f"{cond_expr} -> {check_result_expr}"
-        return cls(expr, cond, lambda i, result: check_result(result))
+        cond, cond_expr_template, strat_factory = parse_cond(cond_str)
+        cond_expr = cond_expr_template.replace("{}", "x_i")
+        cond_strat = strat_factory.to_strategy
+        _check_result, result_expr = parse_result(result_str)
+
+        def check_result(i: float, result: float) -> bool:
+            return _check_result(result)
+
+        return cls(
+            cond_expr=cond_expr,
+            cond=cond,
+            cond_strat=cond_strat,
+            result_expr=result_expr,
+            check_result=check_result,
+        )
 
 
 r_unary_case = re.compile("If ``x_i`` is (.+), the result is (.+)")
@@ -293,9 +420,18 @@ r_even_int_round_case = re.compile(
     "If two integers are equally close to ``x_i``, "
     "the result is the even integer closest to ``x_i``"
 )
+
+
+def point_5_from_dtype(dtype: DataType):
+    m, M = dh.dtype_ranges[dtype]
+    return st.integers(math.ceil(m) // 2, math.floor(M) // 2).map(lambda n: n * 0.5)
+
+
 even_int_round_case = UnaryCase(
-    expr="i % 0.5 == 0 -> Decimal(i).to_integral_exact(ROUND_HALF_EVEN)",
+    cond_expr="i % 0.5 == 0",
     cond=lambda i: i % 0.5 == 0,
+    cond_strat=point_5_from_dtype,
+    result_expr="Decimal(i).to_integral_exact(ROUND_HALF_EVEN)",
     check_result=lambda i, result: (
         result == float(Decimal(i).to_integral_exact(ROUND_HALF_EVEN))
     ),
@@ -341,7 +477,8 @@ class BinaryResultCheck(Protocol):
 
 @dataclass(repr=False)
 class BinaryCase(Case):
-    expr: str
+    cond_expr: str
+    result_expr: str
     cond: BinaryCond
     check_result: BinaryResultCheck
 
@@ -484,14 +621,14 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
         if m := r_input_is_array_element.match(cond_str):
             in_sign, in_no, other_sign, other_no = m.groups()
             assert in_sign == "" and other_no != in_no  # sanity check
-            partial_expr = f"{in_sign}x{in_no}ᵢ == {other_sign}x{other_no}ᵢ"
+            partial_expr = f"{in_sign}x{in_no}_i == {other_sign}x{other_no}_i"
             partial_cond = make_eq_other_input_cond(  # type: ignore
                 BinaryCondArg.from_x_no(other_no), eq_neg=other_sign == "-"
             )
         elif m := r_both_inputs_are_value.match(cond_str):
             unary_cond, expr_template = parse_cond(m.group(1))
-            left_expr = expr_template.replace("{}", "x1ᵢ")
-            right_expr = expr_template.replace("{}", "x2ᵢ")
+            left_expr = expr_template.replace("{}", "x1_i")
+            right_expr = expr_template.replace("{}", "x2_i")
             partial_expr = f"({left_expr}) and ({right_expr})"
             partial_cond = make_binary_cond(  # type: ignore
                 BinaryCondArg.BOTH, unary_cond
@@ -503,13 +640,13 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
             input_str, value_str = cond_m.groups()
 
             if value_str == "the same mathematical sign":
-                partial_expr = "copysign(1, x1ᵢ) == copysign(1, x2ᵢ)"
+                partial_expr = "copysign(1, x1_i) == copysign(1, x2_i)"
 
                 def partial_cond(i1: float, i2: float) -> bool:
                     return math.copysign(1, i1) == math.copysign(1, i2)
 
             elif value_str == "different mathematical signs":
-                partial_expr = "copysign(1, x1ᵢ) != copysign(1, x2ᵢ)"
+                partial_expr = "copysign(1, x1_i) != copysign(1, x2_i)"
 
                 def partial_cond(i1: float, i2: float) -> bool:
                     return math.copysign(1, i1) != math.copysign(1, i2)
@@ -524,21 +661,21 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
                 input_wrapper = None
                 if m := r_input.match(input_str):
                     x_no = m.group(1)
-                    partial_expr = expr_template.replace("{}", f"x{x_no}ᵢ")
+                    partial_expr = expr_template.replace("{}", f"x{x_no}_i")
                     cond_arg = BinaryCondArg.from_x_no(x_no)
                 elif m := r_abs_input.match(input_str):
                     x_no = m.group(1)
-                    partial_expr = expr_template.replace("{}", f"abs(x{x_no}ᵢ)")
+                    partial_expr = expr_template.replace("{}", f"abs(x{x_no}_i)")
                     cond_arg = BinaryCondArg.from_x_no(x_no)
                     input_wrapper = abs
                 elif r_and_input.match(input_str):
-                    left_expr = expr_template.replace("{}", "x1ᵢ")
-                    right_expr = expr_template.replace("{}", "x2ᵢ")
+                    left_expr = expr_template.replace("{}", "x1_i")
+                    right_expr = expr_template.replace("{}", "x2_i")
                     partial_expr = f"({left_expr}) and ({right_expr})"
                     cond_arg = BinaryCondArg.BOTH
                 elif r_or_input.match(input_str):
-                    left_expr = expr_template.replace("{}", "x1ᵢ")
-                    right_expr = expr_template.replace("{}", "x2ᵢ")
+                    left_expr = expr_template.replace("{}", "x1_i")
+                    right_expr = expr_template.replace("{}", "x2_i")
                     partial_expr = f"({left_expr}) or ({right_expr})"
                     cond_arg = BinaryCondArg.EITHER
                 else:
@@ -556,7 +693,7 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
     result_str = result_m.group(1)
     if m := r_array_element.match(result_str):
         sign, x_no = m.groups()
-        result_expr = f"{sign}x{x_no}ᵢ"
+        result_expr = f"{sign}x{x_no}_i"
         check_result = make_eq_input_check_result(  # type: ignore
             BinaryCondArg.from_x_no(x_no), eq_neg=sign == "-"
         )
@@ -566,12 +703,12 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
         def check_result(i1: float, i2: float, result: float) -> bool:
             return _check_result(result)
 
-    expr = " and ".join(partial_exprs) + " -> " + result_expr
+    cond_expr = " and ".join(partial_exprs)
 
     def cond(i1: float, i2: float) -> bool:
         return all(pc(i1, i2) for pc in partial_conds)
 
-    return BinaryCase(expr, cond, check_result)
+    return BinaryCase(cond_expr, result_expr, cond, check_result)
 
 
 r_redundant_case = re.compile("result.+determined by the rule already stated above")
@@ -628,16 +765,20 @@ for stub in category_to_funcs["elementwise"]:
         continue
     if param_names[0] == "x":
         if cases := parse_unary_docstring(stub.__doc__):
-            p = pytest.param(stub.__name__, func, cases, id=stub.__name__)
-            unary_params.append(p)
+            for case in cases:
+                id_ = f"{stub.__name__}({case.cond_expr}) -> {case.result_expr}"
+                p = pytest.param(stub.__name__, func, case, id=id_)
+                unary_params.append(p)
         continue
     if len(sig.parameters) == 1:
         warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
         continue
     if param_names[0] == "x1" and param_names[1] == "x2":
-        if cases := parse_binary_docstring(stub.__doc__):
-            p = pytest.param(stub.__name__, func, cases, id=stub.__name__)
-            binary_params.append(p)
+        # if cases := parse_binary_docstring(stub.__doc__):
+        #     for case in cases:
+        #         id_ = f"{stub.__name__}({case.cond_expr}) -> {case.result_expr}"
+        #         p = pytest.param(stub.__name__, func, case, id=id_)
+        #         binary_params.append(p)
         continue
     else:
         warn(
@@ -652,50 +793,59 @@ for stub in category_to_funcs["elementwise"]:
 # indicating we should modify the array strategy being used.
 
 
-@pytest.mark.parametrize("func_name, func, cases", unary_params)
-@given(x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)))
-def test_unary(func_name, func, cases, x):
+@pytest.mark.parametrize("func_name, func, case", unary_params)
+@given(
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
+    data=st.data(),
+)
+def test_unary(func_name, func, case, x, data):
+    set_idx = data.draw(
+        xps.indices(x.shape, max_dims=0, allow_ellipsis=False), label="set idx"
+    )
+    set_value = data.draw(case.cond_strat(x.dtype), label="set value")
+    x[set_idx] = set_value
+    note(f"{x=}")
+
     res = func(x)
+
     good_example = False
     for idx in sh.ndindex(res.shape):
         in_ = float(x[idx])
-        for case in cases:
-            if case.cond(in_):
-                good_example = True
-                out = float(res[idx])
-                f_in = f"{sh.fmt_idx('x', idx)}={in_}"
-                f_out = f"{sh.fmt_idx('out', idx)}={out}"
-                assert case.check_result(
-                    in_, out
-                ), f"{f_out} not good [{func_name}()]\n{f_in}"
-                break
+        if case.cond(in_):
+            good_example = True
+            out = float(res[idx])
+            f_in = f"{sh.fmt_idx('x', idx)}={in_}"
+            f_out = f"{sh.fmt_idx('out', idx)}={out}"
+            assert case.check_result(in_, out), (
+                f"{f_out} not good [{func_name}()]\n" f"{case}\n" f"{f_in}"
+            )
+            break
     assume(good_example)
 
 
-@pytest.mark.parametrize("func_name, func, cases", binary_params)
+@pytest.mark.parametrize("func_name, func, case", binary_params)
 @given(
     *hh.two_mutual_arrays(
         dtypes=dh.float_dtypes,
         two_shapes=hh.mutually_broadcastable_shapes(2, min_side=1),
     )
 )
-def test_binary(func_name, func, cases, x1, x2):
+def test_binary(func_name, func, case, x1, x2):
     res = func(x1, x2)
     good_example = False
     for l_idx, r_idx, o_idx in sh.iter_indices(x1.shape, x2.shape, res.shape):
         l = float(x1[l_idx])
         r = float(x2[r_idx])
-        for case in cases:
-            if case.cond(l, r):
-                good_example = True
-                o = float(res[o_idx])
-                f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
-                f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
-                f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
-                assert case.check_result(l, r, o), (
-                    f"{f_out} not good [{func_name}()]\n"
-                    f"{case.expr}\n"
-                    f"{f_left}, {f_right}"
-                )
-                break
+        if case.cond(l, r):
+            good_example = True
+            o = float(res[o_idx])
+            f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
+            f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
+            f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
+            assert case.check_result(l, r, o), (
+                f"{f_out} not good [{func_name}()]\n"
+                f"{case.expr}\n"
+                f"{f_left}, {f_right}"
+            )
+            break
     assume(good_example)
