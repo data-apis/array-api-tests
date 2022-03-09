@@ -12,7 +12,6 @@ from typing import (
     Dict,
     List,
     Match,
-    NamedTuple,
     Optional,
     Protocol,
     Tuple,
@@ -171,25 +170,21 @@ r_gt = re.compile(f"greater than {r_code.pattern}")
 r_lt = re.compile(f"less than {r_code.pattern}")
 
 
-FromDataType = Callable[[DataType], st.SearchStrategy]
+class FromDtypeFunc(Protocol):
+    def __call__(self, dtype: DataType, **kw) -> st.SearchStrategy[float]:
+        ...
 
 
-class ElementsStrategyFactory(NamedTuple):
-    from_dtype: FromDataType
-    kwargs: Optional[Dict[str, Any]]
+@dataclass
+class BoundFromDtype(FromDtypeFunc):
+    kwargs: Dict[str, Any]
     filter_: Optional[Callable[[Array], bool]]
 
-    def __add__(self, other: ElementsStrategyFactory) -> ElementsStrategyFactory:
-        assert not (
-            isinstance(self.kwargs, Callable) or isinstance(other.kwargs, Callable)
-        ), (
-            f"{self.kwargs=} and {other.kwargs=}, " "but both must be from_dtype kwargs"
-        )
-        kwargs1 = self.kwargs or {}
-        kwargs2 = other.kwargs or {}
-        for k in kwargs1.keys():
-            if k in kwargs2.keys():
-                assert kwargs1[k] == kwargs2[k]  # sanity check
+    def __add__(self, other: BoundFromDtype) -> BoundFromDtype:
+        for k in self.kwargs.keys():
+            if k in other.kwargs.keys():
+                assert self.kwargs[k] == other.kwargs[k]  # sanity check
+        kwargs = {**self.kwargs, **other.kwargs}
 
         if self.filter_ is not None and other.filter_ is not None:
             filter_ = lambda i: self.filter_(i) and other.filter_(i)
@@ -201,37 +196,43 @@ class ElementsStrategyFactory(NamedTuple):
             except StopIteration:
                 filter_ = None
 
-        return ElementsStrategyFactory(
-            kwargs={**kwargs1, **kwargs2},
-            filter_=filter_,
-        )
+        return BoundFromDtype(kwargs, filter_)
 
-    def to_strategy(self, dtype: DataType) -> st.SearchStrategy[float]:
-        kw = self.kwargs or {}
-        if self.from_dtype != xps.from_dtype:
-            assert kw == {}  # sanity check
-        strat = self.from_dtype(dtype, **kw)
+    def __call__(self, dtype: DataType) -> st.SearchStrategy[float]:
+        strat = xps.from_dtype(dtype, **self.kwargs)
         if self.filter_ is not None:
             strat = strat.filter(self.filter_)
         return strat
 
 
-def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, ElementsStrategyFactory]:
+def wrap_strat_as_from_dtype(strat: st.SearchStrategy[float]) -> FromDtypeFunc:
+    def from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
+        assert kw == {}  # sanity check
+        return strat
+
+    return from_dtype
+
+
+def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
+    if "equal to" in cond_str:
+        raise ValueParseError(cond_str)  # TODO
+
     if m := r_not.match(cond_str):
         cond_str = m.group(1)
         not_cond = True
     else:
         not_cond = False
 
-    from_dtype = xps.from_dtype  # type: ignore
-    kwargs = None
+    kwargs = {}
     filter_ = None
+    from_dtype = None  # type: ignore
+    strat = None
     if m := r_code.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_eq(value)
         expr_template = "{} == " + m.group(1)
         if not not_cond:
-            from_dtype = lambda _: st.just(value)  # type: ignore
+            strat = st.just(value)
     elif m := r_gt.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_gt(value)
@@ -250,7 +251,7 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, ElementsStrategyFactory]
         cond = make_or(make_eq(v1), make_eq(v2))
         expr_template = "{} == " + m.group(1) + " or {} == " + m.group(2)
         if not not_cond:
-            from_dtype = lambda _: st.sampled_from([v1, v2])  # type: ignore
+            strat = st.sampled_from([v1, v2])
     elif cond_str in ["finite", "a finite number"]:
         cond = math.isfinite
         expr_template = "isfinite({})"
@@ -286,7 +287,7 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, ElementsStrategyFactory]
         cond = lambda i: math.copysign(1, i) == -1
         expr_template = "copysign(1, {}) == -1"
         if not not_cond:
-            # We assume (positive) zero is special cased seperately
+            # We assume (negative) zero is special cased seperately
             kwargs = {"max_value": 0, "exclude_max": True}
     elif "nonzero finite" in cond_str:
         cond = lambda i: math.isfinite(i) and i != 0
@@ -294,37 +295,41 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, ElementsStrategyFactory]
         if not not_cond:
             kwargs = {"allow_nan": False, "allow_infinity": False}
             filter_ = lambda n: n != 0
-    elif cond_str == "an integer value":
-        cond = lambda i: i.is_integer()
-        expr_template = "{}.is_integer()"
-        if not not_cond:
-
-            def from_dtype(dtype: DataType) -> st.SearchStrategy:
-                m, M = dh.dtype_ranges[dtype]
-                return st.integers(math.ceil(m), math.floor(M)).map(float)
-
-    elif cond_str == "an odd integer value":
-        cond = lambda i: i.is_integer() and i % 2 == 1
-        expr_template = "{}.is_integer() and {} % 2 == 1"
-        if not not_cond:
-
-            def from_dtype(dtype: DataType) -> st.SearchStrategy:
-                m, M = dh.dtype_ranges[dtype]
-                return (
-                    st.integers(math.ceil(m), math.floor(M))
-                    .filter(lambda n: n % 2 == 1)
-                    .map(float)
-                )
+    elif "integer value" in cond_str:
+        raise ValueError(
+            "integer values are only specified in dual cases, "
+            "which cannot be handled in parse_cond()"
+        )
+    # elif cond_str == "an integer value":
+    #     cond = lambda i: i.is_integer()
+    #     expr_template = "{}.is_integer()"
+    #     if not not_cond:
+    #         from_dtype = integers_from_dtype  # type: ignore
+    # elif cond_str == "an odd integer value":
+    #     cond = lambda i: i.is_integer() and i % 2 == 1
+    #     expr_template = "{}.is_integer() and {} % 2 == 1"
+    #     if not not_cond:
+    #         def from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
+    #             return integers_from_dtype(dtype, **kw).filter(lambda n: n % 2 == 1)
 
     else:
         raise ValueParseError(cond_str)
 
+    if strat is not None:
+        # sanity checks
+        assert not not_cond
+        assert kwargs == {}
+        assert filter_ is None
+        assert from_dtype is None
+        return cond, expr_template, wrap_strat_as_from_dtype(strat)
+
     if not_cond:
         expr_template = f"not {expr_template}"
         cond = make_not_cond(cond)
+        kwargs = {}
         filter_ = cond
-
-    return cond, expr_template, ElementsStrategyFactory(from_dtype, kwargs, filter_)
+    assert kwargs is not None
+    return cond, expr_template, BoundFromDtype(kwargs, filter_)
 
 
 def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
@@ -392,15 +397,14 @@ class UnaryResultCheck(Protocol):
 class UnaryCase(Case):
     cond_expr: str
     result_expr: str
-    cond_strat: FromDataType
+    cond_from_dtype: FromDtypeFunc
     cond: UnaryCheck
     check_result: UnaryResultCheck
 
     @classmethod
     def from_strings(cls, cond_str: str, result_str: str):
-        cond, cond_expr_template, strat_factory = parse_cond(cond_str)
+        cond, cond_expr_template, cond_from_dtype = parse_cond(cond_str)
         cond_expr = cond_expr_template.replace("{}", "x_i")
-        cond_strat = strat_factory.to_strategy
         _check_result, result_expr = parse_result(result_str)
 
         def check_result(i: float, result: float) -> bool:
@@ -409,7 +413,7 @@ class UnaryCase(Case):
         return cls(
             cond_expr=cond_expr,
             cond=cond,
-            cond_strat=cond_strat,
+            cond_from_dtype=cond_from_dtype,
             result_expr=result_expr,
             check_result=check_result,
         )
@@ -422,7 +426,7 @@ r_even_int_round_case = re.compile(
 )
 
 
-def point_5_from_dtype(dtype: DataType):
+def trailing_halves_from_dtype(dtype: DataType):
     m, M = dh.dtype_ranges[dtype]
     return st.integers(math.ceil(m) // 2, math.floor(M) // 2).map(lambda n: n * 0.5)
 
@@ -430,7 +434,7 @@ def point_5_from_dtype(dtype: DataType):
 even_int_round_case = UnaryCase(
     cond_expr="i % 0.5 == 0",
     cond=lambda i: i % 0.5 == 0,
-    cond_strat=point_5_from_dtype,
+    cond_from_dtype=trailing_halves_from_dtype,
     result_expr="Decimal(i).to_integral_exact(ROUND_HALF_EVEN)",
     check_result=lambda i, result: (
         result == float(Decimal(i).to_integral_exact(ROUND_HALF_EVEN))
@@ -479,6 +483,8 @@ class BinaryResultCheck(Protocol):
 class BinaryCase(Case):
     cond_expr: str
     result_expr: str
+    x1_cond_from_dtype: FromDtypeFunc
+    x2_cond_from_dtype: FromDtypeFunc
     cond: BinaryCond
     check_result: BinaryResultCheck
 
@@ -491,22 +497,18 @@ r_special_cases = re.compile(
 r_case = re.compile(r"\s+-\s*(.*)\.\n?")
 r_binary_case = re.compile("If (.+), the result (.+)")
 r_remaining_case = re.compile("In the remaining cases.+")
-
 r_cond_sep = re.compile(r"(?<!``x1_i``),? and |(?<!i\.e\.), ")
 r_cond = re.compile("(.+) (?:is|have) (.+)")
-
+r_input_is_array_element = re.compile(
+    f"{r_array_element.pattern} is {r_array_element.pattern}"
+)
+r_both_inputs_are_value = re.compile("are both (.+)")
 r_element = re.compile("x([12])_i")
 r_input = re.compile(rf"``{r_element.pattern}``")
 r_abs_input = re.compile(rf"``abs\({r_element.pattern}\)``")
 r_and_input = re.compile(f"{r_input.pattern} and {r_input.pattern}")
 r_or_input = re.compile(f"either {r_input.pattern} or {r_input.pattern}")
-
 r_result = re.compile(r"(?:is|has a) (.+)")
-
-r_input_is_array_element = re.compile(
-    f"{r_array_element.pattern} is {r_array_element.pattern}"
-)
-r_both_inputs_are_value = re.compile("are both (.+)")
 
 
 class BinaryCondArg(Enum):
@@ -527,6 +529,22 @@ class BinaryCondArg(Enum):
 
 def noop(n: float) -> float:
     return n
+
+
+def integers_from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
+    for k in kw.keys():
+        # sanity check
+        assert k in ["min_value", "max_value", "exclude_min", "exclude_max"]
+    m, M = dh.dtype_ranges[dtype]
+    if "min_value" in kw.keys():
+        m = kw["min_value"]
+        if "exclude_min" in kw.keys():
+            m += 1
+    if "max_value" in kw.keys():
+        M = kw["max_value"]
+        if "exclude_max" in kw.keys():
+            M -= 1
+    return st.integers(math.ceil(m), math.floor(M)).map(float)
 
 
 def make_binary_cond(
@@ -615,8 +633,14 @@ def make_eq_input_check_result(
 
 def parse_binary_case(case_m: Match) -> BinaryCase:
     cond_strs = r_cond_sep.split(case_m.group(1))
+
+    if len(cond_strs) > 2:
+        raise ValueParseError(", ".join(cond_strs))
+
     partial_conds = []
     partial_exprs = []
+    x1_cond_from_dtypes = []
+    x2_cond_from_dtypes = []
     for cond_str in cond_strs:
         if m := r_input_is_array_element.match(cond_str):
             in_sign, in_no, other_sign, other_no = m.groups()
@@ -626,13 +650,15 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
                 BinaryCondArg.from_x_no(other_no), eq_neg=other_sign == "-"
             )
         elif m := r_both_inputs_are_value.match(cond_str):
-            unary_cond, expr_template = parse_cond(m.group(1))
+            unary_cond, expr_template, cond_from_dtype = parse_cond(m.group(1))
             left_expr = expr_template.replace("{}", "x1_i")
             right_expr = expr_template.replace("{}", "x2_i")
             partial_expr = f"({left_expr}) and ({right_expr})"
             partial_cond = make_binary_cond(  # type: ignore
                 BinaryCondArg.BOTH, unary_cond
             )
+            x1_cond_from_dtypes.append(cond_from_dtype)
+            x2_cond_from_dtypes.append(cond_from_dtype)
         else:
             cond_m = r_cond.match(cond_str)
             if cond_m is None:
@@ -652,7 +678,7 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
                     return math.copysign(1, i1) != math.copysign(1, i2)
 
             else:
-                unary_check, expr_template = parse_cond(value_str)
+                unary_check, expr_template, cond_from_dtype = parse_cond(value_str)
                 # Do not define partial_cond via the def keyword, as one
                 # partial_cond definition can mess up previous definitions
                 # in the partial_conds list. This is a hard-limitation of
@@ -683,6 +709,14 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
                 partial_cond = make_binary_cond(  # type: ignore
                     cond_arg, unary_check, input_wrapper=input_wrapper
                 )
+                if cond_arg == BinaryCondArg.FIRST:
+                    x1_cond_from_dtypes.append(cond_from_dtype)
+                elif cond_arg == BinaryCondArg.SECOND:
+                    x2_cond_from_dtypes.append(cond_from_dtype)
+                else:
+                    # TODO: xor scenarios
+                    x1_cond_from_dtypes.append(cond_from_dtype)
+                    x2_cond_from_dtypes.append(cond_from_dtype)
 
         partial_conds.append(partial_cond)
         partial_exprs.append(partial_expr)
@@ -708,7 +742,31 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
     def cond(i1: float, i2: float) -> bool:
         return all(pc(i1, i2) for pc in partial_conds)
 
-    return BinaryCase(cond_expr, result_expr, cond, check_result)
+    if len(x1_cond_from_dtypes) == 0:
+        x1_cond_from_dtype = xps.from_dtype
+    elif len(x1_cond_from_dtypes) == 1:
+        x1_cond_from_dtype = x1_cond_from_dtypes[0]
+    else:
+        # sanity check
+        assert all(isinstance(fd, BoundFromDtype) for fd in x1_cond_from_dtypes)
+        x1_cond_from_dtype = sum(x1_cond_from_dtypes)
+    if len(x2_cond_from_dtypes) == 0:
+        x2_cond_from_dtype = xps.from_dtype
+    elif len(x2_cond_from_dtypes) == 1:
+        x2_cond_from_dtype = x2_cond_from_dtypes[0]
+    else:
+        # sanity check
+        assert all(isinstance(fd, BoundFromDtype) for fd in x2_cond_from_dtypes)
+        x2_cond_from_dtype = sum(x2_cond_from_dtypes)
+
+    return BinaryCase(
+        cond_expr=cond_expr,
+        cond=cond,
+        x1_cond_from_dtype=x1_cond_from_dtype,
+        x2_cond_from_dtype=x2_cond_from_dtype,
+        result_expr=result_expr,
+        check_result=check_result,
+    )
 
 
 r_redundant_case = re.compile("result.+determined by the rule already stated above")
@@ -774,11 +832,11 @@ for stub in category_to_funcs["elementwise"]:
         warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
         continue
     if param_names[0] == "x1" and param_names[1] == "x2":
-        # if cases := parse_binary_docstring(stub.__doc__):
-        #     for case in cases:
-        #         id_ = f"{stub.__name__}({case.cond_expr}) -> {case.result_expr}"
-        #         p = pytest.param(stub.__name__, func, case, id=id_)
-        #         binary_params.append(p)
+        if cases := parse_binary_docstring(stub.__doc__):
+            for case in cases:
+                id_ = f"{stub.__name__}({case.cond_expr}) -> {case.result_expr}"
+                p = pytest.param(stub.__name__, func, case, id=id_)
+                binary_params.append(p)
         continue
     else:
         warn(
@@ -802,7 +860,7 @@ def test_unary(func_name, func, case, x, data):
     set_idx = data.draw(
         xps.indices(x.shape, max_dims=0, allow_ellipsis=False), label="set idx"
     )
-    set_value = data.draw(case.cond_strat(x.dtype), label="set value")
+    set_value = data.draw(case.cond_from_dtype(x.dtype), label="set value")
     x[set_idx] = set_value
     note(f"{x=}")
 
@@ -823,17 +881,34 @@ def test_unary(func_name, func, case, x, data):
     assume(good_example)
 
 
-@pytest.mark.parametrize("func_name, func, case", binary_params)
-@given(
-    *hh.two_mutual_arrays(
-        dtypes=dh.float_dtypes,
-        two_shapes=hh.mutually_broadcastable_shapes(2, min_side=1),
-    )
+x1_strat, x2_strat = hh.two_mutual_arrays(
+    dtypes=dh.float_dtypes,
+    two_shapes=hh.mutually_broadcastable_shapes(2, min_side=1),
 )
-def test_binary(func_name, func, case, x1, x2):
+
+
+@pytest.mark.parametrize("func_name, func, case", binary_params)
+@given(x1=x1_strat, x2=x2_strat, data=st.data())
+def test_binary(func_name, func, case, x1, x2, data):
+    result_shape = sh.broadcast_shapes(x1.shape, x2.shape)
+    all_indices = list(sh.iter_indices(x1.shape, x2.shape, result_shape))
+
+    indices_strat = st.shared(st.sampled_from(all_indices))
+    set_x1_idx = data.draw(indices_strat.map(lambda t: t[0]), label="set x1 idx")
+    set_x2_idx = data.draw(indices_strat.map(lambda t: t[1]), label="set x2 idx")
+    set_x1_value = data.draw(case.x1_cond_from_dtype(x1.dtype), label="set x1 value")
+    set_x2_value = data.draw(case.x2_cond_from_dtype(x2.dtype), label="set x2 value")
+    x1[set_x1_idx] = set_x1_value
+    note(f"{x1=}")
+    x2[set_x2_idx] = set_x2_value
+    note(f"{x2=}")
+
     res = func(x1, x2)
+    # sanity check
+    ph.assert_result_shape(func_name, [x1.shape, x2.shape], res.shape, result_shape)
+
     good_example = False
-    for l_idx, r_idx, o_idx in sh.iter_indices(x1.shape, x2.shape, res.shape):
+    for l_idx, r_idx, o_idx in all_indices:
         l = float(x1[l_idx])
         r = float(x2[r_idx])
         if case.cond(l, r):
@@ -843,9 +918,7 @@ def test_binary(func_name, func, case, x1, x2):
             f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
             f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
             assert case.check_result(l, r, o), (
-                f"{f_out} not good [{func_name}()]\n"
-                f"{case.expr}\n"
-                f"{f_left}, {f_right}"
+                f"{f_out} not good [{func_name}()]\n" f"{case}\n" f"{f_left}, {f_right}"
             )
             break
     assume(good_example)
