@@ -6,16 +6,7 @@ import re
 from dataclasses import dataclass
 from decimal import ROUND_HALF_EVEN, Decimal
 from enum import Enum, auto
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Match,
-    Optional,
-    Protocol,
-    Tuple,
-)
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 from warnings import warn
 
 import pytest
@@ -178,7 +169,8 @@ class FromDtypeFunc(Protocol):
 @dataclass
 class BoundFromDtype(FromDtypeFunc):
     kwargs: Dict[str, Any]
-    filter_: Optional[Callable[[Array], bool]]
+    filter_: Optional[Callable[[Array], bool]] = None
+    base_func: Optional[FromDtypeFunc] = None
 
     def __add__(self, other: BoundFromDtype) -> BoundFromDtype:
         for k in self.kwargs.keys():
@@ -189,17 +181,28 @@ class BoundFromDtype(FromDtypeFunc):
         if self.filter_ is not None and other.filter_ is not None:
             filter_ = lambda i: self.filter_(i) and other.filter_(i)
         else:
-            try:
-                filter_ = next(
-                    f for f in [self.filter_, other.filter_] if f is not None
-                )
-            except StopIteration:
+            if self.filter_ is not None:
+                filter_ = self.filter_
+            elif other.filter_ is not None:
+                filter_ = other.filter_
+            else:
                 filter_ = None
 
-        return BoundFromDtype(kwargs, filter_)
+        # sanity check
+        assert not (self.base_func is not None and other.base_func is not None)
+        if self.base_func is not None:
+            base_func = self.base_func
+        elif other.base_func is not None:
+            base_func = other.base_func
+        else:
+            base_func = None
 
-    def __call__(self, dtype: DataType) -> st.SearchStrategy[float]:
-        strat = xps.from_dtype(dtype, **self.kwargs)
+        return BoundFromDtype(kwargs, filter_, base_func)
+
+    def __call__(self, dtype: DataType, **kw) -> st.SearchStrategy[float]:
+        assert len(kw) == 0  # sanity check
+        from_dtype = self.base_func or xps.from_dtype
+        strat = from_dtype(dtype, **self.kwargs)
         if self.filter_ is not None:
             strat = strat.filter(self.filter_)
         return strat
@@ -295,22 +298,18 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
         if not not_cond:
             kwargs = {"allow_nan": False, "allow_infinity": False}
             filter_ = lambda n: n != 0
-    elif "integer value" in cond_str:
-        raise ValueError(
-            "integer values are only specified in dual cases, "
-            "which cannot be handled in parse_cond()"
-        )
-    # elif cond_str == "an integer value":
-    #     cond = lambda i: i.is_integer()
-    #     expr_template = "{}.is_integer()"
-    #     if not not_cond:
-    #         from_dtype = integers_from_dtype  # type: ignore
-    # elif cond_str == "an odd integer value":
-    #     cond = lambda i: i.is_integer() and i % 2 == 1
-    #     expr_template = "{}.is_integer() and {} % 2 == 1"
-    #     if not not_cond:
-    #         def from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
-    #             return integers_from_dtype(dtype, **kw).filter(lambda n: n % 2 == 1)
+    elif cond_str == "an integer value":
+        cond = lambda i: i.is_integer()
+        expr_template = "{}.is_integer()"
+        if not not_cond:
+            from_dtype = integers_from_dtype  # type: ignore
+    elif cond_str == "an odd integer value":
+        cond = lambda i: i.is_integer() and i % 2 == 1
+        expr_template = "{}.is_integer() and {} % 2 == 1"
+        if not not_cond:
+
+            def from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
+                return integers_from_dtype(dtype, **kw).filter(lambda n: n % 2 == 1)
 
     else:
         raise ValueParseError(cond_str)
@@ -329,7 +328,7 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
         kwargs = {}
         filter_ = cond
     assert kwargs is not None
-    return cond, expr_template, BoundFromDtype(kwargs, filter_)
+    return cond, expr_template, BoundFromDtype(kwargs, filter_, from_dtype)
 
 
 def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
@@ -531,25 +530,9 @@ def noop(n: float) -> float:
     return n
 
 
-def integers_from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
-    for k in kw.keys():
-        # sanity check
-        assert k in ["min_value", "max_value", "exclude_min", "exclude_max"]
-    m, M = dh.dtype_ranges[dtype]
-    if "min_value" in kw.keys():
-        m = kw["min_value"]
-        if "exclude_min" in kw.keys():
-            m += 1
-    if "max_value" in kw.keys():
-        M = kw["max_value"]
-        if "exclude_max" in kw.keys():
-            M -= 1
-    return st.integers(math.ceil(m), math.floor(M)).map(float)
-
-
 def make_binary_cond(
     cond_arg: BinaryCondArg,
-    unary_check: UnaryCheck,
+    unary_cond: UnaryCheck,
     *,
     input_wrapper: Optional[Callable[[float], float]] = None,
 ) -> BinaryCond:
@@ -559,22 +542,22 @@ def make_binary_cond(
     if cond_arg == BinaryCondArg.FIRST:
 
         def partial_cond(i1: float, i2: float) -> bool:
-            return unary_check(input_wrapper(i1))
+            return unary_cond(input_wrapper(i1))
 
     elif cond_arg == BinaryCondArg.SECOND:
 
         def partial_cond(i1: float, i2: float) -> bool:
-            return unary_check(input_wrapper(i2))
+            return unary_cond(input_wrapper(i2))
 
     elif cond_arg == BinaryCondArg.BOTH:
 
         def partial_cond(i1: float, i2: float) -> bool:
-            return unary_check(input_wrapper(i1)) and unary_check(input_wrapper(i2))
+            return unary_cond(input_wrapper(i1)) and unary_cond(input_wrapper(i2))
 
     else:
 
         def partial_cond(i1: float, i2: float) -> bool:
-            return unary_check(input_wrapper(i1)) or unary_check(input_wrapper(i2))
+            return unary_cond(input_wrapper(i1)) or unary_cond(input_wrapper(i2))
 
     return partial_cond
 
@@ -631,11 +614,26 @@ def make_eq_input_check_result(
     return check_result
 
 
-def parse_binary_case(case_m: Match) -> BinaryCase:
-    cond_strs = r_cond_sep.split(case_m.group(1))
+def integers_from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
+    for k in kw.keys():
+        # sanity check
+        assert k in ["min_value", "max_value", "exclude_min", "exclude_max"]
+    m, M = dh.dtype_ranges[dtype]
+    if "min_value" in kw.keys():
+        m = kw["min_value"]
+        if "exclude_min" in kw.keys():
+            m += 1
+    if "max_value" in kw.keys():
+        M = kw["max_value"]
+        if "exclude_max" in kw.keys():
+            M -= 1
+    return st.integers(math.ceil(m), math.floor(M)).map(float)
 
-    if len(cond_strs) > 2:
-        raise ValueParseError(", ".join(cond_strs))
+
+def parse_binary_case(case_str: str) -> BinaryCase:
+    case_m = r_binary_case.match(case_str)
+    assert case_m is not None  # sanity check
+    cond_strs = r_cond_sep.split(case_m.group(1))
 
     partial_conds = []
     partial_exprs = []
@@ -678,7 +676,7 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
                     return math.copysign(1, i1) != math.copysign(1, i2)
 
             else:
-                unary_check, expr_template, cond_from_dtype = parse_cond(value_str)
+                unary_cond, expr_template, cond_from_dtype = parse_cond(value_str)
                 # Do not define partial_cond via the def keyword, as one
                 # partial_cond definition can mess up previous definitions
                 # in the partial_conds list. This is a hard-limitation of
@@ -707,7 +705,7 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
                 else:
                     raise ValueParseError(input_str)
                 partial_cond = make_binary_cond(  # type: ignore
-                    cond_arg, unary_check, input_wrapper=input_wrapper
+                    cond_arg, unary_cond, input_wrapper=input_wrapper
                 )
                 if cond_arg == BinaryCondArg.FIRST:
                     x1_cond_from_dtypes.append(cond_from_dtype)
@@ -749,7 +747,7 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
     else:
         # sanity check
         assert all(isinstance(fd, BoundFromDtype) for fd in x1_cond_from_dtypes)
-        x1_cond_from_dtype = sum(x1_cond_from_dtypes)
+        x1_cond_from_dtype = sum(x1_cond_from_dtypes, start=BoundFromDtype({}, None))
     if len(x2_cond_from_dtypes) == 0:
         x2_cond_from_dtype = xps.from_dtype
     elif len(x2_cond_from_dtypes) == 1:
@@ -757,7 +755,7 @@ def parse_binary_case(case_m: Match) -> BinaryCase:
     else:
         # sanity check
         assert all(isinstance(fd, BoundFromDtype) for fd in x2_cond_from_dtypes)
-        x2_cond_from_dtype = sum(x2_cond_from_dtypes)
+        x2_cond_from_dtype = sum(x2_cond_from_dtypes, start=BoundFromDtype({}, None))
 
     return BinaryCase(
         cond_expr=cond_expr,
@@ -788,7 +786,7 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
             continue
         if m := r_binary_case.match(case_str):
             try:
-                case = parse_binary_case(m)
+                case = parse_binary_case(case_str)
                 cases.append(case)
             except ValueParseError as e:
                 warn(f"not machine-readable: '{e.value}'")
