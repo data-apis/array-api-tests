@@ -29,7 +29,7 @@ UnaryCheck = Callable[[float], bool]
 BinaryCheck = Callable[[float, float], bool]
 
 
-def make_eq(v: float) -> UnaryCheck:
+def make_strict_eq(v: float) -> UnaryCheck:
     if math.isnan(v):
         return math.isnan
     if v == 0:
@@ -38,14 +38,14 @@ def make_eq(v: float) -> UnaryCheck:
         else:
             return ph.is_neg_zero
 
-    def eq(i: float) -> bool:
+    def strict_eq(i: float) -> bool:
         return i == v
 
-    return eq
+    return strict_eq
 
 
 def make_neq(v: float) -> UnaryCheck:
-    eq = make_eq(v)
+    eq = make_strict_eq(v)
 
     def neq(i: float) -> bool:
         return not eq(i)
@@ -154,7 +154,8 @@ def parse_inline_code(inline_code: str) -> float:
         raise ValueParseError(inline_code)
 
 
-r_not = re.compile("not (?:equal to )?(.+)")
+r_not = re.compile("not (.+)")
+r_equal_to = re.compile(f"equal to {r_code.pattern}")
 r_array_element = re.compile(r"``([+-]?)x([12])_i``")
 r_either_code = re.compile(f"either {r_code.pattern} or {r_code.pattern}")
 r_gt = re.compile(f"greater than {r_code.pattern}")
@@ -217,9 +218,6 @@ def wrap_strat_as_from_dtype(strat: st.SearchStrategy[float]) -> FromDtypeFunc:
 
 
 def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
-    if "equal to" in cond_str:
-        raise ValueParseError(cond_str)  # TODO
-
     if m := r_not.match(cond_str):
         cond_str = m.group(1)
         not_cond = True
@@ -232,10 +230,15 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
     strat = None
     if m := r_code.match(cond_str):
         value = parse_value(m.group(1))
-        cond = make_eq(value)
+        cond = make_strict_eq(value)
         expr_template = "{} == " + m.group(1)
         if not not_cond:
             strat = st.just(value)
+    elif m := r_equal_to.match(cond_str):
+        value = parse_value(m.group(1))
+        assert not math.isnan(value)  # sanity check
+        cond = lambda i: i == value
+        expr_template = "{} == " + m.group(1)
     elif m := r_gt.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_gt(value)
@@ -251,7 +254,7 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
     elif m := r_either_code.match(cond_str):
         v1 = parse_value(m.group(1))
         v2 = parse_value(m.group(2))
-        cond = make_or(make_eq(v1), make_eq(v2))
+        cond = make_or(make_strict_eq(v1), make_strict_eq(v2))
         expr_template = "{} == " + m.group(1) + " or {} == " + m.group(2)
         if not not_cond:
             strat = st.sampled_from([v1, v2])
@@ -334,7 +337,7 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
 def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
     if m := r_code.match(result_str):
         value = parse_value(m.group(1))
-        check_result = make_eq(value)  # type: ignore
+        check_result = make_strict_eq(value)  # type: ignore
         expr = m.group(1)
     elif m := r_approx_value.match(result_str):
         value = parse_value(m.group(1))
@@ -573,13 +576,13 @@ def make_eq_other_input_cond(
     if eq_to == BinaryCondArg.FIRST:
 
         def cond(i1: float, i2: float) -> bool:
-            eq = make_eq(input_wrapper(i1))
+            eq = make_strict_eq(input_wrapper(i1))
             return eq(i2)
 
     elif eq_to == BinaryCondArg.SECOND:
 
         def cond(i1: float, i2: float) -> bool:
-            eq = make_eq(input_wrapper(i2))
+            eq = make_strict_eq(input_wrapper(i2))
             return eq(i1)
 
     else:
@@ -599,13 +602,13 @@ def make_eq_input_check_result(
     if eq_to == BinaryCondArg.FIRST:
 
         def check_result(i1: float, i2: float, result: float) -> bool:
-            eq = make_eq(input_wrapper(i1))
+            eq = make_strict_eq(input_wrapper(i1))
             return eq(result)
 
     elif eq_to == BinaryCondArg.SECOND:
 
         def check_result(i1: float, i2: float, result: float) -> bool:
-            eq = make_eq(input_wrapper(i2))
+            eq = make_strict_eq(input_wrapper(i2))
             return eq(result)
 
     else:
