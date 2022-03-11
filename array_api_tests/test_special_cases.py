@@ -705,7 +705,9 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                 elif r_or_input.match(input_str):
                     left_expr = expr_template.replace("{}", "x1_i")
                     right_expr = expr_template.replace("{}", "x2_i")
-                    partial_expr = f"({left_expr}) or ({right_expr})"
+                    partial_expr = f"{left_expr} or {right_expr}"
+                    if len(cond_strs) != 1:
+                        partial_expr = f"({partial_expr})"
                     cond_arg = BinaryCondArg.EITHER
                 else:
                     raise ValueParseError(input_str)
