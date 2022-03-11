@@ -1,9 +1,11 @@
+# We use __future__ for forward reference type hints - this will work for even py3.8.0
+# See https://stackoverflow.com/a/33533514/5193926
 from __future__ import annotations
 
 import inspect
 import math
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import ROUND_HALF_EVEN, Decimal
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
@@ -169,7 +171,7 @@ class FromDtypeFunc(Protocol):
 
 @dataclass
 class BoundFromDtype(FromDtypeFunc):
-    kwargs: Dict[str, Any]
+    kwargs: Dict[str, Any] = field(default_factory=dict)
     filter_: Optional[Callable[[Array], bool]] = None
     base_func: Optional[FromDtypeFunc] = None
 
@@ -718,26 +720,38 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                     x1_cond_from_dtypes.append(cond_from_dtype)
                     x2_cond_from_dtypes.append(cond_from_dtype)
                 else:
+                    # For "either x1_i or x2_i is <condition>" cases, we want to
+                    # test three scenarios:
+                    #
+                    # 1. x1_i is <condition>
+                    # 2. x2_i is <condition>
+                    # 3. x1_i AND x2_i is <condition>
+                    #
+                    # This is achieved by a shared base strategy that picks one
+                    # of these scenarios to determine whether each array will
+                    # use either cond_from_dtype() (i.e. meet the condition), or
+                    # simply xps.from_dtype() (i.e. be any value).
+
                     use_x1_or_x2_strat = st.shared(
-                        st.sampled_from([(True, False), (True, False), (True, True)])
+                        st.sampled_from([(True, False), (False, True), (True, True)])
                     )
 
-                    def x1_cond_from_dtype(dtype, **kw) -> st.SearchStrategy[float]:
+                    def _x1_cond_from_dtype(dtype) -> st.SearchStrategy[float]:
                         return use_x1_or_x2_strat.flatmap(
                             lambda t: cond_from_dtype(dtype)
                             if t[0]
                             else xps.from_dtype(dtype)
                         )
 
-                    def x2_cond_from_dtype(dtype, **kw) -> st.SearchStrategy[float]:
+                    def _x2_cond_from_dtype(dtype) -> st.SearchStrategy[float]:
                         return use_x1_or_x2_strat.flatmap(
                             lambda t: cond_from_dtype(dtype)
                             if t[1]
                             else xps.from_dtype(dtype)
                         )
 
-                    x1_cond_from_dtypes.append(x1_cond_from_dtype)
-                    x2_cond_from_dtypes.append(x2_cond_from_dtype)
+                    x1_cond_from_dtypes.append(_x1_cond_from_dtype)
+                    x2_cond_from_dtypes.append(_x2_cond_from_dtype)
 
         partial_conds.append(partial_cond)
         partial_exprs.append(partial_expr)
@@ -768,17 +782,17 @@ def parse_binary_case(case_str: str) -> BinaryCase:
     elif len(x1_cond_from_dtypes) == 1:
         x1_cond_from_dtype = x1_cond_from_dtypes[0]
     else:
-        # sanity check
-        assert all(isinstance(fd, BoundFromDtype) for fd in x1_cond_from_dtypes)
-        x1_cond_from_dtype = sum(x1_cond_from_dtypes, start=BoundFromDtype({}))
+        if not all(isinstance(fd, BoundFromDtype) for fd in x1_cond_from_dtypes):
+            raise ValueParseError(case_str)
+        x1_cond_from_dtype = sum(x1_cond_from_dtypes, start=BoundFromDtype())
     if len(x2_cond_from_dtypes) == 0:
         x2_cond_from_dtype = xps.from_dtype
     elif len(x2_cond_from_dtypes) == 1:
         x2_cond_from_dtype = x2_cond_from_dtypes[0]
     else:
-        # sanity check
-        assert all(isinstance(fd, BoundFromDtype) for fd in x2_cond_from_dtypes)
-        x2_cond_from_dtype = sum(x2_cond_from_dtypes, start=BoundFromDtype({}))
+        if not all(isinstance(fd, BoundFromDtype) for fd in x2_cond_from_dtypes):
+            raise ValueParseError(case_str)
+        x2_cond_from_dtype = sum(x2_cond_from_dtypes, start=BoundFromDtype())
 
     return BinaryCase(
         cond_expr=cond_expr,
@@ -817,10 +831,6 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
             if not r_remaining_case.match(case_str):
                 warn(f"case not machine-readable: '{case_str}'")
     return cases
-
-
-# Here be the tests
-# ------------------------------------------------------------------------------
 
 
 unary_params = []
