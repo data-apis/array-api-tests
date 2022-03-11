@@ -714,10 +714,30 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                     x1_cond_from_dtypes.append(cond_from_dtype)
                 elif cond_arg == BinaryCondArg.SECOND:
                     x2_cond_from_dtypes.append(cond_from_dtype)
-                else:
-                    # TODO: xor scenarios
+                elif cond_arg == BinaryCondArg.BOTH:
                     x1_cond_from_dtypes.append(cond_from_dtype)
                     x2_cond_from_dtypes.append(cond_from_dtype)
+                else:
+                    use_x1_or_x2_strat = st.shared(
+                        st.sampled_from([(True, False), (True, False), (True, True)])
+                    )
+
+                    def x1_cond_from_dtype(dtype, **kw) -> st.SearchStrategy[float]:
+                        return use_x1_or_x2_strat.flatmap(
+                            lambda t: cond_from_dtype(dtype)
+                            if t[0]
+                            else xps.from_dtype(dtype)
+                        )
+
+                    def x2_cond_from_dtype(dtype, **kw) -> st.SearchStrategy[float]:
+                        return use_x1_or_x2_strat.flatmap(
+                            lambda t: cond_from_dtype(dtype)
+                            if t[1]
+                            else xps.from_dtype(dtype)
+                        )
+
+                    x1_cond_from_dtypes.append(x1_cond_from_dtype)
+                    x2_cond_from_dtypes.append(x2_cond_from_dtype)
 
         partial_conds.append(partial_cond)
         partial_exprs.append(partial_expr)
@@ -750,7 +770,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
     else:
         # sanity check
         assert all(isinstance(fd, BoundFromDtype) for fd in x1_cond_from_dtypes)
-        x1_cond_from_dtype = sum(x1_cond_from_dtypes, start=BoundFromDtype({}, None))
+        x1_cond_from_dtype = sum(x1_cond_from_dtypes, start=BoundFromDtype({}))
     if len(x2_cond_from_dtypes) == 0:
         x2_cond_from_dtype = xps.from_dtype
     elif len(x2_cond_from_dtypes) == 1:
@@ -758,7 +778,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
     else:
         # sanity check
         assert all(isinstance(fd, BoundFromDtype) for fd in x2_cond_from_dtypes)
-        x2_cond_from_dtype = sum(x2_cond_from_dtypes, start=BoundFromDtype({}, None))
+        x2_cond_from_dtype = sum(x2_cond_from_dtypes, start=BoundFromDtype({}))
 
     return BinaryCase(
         cond_expr=cond_expr,
@@ -896,11 +916,11 @@ def test_binary(func_name, func, case, x1, x2, data):
 
     indices_strat = st.shared(st.sampled_from(all_indices))
     set_x1_idx = data.draw(indices_strat.map(lambda t: t[0]), label="set x1 idx")
-    set_x2_idx = data.draw(indices_strat.map(lambda t: t[1]), label="set x2 idx")
     set_x1_value = data.draw(case.x1_cond_from_dtype(x1.dtype), label="set x1 value")
-    set_x2_value = data.draw(case.x2_cond_from_dtype(x2.dtype), label="set x2 value")
     x1[set_x1_idx] = set_x1_value
     note(f"{x1=}")
+    set_x2_idx = data.draw(indices_strat.map(lambda t: t[1]), label="set x2 idx")
+    set_x2_value = data.draw(case.x2_cond_from_dtype(x2.dtype), label="set x2 value")
     x2[set_x2_idx] = set_x2_value
     note(f"{x2=}")
 
