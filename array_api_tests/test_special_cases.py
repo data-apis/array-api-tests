@@ -567,32 +567,6 @@ def make_binary_cond(
     return partial_cond
 
 
-def make_eq_other_input_cond(
-    eq_to: BinaryCondArg, *, eq_neg: bool = False
-) -> BinaryCond:
-    if eq_neg:
-        input_wrapper = lambda i: -i
-    else:
-        input_wrapper = noop
-
-    if eq_to == BinaryCondArg.FIRST:
-
-        def cond(i1: float, i2: float) -> bool:
-            eq = make_strict_eq(input_wrapper(i1))
-            return eq(i2)
-
-    elif eq_to == BinaryCondArg.SECOND:
-
-        def cond(i1: float, i2: float) -> bool:
-            eq = make_strict_eq(input_wrapper(i2))
-            return eq(i1)
-
-    else:
-        raise ValueError(f"{eq_to=} must be FIRST or SECOND")
-
-    return cond
-
-
 def make_eq_input_check_result(
     eq_to: BinaryCondArg, *, eq_neg: bool = False
 ) -> BinaryResultCheck:
@@ -615,8 +589,6 @@ def make_eq_input_check_result(
 
     else:
         raise ValueError(f"{eq_to=} must be FIRST or SECOND")
-
-    return check_result
 
 
 def integers_from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
@@ -649,9 +621,39 @@ def parse_binary_case(case_str: str) -> BinaryCase:
             in_sign, in_no, other_sign, other_no = m.groups()
             assert in_sign == "" and other_no != in_no  # sanity check
             partial_expr = f"{in_sign}x{in_no}_i == {other_sign}x{other_no}_i"
-            partial_cond = make_eq_other_input_cond(  # type: ignore
-                BinaryCondArg.from_x_no(other_no), eq_neg=other_sign == "-"
+            input_wrapper = lambda i: -i if other_sign == "-" else noop
+            shared_from_dtype = lambda d, **kw: st.shared(
+                xps.from_dtype(d, **kw), key=cond_str
             )
+
+            if other_no == "1":
+
+                def partial_cond(i1: float, i2: float) -> bool:
+                    eq = make_strict_eq(input_wrapper(i1))
+                    return eq(i2)
+
+                _x2_cond_from_dtype = shared_from_dtype  # type: ignore
+
+                def _x1_cond_from_dtype(dtype, **kw) -> st.SearchStrategy[float]:
+                    return shared_from_dtype(dtype, **kw).map(input_wrapper)
+
+            elif other_no == "2":
+
+                def partial_cond(i1: float, i2: float) -> bool:
+                    eq = make_strict_eq(input_wrapper(i2))
+                    return eq(i1)
+
+                _x1_cond_from_dtype = shared_from_dtype  # type: ignore
+
+                def _x2_cond_from_dtype(dtype, **kw) -> st.SearchStrategy[float]:
+                    return shared_from_dtype(dtype, **kw).map(input_wrapper)
+
+            else:
+                raise ValueParseError(cond_str)
+
+            x1_cond_from_dtypes.append(BoundFromDtype(base_func=_x1_cond_from_dtype))
+            x2_cond_from_dtypes.append(BoundFromDtype(base_func=_x2_cond_from_dtype))
+
         elif m := r_both_inputs_are_value.match(cond_str):
             unary_cond, expr_template, cond_from_dtype = parse_cond(m.group(1))
             left_expr = expr_template.replace("{}", "x1_i")
