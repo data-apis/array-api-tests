@@ -633,6 +633,15 @@ def make_eq_input_check_result(
     else:
         raise ValueError(f"{eq_to=} must be FIRST or SECOND")
 
+    return check_result
+
+
+def make_check_result(check_just_result: UnaryCheck) -> BinaryResultCheck:
+    def check_result(i1: float, i2: float, result: float) -> bool:
+        return check_just_result(result)
+
+    return check_result
+
 
 def integers_from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
     for k in kw.keys():
@@ -733,7 +742,8 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                 # partial_cond definition can mess up previous definitions
                 # in the partial_conds list. This is a hard-limitation of
                 # using local functions with the same name and that use the same
-                # outer variables (i.e. unary_cond).
+                # outer variables (i.e. unary_cond). Use def in a called
+                # function avoids this problem.
                 input_wrapper = None
                 if m := r_input.match(input_str):
                     x_no = m.group(1)
@@ -809,6 +819,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
     if result_m is None:
         raise ParseError(case_m.group(2))
     result_str = result_m.group(1)
+    # Like with partial_cond, do not define check_result via the def keyword
     if m := r_array_element.match(result_str):
         sign, x_no = m.groups()
         result_expr = f"{sign}x{x_no}_i"
@@ -817,9 +828,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
         )
     else:
         _check_result, result_expr = parse_result(result_m.group(1))
-
-        def check_result(i1: float, i2: float, result: float) -> bool:
-            return _check_result(result)
+        check_result = make_check_result(_check_result)
 
     cond_expr = " and ".join(partial_exprs)
 
