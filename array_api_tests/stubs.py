@@ -42,6 +42,3 @@ for ext in EXTENSIONS:
     objects = [getattr(mod, name) for name in mod.__all__]
     assert all(isinstance(o, FunctionType) for o in objects)
     extension_to_funcs[ext] = objects
-
-
-sys.path.remove(spec_abs_path)
