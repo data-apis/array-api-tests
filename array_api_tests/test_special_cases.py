@@ -204,10 +204,65 @@ class FromDtypeFunc(Protocol):
 @dataclass
 class BoundFromDtype(FromDtypeFunc):
     """
-    A callable which bounds kwargs and strategy filters to xps.from_dtype() or
-    equivalent function.
+    A xps.from_dtype()-like callable with bounded kwargs, filters and base function.
 
+    We can bound:
 
+    1. Keyword arguments that xps.from_dtype() can use, e.g.
+
+        >>> from_dtype = BoundFromDtype(kwargs={'min_value': 0, 'allow_infinity': False})
+        >>> strategy = from_dtype(xp.float64)
+
+        is equivalent to
+
+        >>> strategy = xps.from_dtype(xp.float64, min_value=0, allow_infinity=False)
+
+        i.e. a strategy that generates finite floats above 0
+
+    2. Functions that filter the elements strategy that xps.from_dtype() returns, e.g.
+
+        >>> from_dtype = BoundFromDtype(filter=lambda i: i != 0)
+        >>> strategy = from_dtype(xp.float64)
+
+        is equivalent to
+
+        >>> strategy = xps.from_dtype(xp.float64).filter(lambda i: i != 0)
+
+        i.e. a strategy that generates any floats except 0
+
+    3. The underlying function that returns an elements strategy from a dtype, e.g.
+
+        >>> from_dtype = BoundFromDtype(
+        ...     from_dtype=lambda d: st.integers(
+        ...         math.ceil(xp.finfo(d).min), math.floor(xp.finfo(d).max)
+        ...     )
+        ... )
+        >>> strategy = from_dtype(xp.float64)
+
+        is equivalent to
+
+        >>> strategy = lambda d: st.integers(
+        ...     math.ceil(xp.finfo(d).min), math.floor(xp.finfo(d).max)
+        ... )
+
+        i.e. a strategy that generates integers (within the dtypes range)
+
+    This is useful to avoid translating special case conditions into either a
+    dict, filter or "base func", and instead allows us to generalise these three
+    components into a callable equivalent of xps.from_dtype().
+
+    Additionally, BoundFromDtype instances can be added together. This allows us
+    to keep parsing each condition individually - so we don't need to duplicate
+    complicated parsing code - as ultimately we can represent (and subsequently
+    test for) special cases which have more than one condition per array, e.g.
+
+        "If x1_i is greater than 0 and x1_i is not 42, ..."
+
+        could be translated as
+
+        >>> gt_0_from_dtype = BoundFromDtype(kwargs={'min_value': 0})
+        >>> not_42_from_dtype = BoundFromDtype(filter=lambda i: i != 42)
+        >>> from_dtype = gt_0_from_dtype + not_42_from_dtype
 
     """
 
