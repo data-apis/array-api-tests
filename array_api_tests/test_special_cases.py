@@ -1072,7 +1072,9 @@ def test_unary(func_name, func, case, x, data):
             f_in = f"{sh.fmt_idx('x', idx)}={in_}"
             f_out = f"{sh.fmt_idx('out', idx)}={out}"
             assert case.check_result(in_, out), (
-                f"{f_out} not good [{func_name}()]\n" f"{case}\n" f"{f_in}"
+                f"{f_out}, but should be {case.result_expr} [{func_name}()]\n"
+                f"condition: {case.cond_expr}\n"
+                f"{f_in}"
             )
             break
     assume(good_example)
@@ -1115,7 +1117,9 @@ def test_binary(func_name, func, case, x1, x2, data):
             f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
             f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
             assert case.check_result(l, r, o), (
-                f"{f_out} not good [{func_name}()]\n" f"{case}\n" f"{f_left}, {f_right}"
+                f"{f_out}, but should be {case.result_expr} [{func_name}()]\n"
+                f"condition: {case}\n"
+                f"{f_left}, {f_right}"
             )
             break
     assume(good_example)
