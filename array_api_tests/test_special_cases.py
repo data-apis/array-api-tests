@@ -134,7 +134,7 @@ class ParseError(ValueError):
 
 def parse_value(value_str: str) -> float:
     """
-    Parse a value string to return a float, e.g.
+    Parses a value string to return a float, e.g.
 
         >>> parse_value('1')
         1.
@@ -169,7 +169,7 @@ r_approx_value = re.compile(
 
 def parse_inline_code(inline_code: str) -> float:
     """
-    Parse a Sphinx code string to return a float, e.g.
+    Parses a Sphinx code string to return a float, e.g.
 
         >>> parse_value('``0``')
         0.
@@ -208,7 +208,7 @@ class BoundFromDtype(FromDtypeFunc):
 
     We can bound:
 
-    1. Keyword arguments that xps.from_dtype() can use, e.g.
+     1. Keyword arguments that xps.from_dtype() can use, e.g.
 
         >>> from_dtype = BoundFromDtype(kwargs={'min_value': 0, 'allow_infinity': False})
         >>> strategy = from_dtype(xp.float64)
@@ -219,7 +219,7 @@ class BoundFromDtype(FromDtypeFunc):
 
         i.e. a strategy that generates finite floats above 0
 
-    2. Functions that filter the elements strategy that xps.from_dtype() returns, e.g.
+     2. Functions that filter the elements strategy that xps.from_dtype() returns, e.g.
 
         >>> from_dtype = BoundFromDtype(filter=lambda i: i != 0)
         >>> strategy = from_dtype(xp.float64)
@@ -230,7 +230,7 @@ class BoundFromDtype(FromDtypeFunc):
 
         i.e. a strategy that generates any floats except 0
 
-    3. The underlying function that returns an elements strategy from a dtype, e.g.
+     3. The underlying function that returns an elements strategy from a dtype, e.g.
 
         >>> from_dtype = BoundFromDtype(
         ...     from_dtype=lambda d: st.integers(
@@ -307,14 +307,48 @@ class BoundFromDtype(FromDtypeFunc):
 
 
 def wrap_strat_as_from_dtype(strat: st.SearchStrategy[float]) -> FromDtypeFunc:
+    """
+    Wraps an elements strategy as a xps.from_dtype()-like function
+    """
     def from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
-        assert kw == {}  # sanity check
+        assert len(kw) == 0  # sanity check
         return strat
 
     return from_dtype
 
 
 def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
+    """
+    Parses a Sphinx-formatted condition string to return:
+
+     1. A function which takes an input and returns True if it meets the
+        condition, otherwise False.
+     2. A string template for expressing the condition.
+     3. A xps.from_dtype()-like function which returns a strategy that generates
+        elements which meet the condition.
+
+    e.g.
+
+        >>> cond_func, expr_template, cond_from_dtype = parse_cond(
+        ...     'greater than ``0``'
+        ... )
+        >>> expr_template.replace('{}', 'x_i')
+        >>> expr_template.replace('{}', 'x_i')
+        'x_i > 0'
+        >>> cond_func(42)
+        True
+        >>> cond_func(-128)
+        False
+        >>> strategy = cond_from_dtype(xp.float64)
+        >>> for _ in range(5):
+        ...     print(strategy.example())
+        1.
+        0.1
+        1.7976931348623155e+179
+        inf
+        124.978
+
+    """
     if m := r_not.match(cond_str):
         cond_str = m.group(1)
         not_cond = True
