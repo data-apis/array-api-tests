@@ -27,6 +27,13 @@ from .stubs import category_to_funcs
 
 pytestmark = pytest.mark.ci
 
+# The special case test casess are built on runtime via the parametrized
+# test_unary and test_binary functions. Most of this file consists of utility
+# classes and functions, all bought together to create the test cases (pytest
+# params), to finally be run through the general test logic of either test_unary
+# or test_binary.
+
+
 UnaryCheck = Callable[[float], bool]
 BinaryCheck = Callable[[float, float], bool]
 
@@ -46,13 +53,13 @@ def make_strict_eq(v: float) -> UnaryCheck:
     return strict_eq
 
 
-def make_neq(v: float) -> UnaryCheck:
-    eq = make_strict_eq(v)
+def make_strict_neq(v: float) -> UnaryCheck:
+    strict_eq = make_strict_eq(v)
 
-    def neq(i: float) -> bool:
-        return not eq(i)
+    def strict_neq(i: float) -> bool:
+        return not strict_eq(i)
 
-    return neq
+    return strict_neq
 
 
 def make_rough_eq(v: float) -> UnaryCheck:
@@ -121,14 +128,25 @@ r_pi = re.compile(r"(\d?)π(?:/(\d))?")
 
 
 @dataclass
-class ValueParseError(ValueError):
+class ParseError(ValueError):
     value: str
 
 
 def parse_value(value_str: str) -> float:
+    """
+    Parse a value string to return a float, e.g.
+
+        >>> parse_value('1')
+        1.
+        >>> parse_value('-infinity')
+        -float('inf')
+        >>> parse_value('3π/4')
+        2.356194490192345
+
+    """
     m = r_value.match(value_str)
     if m is None:
-        raise ValueParseError(value_str)
+        raise ParseError(value_str)
     if pi_m := r_pi.match(m.group(2)):
         value = math.pi
         if numerator := pi_m.group(1):
@@ -150,10 +168,19 @@ r_approx_value = re.compile(
 
 
 def parse_inline_code(inline_code: str) -> float:
+    """
+    Parse a Sphinx code string to return a float, e.g.
+
+        >>> parse_value('``0``')
+        0.
+        >>> parse_value('``NaN``')
+        float('nan')
+
+    """
     if m := r_code.match(inline_code):
         return parse_value(m.group(1))
     else:
-        raise ValueParseError(inline_code)
+        raise ParseError(inline_code)
 
 
 r_not = re.compile("not (.+)")
@@ -165,15 +192,36 @@ r_lt = re.compile(f"less than {r_code.pattern}")
 
 
 class FromDtypeFunc(Protocol):
+    """
+    Type hint for functions that return an elements strategy for arrays of the
+    given dtype, e.g. xps.from_dtype().
+    """
+
     def __call__(self, dtype: DataType, **kw) -> st.SearchStrategy[float]:
         ...
 
 
 @dataclass
 class BoundFromDtype(FromDtypeFunc):
+    """
+    A callable which bounds kwargs and strategy filters to xps.from_dtype() or
+    equivalent function.
+
+
+
+    """
+
     kwargs: Dict[str, Any] = field(default_factory=dict)
     filter_: Optional[Callable[[Array], bool]] = None
     base_func: Optional[FromDtypeFunc] = None
+
+    def __call__(self, dtype: DataType, **kw) -> st.SearchStrategy[float]:
+        assert len(kw) == 0  # sanity check
+        from_dtype = self.base_func or xps.from_dtype
+        strat = from_dtype(dtype, **self.kwargs)
+        if self.filter_ is not None:
+            strat = strat.filter(self.filter_)
+        return strat
 
     def __add__(self, other: BoundFromDtype) -> BoundFromDtype:
         for k in self.kwargs.keys():
@@ -201,14 +249,6 @@ class BoundFromDtype(FromDtypeFunc):
             base_func = None
 
         return BoundFromDtype(kwargs, filter_, base_func)
-
-    def __call__(self, dtype: DataType, **kw) -> st.SearchStrategy[float]:
-        assert len(kw) == 0  # sanity check
-        from_dtype = self.base_func or xps.from_dtype
-        strat = from_dtype(dtype, **self.kwargs)
-        if self.filter_ is not None:
-            strat = strat.filter(self.filter_)
-        return strat
 
 
 def wrap_strat_as_from_dtype(strat: st.SearchStrategy[float]) -> FromDtypeFunc:
@@ -238,7 +278,8 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
             strat = st.just(value)
     elif m := r_equal_to.match(cond_str):
         value = parse_value(m.group(1))
-        assert not math.isnan(value)  # sanity check
+        if math.isnan(value):
+            raise ParseError(cond_str)
         cond = lambda i: i == value
         expr_template = "{} == " + m.group(1)
     elif m := r_gt.match(cond_str):
@@ -317,14 +358,16 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
                 return integers_from_dtype(dtype, **kw).filter(lambda n: n % 2 == 1)
 
     else:
-        raise ValueParseError(cond_str)
+        raise ParseError(cond_str)
 
     if strat is not None:
-        # sanity checks
-        assert not not_cond
-        assert kwargs == {}
-        assert filter_ is None
-        assert from_dtype is None
+        if (
+            not_cond
+            or len(kwargs) != 0
+            or filter_ is not None
+            or from_dtype is not None
+        ):
+            raise ParseError(cond_str)
         return cond, expr_template, wrap_strat_as_from_dtype(strat)
 
     if not_cond:
@@ -365,7 +408,7 @@ def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
 
         expr = "-"
     else:
-        raise ValueParseError(result_str)
+        raise ParseError(result_str)
 
     return check_result, expr
 
@@ -461,7 +504,7 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
         if m := r_unary_case.search(case):
             try:
                 case = UnaryCase.from_strings(*m.groups())
-            except ValueParseError as e:
+            except ParseError as e:
                 warn(f"not machine-readable: '{e.value}'")
                 continue
             cases.append(case)
@@ -609,7 +652,8 @@ def integers_from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
 
 def parse_binary_case(case_str: str) -> BinaryCase:
     case_m = r_binary_case.match(case_str)
-    assert case_m is not None  # sanity check
+    if case_m is None:
+        raise ParseError(case_str)
     cond_strs = r_cond_sep.split(case_m.group(1))
 
     partial_conds = []
@@ -619,7 +663,8 @@ def parse_binary_case(case_str: str) -> BinaryCase:
     for cond_str in cond_strs:
         if m := r_input_is_array_element.match(cond_str):
             in_sign, in_no, other_sign, other_no = m.groups()
-            assert in_sign == "" and other_no != in_no  # sanity check
+            if in_sign != "" or other_no == in_no:
+                raise ParseError(cond_str)
             partial_expr = f"{in_sign}x{in_no}_i == {other_sign}x{other_no}_i"
             input_wrapper = lambda i: -i if other_sign == "-" else noop
             shared_from_dtype = lambda d, **kw: st.shared(
@@ -649,7 +694,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                     return shared_from_dtype(dtype, **kw).map(input_wrapper)
 
             else:
-                raise ValueParseError(cond_str)
+                raise ParseError(cond_str)
 
             x1_cond_from_dtypes.append(BoundFromDtype(base_func=_x1_cond_from_dtype))
             x2_cond_from_dtypes.append(BoundFromDtype(base_func=_x2_cond_from_dtype))
@@ -667,7 +712,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
         else:
             cond_m = r_cond.match(cond_str)
             if cond_m is None:
-                raise ValueParseError(cond_str)
+                raise ParseError(cond_str)
             input_str, value_str = cond_m.groups()
 
             if value_str == "the same mathematical sign":
@@ -712,7 +757,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                         partial_expr = f"({partial_expr})"
                     cond_arg = BinaryCondArg.EITHER
                 else:
-                    raise ValueParseError(input_str)
+                    raise ParseError(input_str)
                 partial_cond = make_binary_cond(  # type: ignore
                     cond_arg, unary_cond, input_wrapper=input_wrapper
                 )
@@ -762,7 +807,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
 
     result_m = r_result.match(case_m.group(2))
     if result_m is None:
-        raise ValueParseError(case_m.group(2))
+        raise ParseError(case_m.group(2))
     result_str = result_m.group(1)
     if m := r_array_element.match(result_str):
         sign, x_no = m.groups()
@@ -787,7 +832,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
         x1_cond_from_dtype = x1_cond_from_dtypes[0]
     else:
         if not all(isinstance(fd, BoundFromDtype) for fd in x1_cond_from_dtypes):
-            raise ValueParseError(case_str)
+            raise ParseError(case_str)
         x1_cond_from_dtype = sum(x1_cond_from_dtypes, start=BoundFromDtype())
     if len(x2_cond_from_dtypes) == 0:
         x2_cond_from_dtype = xps.from_dtype
@@ -795,7 +840,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
         x2_cond_from_dtype = x2_cond_from_dtypes[0]
     else:
         if not all(isinstance(fd, BoundFromDtype) for fd in x2_cond_from_dtypes):
-            raise ValueParseError(case_str)
+            raise ParseError(case_str)
         x2_cond_from_dtype = sum(x2_cond_from_dtypes, start=BoundFromDtype())
 
     return BinaryCase(
@@ -829,7 +874,7 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
             try:
                 case = parse_binary_case(case_str)
                 cases.append(case)
-            except ValueParseError as e:
+            except ParseError as e:
                 warn(f"not machine-readable: '{e.value}'")
         else:
             if not r_remaining_case.match(case_str):

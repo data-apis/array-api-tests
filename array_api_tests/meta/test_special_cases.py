@@ -4,5 +4,7 @@ from ..test_special_cases import parse_result
 
 
 def test_parse_result():
-    s_result = "an implementation-dependent approximation to ``+3π/4``"
-    assert parse_result(s_result).value == 3 * math.pi / 4
+    check_result, _ = parse_result(
+        "an implementation-dependent approximation to ``+3π/4``"
+    )
+    assert check_result(3 * math.pi / 4)
