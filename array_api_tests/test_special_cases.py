@@ -311,6 +311,7 @@ def wrap_strat_as_from_dtype(strat: st.SearchStrategy[float]) -> FromDtypeFunc:
     """
     Wraps an elements strategy as a xps.from_dtype()-like function
     """
+
     def from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
         assert len(kw) == 0  # sanity check
         return strat
@@ -553,23 +554,6 @@ class UnaryCase(Case):
     cond: UnaryCheck
     check_result: UnaryResultCheck
 
-    @classmethod
-    def from_strings(cls, cond_str: str, result_str: str):
-        cond, cond_expr_template, cond_from_dtype = parse_cond(cond_str)
-        cond_expr = cond_expr_template.replace("{}", "x_i")
-        _check_result, result_expr = parse_result(result_str)
-
-        def check_result(i: float, result: float) -> bool:
-            return _check_result(result)
-
-        return cls(
-            cond_expr=cond_expr,
-            cond=cond,
-            cond_from_dtype=cond_from_dtype,
-            result_expr=result_expr,
-            check_result=check_result,
-        )
-
 
 r_unary_case = re.compile("If ``x_i`` is (.+), the result is (.+)")
 r_even_int_round_case = re.compile(
@@ -578,7 +562,7 @@ r_even_int_round_case = re.compile(
 )
 
 
-def trailing_halves_from_dtype(dtype: DataType):
+def trailing_halves_from_dtype(dtype: DataType) -> st.SearchStrategy[float]:
     m, M = dh.dtype_ranges[dtype]
     return st.integers(math.ceil(m) // 2, math.floor(M) // 2).map(lambda n: n * 0.5)
 
@@ -592,6 +576,13 @@ even_int_round_case = UnaryCase(
         result == float(Decimal(i).to_integral_exact(ROUND_HALF_EVEN))
     ),
 )
+
+
+def make_unary_check_result(check_just_result: UnaryCheck) -> UnaryResultCheck:
+    def check_result(i: float, result: float) -> bool:
+        return check_just_result(result)
+
+    return check_result
 
 
 def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
@@ -608,10 +599,22 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
             continue
         if m := r_unary_case.search(case):
             try:
-                case = UnaryCase.from_strings(*m.groups())
+                cond, cond_expr_template, cond_from_dtype = parse_cond(m.group(1))
+                _check_result, result_expr = parse_result(m.group(2))
             except ParseError as e:
                 warn(f"not machine-readable: '{e.value}'")
                 continue
+            cond_expr = cond_expr_template.replace("{}", "x_i")
+            # Do not define check_result in this function's body - see
+            # parse_binary_case comment.
+            check_result = make_unary_check_result(_check_result)
+            case = UnaryCase(
+                cond_expr=cond_expr,
+                cond=cond,
+                cond_from_dtype=cond_from_dtype,
+                result_expr=result_expr,
+                check_result=check_result,
+            )
             cases.append(case)
         elif m := r_even_int_round_case.search(case):
             cases.append(even_int_round_case)
@@ -741,7 +744,7 @@ def make_eq_input_check_result(
     return check_result
 
 
-def make_check_result(check_just_result: UnaryCheck) -> BinaryResultCheck:
+def make_binary_check_result(check_just_result: UnaryCheck) -> BinaryResultCheck:
     def check_result(i1: float, i2: float, result: float) -> bool:
         return check_just_result(result)
 
@@ -843,12 +846,12 @@ def parse_binary_case(case_str: str) -> BinaryCase:
 
             else:
                 unary_cond, expr_template, cond_from_dtype = parse_cond(value_str)
-                # Do not define partial_cond via the def keyword, as one
-                # partial_cond definition can mess up previous definitions
-                # in the partial_conds list. This is a hard-limitation of
-                # using local functions with the same name and that use the same
-                # outer variables (i.e. unary_cond). Use def in a called
-                # function avoids this problem.
+                # Do not define partial_cond via the def keyword or lambda
+                # expressions, as one partial_cond definition can mess up
+                # previous definitions in the partial_conds list. This is a
+                # hard-limitation of using local functions with the same name
+                # and that use the same outer variables (i.e. unary_cond). Use
+                # def in a called function avoids this problem.
                 input_wrapper = None
                 if m := r_input.match(input_str):
                     x_no = m.group(1)
@@ -924,7 +927,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
     if result_m is None:
         raise ParseError(case_m.group(2))
     result_str = result_m.group(1)
-    # Like with partial_cond, do not define check_result via the def keyword
+    # Like with partial_cond, do not define check_result in this function's body.
     if m := r_array_element.match(result_str):
         sign, x_no = m.groups()
         result_expr = f"{sign}x{x_no}_i"
@@ -933,7 +936,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
         )
     else:
         _check_result, result_expr = parse_result(result_m.group(1))
-        check_result = make_check_result(_check_result)
+        check_result = make_binary_check_result(_check_result)
 
     cond_expr = " and ".join(partial_exprs)
 
