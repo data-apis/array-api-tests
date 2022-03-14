@@ -262,7 +262,8 @@ class BoundFromDtype(FromDtypeFunc):
 
         >>> gt_0_from_dtype = BoundFromDtype(kwargs={'min_value': 0})
         >>> not_42_from_dtype = BoundFromDtype(filter=lambda i: i != 42)
-        >>> from_dtype = gt_0_from_dtype + not_42_from_dtype
+        >>> gt_0_from_dtype + not_42_from_dtype
+        BoundFromDtype(kwargs={'min_value': 0}, filter=<lambda>(i))
 
     """
 
@@ -329,17 +330,14 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
 
     e.g.
 
-        >>> cond_func, expr_template, cond_from_dtype = parse_cond(
-        ...     'greater than ``0``'
-        ... )
-        >>> expr_template.replace('{}', 'x_i')
+        >>> cond, expr_template, from_dtype = parse_cond('greater than ``0``')
         >>> expr_template.replace('{}', 'x_i')
         'x_i > 0'
-        >>> cond_func(42)
+        >>> cond(42)
         True
-        >>> cond_func(-128)
+        >>> cond(-128)
         False
-        >>> strategy = cond_from_dtype(xp.float64)
+        >>> strategy = from_dtype(xp.float64)
         >>> for _ in range(5):
         ...     print(strategy.example())
         1.
@@ -387,7 +385,7 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
         v1 = parse_value(m.group(1))
         v2 = parse_value(m.group(2))
         cond = make_or(make_strict_eq(v1), make_strict_eq(v2))
-        expr_template = "{} == " + m.group(1) + " or {} == " + m.group(2)
+        expr_template = "({} == " + m.group(1) + " or {} == " + m.group(2) + ")"
         if not not_cond:
             strat = st.sampled_from([v1, v2])
     elif cond_str in ["finite", "a finite number"]:
@@ -469,6 +467,24 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
 
 
 def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
+    """
+    Parses a Sphinx-formatted result string to return:
+
+     1. A function which takes an input and returns True if it is the expected
+        result (or meets the condition of the expected result), otherwise False.
+     2. A string that expresses the result.
+
+    e.g.
+
+        >>> check_result, expr = parse_result('``42``')
+        >>> expr_template.replace('{}', 'x_i')
+        '42'
+        >>> check_result(7)
+        False
+        >>> check_result(42)
+        True
+
+    """
     if m := r_code.match(result_str):
         value = parse_value(m.group(1))
         check_result = make_strict_eq(value)  # type: ignore
