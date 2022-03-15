@@ -590,7 +590,7 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
     Parses a Sphinx-formatted docstring of a unary function to return a list of
     codified unary cases, e.g.
 
-        >>> def sqrt(x: array, /) -> array:
+        >>> def sqrt(x):
         ...     '''
         ...     Calculates the square root
         ...
@@ -607,14 +607,14 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
         ...     Parameters
         ...     ----------
         ...     x: array
-        ...         input array. Should have a floating-point data type
+        ...         input array
         ...
         ...     Returns
         ...     -------
         ...     out: array
         ...         an array containing the square root of each element in ``x``
         ...     '''
-        ...     ...
+        ...
         >>> unary_cases = parse_unary_docstring(sqrt.__doc__)
         >>> for case in unary_cases:
         ...     print(repr(case))
@@ -1014,6 +1014,46 @@ r_redundant_case = re.compile("result.+determined by the rule already stated abo
 
 
 def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
+    """
+    Parses a Sphinx-formatted docstring of a binary function to return a list of
+    codified binary cases, e.g.
+
+        >>> def logaddexp(x1, x2):
+        ...     '''
+        ...     Calculates the logarithm of the sum of exponentiations
+        ...
+        ...     **Special Cases**
+        ...
+        ...     For floating-point operands,
+        ...
+        ...     - If either ``x1_i`` or ``x2_i`` is ``NaN``, the result is ``NaN``.
+        ...     - If ``x1_i`` is ``+infinity`` and ``x2_i`` is not ``NaN``, the
+        ...       result is ``+infinity``.
+        ...     - If ``x1_i`` is not ``NaN`` and ``x2_i`` is ``+infinity``, the
+        ...       result is ``+infinity``.
+        ...
+        ...     Parameters
+        ...     ----------
+        ...     x1: array
+        ...         first input array
+        ...     x2: array
+        ...         second input array
+        ...
+        ...     Returns
+        ...     -------
+        ...     out: array
+        ...         an array containing the results
+        ...     '''
+        ...
+        >>> binary_cases = parse_binary_docstring(logaddexp.__doc__)
+        >>> for case in binary_cases:
+        ...     print(repr(case))
+        BinaryCase(x1_i == NaN or x2_i == NaN -> NaN)
+        BinaryCase(x1_i == +infinity and not x2_i == NaN -> +infinity)
+        BinaryCase(not x1_i == NaN and x2_i == +infinity -> +infinity)
+
+    """
+
     match = r_special_cases.search(docstring)
     if match is None:
         return []
