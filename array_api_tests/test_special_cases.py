@@ -1122,10 +1122,14 @@ for stub in category_to_funcs["elementwise"]:
         )
 
 
+# test_unary and test_binary naively generate arrays, i.e. arrays that might not
+# meet the condition that is being test. We then forcibly make the array meet
+# the condition by picking a random index to insert an acceptable element.
+#
 # good_example is a flag that tells us whether Hypothesis generated an array
 # with at least on element that is special-cased. We reject the example when
 # its False - Hypothesis will complain if we reject too many examples, thus
-# indicating we should modify the array strategy being used.
+# indicating we've done something wrong.
 
 
 @pytest.mark.parametrize("func_name, func, case", unary_params)
