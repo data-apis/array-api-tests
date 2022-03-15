@@ -8,8 +8,8 @@ from typing import Dict, List
 __all__ = ["category_to_funcs", "array", "extension_to_funcs"]
 
 
-spec_dir = Path(__file__).parent / "array-api" / "spec" / "API_specification"
-assert spec_dir.exists(), f"{spec_dir} not found - try `git pull --recurse-submodules`"
+spec_dir = Path(__file__).parent.parent / "array-api" / "spec" / "API_specification"
+assert spec_dir.exists(), f"{spec_dir} not found - try `git submodule update --init`"
 sigs_dir = spec_dir / "signatures"
 assert sigs_dir.exists()
 
