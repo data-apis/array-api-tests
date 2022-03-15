@@ -586,6 +586,46 @@ def make_unary_check_result(check_just_result: UnaryCheck) -> UnaryResultCheck:
 
 
 def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
+    """
+    Parses a Sphinx-formatted docstring of a unary function to return a list of
+    codified unary cases, e.g.
+
+        >>> def sqrt(x: array, /) -> array:
+        ...     '''
+        ...     Calculates the square root
+        ...
+        ...     **Special Cases**
+        ...
+        ...     For floating-point operands,
+        ...
+        ...     - If ``x_i`` is ``NaN``, the result is ``NaN``.
+        ...     - If ``x_i`` is less than ``0``, the result is ``NaN``.
+        ...     - If ``x_i`` is ``+0``, the result is ``+0``.
+        ...     - If ``x_i`` is ``-0``, the result is ``-0``.
+        ...     - If ``x_i`` is ``+infinity``, the result is ``+infinity``.
+        ...
+        ...     Parameters
+        ...     ----------
+        ...     x: array
+        ...         input array. Should have a floating-point data type
+        ...
+        ...     Returns
+        ...     -------
+        ...     out: array
+        ...         an array containing the square root of each element in ``x``
+        ...     '''
+        ...     ...
+        >>> unary_cases = parse_unary_docstring(sqrt.__doc__)
+        >>> for case in unary_cases:
+        ...     print(repr(case))
+        UnaryCase(x_i == NaN -> NaN)
+        UnaryCase(x_i < 0 -> NaN)
+        UnaryCase(x_i == +0 -> +0)
+        UnaryCase(x_i == -0 -> -0)
+        UnaryCase(x_i == +infinity -> +infinity)
+
+    """
+
     match = r_special_cases.search(docstring)
     if match is None:
         return []
