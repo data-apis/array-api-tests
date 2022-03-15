@@ -241,8 +241,8 @@ class BoundFromDtype(FromDtypeFunc):
 
         is equivalent to
 
-        >>> strategy = lambda d: st.integers(
-        ...     math.ceil(xp.finfo(d).min), math.floor(xp.finfo(d).max)
+        >>> strategy = st.integers(
+        ...     math.ceil(xp.finfo(xp.float64).min), math.floor(xp.finfo(xp.float64).max)
         ... )
 
         i.e. a strategy that generates integers (within the dtype's range)
@@ -1027,10 +1027,8 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
         ...     For floating-point operands,
         ...
         ...     - If either ``x1_i`` or ``x2_i`` is ``NaN``, the result is ``NaN``.
-        ...     - If ``x1_i`` is ``+infinity`` and ``x2_i`` is not ``NaN``, the
-        ...       result is ``+infinity``.
-        ...     - If ``x1_i`` is not ``NaN`` and ``x2_i`` is ``+infinity``, the
-        ...       result is ``+infinity``.
+        ...     - If ``x1_i`` is ``+infinity`` and ``x2_i`` is not ``NaN``, the result is ``+infinity``.
+        ...     - If ``x1_i`` is not ``NaN`` and ``x2_i`` is ``+infinity``, the result is ``+infinity``.
         ...
         ...     Parameters
         ...     ----------
