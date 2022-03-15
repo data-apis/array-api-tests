@@ -228,7 +228,7 @@ class BoundFromDtype(FromDtypeFunc):
 
         >>> strategy = xps.from_dtype(xp.float64).filter(lambda i: i != 0)
 
-        i.e. a strategy that generates any floats except 0
+        i.e. a strategy that generates any float except +0 and -0
 
      3. The underlying function that returns an elements strategy from a dtype, e.g.
 
@@ -245,7 +245,7 @@ class BoundFromDtype(FromDtypeFunc):
         ...     math.ceil(xp.finfo(d).min), math.floor(xp.finfo(d).max)
         ... )
 
-        i.e. a strategy that generates integers (within the dtypes range)
+        i.e. a strategy that generates integers (within the dtype's range)
 
     This is useful to avoid translating special case conditions into either a
     dict, filter or "base func", and instead allows us to generalise these three
@@ -332,12 +332,12 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
     e.g.
 
         >>> cond, expr_template, from_dtype = parse_cond('greater than ``0``')
-        >>> expr_template.replace('{}', 'x_i')
-        'x_i > 0'
         >>> cond(42)
         True
         >>> cond(-128)
         False
+        >>> expr_template.replace('{}', 'x_i')
+        'x_i > 0'
         >>> strategy = from_dtype(xp.float64)
         >>> for _ in range(5):
         ...     print(strategy.example())
@@ -478,12 +478,12 @@ def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
     e.g.
 
         >>> check_result, expr = parse_result('``42``')
-        >>> expr_template.replace('{}', 'x_i')
-        '42'
         >>> check_result(7)
         False
         >>> check_result(42)
         True
+        >>> expr
+        '42'
 
     """
     if m := r_code.match(result_str):
