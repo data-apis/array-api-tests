@@ -540,20 +540,31 @@ class UnaryCase(Case):
 
 
 r_unary_case = re.compile("If ``x_i`` is (.+), the result is (.+)")
-r_even_int_round_case = re.compile(
+r_even_round_halves_case = re.compile(
     "If two integers are equally close to ``x_i``, "
     "the result is the even integer closest to ``x_i``"
 )
 
 
 def trailing_halves_from_dtype(dtype: DataType) -> st.SearchStrategy[float]:
-    m, M = dh.dtype_ranges[dtype]
-    return st.integers(math.ceil(m) // 2, math.floor(M) // 2).map(lambda n: n * 0.5)
+    """
+    Returns a strategy that generates floats that end with .5 and are within the
+    bounds of dtype.
+    """
+    # We bound our base integers strategy to a range of values which should be
+    # able to represent a decimal 5 when .5 is added or subtracted.
+    if dtype == xp.float32:
+        abs_max = 10**4
+    else:
+        abs_max = 10**16
+    return st.sampled_from([0.5, -0.5]).flatmap(
+        lambda half: st.integers(-abs_max, abs_max).map(lambda n: n + half)
+    )
 
 
-even_int_round_case = UnaryCase(
-    cond_expr="i % 0.5 == 0",
-    cond=lambda i: i % 0.5 == 0,
+even_round_halves_case = UnaryCase(
+    cond_expr="modf(i)[0] == 0.5",
+    cond=lambda i: math.modf(i)[0] == 0.5,
     cond_from_dtype=trailing_halves_from_dtype,
     result_expr="Decimal(i).to_integral_exact(ROUND_HALF_EVEN)",
     check_result=lambda i, result: (
@@ -645,8 +656,8 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
                 check_result=check_result,
             )
             cases.append(case)
-        elif m := r_even_int_round_case.search(case):
-            cases.append(even_int_round_case)
+        elif m := r_even_round_halves_case.search(case):
+            cases.append(even_round_halves_case)
         else:
             if not r_remaining_case.search(case):
                 warn(f"case not machine-readable: '{case}'")
