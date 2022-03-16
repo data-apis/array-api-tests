@@ -327,14 +327,14 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, BoundFromDtype]:
         condition, otherwise False.
      2. A string template for expressing the condition.
      3. A xps.from_dtype()-like function which returns a strategy that generates
-        elements which meet the condition.
+        elements that meet the condition.
 
     e.g.
 
         >>> cond, expr_template, from_dtype = parse_cond('greater than ``0``')
         >>> cond(42)
         True
-        >>> cond(-128)
+        >>> cond(-123)
         False
         >>> expr_template.replace('{}', 'x_i')
         'x_i > 0'
@@ -582,8 +582,8 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
         ...
         ...     For floating-point operands,
         ...
-        ...     - If ``x_i`` is ``NaN``, the result is ``NaN``.
         ...     - If ``x_i`` is less than ``0``, the result is ``NaN``.
+        ...     - If ``x_i`` is ``NaN``, the result is ``NaN``.
         ...     - If ``x_i`` is ``+0``, the result is ``+0``.
         ...     - If ``x_i`` is ``-0``, the result is ``-0``.
         ...     - If ``x_i`` is ``+infinity``, the result is ``+infinity``.
@@ -602,11 +602,16 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
         >>> unary_cases = parse_unary_docstring(sqrt.__doc__)
         >>> for case in unary_cases:
         ...     print(repr(case))
-        UnaryCase(x_i == NaN -> NaN)
-        UnaryCase(x_i < 0 -> NaN)
-        UnaryCase(x_i == +0 -> +0)
-        UnaryCase(x_i == -0 -> -0)
-        UnaryCase(x_i == +infinity -> +infinity)
+        UnaryCase(<x_i < 0 -> NaN>)
+        UnaryCase(<x_i == NaN -> NaN>)
+        UnaryCase(<x_i == +0 -> +0>)
+        UnaryCase(<x_i == -0 -> -0>)
+        UnaryCase(<x_i == +infinity -> +infinity>)
+        >>> lt_0_case = unary_cases[0]
+        >>> lt_0_case.cond(-123)
+        True
+        >>> lt_0_case.check_result(-123, float('nan'))
+        True
 
     """
 
@@ -841,6 +846,22 @@ def integers_from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
 
 
 def parse_binary_case(case_str: str) -> BinaryCase:
+    """
+    Parses a Sphinx-formatted binary case string to return codified binary cases, e.g.
+
+        >>> case_str = (
+        ...     "If ``x1_i`` is greater than ``0``, ``x1_i`` is a finite number, "
+        ...     "and ``x2_i`` is ``+infinity``, the result is ``NaN``."
+        ... )
+        >>> case = parse_binary_case(case_str)
+        >>> case
+        BinaryCase(<x1_i > 0 and isfinite(x1_i) and x2_i == +infinity -> NaN>)
+        >>> case.cond(42, float('inf'))
+        True
+        >>> case.check_result(42, float('inf'), float('nan'))
+        True
+
+    """
     case_m = r_binary_case.match(case_str)
     if case_m is None:
         raise ParseError(case_str)
@@ -857,12 +878,12 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                 raise ParseError(cond_str)
             partial_expr = f"{in_sign}x{in_no}_i == {other_sign}x{other_no}_i"
 
-            input_wrapper = lambda i: -i if other_sign == "-" else noop
             # For these scenarios, we want to make sure both array elements
             # generate respective to one another by using a shared strategy.
             shared_from_dtype = lambda d, **kw: st.shared(
                 xps.from_dtype(d, **kw), key=cond_str
             )
+            input_wrapper = lambda i: -i if other_sign == "-" else noop
             if other_no == "1":
 
                 def partial_cond(i1: float, i2: float) -> bool:
@@ -1077,9 +1098,9 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
         >>> binary_cases = parse_binary_docstring(logaddexp.__doc__)
         >>> for case in binary_cases:
         ...     print(repr(case))
-        BinaryCase(x1_i == NaN or x2_i == NaN -> NaN)
-        BinaryCase(x1_i == +infinity and not x2_i == NaN -> +infinity)
-        BinaryCase(not x1_i == NaN and x2_i == +infinity -> +infinity)
+        BinaryCase(<x1_i == NaN or x2_i == NaN -> NaN>)
+        BinaryCase(<x1_i == +infinity and not x2_i == NaN -> +infinity>)
+        BinaryCase(<not x1_i == NaN and x2_i == +infinity -> +infinity>)
 
     """
 
