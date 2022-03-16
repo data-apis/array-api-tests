@@ -319,7 +319,7 @@ def wrap_strat_as_from_dtype(strat: st.SearchStrategy[float]) -> FromDtypeFunc:
     return from_dtype
 
 
-def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
+def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, BoundFromDtype]:
     """
     Parses a Sphinx-formatted condition string to return:
 
@@ -348,22 +348,30 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
         124.978
 
     """
+    # We first identify whether the condition starts with "not". If so, we note
+    # this but parse the condition as if it was not negated.
     if m := r_not.match(cond_str):
         cond_str = m.group(1)
         not_cond = True
     else:
         not_cond = False
 
+    # We parse the condition to identify the condition function, expression
+    # template, and xps.from_dtype()-like condition strategy.
     kwargs = {}
     filter_ = None
     from_dtype = None  # type: ignore
-    strat = None
     if m := r_code.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_strict_eq(value)
         expr_template = "{} == " + m.group(1)
-        if not not_cond:
-            strat = st.just(value)
+        from_dtype = wrap_strat_as_from_dtype(st.just(value))
+    elif m := r_either_code.match(cond_str):
+        v1 = parse_value(m.group(1))
+        v2 = parse_value(m.group(2))
+        cond = make_or(make_strict_eq(v1), make_strict_eq(v2))
+        expr_template = "({} == " + m.group(1) + " or {} == " + m.group(2) + ")"
+        from_dtype = wrap_strat_as_from_dtype(st.sampled_from([v1, v2]))
     elif m := r_equal_to.match(cond_str):
         value = parse_value(m.group(1))
         if math.isnan(value):
@@ -374,97 +382,73 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, FromDtypeFunc]:
         value = parse_value(m.group(1))
         cond = make_gt(value)
         expr_template = "{} > " + m.group(1)
-        if not not_cond:
-            kwargs = {"min_value": value, "exclude_min": True}
+        kwargs = {"min_value": value, "exclude_min": True}
     elif m := r_lt.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_lt(value)
         expr_template = "{} < " + m.group(1)
-        if not not_cond:
-            kwargs = {"max_value": value, "exclude_max": True}
-    elif m := r_either_code.match(cond_str):
-        v1 = parse_value(m.group(1))
-        v2 = parse_value(m.group(2))
-        cond = make_or(make_strict_eq(v1), make_strict_eq(v2))
-        expr_template = "({} == " + m.group(1) + " or {} == " + m.group(2) + ")"
-        if not not_cond:
-            strat = st.sampled_from([v1, v2])
+        kwargs = {"max_value": value, "exclude_max": True}
     elif cond_str in ["finite", "a finite number"]:
         cond = math.isfinite
         expr_template = "isfinite({})"
-        if not not_cond:
-            kwargs = {"allow_nan": False, "allow_infinity": False}
+        kwargs = {"allow_nan": False, "allow_infinity": False}
     elif cond_str in "a positive (i.e., greater than ``0``) finite number":
         cond = lambda i: math.isfinite(i) and i > 0
         expr_template = "isfinite({}) and {} > 0"
-        if not not_cond:
-            kwargs = {
-                "allow_nan": False,
-                "allow_infinity": False,
-                "min_value": 0,
-                "exclude_min": True,
-            }
+        kwargs = {
+            "allow_nan": False,
+            "allow_infinity": False,
+            "min_value": 0,
+            "exclude_min": True,
+        }
     elif cond_str == "a negative (i.e., less than ``0``) finite number":
         cond = lambda i: math.isfinite(i) and i < 0
         expr_template = "isfinite({}) and {} < 0"
-        if not not_cond:
-            kwargs = {
-                "allow_nan": False,
-                "allow_infinity": False,
-                "max_value": 0,
-                "exclude_max": True,
-            }
+        kwargs = {
+            "allow_nan": False,
+            "allow_infinity": False,
+            "max_value": 0,
+            "exclude_max": True,
+        }
     elif cond_str == "positive":
         cond = lambda i: math.copysign(1, i) == 1
         expr_template = "copysign(1, {}) == 1"
-        if not not_cond:
-            # We assume (positive) zero is special cased seperately
-            kwargs = {"min_value": 0, "exclude_min": True}
+        # We assume (positive) zero is special cased seperately
+        kwargs = {"min_value": 0, "exclude_min": True}
     elif cond_str == "negative":
         cond = lambda i: math.copysign(1, i) == -1
         expr_template = "copysign(1, {}) == -1"
-        if not not_cond:
-            # We assume (negative) zero is special cased seperately
-            kwargs = {"max_value": 0, "exclude_max": True}
+        # We assume (negative) zero is special cased seperately
+        kwargs = {"max_value": 0, "exclude_max": True}
     elif "nonzero finite" in cond_str:
         cond = lambda i: math.isfinite(i) and i != 0
         expr_template = "isfinite({}) and {} != 0"
-        if not not_cond:
-            kwargs = {"allow_nan": False, "allow_infinity": False}
-            filter_ = lambda n: n != 0
+        kwargs = {"allow_nan": False, "allow_infinity": False}
+        filter_ = lambda n: n != 0
     elif cond_str == "an integer value":
         cond = lambda i: i.is_integer()
         expr_template = "{}.is_integer()"
-        if not not_cond:
-            from_dtype = integers_from_dtype  # type: ignore
+        from_dtype = integers_from_dtype  # type: ignore
     elif cond_str == "an odd integer value":
         cond = lambda i: i.is_integer() and i % 2 == 1
         expr_template = "{}.is_integer() and {} % 2 == 1"
-        if not not_cond:
+        from_dtype = integers_from_dtype  # type: ignore
 
-            def from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
-                return integers_from_dtype(dtype, **kw).filter(lambda n: n % 2 == 1)
+        def from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
+            return integers_from_dtype(dtype, **kw).filter(lambda n: n % 2 == 1)
 
     else:
         raise ParseError(cond_str)
 
-    if strat is not None:
-        if (
-            not_cond
-            or len(kwargs) != 0
-            or filter_ is not None
-            or from_dtype is not None
-        ):
-            raise ParseError(cond_str)
-        return cond, expr_template, wrap_strat_as_from_dtype(strat)
-
     if not_cond:
-        expr_template = f"not {expr_template}"
+        # We handle negated conitions by simply negating the condition function
+        # and using it as a filter for xps.from_dtype() (or an equivalent).
         cond = make_not_cond(cond)
-        kwargs = {}
+        expr_template = f"not {expr_template}"
         filter_ = cond
-    assert kwargs is not None
-    return cond, expr_template, BoundFromDtype(kwargs, filter_, from_dtype)
+        return cond, expr_template, BoundFromDtype(filter_=filter_)
+    else:
+        return cond, expr_template, BoundFromDtype(kwargs, filter_, from_dtype)
 
 
 def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
@@ -838,6 +822,9 @@ def make_binary_check_result(check_just_result: UnaryCheck) -> BinaryResultCheck
 
 
 def integers_from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
+    """
+    Returns a strategy that generates float-casted integers within the bounds of dtype.
+    """
     for k in kw.keys():
         # sanity check
         assert k in ["min_value", "max_value", "exclude_min", "exclude_max"]
@@ -1036,16 +1023,12 @@ def parse_binary_case(case_str: str) -> BinaryCase:
     elif len(x1_cond_from_dtypes) == 1:
         x1_cond_from_dtype = x1_cond_from_dtypes[0]
     else:
-        if not all(isinstance(fd, BoundFromDtype) for fd in x1_cond_from_dtypes):
-            raise ParseError(case_str)
         x1_cond_from_dtype = sum(x1_cond_from_dtypes, start=BoundFromDtype())
     if len(x2_cond_from_dtypes) == 0:
         x2_cond_from_dtype = xps.from_dtype
     elif len(x2_cond_from_dtypes) == 1:
         x2_cond_from_dtype = x2_cond_from_dtypes[0]
     else:
-        if not all(isinstance(fd, BoundFromDtype) for fd in x2_cond_from_dtypes):
-            raise ParseError(case_str)
         x2_cond_from_dtype = sum(x2_cond_from_dtypes, start=BoundFromDtype())
 
     return BinaryCase(
