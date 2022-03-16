@@ -732,6 +732,35 @@ def make_binary_cond(
     *,
     input_wrapper: Optional[Callable[[float], float]] = None,
 ) -> BinaryCond:
+    """
+    Wraps a unary condition as a binary condition, e.g.
+
+        >>> unary_cond = lambda i: i == 42
+
+        >>> binary_cond_first = make_binary_cond(BinaryCondArg.FIRST, unary_cond)
+        >>> binary_cond_first(42, 0)
+        True
+        >>> binary_cond_second = make_binary_cond(BinaryCondArg.SECOND, unary_cond)
+        >>> binary_cond_second(42, 0)
+        False
+        >>> binary_cond_second(0, 42)
+        True
+        >>> binary_cond_both = make_binary_cond(BinaryCondArg.BOTH, unary_cond)
+        >>> binary_cond_both(42, 0)
+        False
+        >>> binary_cond_both(42, 42)
+        True
+        >>> binary_cond_either = make_binary_cond(BinaryCondArg.EITHER, unary_cond)
+        >>> binary_cond_either(0, 0)
+        False
+        >>> binary_cond_either(42, 0)
+        True
+        >>> binary_cond_either(0, 42)
+        True
+        >>> binary_cond_either(42, 42)
+        True
+
+    """
     if input_wrapper is None:
         input_wrapper = noop
 
@@ -823,11 +852,13 @@ def parse_binary_case(case_str: str) -> BinaryCase:
             if in_sign != "" or other_no == in_no:
                 raise ParseError(cond_str)
             partial_expr = f"{in_sign}x{in_no}_i == {other_sign}x{other_no}_i"
+
             input_wrapper = lambda i: -i if other_sign == "-" else noop
+            # For these scenarios, we want to make sure both array elements
+            # generate respective to one another by using a shared strategy.
             shared_from_dtype = lambda d, **kw: st.shared(
                 xps.from_dtype(d, **kw), key=cond_str
             )
-
             if other_no == "1":
 
                 def partial_cond(i1: float, i2: float) -> bool:
