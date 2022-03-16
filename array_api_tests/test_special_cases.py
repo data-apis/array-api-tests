@@ -736,7 +736,6 @@ def make_binary_cond(
     Wraps a unary condition as a binary condition, e.g.
 
         >>> unary_cond = lambda i: i == 42
-
         >>> binary_cond_first = make_binary_cond(BinaryCondArg.FIRST, unary_cond)
         >>> binary_cond_first(42, 0)
         True
@@ -790,6 +789,24 @@ def make_binary_cond(
 def make_eq_input_check_result(
     eq_to: BinaryCondArg, *, eq_neg: bool = False
 ) -> BinaryResultCheck:
+    """
+    Returns a result checker for cases where the result equals an array element
+
+        >>> check_result_first = make_eq_input_check_result(BinaryCondArg.FIRST)
+        >>> check_result(42, 0, 42)
+        True
+        >>> check_result_second = make_eq_input_check_result(BinaryCondArg.SECOND)
+        >>> check_result(42, 0, 42)
+        False
+        >>> check_result(0, 42, 42)
+        True
+        >>> check_result_neg_first = make_eq_input_check_result(BinaryCondArg.FIRST, eq_neg=True)
+        >>> check_result_neg_first(42, 0, 42)
+        False
+        >>> check_result_neg_first(42, 0, -42)
+        True
+
+    """
     if eq_neg:
         input_wrapper = lambda i: -i
     else:
