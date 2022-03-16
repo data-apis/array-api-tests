@@ -364,13 +364,13 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, BoundFromDtype]:
     if m := r_code.match(cond_str):
         value = parse_value(m.group(1))
         cond = make_strict_eq(value)
-        expr_template = "{} == " + m.group(1)
+        expr_template = "{} is " + m.group(1)
         from_dtype = wrap_strat_as_from_dtype(st.just(value))
     elif m := r_either_code.match(cond_str):
         v1 = parse_value(m.group(1))
         v2 = parse_value(m.group(2))
         cond = make_or(make_strict_eq(v1), make_strict_eq(v2))
-        expr_template = "({} == " + m.group(1) + " or {} == " + m.group(2) + ")"
+        expr_template = "({} is " + m.group(1) + " or {} == " + m.group(2) + ")"
         from_dtype = wrap_strat_as_from_dtype(st.sampled_from([v1, v2]))
     elif m := r_equal_to.match(cond_str):
         value = parse_value(m.group(1))
@@ -487,7 +487,7 @@ def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
                 return True
             return math.copysign(1, result) == 1
 
-        expr = "+"
+        expr = "positive sign"
     elif "negative" in result_str:
 
         def check_result(result: float) -> bool:
@@ -496,7 +496,7 @@ def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
                 return True
             return math.copysign(1, result) == -1
 
-        expr = "-"
+        expr = "negative sign"
     else:
         raise ParseError(result_str)
 
@@ -927,7 +927,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
             unary_cond, expr_template, cond_from_dtype = parse_cond(m.group(1))
             left_expr = expr_template.replace("{}", "x1_i")
             right_expr = expr_template.replace("{}", "x2_i")
-            partial_expr = f"({left_expr}) and ({right_expr})"
+            partial_expr = f"{left_expr} and {right_expr}"
             partial_cond = make_binary_cond(  # type: ignore
                 BinaryCondArg.BOTH, unary_cond
             )
@@ -972,7 +972,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                 elif r_and_input.match(input_str):
                     left_expr = expr_template.replace("{}", "x1_i")
                     right_expr = expr_template.replace("{}", "x2_i")
-                    partial_expr = f"({left_expr}) and ({right_expr})"
+                    partial_expr = f"{left_expr} and {right_expr}"
                     cond_arg = BinaryCondArg.BOTH
                 elif r_or_input.match(input_str):
                     left_expr = expr_template.replace("{}", "x1_i")
