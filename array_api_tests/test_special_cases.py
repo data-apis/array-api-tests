@@ -437,7 +437,8 @@ def parse_cond(cond_str: str) -> Tuple[UnaryCheck, str, BoundFromDtype]:
     elif cond_str == "an odd integer value":
         cond = lambda i: i.is_integer() and i % 2 == 1
         expr_template = "{}.is_integer() and {} % 2 == 1"
-        from_dtype = integers_from_dtype  # type: ignore
+        if not_cond:
+            expr_template = f"({expr_template})"
 
         def from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
             return integers_from_dtype(dtype, **kw).filter(lambda n: n % 2 == 1)
