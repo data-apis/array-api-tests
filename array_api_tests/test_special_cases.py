@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import inspect
 import math
+import operator
 import re
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_EVEN, Decimal
@@ -24,6 +25,10 @@ from . import shape_helpers as sh
 from . import xps
 from ._array_module import mod as xp
 from .stubs import category_to_funcs
+from .test_operators_and_elementwise_functions import (
+    oneway_broadcastable_shapes,
+    oneway_promotable_dtypes,
+)
 
 pytestmark = pytest.mark.ci
 
@@ -1138,6 +1143,8 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
 
 unary_params = []
 binary_params = []
+iop_params = []
+func_to_op: Dict[str, str] = {v: k for k, v in dh.op_to_func.items()}
 for stub in category_to_funcs["elementwise"]:
     if stub.__doc__ is None:
         warn(f"{stub.__name__}() stub has no docstring")
@@ -1157,20 +1164,39 @@ for stub in category_to_funcs["elementwise"]:
         continue
     if param_names[0] == "x":
         if cases := parse_unary_docstring(stub.__doc__):
-            for case in cases:
-                id_ = f"{stub.__name__}({case.cond_expr}) -> {case.result_expr}"
-                p = pytest.param(stub.__name__, func, case, id=id_)
-                unary_params.append(p)
+            func_name_to_func = {stub.__name__: func}
+            if stub.__name__ in func_to_op.keys():
+                op_name = func_to_op[stub.__name__]
+                op = getattr(operator, op_name)
+                func_name_to_func[op_name] = op
+            for func_name, func in func_name_to_func.items():
+                for case in cases:
+                    id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
+                    p = pytest.param(func_name, func, case, id=id_)
+                    unary_params.append(p)
         continue
     if len(sig.parameters) == 1:
         warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
         continue
     if param_names[0] == "x1" and param_names[1] == "x2":
         if cases := parse_binary_docstring(stub.__doc__):
-            for case in cases:
-                id_ = f"{stub.__name__}({case.cond_expr}) -> {case.result_expr}"
-                p = pytest.param(stub.__name__, func, case, id=id_)
-                binary_params.append(p)
+            func_name_to_func = {stub.__name__: func}
+            if stub.__name__ in func_to_op.keys():
+                op_name = func_to_op[stub.__name__]
+                op = getattr(operator, op_name)
+                func_name_to_func[op_name] = op
+                # We collect inplaceoperator test cases seperately
+                iop_name = "__i" + op_name[2:]
+                iop = getattr(operator, iop_name)
+                for case in cases:
+                    id_ = f"{iop_name}({case.cond_expr}) -> {case.result_expr}"
+                    p = pytest.param(iop_name, iop, case, id=id_)
+                    iop_params.append(p)
+            for func_name, func in func_name_to_func.items():
+                for case in cases:
+                    id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
+                    p = pytest.param(func_name, func, case, id=id_)
+                    binary_params.append(p)
         continue
     else:
         warn(
@@ -1259,6 +1285,58 @@ def test_binary(func_name, func, case, x1, x2, data):
             f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
             assert case.check_result(l, r, o), (
                 f"{f_out}, but should be {case.result_expr} [{func_name}()]\n"
+                f"condition: {case}\n"
+                f"{f_left}, {f_right}"
+            )
+            break
+    assume(good_example)
+
+
+@pytest.mark.parametrize("iop_name, iop, case", iop_params)
+@given(
+    oneway_dtypes=oneway_promotable_dtypes(dh.float_dtypes),
+    oneway_shapes=oneway_broadcastable_shapes(),
+    data=st.data(),
+)
+def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
+    x1 = data.draw(
+        xps.arrays(dtype=oneway_dtypes.result_dtype, shape=oneway_shapes.result_shape),
+        label="x1",
+    )
+    x2 = data.draw(
+        xps.arrays(dtype=oneway_dtypes.input_dtype, shape=oneway_shapes.input_shape),
+        label="x2",
+    )
+
+    all_indices = list(sh.iter_indices(x1.shape, x2.shape, x1.shape))
+
+    indices_strat = st.shared(st.sampled_from(all_indices))
+    set_x1_idx = data.draw(indices_strat.map(lambda t: t[0]), label="set x1 idx")
+    set_x1_value = data.draw(case.x1_cond_from_dtype(x1.dtype), label="set x1 value")
+    x1[set_x1_idx] = set_x1_value
+    note(f"{x1=}")
+    set_x2_idx = data.draw(indices_strat.map(lambda t: t[1]), label="set x2 idx")
+    set_x2_value = data.draw(case.x2_cond_from_dtype(x2.dtype), label="set x2 value")
+    x2[set_x2_idx] = set_x2_value
+    note(f"{x2=}")
+
+    res = xp.asarray(x1, copy=True)
+    iop(res, x2)
+    # sanity check
+    ph.assert_result_shape(iop_name, [x1.shape, x2.shape], res.shape)
+
+    good_example = False
+    for l_idx, r_idx, o_idx in all_indices:
+        l = float(x1[l_idx])
+        r = float(x2[r_idx])
+        if case.cond(l, r):
+            good_example = True
+            o = float(res[o_idx])
+            f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
+            f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
+            f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
+            assert case.check_result(l, r, o), (
+                f"{f_out}, but should be {case.result_expr} [{iop_name}()]\n"
                 f"condition: {case}\n"
                 f"{f_left}, {f_right}"
             )
