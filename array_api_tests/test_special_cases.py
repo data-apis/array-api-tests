@@ -1010,22 +1010,28 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                         st.sampled_from([(True, False), (False, True), (True, True)])
                     )
 
-                    def _x1_cond_from_dtype(dtype) -> st.SearchStrategy[float]:
+                    def _x1_cond_from_dtype(dtype, **kw) -> st.SearchStrategy[float]:
+                        assert len(kw) == 0  # sanity check
                         return use_x1_or_x2_strat.flatmap(
                             lambda t: cond_from_dtype(dtype)
                             if t[0]
                             else xps.from_dtype(dtype)
                         )
 
-                    def _x2_cond_from_dtype(dtype) -> st.SearchStrategy[float]:
+                    def _x2_cond_from_dtype(dtype, **kw) -> st.SearchStrategy[float]:
+                        assert len(kw) == 0  # sanity check
                         return use_x1_or_x2_strat.flatmap(
                             lambda t: cond_from_dtype(dtype)
                             if t[1]
                             else xps.from_dtype(dtype)
                         )
 
-                    x1_cond_from_dtypes.append(_x1_cond_from_dtype)
-                    x2_cond_from_dtypes.append(_x2_cond_from_dtype)
+                    x1_cond_from_dtypes.append(
+                        BoundFromDtype(base_func=_x1_cond_from_dtype)
+                    )
+                    x2_cond_from_dtypes.append(
+                        BoundFromDtype(base_func=_x2_cond_from_dtype)
+                    )
 
         partial_conds.append(partial_cond)
         partial_exprs.append(partial_expr)
@@ -1050,18 +1056,8 @@ def parse_binary_case(case_str: str) -> BinaryCase:
     def cond(i1: float, i2: float) -> bool:
         return all(pc(i1, i2) for pc in partial_conds)
 
-    if len(x1_cond_from_dtypes) == 0:
-        x1_cond_from_dtype = xps.from_dtype
-    elif len(x1_cond_from_dtypes) == 1:
-        x1_cond_from_dtype = x1_cond_from_dtypes[0]
-    else:
-        x1_cond_from_dtype = sum(x1_cond_from_dtypes, start=BoundFromDtype())
-    if len(x2_cond_from_dtypes) == 0:
-        x2_cond_from_dtype = xps.from_dtype
-    elif len(x2_cond_from_dtypes) == 1:
-        x2_cond_from_dtype = x2_cond_from_dtypes[0]
-    else:
-        x2_cond_from_dtype = sum(x2_cond_from_dtypes, start=BoundFromDtype())
+    x1_cond_from_dtype = sum(x1_cond_from_dtypes, start=BoundFromDtype())
+    x2_cond_from_dtype = sum(x2_cond_from_dtypes, start=BoundFromDtype())
 
     return BinaryCase(
         cond_expr=cond_expr,
