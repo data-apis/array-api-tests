@@ -5,7 +5,7 @@ from pathlib import Path
 from types import FunctionType, ModuleType
 from typing import Dict, List
 
-__all__ = ["category_to_funcs", "array", "extension_to_funcs"]
+__all__ = ["category_to_funcs", "array", "EXTENSIONS", "extension_to_funcs"]
 
 
 spec_dir = Path(__file__).parent.parent / "array-api" / "spec" / "API_specification"
@@ -31,11 +31,10 @@ for name, mod in name_to_mod.items():
         assert all(isinstance(o, FunctionType) for o in objects)
         category_to_funcs[category] = objects
 
-
 array = name_to_mod["array_object"].array
 
 
-EXTENSIONS = ["linalg"]
+EXTENSIONS: str = ["linalg"]
 extension_to_funcs: Dict[str, List[FunctionType]] = {}
 for ext in EXTENSIONS:
     mod = name_to_mod[ext]
