@@ -10,6 +10,15 @@ welcome!
 
 ### Setup
 
+Currently we pin the Array API specification repo [`array-api`](https://github.com/data-apis/array-api/)
+as a git submodule. This might change in the future to better support vendoring
+use cases (see [#107](https://github.com/data-apis/array-api-tests/issues/107)),
+but for now be sure submodules are pulled too, e.g.
+
+```bash
+$ git submodule update --init
+```
+
 To run the tests, install the testing dependencies.
 
 ```bash
