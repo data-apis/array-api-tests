@@ -31,7 +31,18 @@ def _test_signature(
         def add(x1, x2, /):
             ...
 
-    x1 and x2 don't need to be pos-only for the purposes of interoperability.
+    x1 and x2 don't need to be pos-only for the purposes of interoperability, but with
+
+        def squeeze(x, /, axis):
+            ...
+
+    axis has to be pos-or-keyword to support both styles
+
+        >>> squeeze(x, 0)
+        ...
+        >>> squeeze(x, axis=0)
+        ...
+
     """
     try:
         sig = signature(func)
@@ -73,7 +84,7 @@ def _test_signature(
         ):
             pytest.skip(
                 f"faulty spec - argument {stub_param.name} should be a "
-                f"{kind_to_str[Parameter.POSITIONAL_OR_KEYWORD]}"
+                f"{kind_to_str[Parameter.POSITIONAL_ONLY]}"
             )
         f_kind = kind_to_str[param.kind]
         f_stub_kind = kind_to_str[stub_param.kind]
