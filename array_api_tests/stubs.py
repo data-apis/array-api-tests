@@ -1,11 +1,12 @@
 import sys
+import inspect
 from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path
 from types import FunctionType, ModuleType
 from typing import Dict, List
 
-__all__ = ["category_to_funcs", "array", "EXTENSIONS", "extension_to_funcs"]
+__all__ = ["array_methods", "category_to_funcs", "EXTENSIONS", "extension_to_funcs"]
 
 
 spec_dir = Path(__file__).parent.parent / "array-api" / "spec" / "API_specification"
@@ -22,6 +23,12 @@ for path in sigs_dir.glob("*.py"):
     name = path.name.replace(".py", "")
     name_to_mod[name] = import_module(f"signatures.{name}")
 
+array = name_to_mod["array_object"].array
+array_methods = [
+    f for n, f in inspect.getmembers(array, predicate=inspect.isfunction)
+    if n != "__init__"  # probably exists for Sphinx
+]
+
 
 category_to_funcs: Dict[str, List[FunctionType]] = {}
 for name, mod in name_to_mod.items():
@@ -30,9 +37,6 @@ for name, mod in name_to_mod.items():
         objects = [getattr(mod, name) for name in mod.__all__]
         assert all(isinstance(o, FunctionType) for o in objects)
         category_to_funcs[category] = objects
-
-array = name_to_mod["array_object"].array
-
 
 EXTENSIONS: str = ["linalg"]
 extension_to_funcs: Dict[str, List[FunctionType]] = {}
