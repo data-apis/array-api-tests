@@ -10,6 +10,8 @@ from . import xps
 from ._array_module import mod as xp
 from .stubs import array_methods, category_to_funcs, extension_to_funcs
 
+pytestmark = pytest.mark.ci
+
 kind_to_str: Dict[Parameter, str] = {
     Parameter.POSITIONAL_OR_KEYWORD: "normal argument",
     Parameter.POSITIONAL_ONLY: "pos-only argument",
