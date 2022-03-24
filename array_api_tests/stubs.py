@@ -1,12 +1,18 @@
-import sys
 import inspect
+import sys
 from importlib import import_module
 from importlib.util import find_spec
 from pathlib import Path
 from types import FunctionType, ModuleType
 from typing import Dict, List
 
-__all__ = ["array_methods", "category_to_funcs", "EXTENSIONS", "extension_to_funcs"]
+__all__ = [
+    "name_to_func",
+    "array_methods",
+    "category_to_funcs",
+    "EXTENSIONS",
+    "extension_to_funcs",
+]
 
 
 spec_dir = Path(__file__).parent.parent / "array-api" / "spec" / "API_specification"
@@ -29,7 +35,6 @@ array_methods = [
     if n != "__init__"  # probably exists for Sphinx
 ]
 
-
 category_to_funcs: Dict[str, List[FunctionType]] = {}
 for name, mod in name_to_mod.items():
     if name.endswith("_functions"):
@@ -45,3 +50,8 @@ for ext in EXTENSIONS:
     objects = [getattr(mod, name) for name in mod.__all__]
     assert all(isinstance(o, FunctionType) for o in objects)
     extension_to_funcs[ext] = objects
+
+all_funcs = []
+for funcs in [array_methods, *category_to_funcs.values(), *extension_to_funcs.values()]:
+    all_funcs.extend(funcs)
+name_to_func: Dict[str, FunctionType] = {f.__name__: f for f in all_funcs}

@@ -64,18 +64,8 @@ def doesnt_raise(function, message=""):
         raise AssertionError(f"Unexpected exception {e!r}")
 
 
-all_funcs = []
-for funcs in [
-    stubs.array_methods,
-    *list(stubs.category_to_funcs.values()),
-    *list(stubs.extension_to_funcs.values()),
-]:
-    all_funcs.extend(funcs)
-name_to_func = {f.__name__: f for f in all_funcs}
-
-
 def nargs(func_name):
-    return len(getfullargspec(name_to_func[func_name]).args)
+    return len(getfullargspec(stubs.name_to_func[func_name]).args)
 
 
 def fmt_kw(kw: Dict[str, Any]) -> str:
