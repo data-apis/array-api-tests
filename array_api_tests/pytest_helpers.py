@@ -5,8 +5,8 @@ from typing import Any, Dict, Optional, Sequence, Tuple, Union
 from . import _array_module as xp
 from . import array_helpers as ah
 from . import dtype_helpers as dh
-from . import function_stubs
 from . import shape_helpers as sh
+from . import stubs
 from .typing import Array, DataType, Scalar, ScalarType, Shape
 
 __all__ = [
@@ -65,7 +65,7 @@ def doesnt_raise(function, message=""):
 
 
 def nargs(func_name):
-    return len(getfullargspec(getattr(function_stubs, func_name)).args)
+    return len(getfullargspec(stubs.name_to_func[func_name]).args)
 
 
 def fmt_kw(kw: Dict[str, Any]) -> str:

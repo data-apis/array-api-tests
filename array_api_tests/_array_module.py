@@ -1,7 +1,7 @@
 import os
 from importlib import import_module
 
-from . import function_stubs
+from . import stubs
 
 # Replace this with a specific array module to test it, for example,
 #
@@ -53,38 +53,18 @@ class _UndefinedStub:
     __call__ = _raise
     __getattr__ = _raise
 
-_integer_dtypes = [
-    'int8',
-    'int16',
-    'int32',
-    'int64',
-    'uint8',
-    'uint16',
-    'uint32',
-    'uint64',
-]
-
-_floating_dtypes = [
-    'float32',
-    'float64',
-]
-
-_numeric_dtypes = [
-    *_integer_dtypes,
-    *_floating_dtypes,
-]
-
-_boolean_dtypes = [
-    'bool',
-]
-
 _dtypes = [
-    *_boolean_dtypes,
-    *_numeric_dtypes
+    "bool",
+    "uint8", "uint16", "uint32", "uint64",
+    "int8", "int16", "int32", "int64",
+    "float32", "float64",
 ]
+_constants = ["e", "inf", "nan", "pi"]
+_funcs = [f.__name__ for funcs in stubs.category_to_funcs.values() for f in funcs]
+_top_level_attrs = _dtypes + _constants + _funcs + stubs.EXTENSIONS
 
-for func_name in function_stubs.__all__ + _dtypes:
+for attr in _top_level_attrs:
     try:
-        globals()[func_name] = getattr(mod, func_name)
+        globals()[attr] = getattr(mod, attr)
     except AttributeError:
-        globals()[func_name] = _UndefinedStub(func_name)
+        globals()[attr] = _UndefinedStub(attr)
