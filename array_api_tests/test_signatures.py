@@ -1,282 +1,146 @@
-import inspect
-from itertools import chain
+from inspect import Parameter, Signature, signature
+from types import FunctionType
+from typing import Callable, Dict
 
 import pytest
+from hypothesis import given
 
-from ._array_module import mod, mod_name, ones, eye, float64, bool, int64, _UndefinedStub
-from .pytest_helpers import raises, doesnt_raise
-from . import dtype_helpers as dh
+from . import hypothesis_helpers as hh
+from . import xps
+from ._array_module import mod as xp
+from .stubs import array_methods, category_to_funcs, extension_to_funcs
 
-from . import stubs
+pytestmark = pytest.mark.ci
 
-
-def extension_module(name) -> bool:
-    for funcs in stubs.extension_to_funcs.values():
-        for func in funcs:
-            if name == func.__name__:
-                return True
-    else:
-        return False
-
-
-params = []
-for name in [f.__name__ for funcs in stubs.category_to_funcs.values() for f in funcs]:
-    if name in ["where", "expand_dims", "reshape"]:
-        params.append(pytest.param(name, marks=pytest.mark.skip(reason="faulty test")))
-    else:
-        params.append(name)
+kind_to_str: Dict[Parameter, str] = {
+    Parameter.POSITIONAL_OR_KEYWORD: "normal argument",
+    Parameter.POSITIONAL_ONLY: "pos-only argument",
+    Parameter.KEYWORD_ONLY: "keyword-only argument",
+    Parameter.VAR_POSITIONAL: "star-args (i.e. *args) argument",
+    Parameter.VAR_KEYWORD: "star-kwargs (i.e. **kwargs) argument",
+}
 
 
-for ext, name in [(ext, f.__name__) for ext, funcs in stubs.extension_to_funcs.items() for f in funcs]:
-    params.append(pytest.param(name, marks=pytest.mark.xp_extension(ext)))
-
-
-def array_method(name) -> bool:
-    return name in [f.__name__ for f in stubs.array_methods]
-
-def function_category(name) -> str:
-    for category, funcs in chain(stubs.category_to_funcs.items(), stubs.extension_to_funcs.items()):
-        for func in funcs:
-            if name == func.__name__:
-                return category
-
-def example_argument(arg, func_name, dtype):
+def _test_signature(
+    func: Callable, stub: FunctionType, ignore_first_stub_param: bool = False
+):
     """
-    Get an example argument for the argument arg for the function func_name
+    Signature of function is correct enough to not affect interoperability
 
-    The full tests for function behavior is in other files. We just need to
-    have an example input for each argument name that should work so that we
-    can check if the argument is implemented at all.
+    We're not interested in being 100% strict - instead we focus on areas which
+    could affect interop, e.g. with
+
+        def add(x1, x2, /):
+            ...
+
+    x1 and x2 don't need to be pos-only for the purposes of interoperability, but with
+
+        def squeeze(x, /, axis):
+            ...
+
+    axis has to be pos-or-keyword to support both styles
+
+        >>> squeeze(x, 0)
+        ...
+        >>> squeeze(x, axis=0)
+        ...
 
     """
-    # Note: for keyword arguments that have a default, this should be
-    # different from the default, as the default argument is tested separately
-    # (it can have the same behavior as the default, just not literally the
-    # same value).
-    known_args = dict(
-        api_version='2021.1',
-        arrays=(ones((1, 3, 3), dtype=dtype), ones((1, 3, 3), dtype=dtype)),
-        # These cannot be the same as each other, which is why all our test
-        # arrays have to have at least 3 dimensions.
-        axis1=2,
-        axis2=2,
-        axis=1,
-        axes=(2, 1, 0),
-        copy=True,
-        correction=1.0,
-        descending=True,
-        # TODO: This will only work on the NumPy implementation. The exact
-        # value of the device keyword will vary across implementations, so we
-        # need some way to infer it or for libraries to specify a list of
-        # valid devices.
-        device='cpu',
-        dtype=float64,
-        endpoint=False,
-        fill_value=1.0,
-        from_=int64,
-        full_matrices=False,
-        k=1,
-        keepdims=True,
-        key=(0, 0),
-        indexing='ij',
-        mode='complete',
-        n=2,
-        n_cols=1,
-        n_rows=1,
-        num=2,
-        offset=1,
-        ord=1,
-        obj = [[[1, 1, 1], [1, 1, 1], [1, 1, 1]]],
-        other=ones((3, 3), dtype=dtype),
-        return_counts=True,
-        return_index=True,
-        return_inverse=True,
-        rtol=1e-10,
-        self=ones((3, 3), dtype=dtype),
-        shape=(1, 3, 3),
-        shift=1,
-        sorted=False,
-        stable=False,
-        start=0,
-        step=2,
-        stop=1,
-        # TODO: Update this to be non-default. See the comment on "device" above.
-        stream=None,
-        to=float64,
-        type=float64,
-        upper=True,
-        value=0,
-        x1=ones((1, 3, 3), dtype=dtype),
-        x2=ones((1, 3, 3), dtype=dtype),
-        x=ones((1, 3, 3), dtype=dtype),
-    )
-    if not isinstance(bool, _UndefinedStub):
-        known_args['condition'] = ones((1, 3, 3), dtype=bool),
-
-    if arg in known_args:
-        # Special cases:
-
-        # squeeze() requires an axis of size 1, but other functions such as
-        # cross() require axes of size >1
-        if func_name == 'squeeze' and arg == 'axis':
-            return 0
-        # ones() is not invertible
-        # finfo requires a float dtype and iinfo requires an int dtype
-        elif func_name == 'iinfo' and arg == 'type':
-            return int64
-        # tensordot args must be contractible with each other
-        elif func_name == 'tensordot' and arg == 'x2':
-            return ones((3, 3, 1), dtype=dtype)
-        # tensordot "axes" is either a number representing the number of
-        # contractible axes or a 2-tuple or axes
-        elif func_name == 'tensordot' and arg == 'axes':
-            return 1
-        # The inputs to outer() must be 1-dimensional
-        elif func_name == 'outer' and arg in ['x1', 'x2']:
-            return ones((3,), dtype=dtype)
-        # Linear algebra functions tend to error if the input isn't "nice" as
-        # a matrix
-        elif arg.startswith('x') and func_name in [f.__name__ for f in stubs.extension_to_funcs["linalg"]]:
-            return eye(3)
-        return known_args[arg]
-    else:
-        raise RuntimeError(f"Don't know how to test argument {arg}. Please update test_signatures.py")
-
-@pytest.mark.parametrize('name', params)
-def test_has_names(name):
-    if extension_module(name):
-        ext = next(
-            ext for ext, funcs in stubs.extension_to_funcs.items()
-            if name in [f.__name__ for f in funcs]
+    try:
+        sig = signature(func)
+    except ValueError:
+        pytest.skip(
+            msg=f"type({stub.__name__})={type(func)} not supported by inspect.signature()"
         )
-        ext_mod = getattr(mod, ext)
-        assert hasattr(ext_mod, name), f"{mod_name} is missing the {function_category(name)} extension function {name}()"
-    elif array_method(name):
-        arr = ones((1, 1))
-        if name not in [f.__name__ for f in stubs.array_methods]:
-            assert hasattr(arr, name), f"The array object is missing the attribute {name}"
+    params = list(sig.parameters.values())
+
+    stub_sig = signature(stub)
+    stub_params = list(stub_sig.parameters.values())
+    if ignore_first_stub_param:
+        stub_params = stub_params[1:]
+        stub = Signature(
+            parameters=stub_params, return_annotation=stub_sig.return_annotation
+        )
+
+    # We're not interested if the array module has additional arguments, so we
+    # only iterate through the arguments listed in the spec.
+    for i, stub_param in enumerate(stub_params):
+        assert (
+            len(params) >= i + 1
+        ), f"Argument '{stub_param.name}' missing from signature"
+        param = params[i]
+
+        # We're not interested in the name if it isn't actually used
+        if stub_param.kind not in [
+            Parameter.POSITIONAL_ONLY,
+            Parameter.VAR_POSITIONAL,
+            Parameter.VAR_KEYWORD,
+        ]:
+            assert (
+                param.name == stub_param.name
+            ), f"Expected argument '{param.name}' to be named '{stub_param.name}'"
+
+        if (
+            stub_param.name in ["x", "x1", "x2"]
+            and stub_param.kind != Parameter.POSITIONAL_ONLY
+        ):
+            pytest.skip(
+                f"faulty spec - argument {stub_param.name} should be a "
+                f"{kind_to_str[Parameter.POSITIONAL_ONLY]}"
+            )
+        f_kind = kind_to_str[param.kind]
+        f_stub_kind = kind_to_str[stub_param.kind]
+        if stub_param.kind in [
+            Parameter.POSITIONAL_OR_KEYWORD,
+            Parameter.VAR_POSITIONAL,
+            Parameter.VAR_KEYWORD,
+        ]:
+            assert (
+                param.kind == stub_param.kind
+            ), f"{param.name} is a {f_kind}, but should be a {f_stub_kind}"
         else:
-            assert hasattr(arr, name), f"The array object is missing the method {name}()"
-    else:
-        assert hasattr(mod, name), f"{mod_name} is missing the {function_category(name)} function {name}()"
+            # TODO: allow for kw-only args to be out-of-order
+            assert param.kind in [stub_param.kind, Parameter.POSITIONAL_OR_KEYWORD], (
+                f"{param.name} is a {f_kind}, "
+                f"but should be a {f_stub_kind} "
+                f"(or at least a {kind_to_str[Parameter.POSITIONAL_OR_KEYWORD]})"
+            )
 
-@pytest.mark.parametrize('name', params)
-def test_function_positional_args(name):
-    # Note: We can't actually test that positional arguments are
-    # positional-only, as that would require knowing the argument name and
-    # checking that it can't be used as a keyword argument. But argument name
-    # inspection does not work for most array library functions that are not
-    # written in pure Python (e.g., it won't work for numpy ufuncs).
 
-    if extension_module(name):
-        return
+@pytest.mark.parametrize(
+    "stub",
+    [s for stubs in category_to_funcs.values() for s in stubs],
+    ids=lambda f: f.__name__,
+)
+def test_func_signature(stub: FunctionType):
+    assert hasattr(xp, stub.__name__), f"{stub.__name__} not found in array module"
+    func = getattr(xp, stub.__name__)
+    _test_signature(func, stub)
 
-    dtype = None
-    if (name.startswith('__i') and name not in ['__int__', '__invert__', '__index__']
-        or name.startswith('__r') and name != '__rshift__'):
-        n = f'__{name[3:]}'
-    else:
-        n = name
-    in_dtypes = dh.func_in_dtypes.get(n, dh.float_dtypes)
-    if bool in in_dtypes:
-        dtype = bool
-    elif all(d in in_dtypes for d in dh.all_int_dtypes):
-        dtype = int64
 
-    if array_method(name):
-        if name == '__bool__':
-            _mod = ones((), dtype=bool)
-        elif name in ['__int__', '__index__']:
-            _mod = ones((), dtype=int64)
-        elif name == '__float__':
-            _mod = ones((), dtype=float64)
-        else:
-            _mod = example_argument('self', name, dtype)
-    elif '.' in name:
-        extension_module_name, name = name.split('.')
-        _mod = getattr(mod, extension_module_name)
-    else:
-        _mod = mod
-    stub_func = stubs.name_to_func[name]
+extension_and_stub_params = []
+for ext, stubs in extension_to_funcs.items():
+    for stub in stubs:
+        p = pytest.param(
+            ext, stub, id=f"{ext}.{stub.__name__}", marks=pytest.mark.xp_extension(ext)
+        )
+        extension_and_stub_params.append(p)
 
-    if not hasattr(_mod, name):
-        pytest.skip(f"{mod_name} does not have {name}(), skipping.")
-    if stub_func is None:
-        # TODO: Can we make this skip the parameterization entirely?
-        pytest.skip(f"{name} is not a function, skipping.")
-    mod_func = getattr(_mod, name)
-    argspec = inspect.getfullargspec(stub_func)
-    func_args = argspec.args
-    if func_args[:1] == ['self']:
-        func_args = func_args[1:]
-    nargs = [len(func_args)]
-    if argspec.defaults:
-        # The actual default values are checked in the specific tests
-        nargs.extend([len(func_args) - i for i in range(1, len(argspec.defaults) + 1)])
 
-    args = [example_argument(arg, name, dtype) for arg in func_args]
-    if not args:
-        args = [example_argument('x', name, dtype)]
-    else:
-        # Duplicate the last positional argument for the n+1 test.
-        args = args + [args[-1]]
+@pytest.mark.parametrize("extension, stub", extension_and_stub_params)
+def test_extension_func_signature(extension: str, stub: FunctionType):
+    mod = getattr(xp, extension)
+    assert hasattr(
+        mod, stub.__name__
+    ), f"{stub.__name__} not found in {extension} extension"
+    func = getattr(mod, stub.__name__)
+    _test_signature(func, stub)
 
-    kwonlydefaults = argspec.kwonlydefaults or {}
-    required_kwargs = {arg: example_argument(arg, name, dtype) for arg in argspec.kwonlyargs if arg not in kwonlydefaults}
 
-    for n in range(nargs[0]+2):
-        if name == 'result_type' and n == 0:
-            # This case is not encoded in the signature, but isn't allowed.
-            continue
-        if n in nargs:
-            doesnt_raise(lambda: mod_func(*args[:n], **required_kwargs))
-        elif argspec.varargs:
-            pass
-        else:
-            # NumPy ufuncs raise ValueError instead of TypeError
-            raises((TypeError, ValueError), lambda: mod_func(*args[:n]), f"{name}() should not accept {n} positional arguments")
-
-@pytest.mark.parametrize('name', params)
-def test_function_keyword_only_args(name):
-    if extension_module(name):
-        return
-
-    if array_method(name):
-        _mod = ones((1, 1))
-    elif '.' in name:
-        extension_module_name, name = name.split('.')
-        _mod = getattr(mod, extension_module_name)
-    else:
-        _mod = mod
-    stub_func = stubs.name_to_func[name]
-
-    if not hasattr(_mod, name):
-        pytest.skip(f"{mod_name} does not have {name}(), skipping.")
-    if stub_func is None:
-        # TODO: Can we make this skip the parameterization entirely?
-        pytest.skip(f"{name} is not a function, skipping.")
-    mod_func = getattr(_mod, name)
-    argspec = inspect.getfullargspec(stub_func)
-    args = argspec.args
-    if args[:1] == ['self']:
-        args = args[1:]
-    kwonlyargs = argspec.kwonlyargs
-    kwonlydefaults = argspec.kwonlydefaults or {}
-    dtype = None
-
-    args = [example_argument(arg, name, dtype) for arg in args]
-
-    for arg in kwonlyargs:
-        value = example_argument(arg, name, dtype)
-        # The "only" part of keyword-only is tested by the positional test above.
-        doesnt_raise(lambda: mod_func(*args, **{arg: value}),
-                     f"{name}() should accept the keyword-only argument {arg!r}")
-
-        # Make sure the default is accepted. These tests are not granular
-        # enough to test that the default is actually the default, i.e., gives
-        # the same value if the keyword isn't passed. That is tested in the
-        # specific function tests.
-        if arg in kwonlydefaults:
-            default_value = kwonlydefaults[arg]
-            doesnt_raise(lambda: mod_func(*args, **{arg: default_value}),
-                         f"{name}() should accept the default value {default_value!r} for the keyword-only argument {arg!r}")
+@pytest.mark.parametrize("stub", array_methods, ids=lambda f: f.__name__)
+@given(x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()))
+def test_array_method_signature(stub: FunctionType, x):
+    assert hasattr(x, stub.__name__), f"{stub.__name__} not found in array object {x!r}"
+    method = getattr(x, stub.__name__)
+    # Ignore 'self' arg in stub, which won't be present in instantiated objects.
+    _test_signature(method, stub, ignore_first_stub_param=True)
