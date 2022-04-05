@@ -406,6 +406,13 @@ for op, symbol in binary_op_to_symbol.items():
     func_returns_bool[iop] = func_returns_bool[op]
 
 
+func_in_dtypes["__bool__"] = (xp.bool,)
+func_in_dtypes["__int__"] = all_int_dtypes
+func_in_dtypes["__index__"] = all_int_dtypes
+func_in_dtypes["__float__"] = float_dtypes
+func_in_dtypes["__dlpack__"] = numeric_dtypes
+
+
 @lru_cache
 def fmt_types(types: Tuple[Union[DataType, ScalarType], ...]) -> str:
     f_types = []
