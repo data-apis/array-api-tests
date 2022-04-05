@@ -245,7 +245,8 @@ def result_type(*dtypes: DataType):
     return result
 
 
-r_in_dtypes = re.compile("x1?: array\n.+Should have an? (.+) data type.")
+r_alias = re.compile("[aA]lias")
+r_in_dtypes = re.compile("x1?: array\n.+have an? (.+) data type.")
 r_int_note = re.compile(
     "If one or both of the input arrays have integer data types, "
     "the result is implementation-dependent"
@@ -331,6 +332,8 @@ func_returns_bool = {
     "trunc": False,
     # searching
     "where": False,
+    # linalg
+    "matmul": False,
 }
 
 
@@ -374,7 +377,7 @@ op_to_func = {
     "__gt__": "greater",
     "__le__": "less_equal",
     "__lt__": "less",
-    # '__matmul__': 'matmul',  # TODO: support matmul
+    "__matmul__": "matmul",
     "__mod__": "remainder",
     "__mul__": "multiply",
     "__ne__": "not_equal",
@@ -410,6 +413,7 @@ func_in_dtypes["__bool__"] = (xp.bool,)
 func_in_dtypes["__int__"] = all_int_dtypes
 func_in_dtypes["__index__"] = all_int_dtypes
 func_in_dtypes["__float__"] = float_dtypes
+func_in_dtypes["from_dlpack"] = numeric_dtypes
 func_in_dtypes["__dlpack__"] = numeric_dtypes
 
 
