@@ -267,6 +267,8 @@ for name, func in name_to_func.items():
         func_in_dtypes[name] = dtypes
     elif any("x" in name for name in signature(func).parameters.keys()):
         func_in_dtypes[name] = all_dtypes
+# See https://github.com/data-apis/array-api/pull/413
+func_in_dtypes["expm1"] = float_dtypes
 
 
 func_returns_bool = {
