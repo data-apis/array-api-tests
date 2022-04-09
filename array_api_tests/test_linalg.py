@@ -628,7 +628,22 @@ def test_tensordot(x1, x2, kw):
     out = xp.tensordot(x1, x2, **kw)
 
     ph.assert_dtype("tensordot", [x1.dtype, x2.dtype], out.dtype)
-    # TODO: assert shape and elements
+
+    axes = _axes = kw.get('axes', 2)
+
+    if isinstance(axes, int):
+        _axes = [list(range(-axes, 0)), list(range(0, axes))]
+
+    _shape1 = list(x1.shape)
+    _shape2 = list(x2.shape)
+    for i, j in zip(*_axes):
+        _shape1[i] = _shape2[j] = None
+    _shape1 = tuple([i for i in _shape1 if i is not None])
+    _shape2 = tuple([i for i in _shape2 if i is not None])
+    result_shape = _shape1 + _shape2
+    ph.assert_result_shape('tensordot', [x1.shape, x2.shape], out.shape,
+                           expected=result_shape)
+    # TODO: assert stacking and elements
 
 
 @pytest.mark.xp_extension('linalg')
