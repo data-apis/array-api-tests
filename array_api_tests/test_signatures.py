@@ -1,4 +1,6 @@
 """
+Tests for function/method signatures compliance
+
 We're not interested in being 100% strict - instead we focus on areas which
 could affect interop, e.g. with
 
@@ -20,7 +22,7 @@ axis has to be pos-or-keyword to support both styles
 """
 from inspect import Parameter, Signature, signature
 from types import FunctionType
-from typing import Any, Callable, Dict, List, Literal, Sequence, get_args
+from typing import Any, Callable, Dict, List, Literal, get_args
 
 import pytest
 from hypothesis import given, note, settings
@@ -67,10 +69,7 @@ def _test_inspectable_func(sig: Signature, stub_sig: Signature):
         param = params[i]
 
         # We're not interested in the name if it isn't actually used
-        if stub_param.kind not in [
-            Parameter.POSITIONAL_ONLY,
-            *VAR_KINDS,
-        ]:
+        if stub_param.kind not in [Parameter.POSITIONAL_ONLY, *VAR_KINDS]:
             assert (
                 param.name == stub_param.name
             ), f"Expected argument '{param.name}' to be named '{stub_param.name}'"
@@ -100,7 +99,7 @@ def get_dtypes_strategy(func_name: str) -> st.SearchStrategy[DataType]:
         return xps.scalar_dtypes()
 
 
-def make_pretty_func(func_name: str, args: Sequence[Any], kwargs: Dict[str, Any]):
+def make_pretty_func(func_name: str, *args: Any, **kwargs: Any):
     f_sig = f"{func_name}("
     f_sig += ", ".join(str(a) for a in args)
     if len(kwargs) != 0:
@@ -129,14 +128,18 @@ def _test_uninspectable_func(
         "and is too troublesome to test for otherwise"
     )
     if func_name in [
+        # 0d shapes
         "__bool__",
         "__int__",
         "__index__",
         "__float__",
+        # x2 elements must be >=0
         "pow",
         "bitwise_left_shift",
         "bitwise_right_shift",
+        # axis default invalid with 0d shapes
         "sort",
+        # shape requirements
         *matrixy_names,
     ]:
         pytest.skip(skip_msg)
@@ -176,7 +179,7 @@ def _test_uninspectable_func(
     kwargs: Dict[str, Any] = {
         p.name: v for p, v in param_to_value.items() if p.kind == Parameter.KEYWORD_ONLY
     }
-    f_func = make_pretty_func(func_name, args, kwargs)
+    f_func = make_pretty_func(func_name, *args, **kwargs)
     note(f"trying {f_func}")
     func(*args, **kwargs)
 
@@ -184,7 +187,7 @@ def _test_uninspectable_func(
 def _test_func_signature(func: Callable, stub: FunctionType, array=None):
     stub_sig = signature(stub)
     # If testing against array, ignore 'self' arg in stub as it won't be present
-    # in func (which should be an array method).
+    # in func (which should be a method).
     if array is not None:
         stub_params = list(stub_sig.parameters.values())
         del stub_params[0]
