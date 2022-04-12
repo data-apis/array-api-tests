@@ -24,7 +24,9 @@ from types import FunctionType
 from typing import Any, Callable, Dict, List, Literal, Sequence, get_args
 
 import pytest
+from hypothesis import given, note, settings
 from hypothesis import strategies as st
+from hypothesis.strategies import DataObject
 
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
@@ -117,7 +119,11 @@ matrixy_funcs: List[str] = [
 matrixy_funcs += ["__matmul__", "triu", "tril"]
 
 
-def _test_uninspectable_func(func_name: str, func: Callable, stub_sig: Signature):
+@given(data=st.data())
+@settings(max_examples=1)
+def _test_uninspectable_func(
+    func_name: str, func: Callable, stub_sig: Signature, data: DataObject
+):
     skip_msg = (
         f"Signature for {func_name}() is not inspectable "
         "and is too troublesome to test for otherwise"
@@ -145,12 +151,16 @@ def _test_uninspectable_func(func_name: str, func: Callable, stub_sig: Signature
             value = param.default
         elif param.name in ["x", "x1"]:
             dtypes = get_dtypes_strategy(func_name)
-            value = xps.arrays(dtype=dtypes, shape=hh.shapes(min_side=1)).example()
+            value = data.draw(
+                xps.arrays(dtype=dtypes, shape=hh.shapes(min_side=1)), label=param.name
+            )
         elif param.name == "x2":
             # sanity check
             assert "x1" in [p.name for p in param_to_value.keys()]
             x1 = next(v for p, v in param_to_value.items() if p.name == "x1")
-            value = xps.arrays(dtype=x1.dtype, shape=x1.shape).example()
+            value = data.draw(
+                xps.arrays(dtype=x1.dtype, shape=x1.shape), label=param.name
+            )
         else:
             pytest.skip(
                 skip_msg + f" (because no default was found for argument {param.name})"
@@ -164,7 +174,7 @@ def _test_uninspectable_func(func_name: str, func: Callable, stub_sig: Signature
         p.name: v for p, v in param_to_value.items() if p.kind == Parameter.KEYWORD_ONLY
     }
     f_func = make_pretty_func(func_name, args, kwargs)
-    print(f"trying {f_func}")
+    note(f"trying {f_func}")
     func(*args, **kwargs)
 
 
@@ -217,9 +227,11 @@ def test_extension_func_signature(extension: str, stub: FunctionType):
 
 
 @pytest.mark.parametrize("stub", array_methods, ids=lambda f: f.__name__)
-def test_array_method_signature(stub: FunctionType):
+@given(st.data())
+@settings(max_examples=1)
+def test_array_method_signature(stub: FunctionType, data: DataObject):
     dtypes = get_dtypes_strategy(stub.__name__)
-    x = xps.arrays(dtype=dtypes, shape=hh.shapes(min_side=1)).example()
+    x = data.draw(xps.arrays(dtype=dtypes, shape=hh.shapes(min_side=1)), label="x")
     assert hasattr(x, stub.__name__), f"{stub.__name__} not found in array object {x!r}"
     method = getattr(x, stub.__name__)
     # Ignore 'self' arg in stub, which won't be present in instantiated objects.
