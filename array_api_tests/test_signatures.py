@@ -18,7 +18,6 @@ axis has to be pos-or-keyword to support both styles
     ...
 
 """
-from copy import copy
 from inspect import Parameter, Signature, signature
 from itertools import chain
 from types import FunctionType
@@ -47,11 +46,11 @@ ParameterKind = Literal[
 ALL_KINDS = get_args(ParameterKind)
 VAR_KINDS = (Parameter.VAR_POSITIONAL, Parameter.VAR_KEYWORD)
 kind_to_str: Dict[ParameterKind, str] = {
-    Parameter.POSITIONAL_OR_KEYWORD: "normal argument",
+    Parameter.POSITIONAL_OR_KEYWORD: "pos or kw argument",
     Parameter.POSITIONAL_ONLY: "pos-only argument",
     Parameter.KEYWORD_ONLY: "keyword-only argument",
     Parameter.VAR_POSITIONAL: "star-args (i.e. *args) argument",
-    Parameter.VAR_KEYWORD: "star-kwonly (i.e. **kwonly) argument",
+    Parameter.VAR_KEYWORD: "star-kwargs (i.e. **kwargs) argument",
 }
 
 
@@ -100,13 +99,13 @@ def get_dtypes_strategy(func_name: str) -> st.SearchStrategy[DataType]:
         return xps.scalar_dtypes()
 
 
-def make_pretty_func(func_name: str, args: Sequence[Any], kwonly: Dict[str, Any]):
+def make_pretty_func(func_name: str, args: Sequence[Any], kwargs: Dict[str, Any]):
     f_sig = f"{func_name}("
     f_sig += ", ".join(str(a) for a in args)
-    if len(kwonly) != 0:
+    if len(kwargs) != 0:
         if len(args) != 0:
             f_sig += ", "
-        f_sig += ", ".join(f"{k}={v}" for k, v in kwonly.items())
+        f_sig += ", ".join(f"{k}={v}" for k, v in kwargs.items())
     f_sig += ")"
     return f_sig
 
@@ -131,8 +130,6 @@ def _test_uninspectable_func(func_name: str, func: Callable, stub_sig: Signature
         "pow",
         "bitwise_left_shift",
         "bitwise_right_shift",
-        "broadcast_to",
-        "permute_dims",
         "sort",
         *matrixy_funcs,
     ]:
@@ -140,8 +137,10 @@ def _test_uninspectable_func(func_name: str, func: Callable, stub_sig: Signature
 
     param_to_value: Dict[Parameter, Any] = {}
     for param in stub_sig.parameters.values():
-        if param.kind in VAR_KINDS:
-            pytest.skip(skip_msg)
+        if param.kind in [Parameter.POSITIONAL_OR_KEYWORD, *VAR_KINDS]:
+            pytest.skip(
+                skip_msg + f" (because '{param.name}' is a {kind_to_str[param.kind]})"
+            )
         elif param.default != Parameter.empty:
             value = param.default
         elif param.name in ["x", "x1"]:
@@ -153,41 +152,20 @@ def _test_uninspectable_func(func_name: str, func: Callable, stub_sig: Signature
             x1 = next(v for p, v in param_to_value.items() if p.name == "x1")
             value = xps.arrays(dtype=x1.dtype, shape=x1.shape).example()
         else:
-            pytest.skip(skip_msg)
+            pytest.skip(
+                skip_msg + f" (because no default was found for argument {param.name})"
+            )
         param_to_value[param] = value
 
-    posonly: List[Any] = [
+    args: List[Any] = [
         v for p, v in param_to_value.items() if p.kind == Parameter.POSITIONAL_ONLY
     ]
-    kwonly: Dict[str, Any] = {
+    kwargs: Dict[str, Any] = {
         p.name: v for p, v in param_to_value.items() if p.kind == Parameter.KEYWORD_ONLY
     }
-    if (
-        sum(p.kind == Parameter.POSITIONAL_OR_KEYWORD for p in param_to_value.keys())
-        == 0
-    ):
-        f_func = make_pretty_func(func_name, posonly, kwonly)
-        print(f"trying {f_func}")
-        func(*posonly, **kwonly)
-    else:
-        either_argname_value_pairs = list(
-            (p.name, v)
-            for p, v in param_to_value.items()
-            if p.kind == Parameter.POSITIONAL_OR_KEYWORD
-        )
-        n_either_args = len(either_argname_value_pairs)
-        for n_extra_args in reversed(range(n_either_args + 1)):
-            extra_posargs = [v for _, v in either_argname_value_pairs[:n_extra_args]]
-            if n_extra_args < n_either_args:
-                extra_kwargs = dict(either_argname_value_pairs[n_extra_args:])
-            else:
-                extra_kwargs = {}
-            args = copy(posonly)
-            args += extra_posargs
-            kwargs = {**kwonly, **extra_kwargs}
-            f_func = make_pretty_func(func_name, args, kwargs)
-            print(f"trying {f_func}")
-            func(*args, **kwargs)
+    f_func = make_pretty_func(func_name, args, kwargs)
+    print(f"trying {f_func}")
+    func(*args, **kwargs)
 
 
 def _test_func_signature(
