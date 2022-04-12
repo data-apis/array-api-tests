@@ -33,7 +33,7 @@ from . import xps
 from ._array_module import _UndefinedStub
 from ._array_module import mod as xp
 from .stubs import array_methods, category_to_funcs, extension_to_funcs
-from .typing import DataType
+from .typing import Array, DataType
 
 pytestmark = pytest.mark.ci
 
@@ -112,7 +112,8 @@ def make_pretty_func(func_name: str, args: Sequence[Any], kwargs: Dict[str, Any]
 
 
 matrixy_funcs: List[FunctionType] = [
-    *category_to_funcs["linear_algebra"], *extension_to_funcs["linalg"]
+    *category_to_funcs["linear_algebra"],
+    *extension_to_funcs["linalg"],
 ]
 matrixy_names: List[str] = [f.__name__ for f in matrixy_funcs]
 matrixy_names += ["__matmul__", "triu", "tril"]
@@ -121,7 +122,7 @@ matrixy_names += ["__matmul__", "triu", "tril"]
 @given(data=st.data())
 @settings(max_examples=1)
 def _test_uninspectable_func(
-    func_name: str, func: Callable, stub_sig: Signature, data: DataObject
+    func_name: str, func: Callable, stub_sig: Signature, array: Array, data: DataObject
 ):
     skip_msg = (
         f"Signature for {func_name}() is not inspectable "
@@ -153,12 +154,15 @@ def _test_uninspectable_func(
             value = data.draw(
                 xps.arrays(dtype=dtypes, shape=hh.shapes(min_side=1)), label=param.name
             )
-        elif param.name == "x2":
-            # sanity check
-            assert "x1" in [p.name for p in param_to_value.keys()]
-            x1 = next(v for p, v in param_to_value.items() if p.name == "x1")
+        elif param.name in ["x2", "other"]:
+            if param.name == "x2":
+                assert "x1" in [p.name for p in param_to_value.keys()]  # sanity check
+                orig = next(v for p, v in param_to_value.items() if p.name == "x1")
+            else:
+                assert array is not None  # sanity check
+                orig = array
             value = data.draw(
-                xps.arrays(dtype=x1.dtype, shape=x1.shape), label=param.name
+                xps.arrays(dtype=orig.dtype, shape=orig.shape), label=param.name
             )
         else:
             pytest.skip(
@@ -177,11 +181,11 @@ def _test_uninspectable_func(
     func(*args, **kwargs)
 
 
-def _test_func_signature(
-    func: Callable, stub: FunctionType, ignore_first_stub_param: bool = False
-):
+def _test_func_signature(func: Callable, stub: FunctionType, array=None):
     stub_sig = signature(stub)
-    if ignore_first_stub_param:
+    # If testing against array, ignore 'self' arg in stub as it won't be present
+    # in func (which should be an array method).
+    if array is not None:
         stub_params = list(stub_sig.parameters.values())
         del stub_params[0]
         stub_sig = Signature(
@@ -192,7 +196,7 @@ def _test_func_signature(
         sig = signature(func)
         _test_inspectable_func(sig, stub_sig)
     except ValueError:
-        _test_uninspectable_func(stub.__name__, func, stub_sig)
+        _test_uninspectable_func(stub.__name__, func, stub_sig, array)
 
 
 @pytest.mark.parametrize(
@@ -233,5 +237,4 @@ def test_array_method_signature(stub: FunctionType, data: DataObject):
     x = data.draw(xps.arrays(dtype=dtypes, shape=hh.shapes(min_side=1)), label="x")
     assert hasattr(x, stub.__name__), f"{stub.__name__} not found in array object {x!r}"
     method = getattr(x, stub.__name__)
-    # Ignore 'self' arg in stub, which won't be present in instantiated objects.
-    _test_func_signature(method, stub, ignore_first_stub_param=True)
+    _test_func_signature(method, stub, array=x)
