@@ -19,7 +19,6 @@ axis has to be pos-or-keyword to support both styles
 
 """
 from inspect import Parameter, Signature, signature
-from itertools import chain
 from types import FunctionType
 from typing import Any, Callable, Dict, List, Literal, Sequence, get_args
 
@@ -112,11 +111,11 @@ def make_pretty_func(func_name: str, args: Sequence[Any], kwargs: Dict[str, Any]
     return f_sig
 
 
-matrixy_funcs: List[str] = [
-    f.__name__
-    for f in chain(category_to_funcs["linear_algebra"], extension_to_funcs["linalg"])
+matrixy_funcs: List[FunctionType] = [
+    *category_to_funcs["linear_algebra"], *extension_to_funcs["linalg"]
 ]
-matrixy_funcs += ["__matmul__", "triu", "tril"]
+matrixy_names: List[str] = [f.__name__ for f in matrixy_funcs]
+matrixy_names += ["__matmul__", "triu", "tril"]
 
 
 @given(data=st.data())
@@ -137,7 +136,7 @@ def _test_uninspectable_func(
         "bitwise_left_shift",
         "bitwise_right_shift",
         "sort",
-        *matrixy_funcs,
+        *matrixy_names,
     ]:
         pytest.skip(skip_msg)
 
