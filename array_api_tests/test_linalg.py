@@ -15,10 +15,12 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 
 import pytest
 from hypothesis import assume, given
-from hypothesis.strategies import (booleans, composite, none, lists, tuples,
-                                   floats, integers, shared, sampled_from,
-                                   one_of, data, just)
+from hypothesis.strategies import (booleans, composite, none, tuples, floats,
+                                   integers, shared, sampled_from, one_of,
+                                   data, just)
 from ndindex import iter_indices
+
+import itertools
 
 from .array_helpers import assert_exactly_equal, asarray
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
@@ -619,15 +621,52 @@ def tensordot_shapes(draw):
     shape1, shape2 = map(tuple, [_shape1, _shape2])
     return (shape1, shape2)
 
+def _test_tensordot_stacks(x1, x2, kw, res):
+    """
+    Variant of _test_stacks for tensordot
+
+    tensordot doesn't stack directly along the non-contracted dimensions like
+    the other linalg functions. Rather, it is stacked along the product of
+    each non-contracted dimension. These dimensions are independent of one
+    another and do not broadcast.
+    """
+    shape1, shape2 = x1.shape, x2.shape
+
+    axes = kw.get('axes', 2)
+
+    if isinstance(axes, int):
+        res_axes = axes
+        axes = [list(range(-axes, 0)), list(range(0, axes))]
+    else:
+        # Convert something like (0, 4, 2) into (0, 2, 1)
+        res_axes = []
+        for a, s in zip(axes, [shape1, shape2]):
+            indices = [range(len(s))[i] for i in a]
+            repl = dict(zip(sorted(indices), range(len(indices))))
+            res_axes.append(tuple(repl[i] for i in indices))
+
+    for ((i,), (j,)), (res_idx,) in zip(
+            itertools.product(
+                iter_indices(shape1, skip_axes=axes[0]),
+                iter_indices(shape2, skip_axes=axes[1])),
+            iter_indices(res.shape)):
+        i, j, res_idx = i.raw, j.raw, res_idx.raw
+
+        res_stack = res[res_idx]
+        x1_stack = x1[i]
+        x2_stack = x2[j]
+        decomp_res_stack = xp.tensordot(x1_stack, x2_stack, axes=res_axes)
+        assert_exactly_equal(res_stack, decomp_res_stack)
+
 @given(
     *two_mutual_arrays(dh.numeric_dtypes, two_shapes=tensordot_shapes()),
     tensordot_kw,
 )
 def test_tensordot(x1, x2, kw):
     # TODO: vary shapes, vary contracted axes, test different axes arguments
-    out = xp.tensordot(x1, x2, **kw)
+    res = xp.tensordot(x1, x2, **kw)
 
-    ph.assert_dtype("tensordot", [x1.dtype, x2.dtype], out.dtype)
+    ph.assert_dtype("tensordot", [x1.dtype, x2.dtype], res.dtype)
 
     axes = _axes = kw.get('axes', 2)
 
@@ -641,10 +680,10 @@ def test_tensordot(x1, x2, kw):
     _shape1 = tuple([i for i in _shape1 if i is not None])
     _shape2 = tuple([i for i in _shape2 if i is not None])
     result_shape = _shape1 + _shape2
-    ph.assert_result_shape('tensordot', [x1.shape, x2.shape], out.shape,
+    ph.assert_result_shape('tensordot', [x1.shape, x2.shape], res.shape,
                            expected=result_shape)
     # TODO: assert stacking and elements
-
+    _test_tensordot_stacks(x1, x2, kw, res)
 
 @pytest.mark.xp_extension('linalg')
 @given(
