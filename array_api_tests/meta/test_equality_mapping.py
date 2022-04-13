@@ -21,3 +21,9 @@ def test_raises_on_indistinct_eq_keys():
 
     with pytest.raises(ValueError):
         EqualityMapping({AlwaysEq(0): "foo", AlwaysEq(1): "bar"})
+
+
+def test_key_error():
+    mapping = EqualityMapping({"foo": "bar"})
+    with pytest.raises(KeyError):
+        mapping["nonexistent key"]

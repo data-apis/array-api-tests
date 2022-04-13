@@ -408,10 +408,19 @@ def fmt_types(types: Tuple[Union[DataType, ScalarType], ...]) -> str:
 
 
 class EqualityMapping(Mapping):
+    """
+    Mapping that uses equality for indexing
+
+    Typical mappings (e.g. the built-in dict) use hashing for indexing. This
+    isn't ideal for the Array API, as no __hash__() method is specified for
+    dtype objects - but __eq__() is!
+
+    See https://data-apis.org/array-api/latest/API_specification/data_types.html#data-type-objects
+    """
     def __init__(self, mapping: Mapping):
         keys = list(mapping.keys())
         for i, key in enumerate(keys):
-            if not (key == key):  # specifically test __eq__, not __neq__
+            if not (key == key):  # specifically checking __eq__, not __neq__
                 raise ValueError("Key {key!r} does not have equality with itself")
             other_keys = keys[:]
             other_keys.pop(i)
@@ -424,9 +433,14 @@ class EqualityMapping(Mapping):
         for k, v in self._mapping.items():
             if key == k:
                 return v
+        else:
+            raise KeyError(f"{key!r} not found")
 
     def __iter__(self):
         return iter(self._mapping)
 
     def __len__(self):
         return len(self._mapping)
+
+    def __repr__(self):
+        return f"EqualityMapping({self._mapping!r})"
