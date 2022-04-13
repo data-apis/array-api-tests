@@ -1,3 +1,4 @@
+from collections import Mapping
 from functools import lru_cache
 from typing import NamedTuple, Tuple, Union
 from warnings import warn
@@ -99,8 +100,8 @@ dtype_ranges = {
     xp.uint16: MinMax(0, +65_535),
     xp.uint32: MinMax(0, +4_294_967_295),
     xp.uint64: MinMax(0, +18_446_744_073_709_551_615),
-    xp.float32: MinMax(-3.4028234663852886e+38, 3.4028234663852886e+38),
-    xp.float64: MinMax(-1.7976931348623157e+308, 1.7976931348623157e+308),
+    xp.float32: MinMax(-3.4028234663852886e38, 3.4028234663852886e38),
+    xp.float64: MinMax(-1.7976931348623157e308, 1.7976931348623157e308),
 }
 
 dtype_nbits = {
@@ -404,3 +405,28 @@ def fmt_types(types: Tuple[Union[DataType, ScalarType], ...]) -> str:
             # i.e. dtype is bool, int, or float
             f_types.append(type_.__name__)
     return ", ".join(f_types)
+
+
+class EqualityMapping(Mapping):
+    def __init__(self, mapping: Mapping):
+        keys = list(mapping.keys())
+        for i, key in enumerate(keys):
+            if not (key == key):  # specifically test __eq__, not __neq__
+                raise ValueError("Key {key!r} does not have equality with itself")
+            other_keys = keys[:]
+            other_keys.pop(i)
+            for other_key in other_keys:
+                if key == other_key:
+                    raise ValueError("Key {key!r} has equality with key {other_key!r}")
+        self._mapping = mapping
+
+    def __getitem__(self, key):
+        for k, v in self._mapping.items():
+            if key == k:
+                return v
+
+    def __iter__(self):
+        return iter(self._mapping)
+
+    def __len__(self):
+        return len(self._mapping)
