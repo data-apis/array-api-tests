@@ -37,6 +37,46 @@ __all__ = [
 ]
 
 
+class EqualityMapping(Mapping):
+    """
+    Mapping that uses equality for indexing
+
+    Typical mappings (e.g. the built-in dict) use hashing for indexing. This
+    isn't ideal for the Array API, as no __hash__() method is specified for
+    dtype objects - but __eq__() is!
+
+    See https://data-apis.org/array-api/latest/API_specification/data_types.html#data-type-objects
+    """
+
+    def __init__(self, mapping: Mapping):
+        keys = list(mapping.keys())
+        for i, key in enumerate(keys):
+            if not (key == key):  # specifically checking __eq__, not __neq__
+                raise ValueError("Key {key!r} does not have equality with itself")
+            other_keys = keys[:]
+            other_keys.pop(i)
+            for other_key in other_keys:
+                if key == other_key:
+                    raise ValueError("Key {key!r} has equality with key {other_key!r}")
+        self._mapping = mapping
+
+    def __getitem__(self, key):
+        for k, v in self._mapping.items():
+            if key == k:
+                return v
+        else:
+            raise KeyError(f"{key!r} not found")
+
+    def __iter__(self):
+        return iter(self._mapping)
+
+    def __len__(self):
+        return len(self._mapping)
+
+    def __repr__(self):
+        return f"EqualityMapping({self._mapping!r})"
+
+
 _uint_names = ("uint8", "uint16", "uint32", "uint64")
 _int_names = ("int8", "int16", "int32", "int64")
 _float_names = ("float32", "float64")
@@ -52,14 +92,16 @@ all_dtypes = (xp.bool,) + numeric_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
 
 
-dtype_to_name = {getattr(xp, name): name for name in _dtype_names}
+dtype_to_name = EqualityMapping({getattr(xp, name): name for name in _dtype_names})
 
 
-dtype_to_scalars = {
-    xp.bool: [bool],
-    **{d: [int] for d in all_int_dtypes},
-    **{d: [int, float] for d in float_dtypes},
-}
+dtype_to_scalars = EqualityMapping(
+    {
+        xp.bool: [bool],
+        **{d: [int] for d in all_int_dtypes},
+        **{d: [int, float] for d in float_dtypes},
+    }
+)
 
 
 def is_int_dtype(dtype):
@@ -91,31 +133,37 @@ class MinMax(NamedTuple):
     max: Union[int, float]
 
 
-dtype_ranges = {
-    xp.int8: MinMax(-128, +127),
-    xp.int16: MinMax(-32_768, +32_767),
-    xp.int32: MinMax(-2_147_483_648, +2_147_483_647),
-    xp.int64: MinMax(-9_223_372_036_854_775_808, +9_223_372_036_854_775_807),
-    xp.uint8: MinMax(0, +255),
-    xp.uint16: MinMax(0, +65_535),
-    xp.uint32: MinMax(0, +4_294_967_295),
-    xp.uint64: MinMax(0, +18_446_744_073_709_551_615),
-    xp.float32: MinMax(-3.4028234663852886e38, 3.4028234663852886e38),
-    xp.float64: MinMax(-1.7976931348623157e308, 1.7976931348623157e308),
-}
+dtype_ranges = EqualityMapping(
+    {
+        xp.int8: MinMax(-128, +127),
+        xp.int16: MinMax(-32_768, +32_767),
+        xp.int32: MinMax(-2_147_483_648, +2_147_483_647),
+        xp.int64: MinMax(-9_223_372_036_854_775_808, +9_223_372_036_854_775_807),
+        xp.uint8: MinMax(0, +255),
+        xp.uint16: MinMax(0, +65_535),
+        xp.uint32: MinMax(0, +4_294_967_295),
+        xp.uint64: MinMax(0, +18_446_744_073_709_551_615),
+        xp.float32: MinMax(-3.4028234663852886e38, 3.4028234663852886e38),
+        xp.float64: MinMax(-1.7976931348623157e308, 1.7976931348623157e308),
+    }
+)
 
-dtype_nbits = {
-    **{d: 8 for d in [xp.int8, xp.uint8]},
-    **{d: 16 for d in [xp.int16, xp.uint16]},
-    **{d: 32 for d in [xp.int32, xp.uint32, xp.float32]},
-    **{d: 64 for d in [xp.int64, xp.uint64, xp.float64]},
-}
+dtype_nbits = EqualityMapping(
+    {
+        **{d: 8 for d in [xp.int8, xp.uint8]},
+        **{d: 16 for d in [xp.int16, xp.uint16]},
+        **{d: 32 for d in [xp.int32, xp.uint32, xp.float32]},
+        **{d: 64 for d in [xp.int64, xp.uint64, xp.float64]},
+    }
+)
 
 
-dtype_signed = {
-    **{d: True for d in int_dtypes},
-    **{d: False for d in uint_dtypes},
-}
+dtype_signed = EqualityMapping(
+    {
+        **{d: True for d in int_dtypes},
+        **{d: False for d in uint_dtypes},
+    }
+)
 
 
 if isinstance(xp.asarray, _UndefinedStub):
@@ -179,11 +227,13 @@ _numeric_promotions = {
     (xp.float32, xp.float64): xp.float64,
     (xp.float64, xp.float64): xp.float64,
 }
-promotion_table = {
-    (xp.bool, xp.bool): xp.bool,
-    **_numeric_promotions,
-    **{(d2, d1): res for (d1, d2), res in _numeric_promotions.items()},
-}
+promotion_table = EqualityMapping(
+    {
+        (xp.bool, xp.bool): xp.bool,
+        **_numeric_promotions,
+        **{(d2, d1): res for (d1, d2), res in _numeric_promotions.items()},
+    }
+)
 
 
 def result_type(*dtypes: DataType):
@@ -405,42 +455,3 @@ def fmt_types(types: Tuple[Union[DataType, ScalarType], ...]) -> str:
             # i.e. dtype is bool, int, or float
             f_types.append(type_.__name__)
     return ", ".join(f_types)
-
-
-class EqualityMapping(Mapping):
-    """
-    Mapping that uses equality for indexing
-
-    Typical mappings (e.g. the built-in dict) use hashing for indexing. This
-    isn't ideal for the Array API, as no __hash__() method is specified for
-    dtype objects - but __eq__() is!
-
-    See https://data-apis.org/array-api/latest/API_specification/data_types.html#data-type-objects
-    """
-    def __init__(self, mapping: Mapping):
-        keys = list(mapping.keys())
-        for i, key in enumerate(keys):
-            if not (key == key):  # specifically checking __eq__, not __neq__
-                raise ValueError("Key {key!r} does not have equality with itself")
-            other_keys = keys[:]
-            other_keys.pop(i)
-            for other_key in other_keys:
-                if key == other_key:
-                    raise ValueError("Key {key!r} has equality with key {other_key!r}")
-        self._mapping = mapping
-
-    def __getitem__(self, key):
-        for k, v in self._mapping.items():
-            if key == k:
-                return v
-        else:
-            raise KeyError(f"{key!r} not found")
-
-    def __iter__(self):
-        return iter(self._mapping)
-
-    def __len__(self):
-        return len(self._mapping)
-
-    def __repr__(self):
-        return f"EqualityMapping({self._mapping!r})"
