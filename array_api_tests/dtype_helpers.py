@@ -1,4 +1,4 @@
-from collections import Mapping
+from collections.abc import Mapping
 from functools import lru_cache
 from typing import NamedTuple, Tuple, Union
 from warnings import warn
