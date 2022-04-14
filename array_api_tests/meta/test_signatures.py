@@ -29,16 +29,13 @@ stub_sig = signature(stub)
                 Parameter("baz", Parameter.POSITIONAL_OR_KEYWORD),
             ]
         ),
-        pytest.param(
-            Signature(
-                [
-                    Parameter("foo", Parameter.POSITIONAL_ONLY),
-                    Parameter("bar", Parameter.POSITIONAL_OR_KEYWORD),
-                    Parameter("qux", Parameter.KEYWORD_ONLY),
-                    Parameter("baz", Parameter.KEYWORD_ONLY),
-                ]
-            ),
-            marks=pytest.mark.xfail(reason="out-of-order kwonly args not supported"),
+        Signature(
+            [
+                Parameter("foo", Parameter.POSITIONAL_ONLY),
+                Parameter("bar", Parameter.POSITIONAL_OR_KEYWORD),
+                Parameter("qux", Parameter.KEYWORD_ONLY),
+                Parameter("baz", Parameter.KEYWORD_ONLY),
+            ]
         ),
     ],
 )

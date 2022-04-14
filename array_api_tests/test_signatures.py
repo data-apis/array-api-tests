@@ -60,9 +60,15 @@ kind_to_str: Dict[ParameterKind, str] = {
 def _test_inspectable_func(sig: Signature, stub_sig: Signature):
     params = list(sig.parameters.values())
     stub_params = list(stub_sig.parameters.values())
+
+    non_kwonly_stub_params = [
+        p for p in stub_params if p.kind != Parameter.KEYWORD_ONLY
+    ]
+    # sanity check
+    assert non_kwonly_stub_params == stub_params[: len(non_kwonly_stub_params)]
     # We're not interested if the array module has additional arguments, so we
     # only iterate through the arguments listed in the spec.
-    for i, stub_param in enumerate(stub_params):
+    for i, stub_param in enumerate(non_kwonly_stub_params):
         assert (
             len(params) >= i + 1
         ), f"Argument '{stub_param.name}' missing from signature"
@@ -74,19 +80,24 @@ def _test_inspectable_func(sig: Signature, stub_sig: Signature):
                 param.name == stub_param.name
             ), f"Expected argument '{param.name}' to be named '{stub_param.name}'"
 
-        f_stub_kind = kind_to_str[stub_param.kind]
         if stub_param.kind in [Parameter.POSITIONAL_OR_KEYWORD, *VAR_KINDS]:
+            f_stub_kind = kind_to_str[stub_param.kind]
             assert param.kind == stub_param.kind, (
                 f"{param.name} is a {kind_to_str[param.kind]}, "
                 f"but should be a {f_stub_kind}"
             )
-        else:
-            # TODO: allow for kw-only args to be out-of-order
-            assert param.kind in [stub_param.kind, Parameter.POSITIONAL_OR_KEYWORD,], (
-                f"{param.name} is a {kind_to_str[param.kind]}, "
-                f"but should be a {f_stub_kind} "
-                f"(or at least a {kind_to_str[ParameterKind.POSITIONAL_OR_KEYWORD]})"
-            )
+
+    kwonly_stub_params = stub_params[len(non_kwonly_stub_params) :]
+    for stub_param in kwonly_stub_params:
+        assert (
+            stub_param.name in sig.parameters.keys()
+        ), f"Argument '{stub_param.name}' missing from signature"
+        param = next(p for p in params if p.name == stub_param.name)
+        assert param.kind in [stub_param.kind, Parameter.POSITIONAL_OR_KEYWORD,], (
+            f"{param.name} is a {kind_to_str[param.kind]}, "
+            f"but should be a {f_stub_kind} "
+            f"(or at least a {kind_to_str[ParameterKind.POSITIONAL_OR_KEYWORD]})"
+        )
 
 
 def get_dtypes_strategy(func_name: str) -> st.SearchStrategy[DataType]:
