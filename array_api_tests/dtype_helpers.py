@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from functools import lru_cache
-from typing import NamedTuple, Tuple, Union
+from typing import Any, NamedTuple, Sequence, Tuple, Union
 from warnings import warn
 
 from . import _array_module as xp
@@ -48,8 +48,8 @@ class EqualityMapping(Mapping):
     See https://data-apis.org/array-api/latest/API_specification/data_types.html#data-type-objects
     """
 
-    def __init__(self, mapping: Mapping):
-        keys = list(mapping.keys())
+    def __init__(self, key_value_pairs: Sequence[Tuple[Any, Any]]):
+        keys = [k for k, _ in key_value_pairs]
         for i, key in enumerate(keys):
             if not (key == key):  # specifically checking __eq__, not __neq__
                 raise ValueError("Key {key!r} does not have equality with itself")
@@ -58,23 +58,26 @@ class EqualityMapping(Mapping):
             for other_key in other_keys:
                 if key == other_key:
                     raise ValueError("Key {key!r} has equality with key {other_key!r}")
-        self._mapping = mapping
+        self._key_value_pairs = key_value_pairs
 
     def __getitem__(self, key):
-        for k, v in self._mapping.items():
+        for k, v in self._key_value_pairs:
             if key == k:
                 return v
         else:
             raise KeyError(f"{key!r} not found")
 
     def __iter__(self):
-        return iter(self._mapping)
+        return (k for k, _ in self._key_value_pairs)
 
     def __len__(self):
-        return len(self._mapping)
+        return len(self._key_value_pairs)
+
+    def __str__(self):
+        return "{" + ", ".join(f"{k!r}: {v!r}" for k, v in self._key_value_pairs) + "}"
 
     def __repr__(self):
-        return f"EqualityMapping({self._mapping!r})"
+        return f"EqualityMapping({self})"
 
 
 _uint_names = ("uint8", "uint16", "uint32", "uint64")
@@ -92,15 +95,15 @@ all_dtypes = (xp.bool,) + numeric_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
 
 
-dtype_to_name = EqualityMapping({getattr(xp, name): name for name in _dtype_names})
+dtype_to_name = EqualityMapping([(getattr(xp, name), name) for name in _dtype_names])
 
 
 dtype_to_scalars = EqualityMapping(
-    {
-        xp.bool: [bool],
-        **{d: [int] for d in all_int_dtypes},
-        **{d: [int, float] for d in float_dtypes},
-    }
+    [
+        (xp.bool, [bool]),
+        *[(d, [int]) for d in all_int_dtypes],
+        *[(d, [int, float]) for d in float_dtypes],
+    ]
 )
 
 
@@ -134,35 +137,30 @@ class MinMax(NamedTuple):
 
 
 dtype_ranges = EqualityMapping(
-    {
-        xp.int8: MinMax(-128, +127),
-        xp.int16: MinMax(-32_768, +32_767),
-        xp.int32: MinMax(-2_147_483_648, +2_147_483_647),
-        xp.int64: MinMax(-9_223_372_036_854_775_808, +9_223_372_036_854_775_807),
-        xp.uint8: MinMax(0, +255),
-        xp.uint16: MinMax(0, +65_535),
-        xp.uint32: MinMax(0, +4_294_967_295),
-        xp.uint64: MinMax(0, +18_446_744_073_709_551_615),
-        xp.float32: MinMax(-3.4028234663852886e38, 3.4028234663852886e38),
-        xp.float64: MinMax(-1.7976931348623157e308, 1.7976931348623157e308),
-    }
+    [
+        (xp.int8, MinMax(-128, +127)),
+        (xp.int16, MinMax(-32_768, +32_767)),
+        (xp.int32, MinMax(-2_147_483_648, +2_147_483_647)),
+        (xp.int64, MinMax(-9_223_372_036_854_775_808, +9_223_372_036_854_775_807)),
+        (xp.uint8, MinMax(0, +255)),
+        (xp.uint16, MinMax(0, +65_535)),
+        (xp.uint32, MinMax(0, +4_294_967_295)),
+        (xp.uint64, MinMax(0, +18_446_744_073_709_551_615)),
+        (xp.float32, MinMax(-3.4028234663852886e38, 3.4028234663852886e38)),
+        (xp.float64, MinMax(-1.7976931348623157e308, 1.7976931348623157e308)),
+    ]
 )
 
 dtype_nbits = EqualityMapping(
-    {
-        **{d: 8 for d in [xp.int8, xp.uint8]},
-        **{d: 16 for d in [xp.int16, xp.uint16]},
-        **{d: 32 for d in [xp.int32, xp.uint32, xp.float32]},
-        **{d: 64 for d in [xp.int64, xp.uint64, xp.float64]},
-    }
+    [(d, 8) for d in [xp.int8, xp.uint8]]
+    + [(d, 16) for d in [xp.int16, xp.uint16]]
+    + [(d, 32) for d in [xp.int32, xp.uint32, xp.float32]]
+    + [(d, 64) for d in [xp.int64, xp.uint64, xp.float64]]
 )
 
 
 dtype_signed = EqualityMapping(
-    {
-        **{d: True for d in int_dtypes},
-        **{d: False for d in uint_dtypes},
-    }
+    [(d, True) for d in int_dtypes] + [(d, False) for d in uint_dtypes]
 )
 
 
@@ -186,54 +184,51 @@ else:
     default_uint = xp.uint64
 
 
-_numeric_promotions = {
+_numeric_promotions = [
     # ints
-    (xp.int8, xp.int8): xp.int8,
-    (xp.int8, xp.int16): xp.int16,
-    (xp.int8, xp.int32): xp.int32,
-    (xp.int8, xp.int64): xp.int64,
-    (xp.int16, xp.int16): xp.int16,
-    (xp.int16, xp.int32): xp.int32,
-    (xp.int16, xp.int64): xp.int64,
-    (xp.int32, xp.int32): xp.int32,
-    (xp.int32, xp.int64): xp.int64,
-    (xp.int64, xp.int64): xp.int64,
+    ((xp.int8, xp.int8), xp.int8),
+    ((xp.int8, xp.int16), xp.int16),
+    ((xp.int8, xp.int32), xp.int32),
+    ((xp.int8, xp.int64), xp.int64),
+    ((xp.int16, xp.int16), xp.int16),
+    ((xp.int16, xp.int32), xp.int32),
+    ((xp.int16, xp.int64), xp.int64),
+    ((xp.int32, xp.int32), xp.int32),
+    ((xp.int32, xp.int64), xp.int64),
+    ((xp.int64, xp.int64), xp.int64),
     # uints
-    (xp.uint8, xp.uint8): xp.uint8,
-    (xp.uint8, xp.uint16): xp.uint16,
-    (xp.uint8, xp.uint32): xp.uint32,
-    (xp.uint8, xp.uint64): xp.uint64,
-    (xp.uint16, xp.uint16): xp.uint16,
-    (xp.uint16, xp.uint32): xp.uint32,
-    (xp.uint16, xp.uint64): xp.uint64,
-    (xp.uint32, xp.uint32): xp.uint32,
-    (xp.uint32, xp.uint64): xp.uint64,
-    (xp.uint64, xp.uint64): xp.uint64,
+    ((xp.uint8, xp.uint8), xp.uint8),
+    ((xp.uint8, xp.uint16), xp.uint16),
+    ((xp.uint8, xp.uint32), xp.uint32),
+    ((xp.uint8, xp.uint64), xp.uint64),
+    ((xp.uint16, xp.uint16), xp.uint16),
+    ((xp.uint16, xp.uint32), xp.uint32),
+    ((xp.uint16, xp.uint64), xp.uint64),
+    ((xp.uint32, xp.uint32), xp.uint32),
+    ((xp.uint32, xp.uint64), xp.uint64),
+    ((xp.uint64, xp.uint64), xp.uint64),
     # ints and uints (mixed sign)
-    (xp.int8, xp.uint8): xp.int16,
-    (xp.int8, xp.uint16): xp.int32,
-    (xp.int8, xp.uint32): xp.int64,
-    (xp.int16, xp.uint8): xp.int16,
-    (xp.int16, xp.uint16): xp.int32,
-    (xp.int16, xp.uint32): xp.int64,
-    (xp.int32, xp.uint8): xp.int32,
-    (xp.int32, xp.uint16): xp.int32,
-    (xp.int32, xp.uint32): xp.int64,
-    (xp.int64, xp.uint8): xp.int64,
-    (xp.int64, xp.uint16): xp.int64,
-    (xp.int64, xp.uint32): xp.int64,
+    ((xp.int8, xp.uint8), xp.int16),
+    ((xp.int8, xp.uint16), xp.int32),
+    ((xp.int8, xp.uint32), xp.int64),
+    ((xp.int16, xp.uint8), xp.int16),
+    ((xp.int16, xp.uint16), xp.int32),
+    ((xp.int16, xp.uint32), xp.int64),
+    ((xp.int32, xp.uint8), xp.int32),
+    ((xp.int32, xp.uint16), xp.int32),
+    ((xp.int32, xp.uint32), xp.int64),
+    ((xp.int64, xp.uint8), xp.int64),
+    ((xp.int64, xp.uint16), xp.int64),
+    ((xp.int64, xp.uint32), xp.int64),
     # floats
-    (xp.float32, xp.float32): xp.float32,
-    (xp.float32, xp.float64): xp.float64,
-    (xp.float64, xp.float64): xp.float64,
-}
-promotion_table = EqualityMapping(
-    {
-        (xp.bool, xp.bool): xp.bool,
-        **_numeric_promotions,
-        **{(d2, d1): res for (d1, d2), res in _numeric_promotions.items()},
-    }
-)
+    ((xp.float32, xp.float32), xp.float32),
+    ((xp.float32, xp.float64), xp.float64),
+    ((xp.float64, xp.float64), xp.float64),
+]
+_numeric_promotions += [((d2, d1), res) for (d1, d2), res in _numeric_promotions]
+_promotion_table = list(set(_numeric_promotions))
+_promotion_table.insert(0, ((xp.bool, xp.bool), xp.bool))
+promotion_table = EqualityMapping(_promotion_table)
 
 
 def result_type(*dtypes: DataType):
