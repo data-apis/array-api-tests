@@ -88,6 +88,31 @@ def assert_dtype(
     *,
     repr_name: str = "out.dtype",
 ):
+    """
+    Tests the output dtype is as expected.
+
+    We infer the expected dtype from in_dtype and to test out_dtype, e.g.
+
+        >>> x = xp.arange(5, dtype=xp.uint8)
+        >>> out = xp.abs(x)
+        >>> assert_dtype('abs', x.dtype, out.dtype)
+
+    Or for multiple input dtypes, the expected dtype is inferred from their
+    resulting type promotion, e.g.
+
+        >>> x1 = xp.arange(5, dtype=xp.uint8)
+        >>> x2 = xp.arange(5, dtype=xp.uint16)
+        >>> out = xp.add(x1, x2)
+        >>> assert_dtype('add', [x1.dtype, x2.dtype], out.dtype)  # expected=xp.uint16
+
+    We can also specify the expected dtype ourselves, e.g.
+
+        >>> x = xp.arange(5, dtype=xp.int8)
+        >>> out = xp.sum(x)
+        >>> default_int = xp.asarray(0).dtype
+        >>> assert_dtype('sum', x, out.dtype, default_int)
+
+    """
     in_dtypes = in_dtype if isinstance(in_dtype, Sequence) else [in_dtype]
     f_in_dtypes = dh.fmt_types(tuple(in_dtypes))
     f_out_dtype = dh.dtype_to_name[out_dtype]
