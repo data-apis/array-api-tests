@@ -22,7 +22,7 @@ from ndindex import iter_indices
 
 import itertools
 
-from .array_helpers import assert_exactly_equal, asarray
+from .array_helpers import assert_exactly_equal, asarray, assert_allclose
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
@@ -44,9 +44,15 @@ pytestmark = pytest.mark.ci
 # Standin strategy for not yet implemented tests
 todo = none()
 
+def assert_equal(x, y):
+    if x.dtype in dh.float_dtypes:
+        assert_allclose(x, y)
+    else:
+        assert_exactly_equal(x, y)
+
 def _test_stacks(f, *args, res=None, dims=2, true_val=None,
                  matrix_axes=(-2, -1),
-                 assert_equal=assert_exactly_equal, **kw):
+                 assert_equal=assert_equal, **kw):
     """
     Test that f(*args, **kw) maps across stacks of matrices
 
