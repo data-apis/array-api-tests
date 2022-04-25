@@ -9,6 +9,9 @@ from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
 from ._array_module import logical_not, subtract, floor, ceil, where
 from . import dtype_helpers as dh
 
+from ndindex import iter_indices
+
+import math
 
 __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'less_equal', 'greater', 'subtract', 'negative', 'floor', 'ceil',
@@ -145,6 +148,43 @@ def exactly_equal(x, y):
             equal(xposzero, yposzero))
 
     return equal(x, y)
+
+def allclose(x, y, rel_tol=0.25, abs_tol=1, return_indices=False):
+    """
+    Return True all elements of x and y are within tolerance
+
+    If return_indices=True, returns (False, (i, j)) when the arrays are not
+    close, where i and j are the indices into x and y of corresponding
+    non-close elements.
+    """
+    for i, j in iter_indices(x.shape, y.shape):
+        i, j = i.raw, j.raw
+        a = x[i]
+        b = y[j]
+        if not (math.isfinite(a) and math.isfinite(b)):
+            # TODO: If a and b are both infinite, require the same type of infinity
+            continue
+        close = math.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol)
+        if not close:
+            if return_indices:
+                return (False, (i, j))
+            return False
+    return True
+
+def assert_allclose(x, y, rel_tol=0.25, abs_tol=1):
+    """
+    Test that x and y are approximately equal to each other.
+
+    Also asserts that x and y have the same shape and dtype.
+    """
+    assert x.shape == y.shape, f"The input arrays do not have the same shapes ({x.shape} != {y.shape})"
+
+    assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype})"
+
+    c = allclose(x, y, rel_tol=rel_tol, abs_tol=abs_tol, return_indices=True)
+    if c is not True:
+        _, (i, j) = c
+        raise AssertionError(f"The input arrays are not close with {rel_tol = } and {abs_tol = } at indices {i = } and {j = }")
 
 def notequal(x, y):
     """
@@ -305,4 +345,3 @@ def same_sign(x, y):
 
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
-
