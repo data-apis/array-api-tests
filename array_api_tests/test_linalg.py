@@ -234,7 +234,6 @@ def test_diagonal(x, kw):
 
     _test_stacks(linalg.diagonal, x, **kw, res=res, dims=1, true_val=true_diag)
 
-@pytest.mark.skip(reason="Inputs need to be restricted")  # TODO
 @pytest.mark.xp_extension('linalg')
 @given(x=symmetric_matrices(finite=True))
 def test_eigh(x):
