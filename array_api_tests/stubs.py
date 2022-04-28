@@ -40,18 +40,29 @@ for name, mod in name_to_mod.items():
     if name.endswith("_functions"):
         category = name.replace("_functions", "")
         objects = [getattr(mod, name) for name in mod.__all__]
-        assert all(isinstance(o, FunctionType) for o in objects)
+        assert all(isinstance(o, FunctionType) for o in objects)  # sanity check
         category_to_funcs[category] = objects
+
+all_funcs = []
+for funcs in [array_methods, *category_to_funcs.values()]:
+    all_funcs.extend(funcs)
+name_to_func: Dict[str, FunctionType] = {f.__name__: f for f in all_funcs}
 
 EXTENSIONS: str = ["linalg"]
 extension_to_funcs: Dict[str, List[FunctionType]] = {}
 for ext in EXTENSIONS:
     mod = name_to_mod[ext]
     objects = [getattr(mod, name) for name in mod.__all__]
-    assert all(isinstance(o, FunctionType) for o in objects)
-    extension_to_funcs[ext] = objects
+    assert all(isinstance(o, FunctionType) for o in objects)  # sanity check
+    funcs = []
+    for func in objects:
+        if "Alias" in func.__doc__:
+            funcs.append(name_to_func[func.__name__])
+        else:
+            funcs.append(func)
+    extension_to_funcs[ext] = funcs
 
-all_funcs = []
-for funcs in [array_methods, *category_to_funcs.values(), *extension_to_funcs.values()]:
-    all_funcs.extend(funcs)
-name_to_func: Dict[str, FunctionType] = {f.__name__: f for f in all_funcs}
+for funcs in extension_to_funcs.values():
+    for func in funcs:
+        if func.__name__ not in name_to_func.keys():
+            name_to_func[func.__name__] = func

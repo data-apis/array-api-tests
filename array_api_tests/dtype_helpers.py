@@ -1,10 +1,13 @@
+import re
 from collections.abc import Mapping
 from functools import lru_cache
-from typing import Any, NamedTuple, Sequence, Tuple, Union
+from inspect import signature
+from typing import Any, Dict, NamedTuple, Sequence, Tuple, Union
 from warnings import warn
 
 from . import _array_module as xp
 from ._array_module import _UndefinedStub
+from .stubs import name_to_func
 from .typing import DataType, ScalarType
 
 __all__ = [
@@ -242,67 +245,31 @@ def result_type(*dtypes: DataType):
     return result
 
 
-func_in_dtypes = {
-    # elementwise
-    "abs": numeric_dtypes,
-    "acos": float_dtypes,
-    "acosh": float_dtypes,
-    "add": numeric_dtypes,
-    "asin": float_dtypes,
-    "asinh": float_dtypes,
-    "atan": float_dtypes,
-    "atan2": float_dtypes,
-    "atanh": float_dtypes,
-    "bitwise_and": bool_and_all_int_dtypes,
-    "bitwise_invert": bool_and_all_int_dtypes,
-    "bitwise_left_shift": all_int_dtypes,
-    "bitwise_or": bool_and_all_int_dtypes,
-    "bitwise_right_shift": all_int_dtypes,
-    "bitwise_xor": bool_and_all_int_dtypes,
-    "ceil": numeric_dtypes,
-    "cos": float_dtypes,
-    "cosh": float_dtypes,
-    "divide": float_dtypes,
-    "equal": all_dtypes,
-    "exp": float_dtypes,
-    "expm1": float_dtypes,
-    "floor": numeric_dtypes,
-    "floor_divide": numeric_dtypes,
-    "greater": numeric_dtypes,
-    "greater_equal": numeric_dtypes,
-    "isfinite": numeric_dtypes,
-    "isinf": numeric_dtypes,
-    "isnan": numeric_dtypes,
-    "less": numeric_dtypes,
-    "less_equal": numeric_dtypes,
-    "log": float_dtypes,
-    "logaddexp": float_dtypes,
-    "log10": float_dtypes,
-    "log1p": float_dtypes,
-    "log2": float_dtypes,
-    "logical_and": (xp.bool,),
-    "logical_not": (xp.bool,),
-    "logical_or": (xp.bool,),
-    "logical_xor": (xp.bool,),
-    "multiply": numeric_dtypes,
-    "negative": numeric_dtypes,
-    "not_equal": all_dtypes,
-    "positive": numeric_dtypes,
-    "pow": numeric_dtypes,
-    "remainder": numeric_dtypes,
-    "round": numeric_dtypes,
-    "sign": numeric_dtypes,
-    "sin": float_dtypes,
-    "sinh": float_dtypes,
-    "sqrt": float_dtypes,
-    "square": numeric_dtypes,
-    "subtract": numeric_dtypes,
-    "tan": float_dtypes,
-    "tanh": float_dtypes,
-    "trunc": numeric_dtypes,
-    # searching
-    "where": all_dtypes,
+r_alias = re.compile("[aA]lias")
+r_in_dtypes = re.compile("x1?: array\n.+have an? (.+) data type.")
+r_int_note = re.compile(
+    "If one or both of the input arrays have integer data types, "
+    "the result is implementation-dependent"
+)
+category_to_dtypes = {
+    "boolean": (xp.bool,),
+    "integer": all_int_dtypes,
+    "floating-point": float_dtypes,
+    "numeric": numeric_dtypes,
+    "integer or boolean": bool_and_all_int_dtypes,
 }
+func_in_dtypes: Dict[str, Tuple[DataType, ...]] = {}
+for name, func in name_to_func.items():
+    if m := r_in_dtypes.search(func.__doc__):
+        dtype_category = m.group(1)
+        if dtype_category == "numeric" and r_int_note.search(func.__doc__):
+            dtype_category = "floating-point"
+        dtypes = category_to_dtypes[dtype_category]
+        func_in_dtypes[name] = dtypes
+    elif any("x" in name for name in signature(func).parameters.keys()):
+        func_in_dtypes[name] = all_dtypes
+# See https://github.com/data-apis/array-api/pull/413
+func_in_dtypes["expm1"] = float_dtypes
 
 
 func_returns_bool = {
@@ -365,6 +332,8 @@ func_returns_bool = {
     "trunc": False,
     # searching
     "where": False,
+    # linalg
+    "matmul": False,
 }
 
 
@@ -408,7 +377,7 @@ op_to_func = {
     "__gt__": "greater",
     "__le__": "less_equal",
     "__lt__": "less",
-    # '__matmul__': 'matmul',  # TODO: support matmul
+    "__matmul__": "matmul",
     "__mod__": "remainder",
     "__mul__": "multiply",
     "__ne__": "not_equal",
@@ -438,6 +407,14 @@ for op, symbol in binary_op_to_symbol.items():
     inplace_op_to_symbol[iop] = f"{symbol}="
     func_in_dtypes[iop] = func_in_dtypes[op]
     func_returns_bool[iop] = func_returns_bool[op]
+
+
+func_in_dtypes["__bool__"] = (xp.bool,)
+func_in_dtypes["__int__"] = all_int_dtypes
+func_in_dtypes["__index__"] = all_int_dtypes
+func_in_dtypes["__float__"] = float_dtypes
+func_in_dtypes["from_dlpack"] = numeric_dtypes
+func_in_dtypes["__dlpack__"] = numeric_dtypes
 
 
 @lru_cache
