@@ -253,8 +253,13 @@ def test_eigh(x):
 
     _test_stacks(lambda x: linalg.eigh(x).eigenvalues, x,
                  res=eigenvalues, dims=1)
-    _test_stacks(lambda x: linalg.eigh(x).eigenvectors, x,
-                 res=eigenvectors, dims=2)
+
+    # There are equivalent ways of representing eigenvectors, and algorithms
+    # may not give the same eigenvectors on a stack vs. a matrix.
+    # TODO: Test that eigenvectors are orthonormal.
+
+    # _test_stacks(lambda x: linalg.eigh(x).eigenvectors, x,
+    #              res=eigenvectors, dims=2)
 
     # TODO: Test that res actually corresponds to the eigenvalues and
     # eigenvectors of x
