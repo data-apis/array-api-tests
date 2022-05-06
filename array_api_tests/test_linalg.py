@@ -251,8 +251,11 @@ def test_eigh(x):
     assert eigenvectors.dtype == x.dtype, "eigh().eigenvectors did not return the correct dtype"
     assert eigenvectors.shape == x.shape, "eigh().eigenvectors did not return the correct shape"
 
+    # The order of the eigenvectors is not specified, so make sure the same
+    # eigenvectors are compared against each other.
     _test_stacks(lambda x: linalg.eigh(x).eigenvalues, x,
-                 res=eigenvalues, dims=1)
+                 res=eigenvalues, dims=1, assert_equal=lambda a, b:
+                 assert_equal(xp.sort(a), xp.sort(b)))
 
     # There are equivalent ways of representing eigenvectors, and algorithms
     # may not give the same eigenvectors on a stack vs. a matrix.
