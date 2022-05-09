@@ -171,7 +171,7 @@ def allclose(x, y, rel_tol=0.25, abs_tol=1, return_indices=False):
             return False
     return True
 
-def assert_allclose(x, y, rel_tol=0.25, abs_tol=1):
+def assert_allclose(x, y, rel_tol=1, abs_tol=0.):
     """
     Test that x and y are approximately equal to each other.
 
