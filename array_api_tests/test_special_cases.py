@@ -1165,12 +1165,12 @@ for stub in category_to_funcs["elementwise"]:
         continue
     if param_names[0] == "x":
         if cases := parse_unary_docstring(stub.__doc__):
-            func_name_to_func = {stub.__name__: func}
+            name_to_func = {stub.__name__: func}
             if stub.__name__ in func_to_op.keys():
                 op_name = func_to_op[stub.__name__]
                 op = getattr(operator, op_name)
-                func_name_to_func[op_name] = op
-            for func_name, func in func_name_to_func.items():
+                name_to_func[op_name] = op
+            for func_name, func in name_to_func.items():
                 for case in cases:
                     id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
                     p = pytest.param(func_name, func, case, id=id_)
@@ -1181,11 +1181,11 @@ for stub in category_to_funcs["elementwise"]:
         continue
     if param_names[0] == "x1" and param_names[1] == "x2":
         if cases := parse_binary_docstring(stub.__doc__):
-            func_name_to_func = {stub.__name__: func}
+            name_to_func = {stub.__name__: func}
             if stub.__name__ in func_to_op.keys():
                 op_name = func_to_op[stub.__name__]
                 op = getattr(operator, op_name)
-                func_name_to_func[op_name] = op
+                name_to_func[op_name] = op
                 # We collect inplaceoperator test cases seperately
                 iop_name = "__i" + op_name[2:]
                 iop = getattr(operator, iop_name)
@@ -1193,7 +1193,7 @@ for stub in category_to_funcs["elementwise"]:
                     id_ = f"{iop_name}({case.cond_expr}) -> {case.result_expr}"
                     p = pytest.param(iop_name, iop, case, id=id_)
                     iop_params.append(p)
-            for func_name, func in func_name_to_func.items():
+            for func_name, func in name_to_func.items():
                 for case in cases:
                     id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
                     p = pytest.param(func_name, func, case, id=id_)
