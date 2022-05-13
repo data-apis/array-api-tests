@@ -1339,6 +1339,28 @@ def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
 
 
 @pytest.mark.parametrize(
+    "func_name, expected",
+    [
+        ("mean", float("nan")),
+        ("prod", 1),
+        ("std", float("nan")),
+        ("sum", 0),
+        ("var", float("nan")),
+    ],
+    ids=["mean", "prod", "std", "sum", "var"],
+)
+def test_empty_arrays(func_name, expected):  # TODO: parse docstrings to get expected
+    func = getattr(xp, func_name)
+    out = func(xp.asarray([], dtype=dh.default_float))
+    ph.assert_shape(func_name, out.shape, ())  # sanity check
+    msg = f"{out=!r}, but should be {expected}"
+    if math.isnan(expected):
+        assert xp.isnan(out), msg
+    else:
+        assert out == expected, msg
+
+
+@pytest.mark.parametrize(
     "func_name", [f.__name__ for f in category_to_funcs["statistical"]]
 )
 @given(
