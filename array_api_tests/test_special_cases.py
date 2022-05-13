@@ -526,6 +526,10 @@ class Case(Protocol):
         return f"{self.__class__.__name__}(<{self}>)"
 
 
+r_case_block = re.compile(r"\*\*Special [Cc]ases\*\*\n+((?:(.*\n)+))\n+\s*Parameters")
+r_case = re.compile(r"\s+-\s*(.*)\.")
+
+
 class UnaryCond(Protocol):
     def __call__(self, i: float) -> bool:
         ...
@@ -586,7 +590,7 @@ def make_unary_check_result(check_just_result: UnaryCheck) -> UnaryResultCheck:
     return check_result
 
 
-def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
+def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
     """
     Parses a Sphinx-formatted docstring of a unary function to return a list of
     codified unary cases, e.g.
@@ -616,7 +620,8 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
         ...         an array containing the square root of each element in ``x``
         ...     '''
         ...
-        >>> unary_cases = parse_unary_docstring(sqrt.__doc__)
+        >>> case_block = r_case_block.match(sqrt.__doc__).group(1)
+        >>> unary_cases = parse_unary_case_block(case_block)
         >>> for case in unary_cases:
         ...     print(repr(case))
         UnaryCase(<x_i < 0 -> NaN>)
@@ -631,19 +636,10 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
         True
 
     """
-
-    match = r_special_cases.search(docstring)
-    if match is None:
-        return []
-    lines = match.group(1).split("\n")[:-1]
     cases = []
-    for line in lines:
-        if m := r_case.match(line):
-            case = m.group(1)
-        else:
-            warn(f"line not machine-readable: '{line}'")
-            continue
-        if m := r_unary_case.search(case):
+    for case_m in r_case.finditer(case_block):
+        case_str = case_m.group(1)
+        if m := r_unary_case.search(case_str):
             try:
                 cond, cond_expr_template, cond_from_dtype = parse_cond(m.group(1))
                 _check_result, result_expr = parse_result(m.group(2))
@@ -662,11 +658,11 @@ def parse_unary_docstring(docstring: str) -> List[UnaryCase]:
                 check_result=check_result,
             )
             cases.append(case)
-        elif m := r_even_round_halves_case.search(case):
+        elif m := r_even_round_halves_case.search(case_str):
             cases.append(even_round_halves_case)
         else:
-            if not r_remaining_case.search(case):
-                warn(f"case not machine-readable: '{case}'")
+            if not r_remaining_case.search(case_str):
+                warn(f"case not machine-readable: '{case_str}'")
     return cases
 
 
@@ -690,12 +686,6 @@ class BinaryCase(Case):
     check_result: BinaryResultCheck
 
 
-r_special_cases = re.compile(
-    r"\*\*Special [Cc]ases\*\*(?:\n.*)+"
-    r"For floating-point operands,\n+"
-    r"((?:\s*-\s*.*\n)+)"
-)
-r_case = re.compile(r"\s+-\s*(.*)\.\n?")
 r_binary_case = re.compile("If (.+), the result (.+)")
 r_remaining_case = re.compile("In the remaining cases.+")
 r_cond_sep = re.compile(r"(?<!``x1_i``),? and |(?<!i\.e\.), ")
@@ -880,8 +870,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
 
     """
     case_m = r_binary_case.match(case_str)
-    if case_m is None:
-        raise ParseError(case_str)
+    assert case_m is not None  # sanity check
     cond_strs = r_cond_sep.split(case_m.group(1))
 
     partial_conds = []
@@ -1078,7 +1067,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
 r_redundant_case = re.compile("result.+determined by the rule already stated above")
 
 
-def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
+def parse_binary_case_block(case_block: str) -> List[BinaryCase]:
     """
     Parses a Sphinx-formatted docstring of a binary function to return a list of
     codified binary cases, e.g.
@@ -1108,7 +1097,8 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
         ...         an array containing the results
         ...     '''
         ...
-        >>> binary_cases = parse_binary_docstring(logaddexp.__doc__)
+        >>> case_block = r_case_block.match(logaddexp.__doc__).group(1)
+        >>> binary_cases = parse_binary_case_block(case_block)
         >>> for case in binary_cases:
         ...     print(repr(case))
         BinaryCase(<x1_i == NaN or x2_i == NaN -> NaN>)
@@ -1116,21 +1106,12 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
         BinaryCase(<not x1_i == NaN and x2_i == +infinity -> +infinity>)
 
     """
-
-    match = r_special_cases.search(docstring)
-    if match is None:
-        return []
-    lines = match.group(1).split("\n")[:-1]
     cases = []
-    for line in lines:
-        if m := r_case.match(line):
-            case_str = m.group(1)
-        else:
-            warn(f"line not machine-readable: '{line}'")
-            continue
+    for case_m in r_case.finditer(case_block):
+        case_str = case_m.group(1)
         if r_redundant_case.search(case_str):
             continue
-        if m := r_binary_case.match(case_str):
+        if r_binary_case.match(case_str):
             try:
                 case = parse_binary_case(case_str)
                 cases.append(case)
@@ -1142,13 +1123,18 @@ def parse_binary_docstring(docstring: str) -> List[BinaryCase]:
     return cases
 
 
+category_stub_pairs = [(c, s) for c, stubs in category_to_funcs.items() for s in stubs]
 unary_params = []
 binary_params = []
 iop_params = []
 func_to_op: Dict[str, str] = {v: k for k, v in dh.op_to_func.items()}
-for stub in category_to_funcs["elementwise"]:
+for category, stub in category_stub_pairs:
     if stub.__doc__ is None:
         warn(f"{stub.__name__}() stub has no docstring")
+        continue
+    if m := r_case_block.search(stub.__doc__):
+        case_block = m.group(1)
+    else:
         continue
     marks = []
     try:
@@ -1163,47 +1149,56 @@ for stub in category_to_funcs["elementwise"]:
     if len(sig.parameters) == 0:
         warn(f"{func=} has no parameters")
         continue
-    if param_names[0] == "x":
-        if cases := parse_unary_docstring(stub.__doc__):
-            name_to_func = {stub.__name__: func}
-            if stub.__name__ in func_to_op.keys():
-                op_name = func_to_op[stub.__name__]
-                op = getattr(operator, op_name)
-                name_to_func[op_name] = op
-            for func_name, func in name_to_func.items():
-                for case in cases:
-                    id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
-                    p = pytest.param(func_name, func, case, id=id_)
-                    unary_params.append(p)
-        continue
-    if len(sig.parameters) == 1:
-        warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
-        continue
-    if param_names[0] == "x1" and param_names[1] == "x2":
-        if cases := parse_binary_docstring(stub.__doc__):
-            name_to_func = {stub.__name__: func}
-            if stub.__name__ in func_to_op.keys():
-                op_name = func_to_op[stub.__name__]
-                op = getattr(operator, op_name)
-                name_to_func[op_name] = op
-                # We collect inplaceoperator test cases seperately
-                iop_name = "__i" + op_name[2:]
-                iop = getattr(operator, iop_name)
-                for case in cases:
-                    id_ = f"{iop_name}({case.cond_expr}) -> {case.result_expr}"
-                    p = pytest.param(iop_name, iop, case, id=id_)
-                    iop_params.append(p)
-            for func_name, func in name_to_func.items():
-                for case in cases:
-                    id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
-                    p = pytest.param(func_name, func, case, id=id_)
-                    binary_params.append(p)
-        continue
+    if category == "elementwise":
+        if param_names[0] == "x":
+            if cases := parse_unary_case_block(case_block):
+                name_to_func = {stub.__name__: func}
+                if stub.__name__ in func_to_op.keys():
+                    op_name = func_to_op[stub.__name__]
+                    op = getattr(operator, op_name)
+                    name_to_func[op_name] = op
+                for func_name, func in name_to_func.items():
+                    for case in cases:
+                        id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
+                        p = pytest.param(func_name, func, case, id=id_)
+                        unary_params.append(p)
+            else:
+                warn("TODO")
+            continue
+        if len(sig.parameters) == 1:
+            warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
+            continue
+        if param_names[0] == "x1" and param_names[1] == "x2":
+            if cases := parse_binary_case_block(case_block):
+                name_to_func = {stub.__name__: func}
+                if stub.__name__ in func_to_op.keys():
+                    op_name = func_to_op[stub.__name__]
+                    op = getattr(operator, op_name)
+                    name_to_func[op_name] = op
+                    # We collect inplace operator test cases seperately
+                    iop_name = "__i" + op_name[2:]
+                    iop = getattr(operator, iop_name)
+                    for case in cases:
+                        id_ = f"{iop_name}({case.cond_expr}) -> {case.result_expr}"
+                        p = pytest.param(iop_name, iop, case, id=id_)
+                        iop_params.append(p)
+                for func_name, func in name_to_func.items():
+                    for case in cases:
+                        id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
+                        p = pytest.param(func_name, func, case, id=id_)
+                        binary_params.append(p)
+            else:
+                warn("TODO")
+            continue
+        else:
+            warn(
+                f"{func=} starts with two parameters '{param_names[0]}' and "
+                f"'{param_names[1]}', which are not named 'x1' and 'x2'"
+            )
+    elif category == "statistical":
+        pass  # TODO
     else:
-        warn(
-            f"{func=} starts with two parameters '{param_names[0]}' and "
-            f"'{param_names[1]}', which are not named 'x1' and 'x2'"
-        )
+        warn("TODO")
 
 
 # test_unary and test_binary naively generate arrays, i.e. arrays that might not
