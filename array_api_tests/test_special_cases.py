@@ -1,3 +1,14 @@
+"""
+Tests for special cases.
+
+The test cases for special casing are built on runtime via the parametrized
+test_unary and test_binary functions. Most of this file consists of utility
+classes and functions, all bought together to create the test cases (pytest
+params), to finally be run through the general test logic of either test_unary
+or test_binary.
+
+TODO: test integer arrays for relevant special cases
+"""
 # We use __future__ for forward reference type hints - this will work for even py3.8.0
 # See https://stackoverflow.com/a/33533514/5193926
 from __future__ import annotations
@@ -31,13 +42,6 @@ from .test_operators_and_elementwise_functions import (
 )
 
 pytestmark = pytest.mark.ci
-
-# The special case test casess are built on runtime via the parametrized
-# test_unary and test_binary functions. Most of this file consists of utility
-# classes and functions, all bought together to create the test cases (pytest
-# params), to finally be run through the general test logic of either test_unary
-# or test_binary.
-
 
 UnaryCheck = Callable[[float], bool]
 BinaryCheck = Callable[[float, float], bool]
