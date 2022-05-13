@@ -634,7 +634,7 @@ def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
         ...         an array containing the square root of each element in ``x``
         ...     '''
         ...
-        >>> case_block = r_case_block.match(sqrt.__doc__).group(1)
+        >>> case_block = r_case_block.search(sqrt.__doc__).group(1)
         >>> unary_cases = parse_unary_case_block(case_block)
         >>> for case in unary_cases:
         ...     print(repr(case))
@@ -1094,7 +1094,7 @@ def parse_binary_case_block(case_block: str) -> List[BinaryCase]:
         ...         an array containing the results
         ...     '''
         ...
-        >>> case_block = r_case_block.match(logaddexp.__doc__).group(1)
+        >>> case_block = r_case_block.search(logaddexp.__doc__).group(1)
         >>> binary_cases = parse_binary_case_block(case_block)
         >>> for case in binary_cases:
         ...     print(repr(case))
