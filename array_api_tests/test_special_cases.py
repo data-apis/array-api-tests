@@ -1,11 +1,10 @@
 """
 Tests for special cases.
 
-The test cases for special casing are built on runtime via the parametrized
-test_unary and test_binary functions. Most of this file consists of utility
+Most test cases for special casing are built on runtime via the parametrized
+tests test_unary/test_binary/test_iop. Most of this file consists of utility
 classes and functions, all bought together to create the test cases (pytest
-params), to finally be run through the general test logic of either test_unary
-or test_binary.
+params), to finally be run through generalised test logic.
 
 TODO: test integer arrays for relevant special cases
 """
@@ -1165,7 +1164,7 @@ for stub in category_to_funcs["elementwise"]:
                     p = pytest.param(func_name, func, case, id=id_)
                     unary_params.append(p)
         else:
-            warn("TODO")
+            warn(f"Special cases found for {stub.__name__} but none were parsed")
         continue
     if len(sig.parameters) == 1:
         warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
@@ -1190,7 +1189,7 @@ for stub in category_to_funcs["elementwise"]:
                     p = pytest.param(func_name, func, case, id=id_)
                     binary_params.append(p)
         else:
-            warn("TODO")
+            warn(f"Special cases found for {stub.__name__} but none were parsed")
         continue
     else:
         warn(
@@ -1199,7 +1198,7 @@ for stub in category_to_funcs["elementwise"]:
         )
 
 
-# test_unary and test_binary naively generate arrays, i.e. arrays that might not
+# test_{unary/binary/iop} naively generate arrays, i.e. arrays that might not
 # meet the condition that is being test. We then forcibly make the array meet
 # the condition by picking a random index to insert an acceptable element.
 #
