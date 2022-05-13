@@ -173,24 +173,6 @@ r_code = re.compile(r"``([^\s]+)``")
 r_approx_value = re.compile(
     rf"an implementation-dependent approximation to {r_code.pattern}"
 )
-
-
-def parse_inline_code(inline_code: str) -> float:
-    """
-    Parses a Sphinx code string to return a float, e.g.
-
-        >>> parse_value('``0``')
-        0.
-        >>> parse_value('``NaN``')
-        float('nan')
-
-    """
-    if m := r_code.match(inline_code):
-        return parse_value(m.group(1))
-    else:
-        raise ParseError(inline_code)
-
-
 r_not = re.compile("not (.+)")
 r_equal_to = re.compile(f"equal to {r_code.pattern}")
 r_array_element = re.compile(r"``([+-]?)x([12])_i``")
