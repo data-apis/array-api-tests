@@ -535,10 +535,32 @@ class UnaryCase(Case):
 
 
 r_unary_case = re.compile("If ``x_i`` is (.+), the result is (.+)")
+r_already_int_case = re.compile(
+    "If ``x_i`` is already integer-valued, the result is ``x_i``"
+)
 r_even_round_halves_case = re.compile(
     "If two integers are equally close to ``x_i``, "
     "the result is the even integer closest to ``x_i``"
 )
+
+
+def integers_from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
+    """
+    Returns a strategy that generates float-casted integers within the bounds of dtype.
+    """
+    for k in kw.keys():
+        # sanity check
+        assert k in ["min_value", "max_value", "exclude_min", "exclude_max"]
+    m, M = dh.dtype_ranges[dtype]
+    if "min_value" in kw.keys():
+        m = kw["min_value"]
+        if "exclude_min" in kw.keys():
+            m += 1
+    if "max_value" in kw.keys():
+        M = kw["max_value"]
+        if "exclude_max" in kw.keys():
+            M -= 1
+    return st.integers(math.ceil(m), math.floor(M)).map(float)
 
 
 def trailing_halves_from_dtype(dtype: DataType) -> st.SearchStrategy[float]:
@@ -557,6 +579,13 @@ def trailing_halves_from_dtype(dtype: DataType) -> st.SearchStrategy[float]:
     )
 
 
+already_int_case = UnaryCase(
+    cond_expr="x_i.is_integer()",
+    cond=lambda i: i.is_integer(),
+    cond_from_dtype=integers_from_dtype,
+    result_expr="x_i",
+    check_result=lambda i, result: i == result,
+)
 even_round_halves_case = UnaryCase(
     cond_expr="modf(i)[0] == 0.5",
     cond=lambda i: math.modf(i)[0] == 0.5,
@@ -624,7 +653,11 @@ def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
     cases = []
     for case_m in r_case.finditer(case_block):
         case_str = case_m.group(1)
-        if m := r_unary_case.search(case_str):
+        if m := r_already_int_case.search(case_str):
+            cases.append(already_int_case)
+        elif m := r_even_round_halves_case.search(case_str):
+            cases.append(even_round_halves_case)
+        elif m := r_unary_case.search(case_str):
             try:
                 cond, cond_expr_template, cond_from_dtype = parse_cond(m.group(1))
                 _check_result, result_expr = parse_result(m.group(2))
@@ -643,8 +676,6 @@ def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
                 check_result=check_result,
             )
             cases.append(case)
-        elif m := r_even_round_halves_case.search(case_str):
-            cases.append(even_round_halves_case)
         else:
             if not r_remaining_case.search(case_str):
                 warn(f"case not machine-readable: '{case_str}'")
@@ -816,25 +847,6 @@ def make_binary_check_result(check_just_result: UnaryCheck) -> BinaryResultCheck
         return check_just_result(result)
 
     return check_result
-
-
-def integers_from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[float]:
-    """
-    Returns a strategy that generates float-casted integers within the bounds of dtype.
-    """
-    for k in kw.keys():
-        # sanity check
-        assert k in ["min_value", "max_value", "exclude_min", "exclude_max"]
-    m, M = dh.dtype_ranges[dtype]
-    if "min_value" in kw.keys():
-        m = kw["min_value"]
-        if "exclude_min" in kw.keys():
-            m += 1
-    if "max_value" in kw.keys():
-        M = kw["max_value"]
-        if "exclude_max" in kw.keys():
-            M -= 1
-    return st.integers(math.ceil(m), math.floor(M)).map(float)
 
 
 def parse_binary_case(case_str: str) -> BinaryCase:
