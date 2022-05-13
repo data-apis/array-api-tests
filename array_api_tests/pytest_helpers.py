@@ -198,7 +198,7 @@ def assert_0d_equals(
     func_name: str, x_repr: str, x_val: Array, out_repr: str, out_val: Array, **kw
 ):
     msg = (
-        f"{out_repr}={out_val}, should be {x_repr}={x_val} "
+        f"{out_repr}={out_val}, but should be {x_repr}={x_val} "
         f"[{func_name}({fmt_kw(kw)})]"
     )
     if dh.is_float_dtype(out_val.dtype) and xp.isnan(out_val):

@@ -1127,12 +1127,11 @@ def parse_binary_case_block(case_block: str) -> List[BinaryCase]:
     return cases
 
 
-category_stub_pairs = [(c, s) for c, stubs in category_to_funcs.items() for s in stubs]
 unary_params = []
 binary_params = []
 iop_params = []
 func_to_op: Dict[str, str] = {v: k for k, v in dh.op_to_func.items()}
-for category, stub in category_stub_pairs:
+for stub in category_to_funcs["elementwise"]:
     if stub.__doc__ is None:
         warn(f"{stub.__name__}() stub has no docstring")
         continue
@@ -1153,56 +1152,51 @@ for category, stub in category_stub_pairs:
     if len(sig.parameters) == 0:
         warn(f"{func=} has no parameters")
         continue
-    if category == "elementwise":
-        if param_names[0] == "x":
-            if cases := parse_unary_case_block(case_block):
-                name_to_func = {stub.__name__: func}
-                if stub.__name__ in func_to_op.keys():
-                    op_name = func_to_op[stub.__name__]
-                    op = getattr(operator, op_name)
-                    name_to_func[op_name] = op
-                for func_name, func in name_to_func.items():
-                    for case in cases:
-                        id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
-                        p = pytest.param(func_name, func, case, id=id_)
-                        unary_params.append(p)
-            else:
-                warn("TODO")
-            continue
-        if len(sig.parameters) == 1:
-            warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
-            continue
-        if param_names[0] == "x1" and param_names[1] == "x2":
-            if cases := parse_binary_case_block(case_block):
-                name_to_func = {stub.__name__: func}
-                if stub.__name__ in func_to_op.keys():
-                    op_name = func_to_op[stub.__name__]
-                    op = getattr(operator, op_name)
-                    name_to_func[op_name] = op
-                    # We collect inplace operator test cases seperately
-                    iop_name = "__i" + op_name[2:]
-                    iop = getattr(operator, iop_name)
-                    for case in cases:
-                        id_ = f"{iop_name}({case.cond_expr}) -> {case.result_expr}"
-                        p = pytest.param(iop_name, iop, case, id=id_)
-                        iop_params.append(p)
-                for func_name, func in name_to_func.items():
-                    for case in cases:
-                        id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
-                        p = pytest.param(func_name, func, case, id=id_)
-                        binary_params.append(p)
-            else:
-                warn("TODO")
-            continue
+    if param_names[0] == "x":
+        if cases := parse_unary_case_block(case_block):
+            name_to_func = {stub.__name__: func}
+            if stub.__name__ in func_to_op.keys():
+                op_name = func_to_op[stub.__name__]
+                op = getattr(operator, op_name)
+                name_to_func[op_name] = op
+            for func_name, func in name_to_func.items():
+                for case in cases:
+                    id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
+                    p = pytest.param(func_name, func, case, id=id_)
+                    unary_params.append(p)
         else:
-            warn(
-                f"{func=} starts with two parameters '{param_names[0]}' and "
-                f"'{param_names[1]}', which are not named 'x1' and 'x2'"
-            )
-    elif category == "statistical":
-        pass  # TODO
+            warn("TODO")
+        continue
+    if len(sig.parameters) == 1:
+        warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
+        continue
+    if param_names[0] == "x1" and param_names[1] == "x2":
+        if cases := parse_binary_case_block(case_block):
+            name_to_func = {stub.__name__: func}
+            if stub.__name__ in func_to_op.keys():
+                op_name = func_to_op[stub.__name__]
+                op = getattr(operator, op_name)
+                name_to_func[op_name] = op
+                # We collect inplace operator test cases seperately
+                iop_name = "__i" + op_name[2:]
+                iop = getattr(operator, iop_name)
+                for case in cases:
+                    id_ = f"{iop_name}({case.cond_expr}) -> {case.result_expr}"
+                    p = pytest.param(iop_name, iop, case, id=id_)
+                    iop_params.append(p)
+            for func_name, func in name_to_func.items():
+                for case in cases:
+                    id_ = f"{func_name}({case.cond_expr}) -> {case.result_expr}"
+                    p = pytest.param(func_name, func, case, id=id_)
+                    binary_params.append(p)
+        else:
+            warn("TODO")
+        continue
     else:
-        warn("TODO")
+        warn(
+            f"{func=} starts with two parameters '{param_names[0]}' and "
+            f"'{param_names[1]}', which are not named 'x1' and 'x2'"
+        )
 
 
 # test_unary and test_binary naively generate arrays, i.e. arrays that might not
@@ -1342,3 +1336,24 @@ def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
             )
             break
     assume(good_example)
+
+
+@pytest.mark.parametrize(
+    "func_name", [f.__name__ for f in category_to_funcs["statistical"]]
+)
+@given(
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
+    data=st.data(),
+)
+def test_nan_propagation(func_name, x, data):
+    func = getattr(xp, func_name)
+    set_idx = data.draw(
+        xps.indices(x.shape, max_dims=0, allow_ellipsis=False), label="set idx"
+    )
+    x[set_idx] = float("nan")
+    note(f"{x=}")
+
+    out = func(x)
+
+    ph.assert_shape(func_name, out.shape, ())  # sanity check
+    assert xp.isnan(out), f"{out=!r}, but should be NaN"
