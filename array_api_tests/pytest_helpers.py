@@ -91,11 +91,16 @@ def assert_dtype(
     """
     Assert the output dtype is as expected.
 
-    We infer the expected dtype from in_dtype and to test out_dtype, e.g.
+    If expected=None, we infer the expected dtype as in_dtype, to test
+    out_dtype, e.g.
 
         >>> x = xp.arange(5, dtype=xp.uint8)
         >>> out = xp.abs(x)
         >>> assert_dtype('abs', x.dtype, out.dtype)
+
+        is equivalent to
+
+        >>> assert out.dtype == xp.uint8
 
     Or for multiple input dtypes, the expected dtype is inferred from their
     resulting type promotion, e.g.
@@ -103,7 +108,11 @@ def assert_dtype(
         >>> x1 = xp.arange(5, dtype=xp.uint8)
         >>> x2 = xp.arange(5, dtype=xp.uint16)
         >>> out = xp.add(x1, x2)
-        >>> assert_dtype('add', [x1.dtype, x2.dtype], out.dtype)  # expected=xp.uint16
+        >>> assert_dtype('add', [x1.dtype, x2.dtype], out.dtype)
+
+        is equivalent to
+
+        >>> assert out.dtype == xp.uint16
 
     We can also specify the expected dtype ourselves, e.g.
 
@@ -182,7 +191,7 @@ def assert_default_index(func_name: str, out_dtype: DataType, repr_name="out.dty
     """
     Assert the output dtype is the default index dtype, e.g.
 
-        >>> out = xp.argmax(<array>)
+        >>> out = xp.argmax(xp.arange(5))
         >>> assert_default_int('argmax', out.dtype)
 
     """
@@ -202,6 +211,13 @@ def assert_shape(
     repr_name="out.shape",
     **kw,
 ):
+    """
+    Assert the output shape is as expected, e.g.
+
+        >>> out = xp.ones((3, 3, 3))
+        >>> assert_shape('ones', out.shape, (3, 3, 3))
+
+    """
     if isinstance(out_shape, int):
         out_shape = (out_shape,)
     if isinstance(expected, int):
@@ -222,6 +238,20 @@ def assert_result_shape(
     repr_name="out.shape",
     **kw,
 ):
+    """
+    Assert the output shape is as expected.
+
+    If expected=None, we infer the expected shape as the result of broadcasting
+    in_shapes, to test against out_shape, e.g.
+
+        >>> out = xp.add(xp.ones((3, 1)), xp.ones((1, 3)))
+        >>> assert_shape('add', [(3, 1), (1, 3)], out.shape)
+
+        is equivalent to
+
+        >>> assert out.shape == (3, 3)
+
+    """
     if expected is None:
         expected = sh.broadcast_shapes(*in_shapes)
     f_in_shapes = " . ".join(str(s) for s in in_shapes)
