@@ -89,7 +89,7 @@ def assert_dtype(
     repr_name: str = "out.dtype",
 ):
     """
-    Tests the output dtype is as expected.
+    Assert the output dtype is as expected.
 
     We infer the expected dtype from in_dtype and to test out_dtype, e.g.
 
@@ -128,7 +128,7 @@ def assert_dtype(
 
 def assert_kw_dtype(func_name: str, kw_dtype: DataType, out_dtype: DataType):
     """
-    Test the output dtype is the passed keyword dtype, e.g.
+    Assert the output dtype is the passed keyword dtype, e.g.
 
         >>> kw = {'dtype': xp.uint8}
         >>> out = xp.ones(5, **kw)
@@ -144,33 +144,54 @@ def assert_kw_dtype(func_name: str, kw_dtype: DataType, out_dtype: DataType):
     assert out_dtype == kw_dtype, msg
 
 
-def assert_default_float(func_name: str, dtype: DataType):
-    f_dtype = dh.dtype_to_name[dtype]
+def assert_default_float(func_name: str, out_dtype: DataType):
+    """
+    Assert the output dtype is the default float, e.g.
+
+        >>> out = xp.ones(5)
+        >>> assert_default_float('ones', out.dtype)
+
+    """
+    f_dtype = dh.dtype_to_name[out_dtype]
     f_default = dh.dtype_to_name[dh.default_float]
     msg = (
         f"out.dtype={f_dtype}, should be default "
         f"floating-point dtype {f_default} [{func_name}()]"
     )
-    assert dtype == dh.default_float, msg
+    assert out_dtype == dh.default_float, msg
 
 
-def assert_default_int(func_name: str, dtype: DataType):
-    f_dtype = dh.dtype_to_name[dtype]
+def assert_default_int(func_name: str, out_dtype: DataType):
+    """
+    Assert the output dtype is the default int, e.g.
+
+        >>> out = xp.full(5, 42)
+        >>> assert_default_int('full', out.dtype)
+
+    """
+    f_dtype = dh.dtype_to_name[out_dtype]
     f_default = dh.dtype_to_name[dh.default_int]
     msg = (
         f"out.dtype={f_dtype}, should be default "
         f"integer dtype {f_default} [{func_name}()]"
     )
-    assert dtype == dh.default_int, msg
+    assert out_dtype == dh.default_int, msg
 
 
-def assert_default_index(func_name: str, dtype: DataType, repr_name="out.dtype"):
-    f_dtype = dh.dtype_to_name[dtype]
+def assert_default_index(func_name: str, out_dtype: DataType, repr_name="out.dtype"):
+    """
+    Assert the output dtype is the default index dtype, e.g.
+
+        >>> out = xp.argmax(<array>)
+        >>> assert_default_int('argmax', out.dtype)
+
+    """
+    f_dtype = dh.dtype_to_name[out_dtype]
     msg = (
         f"{repr_name}={f_dtype}, should be the default index dtype, "
         f"which is either int32 or int64 [{func_name}()]"
     )
-    assert dtype in (xp.int32, xp.int64), msg
+    assert out_dtype in (xp.int32, xp.int64), msg
 
 
 def assert_shape(
