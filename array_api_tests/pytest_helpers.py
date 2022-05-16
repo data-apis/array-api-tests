@@ -127,6 +127,14 @@ def assert_dtype(
 
 
 def assert_kw_dtype(func_name: str, kw_dtype: DataType, out_dtype: DataType):
+    """
+    Test the output dtype is the passed keyword dtype, e.g.
+
+        >>> kw = {'dtype': xp.uint8}
+        >>> out = xp.ones(5, **kw)
+        >>> assert_kw_dtype('ones', kw['dtype'], out.dtype)
+
+    """
     f_kw_dtype = dh.dtype_to_name[kw_dtype]
     f_out_dtype = dh.dtype_to_name[out_dtype]
     msg = (
