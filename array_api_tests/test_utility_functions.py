@@ -24,7 +24,7 @@ def test_all(x, data):
     ph.assert_dtype("all", x.dtype, out.dtype, xp.bool)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
-        "all", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
+        "all", x.shape, out.shape, _axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
@@ -49,7 +49,7 @@ def test_any(x, data):
     ph.assert_dtype("any", x.dtype, out.dtype, xp.bool)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
-        "any", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
+        "any", x.shape, out.shape, _axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):

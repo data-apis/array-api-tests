@@ -34,7 +34,7 @@ def test_argmax(x, data):
     ph.assert_default_index("argmax", out.dtype)
     axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
-        "argmax", out.shape, x.shape, axes, kw.get("keepdims", False), **kw
+        "argmax", x.shape, out.shape, axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices, out_idx in zip(sh.axes_ndindex(x.shape, axes), sh.ndindex(out.shape)):
@@ -69,7 +69,7 @@ def test_argmin(x, data):
     ph.assert_default_index("argmin", out.dtype)
     axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
-        "argmin", out.shape, x.shape, axes, kw.get("keepdims", False), **kw
+        "argmin", x.shape, out.shape, axes, kw.get("keepdims", False), **kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices, out_idx in zip(sh.axes_ndindex(x.shape, axes), sh.ndindex(out.shape)):

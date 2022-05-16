@@ -264,13 +264,28 @@ def assert_result_shape(
 
 def assert_keepdimable_shape(
     func_name: str,
-    out_shape: Shape,
     in_shape: Shape,
+    out_shape: Shape,
     axes: Tuple[int, ...],
     keepdims: bool,
     /,
     **kw,
 ):
+    """
+    Assert the output shape from a keepdimable function is as expected, e.g.
+
+        >>> x = xp.asarray([[0, 1, 2], [3, 4, 5], [6, 7, 8]])
+        >>> out1 = xp.max(x, keepdims=False)
+        >>> out2 = xp.max(x, keepdims=True)
+        >>> assert_keepdimable_shape('max', x.shape, out1.shape, (0, 1), False)
+        >>> assert_keepdimable_shape('max', x.shape, out2.shape, (0, 1), True)
+
+        is equivalent to
+
+        >>> assert out1.shape == ()
+        >>> assert out2.shape == (1, 1)
+
+    """
     if keepdims:
         shape = tuple(1 if axis in axes else side for axis, side in enumerate(in_shape))
     else:
