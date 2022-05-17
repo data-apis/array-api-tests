@@ -42,6 +42,9 @@ jobs:
         # https://github.com/numpy/numpy/issues/20326#issuecomment-1012380448
         array_api_tests/test_set_functions.py
 
+        # https://github.com/numpy/numpy/issues/21373
+        array_api_tests/test_array_object.py::test_getitem
+
         # missing copy arg
         array_api_tests/test_signatures.py::test_func_signature[reshape]
 

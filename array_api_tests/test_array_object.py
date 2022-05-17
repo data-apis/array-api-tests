@@ -31,27 +31,35 @@ def test_getitem(shape, data):
     obj = data.draw(scalar_objects(dtype, shape), label="obj")
     x = xp.asarray(obj, dtype=dtype)
     note(f"{x=}")
-    key = data.draw(xps.indices(shape=shape), label="key")
+    key = data.draw(xps.indices(shape=shape, allow_newaxis=True), label="key")
 
     out = x[key]
 
     ph.assert_dtype("__getitem__", x.dtype, out.dtype)
     _key = tuple(key) if isinstance(key, tuple) else (key,)
     if Ellipsis in _key:
-        start_a = _key.index(Ellipsis)
-        stop_a = start_a + (len(shape) - (len(_key) - 1))
-        slices = tuple(slice(None, None) for _ in range(start_a, stop_a))
-        _key = _key[:start_a] + slices + _key[start_a + 1 :]
+        nonexpanding_key = tuple(i for i in _key if i is not None)
+        start_a = nonexpanding_key.index(Ellipsis)
+        stop_a = start_a + (len(shape) - (len(nonexpanding_key) - 1))
+        slices = tuple(slice(None) for _ in range(start_a, stop_a))
+        start_pos = _key.index(Ellipsis)
+        _key = _key[:start_pos] + slices + _key[start_pos + 1 :]
     axes_indices = []
     out_shape = []
-    for a, i in enumerate(_key):
-        if isinstance(i, int):
-            axes_indices.append([i])
+    a = 0
+    for i in _key:
+        if i is None:
+            out_shape.append(1)
         else:
-            side = shape[a]
-            indices = range(side)[i]
-            axes_indices.append(indices)
-            out_shape.append(len(indices))
+            if isinstance(i, int):
+                axes_indices.append([i])
+            else:
+                assert isinstance(i, slice)  # sanity check
+                side = shape[a]
+                indices = range(side)[i]
+                axes_indices.append(indices)
+                out_shape.append(len(indices))
+            a += 1
     out_shape = tuple(out_shape)
     ph.assert_shape("__getitem__", out.shape, out_shape)
     assume(all(len(indices) > 0 for indices in axes_indices))
@@ -103,8 +111,6 @@ def test_setitem(shape, data):
             "__setitem__", f"old x[{idx}]", x[idx], f"modified x[{idx}]", res[idx]
         )
 
-
-# TODO: make mask tests optional
 
 @pytest.mark.data_dependent_shapes
 @given(hh.shapes(), st.data())
