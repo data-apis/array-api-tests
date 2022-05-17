@@ -409,7 +409,7 @@ def make_binary_params(
 
                 def func(l: Array, r: Union[Scalar, Array]) -> Array:
                     locals_ = {}
-                    locals_[left_sym] = ah.asarray(l, copy=True)  # prevents mutating l
+                    locals_[left_sym] = xp.asarray(l, copy=True)  # prevents mutating l
                     locals_[right_sym] = r
                     exec(expr, locals_)
                     return locals_[left_sym]
@@ -659,7 +659,7 @@ def test_bitwise_left_shift(ctx, data):
     if ctx.right_is_scalar:
         assume(right >= 0)
     else:
-        assume(not ah.any(ah.isnegative(right)))
+        assume(not xp.any(ah.isnegative(right)))
 
     res = ctx.func(left, right)
 
@@ -718,7 +718,7 @@ def test_bitwise_right_shift(ctx, data):
     if ctx.right_is_scalar:
         assume(right >= 0)
     else:
-        assume(not ah.any(ah.isnegative(right)))
+        assume(not xp.any(ah.isnegative(right)))
 
     res = ctx.func(left, right)
 
@@ -851,13 +851,13 @@ def test_floor(x):
 @given(data=st.data())
 def test_floor_divide(ctx, data):
     left = data.draw(
-        ctx.left_strat.filter(lambda x: not ah.any(x == 0)), label=ctx.left_sym
+        ctx.left_strat.filter(lambda x: not xp.any(x == 0)), label=ctx.left_sym
     )
     right = data.draw(ctx.right_strat, label=ctx.right_sym)
     if ctx.right_is_scalar:
         assume(right != 0)
     else:
-        assume(not ah.any(right == 0))
+        assume(not xp.any(right == 0))
 
     res = ctx.func(left, right)
 
@@ -908,7 +908,7 @@ def test_greater_equal(ctx, data):
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isfinite(x):
-    out = ah.isfinite(x)
+    out = xp.isfinite(x)
     ph.assert_dtype("isfinite", x.dtype, out.dtype, xp.bool)
     ph.assert_shape("isfinite", out.shape, x.shape)
     unary_assert_against_refimpl("isfinite", x, out, math.isfinite, res_stype=bool)
@@ -924,7 +924,7 @@ def test_isinf(x):
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isnan(x):
-    out = ah.isnan(x)
+    out = xp.isnan(x)
     ph.assert_dtype("isnan", x.dtype, out.dtype, xp.bool)
     ph.assert_shape("isnan", out.shape, x.shape)
     unary_assert_against_refimpl("isnan", x, out, math.isnan, res_stype=bool)
@@ -1024,7 +1024,7 @@ def test_logaddexp(x1, x2):
 
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_and(x1, x2):
-    out = ah.logical_and(x1, x2)
+    out = xp.logical_and(x1, x2)
     ph.assert_dtype("logical_and", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("logical_and", [x1.shape, x2.shape], out.shape)
     binary_assert_against_refimpl(
@@ -1034,7 +1034,7 @@ def test_logical_and(x1, x2):
 
 @given(xps.arrays(dtype=xp.bool, shape=hh.shapes()))
 def test_logical_not(x):
-    out = ah.logical_not(x)
+    out = xp.logical_not(x)
     ph.assert_dtype("logical_not", x.dtype, out.dtype)
     ph.assert_shape("logical_not", out.shape, x.shape)
     unary_assert_against_refimpl(
@@ -1044,7 +1044,7 @@ def test_logical_not(x):
 
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_or(x1, x2):
-    out = ah.logical_or(x1, x2)
+    out = xp.logical_or(x1, x2)
     ph.assert_dtype("logical_or", [x1.dtype, x2.dtype], out.dtype)
     ph.assert_result_shape("logical_or", [x1.shape, x2.shape], out.shape)
     binary_assert_against_refimpl(
@@ -1157,7 +1157,7 @@ def test_remainder(ctx, data):
     if ctx.right_is_scalar:
         assume(right != 0)
     else:
-        assume(not ah.any(right == 0))
+        assume(not xp.any(right == 0))
 
     res = ctx.func(left, right)
 
