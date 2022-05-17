@@ -12,6 +12,7 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
+from ._array_module import _UndefinedStub
 from .typing import DataType
 
 pytestmark = pytest.mark.ci
@@ -144,7 +145,10 @@ def test_prod(x, data):
                 _dtype = dh.default_float
     else:
         _dtype = dtype
-    ph.assert_dtype("prod", x.dtype, out.dtype, _dtype)
+    # We ignore asserting the out dtype if what we expect is undefined
+    # See https://github.com/data-apis/array-api-tests/issues/106
+    if not isinstance(_dtype, _UndefinedStub):
+        ph.assert_dtype("prod", x.dtype, out.dtype, _dtype)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "prod", out.shape, x.shape, _axes, kw.get("keepdims", False), **kw
