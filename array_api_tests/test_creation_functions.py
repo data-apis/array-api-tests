@@ -7,7 +7,6 @@ from hypothesis import assume, given, note
 from hypothesis import strategies as st
 
 from . import _array_module as xp
-from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
@@ -181,12 +180,12 @@ def test_arange(dtype, data):
     if dh.is_int_dtype(_dtype):
         elements = list(r)
         assume(out.size == len(elements))
-        ah.assert_exactly_equal(out, ah.asarray(elements, dtype=_dtype))
+        ph.assert_array("arange", out, xp.asarray(elements, dtype=_dtype))
     else:
         assume(out.size == size)
         if out.size > 0:
-            assert ah.equal(
-                out[0], ah.asarray(_start, dtype=out.dtype)
+            assert xp.equal(
+                out[0], xp.asarray(_start, dtype=out.dtype)
             ), f"out[0]={out[0]}, but should be {_start} {f_func}"
 
 
@@ -421,8 +420,8 @@ def test_linspace(num, dtype, endpoint, data):
     start = data.draw(xps.from_dtype(_dtype, **finite_kw), label="start")
     stop = data.draw(xps.from_dtype(_dtype, **finite_kw), label="stop")
     # avoid overflow errors
-    assume(not ah.isnan(ah.asarray(stop - start, dtype=_dtype)))
-    assume(not ah.isnan(ah.asarray(start - stop, dtype=_dtype)))
+    assume(not xp.isnan(xp.asarray(stop - start, dtype=_dtype)))
+    assume(not xp.isnan(xp.asarray(start - stop, dtype=_dtype)))
 
     kw = data.draw(
         hh.specified_kwargs(
@@ -440,20 +439,20 @@ def test_linspace(num, dtype, endpoint, data):
     ph.assert_shape("linspace", out.shape, num, start=stop, stop=stop, num=num)
     f_func = f"[linspace({start}, {stop}, {num})]"
     if num > 0:
-        assert ah.equal(
-            out[0], ah.asarray(start, dtype=out.dtype)
+        assert xp.equal(
+            out[0], xp.asarray(start, dtype=out.dtype)
         ), f"out[0]={out[0]}, but should be {start} {f_func}"
     if endpoint:
         if num > 1:
-            assert ah.equal(
-                out[-1], ah.asarray(stop, dtype=out.dtype)
+            assert xp.equal(
+                out[-1], xp.asarray(stop, dtype=out.dtype)
             ), f"out[-1]={out[-1]}, but should be {stop} {f_func}"
     else:
         # linspace(..., num, endpoint=True) should return an array equivalent to
         # the first num elements when endpoint=False
         expected = xp.linspace(start, stop, num + 1, dtype=dtype, endpoint=True)
         expected = expected[:-1]
-        ah.assert_exactly_equal(out, expected)
+        ph.assert_array("linspace", out, expected)
 
 
 @given(dtype=xps.numeric_dtypes(), data=st.data())

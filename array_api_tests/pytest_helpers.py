@@ -3,7 +3,6 @@ from inspect import getfullargspec
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 from . import _array_module as xp
-from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import shape_helpers as sh
 from . import stubs
@@ -370,9 +369,9 @@ def assert_fill(
     """
     msg = f"out not filled with {fill_value} [{func_name}({fmt_kw(kw)})]\n{out=}"
     if math.isnan(fill_value):
-        assert ah.all(ah.isnan(out)), msg
+        assert xp.all(xp.isnan(out)), msg
     else:
-        assert ah.all(ah.equal(out, ah.asarray(fill_value, dtype=dtype))), msg
+        assert xp.all(xp.equal(out, xp.asarray(fill_value, dtype=dtype))), msg
 
 
 def assert_array(func_name: str, out: Array, expected: Array, /, **kw):
