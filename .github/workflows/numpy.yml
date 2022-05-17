@@ -33,8 +33,6 @@ jobs:
 
         # copy not implemented
         array_api_tests/test_creation_functions.py::test_asarray_arrays
-        # https://github.com/numpy/numpy/issues/18881
-        array_api_tests/test_creation_functions.py::test_linspace
         # https://github.com/numpy/numpy/issues/20870
         array_api_tests/test_data_type_functions.py::test_can_cast
         # The return dtype for trace is not consistent in the spec
