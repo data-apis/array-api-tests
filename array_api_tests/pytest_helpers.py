@@ -296,6 +296,19 @@ def assert_keepdimable_shape(
 def assert_0d_equals(
     func_name: str, x_repr: str, x_val: Array, out_repr: str, out_val: Array, **kw
 ):
+    """
+    Assert a 0d array is as expected, e.g.
+
+        >>> x = xp.asarray([0, 1, 2])
+        >>> res = xp.asarray(x, copy=True)
+        >>> res[0] = 42
+        >>> assert_0d_equals('__setitem__', 'x[0]', x[0], 'x[0]', res[0])
+
+        is equivalent to
+
+        >>> assert res[0] == x[0]
+
+    """
     msg = (
         f"{out_repr}={out_val}, but should be {x_repr}={x_val} "
         f"[{func_name}({fmt_kw(kw)})]"
@@ -316,9 +329,21 @@ def assert_scalar_equals(
     repr_name: str = "out",
     **kw,
 ):
+    """
+    Assert a 0d array, convered to a scalar, is as expected, e.g.
+
+        >>> x = xp.ones(5, dtype=xp.uint8)
+        >>> out = xp.sum(x)
+        >>> assert_scalar_equals('sum', int, (), int(out), 5)
+
+        is equivalent to
+
+        >>> assert int(out) == 5
+
+    """
     repr_name = repr_name if idx == () else f"{repr_name}[{idx}]"
     f_func = f"{func_name}({fmt_kw(kw)})"
-    if type_ is bool or type_ is int:
+    if type_ in [bool, int]:
         msg = f"{repr_name}={out}, but should be {expected} [{f_func}]"
         assert out == expected, msg
     elif math.isnan(expected):
@@ -332,6 +357,17 @@ def assert_scalar_equals(
 def assert_fill(
     func_name: str, fill_value: Scalar, dtype: DataType, out: Array, /, **kw
 ):
+    """
+    Assert all elements of an array is as expected, e.g.
+
+        >>> out = xp.full(5, 42, dtype=xp.uint8)
+        >>> assert_fill('full', 42, xp.uint8, out, 5)
+
+        is equivalent to
+
+        >>> assert xp.all(out == 42)
+
+    """
     msg = f"out not filled with {fill_value} [{func_name}({fmt_kw(kw)})]\n{out=}"
     if math.isnan(fill_value):
         assert ah.all(ah.isnan(out)), msg
@@ -340,6 +376,18 @@ def assert_fill(
 
 
 def assert_array(func_name: str, out: Array, expected: Array, /, **kw):
+    """
+    Assert array is (strictly) as expected, e.g.
+
+        >>> x = xp.arange(5)
+        >>> out = xp.asarray(x)
+        >>> assert_array('asarray', out, x)
+
+        is equivalent to
+
+        >>> assert xp.all(out == x)
+
+    """
     assert_dtype(func_name, out.dtype, expected.dtype)
     assert_shape(func_name, out.shape, expected.shape, **kw)
     f_func = f"[{func_name}({fmt_kw(kw)})]"
