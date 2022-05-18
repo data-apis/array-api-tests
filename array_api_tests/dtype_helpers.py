@@ -121,7 +121,6 @@ def is_float_dtype(dtype):
     # See https://github.com/numpy/numpy/issues/18434
     if dtype is None:
         return False
-    # TODO: Return True for float dtypes that aren't part of the spec e.g. np.float16
     return dtype in float_dtypes
 
 
