@@ -180,7 +180,7 @@ def test_arange(dtype, data):
     if dh.is_int_dtype(_dtype):
         elements = list(r)
         assume(out.size == len(elements))
-        ph.assert_array("arange", out, xp.asarray(elements, dtype=_dtype))
+        ph.assert_array_elements("arange", out, xp.asarray(elements, dtype=_dtype))
     else:
         assume(out.size == size)
         if out.size > 0:
@@ -262,7 +262,7 @@ def test_asarray_arrays(x, data):
         ph.assert_kw_dtype("asarray", dtype, out.dtype)
     ph.assert_shape("asarray", out.shape, x.shape)
     if dtype is None or dtype == x.dtype:
-        ph.assert_array("asarray", out, x, **kw)
+        ph.assert_array_elements("asarray", out, x, **kw)
     else:
         pass  # TODO
     copy = kw.get("copy", None)
@@ -452,7 +452,7 @@ def test_linspace(num, dtype, endpoint, data):
         # the first num elements when endpoint=False
         expected = xp.linspace(start, stop, num + 1, dtype=dtype, endpoint=True)
         expected = expected[:-1]
-        ph.assert_array("linspace", out, expected)
+        ph.assert_array_elements("linspace", out, expected)
 
 
 @given(dtype=xps.numeric_dtypes(), data=st.data())

@@ -13,10 +13,10 @@ def test_assert_dtype():
     ph.assert_dtype("single_bool_func", [xp.uint8], xp.bool, xp.bool)
 
 
-def test_assert_array():
-    ph.assert_array("int zeros", xp.asarray(0), xp.asarray(0))
-    ph.assert_array("pos zeros", xp.asarray(0.0), xp.asarray(0.0))
+def test_assert_array_elements():
+    ph.assert_array_elements("int zeros", xp.asarray(0), xp.asarray(0))
+    ph.assert_array_elements("pos zeros", xp.asarray(0.0), xp.asarray(0.0))
     with raises(AssertionError):
-        ph.assert_array("mixed sign zeros", xp.asarray(0.0), xp.asarray(-0.0))
+        ph.assert_array_elements("mixed sign zeros", xp.asarray(0.0), xp.asarray(-0.0))
     with raises(AssertionError):
-        ph.assert_array("mixed sign zeros", xp.asarray(-0.0), xp.asarray(0.0))
+        ph.assert_array_elements("mixed sign zeros", xp.asarray(-0.0), xp.asarray(0.0))
