@@ -25,11 +25,15 @@ def scalar_objects(dtype: DataType, shape: Shape) -> st.SearchStrategy[List[Scal
     )
 
 
-@given(hh.shapes(min_side=1), st.data())  # TODO: test 0-sided arrays
+@given(hh.shapes(), st.data())
 def test_getitem(shape, data):
     dtype = data.draw(xps.scalar_dtypes(), label="dtype")
-    obj = data.draw(scalar_objects(dtype, shape), label="obj")
-    x = xp.asarray(obj, dtype=dtype)
+    zero_sided = any(side == 0 for side in shape)
+    if zero_sided:
+        x = xp.ones(shape, dtype=dtype)
+    else:
+        obj = data.draw(scalar_objects(dtype, shape), label="obj")
+        x = xp.asarray(obj, dtype=dtype)
     note(f"{x=}")
     key = data.draw(xps.indices(shape=shape, allow_newaxis=True), label="key")
 
@@ -62,16 +66,17 @@ def test_getitem(shape, data):
             a += 1
     out_shape = tuple(out_shape)
     ph.assert_shape("__getitem__", out.shape, out_shape)
-    assume(all(len(indices) > 0 for indices in axes_indices))
-    out_obj = []
-    for idx in product(*axes_indices):
-        val = obj
-        for i in idx:
-            val = val[i]
-        out_obj.append(val)
-    out_obj = sh.reshape(out_obj, out_shape)
-    expected = xp.asarray(out_obj, dtype=dtype)
-    ph.assert_array("__getitem__", out, expected)
+    out_zero_sided = any(side == 0 for side in out_shape)
+    if not zero_sided and not out_zero_sided:
+        out_obj = []
+        for idx in product(*axes_indices):
+            val = obj
+            for i in idx:
+                val = val[i]
+            out_obj.append(val)
+        out_obj = sh.reshape(out_obj, out_shape)
+        expected = xp.asarray(out_obj, dtype=dtype)
+        ph.assert_array("__getitem__", out, expected)
 
 
 @given(hh.shapes(min_side=1), st.data())  # TODO: test 0-sided arrays
