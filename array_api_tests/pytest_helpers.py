@@ -301,7 +301,7 @@ def assert_0d_equals(
         >>> x = xp.asarray([0, 1, 2])
         >>> res = xp.asarray(x, copy=True)
         >>> res[0] = 42
-        >>> assert_0d_equals('__setitem__', 'x[0]', x[0], 'x[0]', res[0])
+        >>> assert_0d_equals('asarray', 'x[0]', x[0], 'x[0]', res[0])
 
         is equivalent to
 

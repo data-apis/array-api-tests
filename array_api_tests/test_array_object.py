@@ -55,11 +55,13 @@ def test_getitem(shape, dtype, data):
         if i is None:
             out_shape.append(1)
         else:
+            side = shape[a]
             if isinstance(i, int):
+                if i < 0:
+                    i += side
                 axes_indices.append([i])
             else:
                 assert isinstance(i, slice)  # sanity check
-                side = shape[a]
                 indices = range(side)[i]
                 axes_indices.append(indices)
                 out_shape.append(len(indices))
@@ -102,9 +104,9 @@ def test_setitem(shape, dtypes, data):
         start_pos = _key.index(Ellipsis)
         _key = _key[:start_pos] + slices + _key[start_pos + 1 :]
     out_shape = []
-    for a, i in enumerate(_key):
+
+    for i, side in zip(_key, shape):
         if isinstance(i, slice):
-            side = shape[a]
             indices = range(side)[i]
             out_shape.append(len(indices))
     out_shape = tuple(out_shape)
@@ -119,7 +121,8 @@ def test_setitem(shape, dtypes, data):
 
     ph.assert_dtype("__setitem__", x.dtype, res.dtype, repr_name="x.dtype")
     ph.assert_shape("__setitem__", res.shape, x.shape, repr_name="x.shape")
-    f_res = f"res[{sh.fmt_idx('x', key)}]"
+
+    f_res = sh.fmt_idx("x", key)
     if isinstance(value, get_args(Scalar)):
         msg = f"{f_res}={res[key]!r}, but should be {value=} [__setitem__()]"
         if math.isnan(value):
@@ -128,14 +131,21 @@ def test_setitem(shape, dtypes, data):
             assert res[key] == value, msg
     else:
         ph.assert_array_elements("__setitem__", res[key], value, out_repr=f_res)
-    if all(isinstance(i, int) for i in _key):  # TODO: normalise slices and ellipsis
-        _key = tuple(i if i >= 0 else s + i for i, s in zip(_key, x.shape))
-        unaffected_indices = list(sh.ndindex(res.shape))
-        unaffected_indices.remove(_key)
-        for idx in unaffected_indices:
-            ph.assert_0d_equals(
-                "__setitem__", f"old x[{idx}]", x[idx], f"modified x[{idx}]", res[idx]
-            )
+
+    axes_indices = []
+    for i, side in zip(_key, shape):
+        if isinstance(i, int):
+            if i < 0:
+                i += side
+            axes_indices.append([i])
+        else:
+            indices = range(side)[i]
+            axes_indices.append(indices)
+    unaffected_indices = set(sh.ndindex(res.shape)) - set(product(*axes_indices))
+    for idx in unaffected_indices:
+        ph.assert_0d_equals(
+            "__setitem__", f"old {f_res}", x[idx], f"modified {f_res}", res[idx]
+        )
 
 
 @pytest.mark.data_dependent_shapes
