@@ -12,6 +12,7 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
+from .test_operators_and_elementwise_functions import oneway_promotable_dtypes
 from .typing import DataType, Param, Scalar, ScalarType, Shape
 
 pytestmark = pytest.mark.ci
@@ -78,14 +79,18 @@ def test_getitem(shape, dtype, data):
         ph.assert_array_elements("__getitem__", out, expected)
 
 
-@given(shape=hh.shapes(min_side=1), dtype=xps.scalar_dtypes(), data=st.data())
-def test_setitem(shape, dtype, data):
+@given(
+    shape=hh.shapes(),
+    dtypes=oneway_promotable_dtypes(dh.all_dtypes),
+    data=st.data(),
+)
+def test_setitem(shape, dtypes, data):
     zero_sided = any(side == 0 for side in shape)
     if zero_sided:
-        x = xp.zeros(shape, dtype=dtype)
+        x = xp.zeros(shape, dtype=dtypes.result_dtype)
     else:
-        obj = data.draw(scalar_objects(dtype, shape), label="obj")
-        x = xp.asarray(obj, dtype=dtype)
+        obj = data.draw(scalar_objects(dtypes.result_dtype, shape), label="obj")
+        x = xp.asarray(obj, dtype=dtypes.result_dtype)
     note(f"{x=}")
     key = data.draw(xps.indices(shape=shape), label="key")
     _key = tuple(key) if isinstance(key, tuple) else (key,)
@@ -103,10 +108,10 @@ def test_setitem(shape, dtype, data):
             indices = range(side)[i]
             out_shape.append(len(indices))
     out_shape = tuple(out_shape)
-    value_strat = xps.arrays(dtype=dtype, shape=out_shape)
+    value_strat = xps.arrays(dtype=dtypes.result_dtype, shape=out_shape)
     if out_shape == ():
         # We can pass scalars if we're only indexing one element
-        value_strat |= xps.from_dtype(dtype)
+        value_strat |= xps.from_dtype(dtypes.result_dtype)
     value = data.draw(value_strat, label="value")
 
     res = xp.asarray(x, copy=True)
