@@ -1,6 +1,6 @@
 import math
 from itertools import product
-from typing import List, get_args
+from typing import List, Union, get_args
 
 import pytest
 from hypothesis import assume, given, note
@@ -18,7 +18,9 @@ from .typing import DataType, Param, Scalar, ScalarType, Shape
 pytestmark = pytest.mark.ci
 
 
-def scalar_objects(dtype: DataType, shape: Shape) -> st.SearchStrategy[List[Scalar]]:
+def scalar_objects(
+    dtype: DataType, shape: Shape
+) -> st.SearchStrategy[Union[Scalar, List[Scalar]]]:
     """Generates scalars or nested sequences which are valid for xp.asarray()"""
     size = math.prod(shape)
     return st.lists(xps.from_dtype(dtype), min_size=size, max_size=size).map(
