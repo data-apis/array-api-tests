@@ -12,6 +12,7 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
+from .test_operators_and_elementwise_functions import oneway_promotable_dtypes
 from .typing import DataType, Scalar
 
 pytestmark = pytest.mark.ci
@@ -245,11 +246,25 @@ def test_asarray_scalars(shape, data):
         ph.assert_scalar_equals("asarray", scalar_type, idx, v, v_expect, **kw)
 
 
-@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()), st.data())
-def test_asarray_arrays(x, data):
-    # TODO: test other valid dtypes
+def scalar_eq(s1: Scalar, s2: Scalar) -> bool:
+    if math.isnan(s1):
+        return math.isnan(s2)
+    else:
+        return s1 == s2
+
+
+@given(
+    shape=hh.shapes(),
+    dtypes=oneway_promotable_dtypes(dh.all_dtypes),
+    data=st.data(),
+)
+def test_asarray_arrays(shape, dtypes, data):
+    x = data.draw(xps.arrays(dtype=dtypes.input_dtype, shape=shape), label="x")
+    dtypes_strat = st.just(dtypes.input_dtype)
+    if dtypes.input_dtype == dtypes.result_dtype:
+        dtypes_strat |= st.none()
     kw = data.draw(
-        hh.kwargs(dtype=st.none() | st.just(x.dtype), copy=st.none() | st.booleans()),
+        hh.kwargs(dtype=dtypes_strat, copy=st.none() | st.booleans()),
         label="kw",
     )
 
@@ -261,27 +276,35 @@ def test_asarray_arrays(x, data):
     else:
         ph.assert_kw_dtype("asarray", dtype, out.dtype)
     ph.assert_shape("asarray", out.shape, x.shape)
-    if dtype is None or dtype == x.dtype:
-        ph.assert_array_elements("asarray", out, x, **kw)
-    else:
-        pass  # TODO
+    ph.assert_array_elements("asarray", out, x, **kw)
     copy = kw.get("copy", None)
     if copy is not None:
+        stype = dh.get_scalar_type(x.dtype)
         idx = data.draw(xps.indices(x.shape, max_dims=0), label="mutating idx")
-        _dtype = x.dtype if dtype is None else dtype
-        old_value = x[idx]
+        old_value = stype(x[idx])
+        scalar_strat = xps.from_dtype(dtypes.input_dtype).filter(
+            lambda n: not scalar_eq(n, old_value)
+        )
         value = data.draw(
-            xps.arrays(dtype=_dtype, shape=()).filter(lambda y: y != old_value),
+            scalar_strat | scalar_strat.map(lambda n: xp.asarray(n, dtype=x.dtype)),
             label="mutating value",
         )
         x[idx] = value
         note(f"mutated {x=}")
+        # sanity check
+        ph.assert_scalar_equals(
+            "__setitem__", stype, idx, stype(x[idx]), value, repr_name="x"
+        )
+        new_out_value = stype(out[idx])
+        f_out = f"{sh.fmt_idx('out', idx)}={new_out_value}"
         if copy:
-            assert not xp.all(
-                out == x
-            ), f"xp.all(out == x)=True, but should be False after x was mutated\n{out=}"
-        elif copy is False:
-            pass  # TODO
+            assert scalar_eq(
+                new_out_value, old_value
+            ), f"{f_out}, but should be {old_value} even after x was mutated"
+        else:
+            assert scalar_eq(
+                new_out_value, value
+            ), f"{f_out}, but should be {value} after x was mutated"
 
 
 @given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
