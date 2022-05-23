@@ -1,6 +1,6 @@
 import math
 from itertools import product
-from typing import List, Union, get_args
+from typing import List, Sequence, Tuple, Union, get_args
 
 import pytest
 from hypothesis import assume, given, note
@@ -28,7 +28,7 @@ def scalar_objects(
     )
 
 
-def normalise_key(key: Index, shape: Shape):
+def normalise_key(key: Index, shape: Shape) -> Tuple[Union[int, slice], ...]:
     """
     Normalise an indexing key.
 
@@ -46,6 +46,36 @@ def normalise_key(key: Index, shape: Shape):
     return _key
 
 
+def get_indexed_axes_and_out_shape(
+    key: Tuple[Union[int, slice, None], ...], shape: Shape
+) -> Tuple[Tuple[Sequence[int], ...], Shape]:
+    """
+    From the (normalised) key and input shape, calculates:
+
+    * indexed_axes: For each dimension, the axes which the key indexes.
+    * out_shape: The resulting shape of indexing an array (of the input shape)
+      with the key.
+    """
+    axes_indices = []
+    out_shape = []
+    a = 0
+    for i in key:
+        if i is None:
+            out_shape.append(1)
+        else:
+            side = shape[a]
+            if isinstance(i, int):
+                if i < 0:
+                    i += side
+                axes_indices.append((i,))
+            else:
+                indices = range(side)[i]
+                axes_indices.append(indices)
+                out_shape.append(len(indices))
+            a += 1
+    return tuple(axes_indices), tuple(out_shape)
+
+
 @given(shape=hh.shapes(), dtype=xps.scalar_dtypes(), data=st.data())
 def test_getitem(shape, dtype, data):
     zero_sided = any(side == 0 for side in shape)
@@ -61,25 +91,7 @@ def test_getitem(shape, dtype, data):
 
     ph.assert_dtype("__getitem__", x.dtype, out.dtype)
     _key = normalise_key(key, shape)
-    axes_indices = []
-    out_shape = []
-    a = 0
-    for i in _key:
-        if i is None:
-            out_shape.append(1)
-        else:
-            side = shape[a]
-            if isinstance(i, int):
-                if i < 0:
-                    i += side
-                axes_indices.append([i])
-            else:
-                assert isinstance(i, slice)  # sanity check
-                indices = range(side)[i]
-                axes_indices.append(indices)
-                out_shape.append(len(indices))
-            a += 1
-    out_shape = tuple(out_shape)
+    axes_indices, out_shape = get_indexed_axes_and_out_shape(_key, shape)
     ph.assert_shape("__getitem__", out.shape, out_shape)
     out_zero_sided = any(side == 0 for side in out_shape)
     if not zero_sided and not out_zero_sided:
@@ -109,13 +121,7 @@ def test_setitem(shape, dtypes, data):
     note(f"{x=}")
     key = data.draw(xps.indices(shape=shape), label="key")
     _key = normalise_key(key, shape)
-    out_shape = []
-
-    for i, side in zip(_key, shape):
-        if isinstance(i, slice):
-            indices = range(side)[i]
-            out_shape.append(len(indices))
-    out_shape = tuple(out_shape)
+    axes_indices, out_shape = get_indexed_axes_and_out_shape(_key, shape)
     value_strat = xps.arrays(dtype=dtypes.result_dtype, shape=out_shape)
     if out_shape == ():
         # We can pass scalars if we're only indexing one element
@@ -127,7 +133,6 @@ def test_setitem(shape, dtypes, data):
 
     ph.assert_dtype("__setitem__", x.dtype, res.dtype, repr_name="x.dtype")
     ph.assert_shape("__setitem__", res.shape, x.shape, repr_name="x.shape")
-
     f_res = sh.fmt_idx("x", key)
     if isinstance(value, get_args(Scalar)):
         msg = f"{f_res}={res[key]!r}, but should be {value=} [__setitem__()]"
@@ -137,16 +142,6 @@ def test_setitem(shape, dtypes, data):
             assert res[key] == value, msg
     else:
         ph.assert_array_elements("__setitem__", res[key], value, out_repr=f_res)
-
-    axes_indices = []
-    for i, side in zip(_key, shape):
-        if isinstance(i, int):
-            if i < 0:
-                i += side
-            axes_indices.append([i])
-        else:
-            indices = range(side)[i]
-            axes_indices.append(indices)
     unaffected_indices = set(sh.ndindex(res.shape)) - set(product(*axes_indices))
     for idx in unaffected_indices:
         ph.assert_0d_equals(
