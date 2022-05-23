@@ -13,7 +13,7 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 from .test_operators_and_elementwise_functions import oneway_promotable_dtypes
-from .typing import DataType, Param, Scalar, ScalarType, Shape
+from .typing import DataType, Index, Param, Scalar, ScalarType, Shape
 
 pytestmark = pytest.mark.ci
 
@@ -26,6 +26,24 @@ def scalar_objects(
     return st.lists(xps.from_dtype(dtype), min_size=size, max_size=size).map(
         lambda l: sh.reshape(l, shape)
     )
+
+
+def normalise_key(key: Index, shape: Shape):
+    """
+    Normalise an indexing key.
+
+    * If a non-tuple index, wrap as a tuple.
+    * Represent ellipsis as equivalent slices.
+    """
+    _key = tuple(key) if isinstance(key, tuple) else (key,)
+    if Ellipsis in _key:
+        nonexpanding_key = tuple(i for i in _key if i is not None)
+        start_a = nonexpanding_key.index(Ellipsis)
+        stop_a = start_a + (len(shape) - (len(nonexpanding_key) - 1))
+        slices = tuple(slice(None) for _ in range(start_a, stop_a))
+        start_pos = _key.index(Ellipsis)
+        _key = _key[:start_pos] + slices + _key[start_pos + 1 :]
+    return _key
 
 
 @given(shape=hh.shapes(), dtype=xps.scalar_dtypes(), data=st.data())
@@ -42,14 +60,7 @@ def test_getitem(shape, dtype, data):
     out = x[key]
 
     ph.assert_dtype("__getitem__", x.dtype, out.dtype)
-    _key = tuple(key) if isinstance(key, tuple) else (key,)
-    if Ellipsis in _key:
-        nonexpanding_key = tuple(i for i in _key if i is not None)
-        start_a = nonexpanding_key.index(Ellipsis)
-        stop_a = start_a + (len(shape) - (len(nonexpanding_key) - 1))
-        slices = tuple(slice(None) for _ in range(start_a, stop_a))
-        start_pos = _key.index(Ellipsis)
-        _key = _key[:start_pos] + slices + _key[start_pos + 1 :]
+    _key = normalise_key(key, shape)
     axes_indices = []
     out_shape = []
     a = 0
@@ -97,14 +108,7 @@ def test_setitem(shape, dtypes, data):
         x = xp.asarray(obj, dtype=dtypes.result_dtype)
     note(f"{x=}")
     key = data.draw(xps.indices(shape=shape), label="key")
-    _key = tuple(key) if isinstance(key, tuple) else (key,)
-    if Ellipsis in _key:
-        nonexpanding_key = tuple(i for i in _key if i is not None)
-        start_a = nonexpanding_key.index(Ellipsis)
-        stop_a = start_a + (len(shape) - (len(nonexpanding_key) - 1))
-        slices = tuple(slice(None) for _ in range(start_a, stop_a))
-        start_pos = _key.index(Ellipsis)
-        _key = _key[:start_pos] + slices + _key[start_pos + 1 :]
+    _key = normalise_key(key, shape)
     out_shape = []
 
     for i, side in zip(_key, shape):
