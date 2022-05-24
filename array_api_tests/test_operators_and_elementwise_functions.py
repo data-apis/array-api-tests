@@ -1124,7 +1124,7 @@ def test_positive(ctx, data):
 
     ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
     ph.assert_shape(ctx.func_name, out.shape, x.shape)
-    ph.assert_array(ctx.func_name, out, x)
+    ph.assert_array_elements(ctx.func_name, out, x)
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("pow", dh.numeric_dtypes))

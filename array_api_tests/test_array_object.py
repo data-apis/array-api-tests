@@ -1,6 +1,6 @@
 import math
 from itertools import product
-from typing import List, get_args
+from typing import List, Sequence, Tuple, Union, get_args
 
 import pytest
 from hypothesis import assume, given, note
@@ -12,12 +12,15 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .typing import DataType, Param, Scalar, ScalarType, Shape
+from .test_operators_and_elementwise_functions import oneway_promotable_dtypes
+from .typing import DataType, Index, Param, Scalar, ScalarType, Shape
 
 pytestmark = pytest.mark.ci
 
 
-def scalar_objects(dtype: DataType, shape: Shape) -> st.SearchStrategy[List[Scalar]]:
+def scalar_objects(
+    dtype: DataType, shape: Shape
+) -> st.SearchStrategy[Union[Scalar, List[Scalar]]]:
     """Generates scalars or nested sequences which are valid for xp.asarray()"""
     size = math.prod(shape)
     return st.lists(xps.from_dtype(dtype), min_size=size, max_size=size).map(
@@ -25,17 +28,13 @@ def scalar_objects(dtype: DataType, shape: Shape) -> st.SearchStrategy[List[Scal
     )
 
 
-@given(hh.shapes(min_side=1), st.data())  # TODO: test 0-sided arrays
-def test_getitem(shape, data):
-    dtype = data.draw(xps.scalar_dtypes(), label="dtype")
-    obj = data.draw(scalar_objects(dtype, shape), label="obj")
-    x = xp.asarray(obj, dtype=dtype)
-    note(f"{x=}")
-    key = data.draw(xps.indices(shape=shape, allow_newaxis=True), label="key")
+def normalise_key(key: Index, shape: Shape) -> Tuple[Union[int, slice], ...]:
+    """
+    Normalise an indexing key.
 
-    out = x[key]
-
-    ph.assert_dtype("__getitem__", x.dtype, out.dtype)
+    * If a non-tuple index, wrap as a tuple.
+    * Represent ellipsis as equivalent slices.
+    """
     _key = tuple(key) if isinstance(key, tuple) else (key,)
     if Ellipsis in _key:
         nonexpanding_key = tuple(i for i in _key if i is not None)
@@ -44,71 +43,109 @@ def test_getitem(shape, data):
         slices = tuple(slice(None) for _ in range(start_a, stop_a))
         start_pos = _key.index(Ellipsis)
         _key = _key[:start_pos] + slices + _key[start_pos + 1 :]
+    return _key
+
+
+def get_indexed_axes_and_out_shape(
+    key: Tuple[Union[int, slice, None], ...], shape: Shape
+) -> Tuple[Tuple[Sequence[int], ...], Shape]:
+    """
+    From the (normalised) key and input shape, calculates:
+
+    * indexed_axes: For each dimension, the axes which the key indexes.
+    * out_shape: The resulting shape of indexing an array (of the input shape)
+      with the key.
+    """
     axes_indices = []
     out_shape = []
     a = 0
-    for i in _key:
+    for i in key:
         if i is None:
             out_shape.append(1)
         else:
+            side = shape[a]
             if isinstance(i, int):
-                axes_indices.append([i])
+                if i < 0:
+                    i += side
+                axes_indices.append((i,))
             else:
-                assert isinstance(i, slice)  # sanity check
-                side = shape[a]
                 indices = range(side)[i]
                 axes_indices.append(indices)
                 out_shape.append(len(indices))
             a += 1
-    out_shape = tuple(out_shape)
-    ph.assert_shape("__getitem__", out.shape, out_shape)
-    assume(all(len(indices) > 0 for indices in axes_indices))
-    out_obj = []
-    for idx in product(*axes_indices):
-        val = obj
-        for i in idx:
-            val = val[i]
-        out_obj.append(val)
-    out_obj = sh.reshape(out_obj, out_shape)
-    expected = xp.asarray(out_obj, dtype=dtype)
-    ph.assert_array("__getitem__", out, expected)
+    return tuple(axes_indices), tuple(out_shape)
 
 
-@given(hh.shapes(min_side=1), st.data())  # TODO: test 0-sided arrays
-def test_setitem(shape, data):
-    dtype = data.draw(xps.scalar_dtypes(), label="dtype")
-    obj = data.draw(scalar_objects(dtype, shape), label="obj")
-    x = xp.asarray(obj, dtype=dtype)
+@given(shape=hh.shapes(), dtype=xps.scalar_dtypes(), data=st.data())
+def test_getitem(shape, dtype, data):
+    zero_sided = any(side == 0 for side in shape)
+    if zero_sided:
+        x = xp.zeros(shape, dtype=dtype)
+    else:
+        obj = data.draw(scalar_objects(dtype, shape), label="obj")
+        x = xp.asarray(obj, dtype=dtype)
     note(f"{x=}")
-    # TODO: test setting non-0d arrays
-    key = data.draw(xps.indices(shape=shape, max_dims=0), label="key")
-    value = data.draw(
-        xps.from_dtype(dtype) | xps.arrays(dtype=dtype, shape=()), label="value"
-    )
+    key = data.draw(xps.indices(shape=shape, allow_newaxis=True), label="key")
+
+    out = x[key]
+
+    ph.assert_dtype("__getitem__", x.dtype, out.dtype)
+    _key = normalise_key(key, shape)
+    axes_indices, out_shape = get_indexed_axes_and_out_shape(_key, shape)
+    ph.assert_shape("__getitem__", out.shape, out_shape)
+    out_zero_sided = any(side == 0 for side in out_shape)
+    if not zero_sided and not out_zero_sided:
+        out_obj = []
+        for idx in product(*axes_indices):
+            val = obj
+            for i in idx:
+                val = val[i]
+            out_obj.append(val)
+        out_obj = sh.reshape(out_obj, out_shape)
+        expected = xp.asarray(out_obj, dtype=dtype)
+        ph.assert_array_elements("__getitem__", out, expected)
+
+
+@given(
+    shape=hh.shapes(),
+    dtypes=oneway_promotable_dtypes(dh.all_dtypes),
+    data=st.data(),
+)
+def test_setitem(shape, dtypes, data):
+    zero_sided = any(side == 0 for side in shape)
+    if zero_sided:
+        x = xp.zeros(shape, dtype=dtypes.result_dtype)
+    else:
+        obj = data.draw(scalar_objects(dtypes.result_dtype, shape), label="obj")
+        x = xp.asarray(obj, dtype=dtypes.result_dtype)
+    note(f"{x=}")
+    key = data.draw(xps.indices(shape=shape), label="key")
+    _key = normalise_key(key, shape)
+    axes_indices, out_shape = get_indexed_axes_and_out_shape(_key, shape)
+    value_strat = xps.arrays(dtype=dtypes.result_dtype, shape=out_shape)
+    if out_shape == ():
+        # We can pass scalars if we're only indexing one element
+        value_strat |= xps.from_dtype(dtypes.result_dtype)
+    value = data.draw(value_strat, label="value")
 
     res = xp.asarray(x, copy=True)
     res[key] = value
 
     ph.assert_dtype("__setitem__", x.dtype, res.dtype, repr_name="x.dtype")
     ph.assert_shape("__setitem__", res.shape, x.shape, repr_name="x.shape")
+    f_res = sh.fmt_idx("x", key)
     if isinstance(value, get_args(Scalar)):
-        msg = f"x[{key}]={res[key]!r}, but should be {value=} [__setitem__()]"
+        msg = f"{f_res}={res[key]!r}, but should be {value=} [__setitem__()]"
         if math.isnan(value):
             assert xp.isnan(res[key]), msg
         else:
             assert res[key] == value, msg
     else:
-        ph.assert_0d_equals(
-            "__setitem__", "value", value, f"modified x[{key}]", res[key]
-        )
-    _key = key if isinstance(key, tuple) else (key,)
-    assume(all(isinstance(i, int) for i in _key))  # TODO: normalise slices and ellipsis
-    _key = tuple(i if i >= 0 else s + i for i, s in zip(_key, x.shape))
-    unaffected_indices = list(sh.ndindex(res.shape))
-    unaffected_indices.remove(_key)
+        ph.assert_array_elements("__setitem__", res[key], value, out_repr=f_res)
+    unaffected_indices = set(sh.ndindex(res.shape)) - set(product(*axes_indices))
     for idx in unaffected_indices:
         ph.assert_0d_equals(
-            "__setitem__", f"old x[{idx}]", x[idx], f"modified x[{idx}]", res[idx]
+            "__setitem__", f"old {f_res}", x[idx], f"modified {f_res}", res[idx]
         )
 
 

@@ -91,6 +91,7 @@ def test_roll_ndindex(shape, shifts, axes, expected):
         ((), "x"),
         (42, "x[42]"),
         ((42,), "x[42]"),
+        ((42, 7), "x[42, 7]"),
         (slice(None, 2), "x[:2]"),
         (slice(2, None), "x[2:]"),
         (slice(0, 2), "x[0:2]"),
@@ -98,6 +99,7 @@ def test_roll_ndindex(shape, shifts, axes, expected):
         (slice(None, None, -1), "x[::-1]"),
         (slice(None, None), "x[:]"),
         (..., "x[...]"),
+        ((None, 42), "x[None, 42]"),
     ],
 )
 def test_fmt_idx(idx, expected):

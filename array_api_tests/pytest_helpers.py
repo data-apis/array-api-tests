@@ -25,7 +25,7 @@ __all__ = [
     "assert_keepdimable_shape",
     "assert_0d_equals",
     "assert_fill",
-    "assert_array",
+    "assert_array_elements",
 ]
 
 
@@ -301,7 +301,7 @@ def assert_0d_equals(
         >>> x = xp.asarray([0, 1, 2])
         >>> res = xp.asarray(x, copy=True)
         >>> res[0] = 42
-        >>> assert_0d_equals('__setitem__', 'x[0]', x[0], 'x[0]', res[0])
+        >>> assert_0d_equals('asarray', 'x[0]', x[0], 'x[0]', res[0])
 
         is equivalent to
 
@@ -374,28 +374,30 @@ def assert_fill(
         assert xp.all(xp.equal(out, xp.asarray(fill_value, dtype=dtype))), msg
 
 
-def assert_array(func_name: str, out: Array, expected: Array, /, **kw):
+def assert_array_elements(
+    func_name: str, out: Array, expected: Array, /, *, out_repr: str = "out", **kw
+):
     """
-    Assert array is (strictly) as expected, e.g.
+    Assert array elements are (strictly) as expected, e.g.
 
         >>> x = xp.arange(5)
         >>> out = xp.asarray(x)
-        >>> assert_array('asarray', out, x)
+        >>> assert_array_elements('asarray', out, x)
 
         is equivalent to
 
         >>> assert xp.all(out == x)
 
     """
-    assert_dtype(func_name, out.dtype, expected.dtype)
-    assert_shape(func_name, out.shape, expected.shape, **kw)
+    dh.result_type(out.dtype, expected.dtype)  # sanity check
+    assert_shape(func_name, out.shape, expected.shape, **kw)  # sanity check
     f_func = f"[{func_name}({fmt_kw(kw)})]"
     if dh.is_float_dtype(out.dtype):
         for idx in sh.ndindex(out.shape):
             at_out = out[idx]
             at_expected = expected[idx]
             msg = (
-                f"{sh.fmt_idx('out', idx)}={at_out}, should be {at_expected} "
+                f"{sh.fmt_idx(out_repr, idx)}={at_out}, should be {at_expected} "
                 f"{f_func}"
             )
             if xp.isnan(at_expected):
@@ -411,6 +413,6 @@ def assert_array(func_name: str, out: Array, expected: Array, /, **kw):
             else:
                 assert at_out == at_expected, msg
     else:
-        assert xp.all(out == expected), (
-            f"out not as expected {f_func}\n" f"{out=}\n{expected=}"
-        )
+        assert xp.all(
+            out == expected
+        ), f"{out_repr} not as expected {f_func}\n{out_repr}={out!r}\n{expected=}"
