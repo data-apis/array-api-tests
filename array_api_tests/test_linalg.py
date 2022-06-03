@@ -250,8 +250,8 @@ def test_eigh(x):
     assert eigenvectors.dtype == x.dtype, "eigh().eigenvectors did not return the correct dtype"
     assert eigenvectors.shape == x.shape, "eigh().eigenvectors did not return the correct shape"
 
-    # The order of the eigenvectors is not specified, so make sure the same
-    # eigenvectors are compared against each other.
+    # The order of the eigenvalues is not specified, so make sure the same
+    # eigenvalues are compared against each other.
     _test_stacks(lambda x: linalg.eigh(x).eigenvalues, x,
                  res=eigenvalues, dims=1, assert_equal=lambda a, b:
                  assert_equal(xp.sort(a), xp.sort(b)))
@@ -274,7 +274,10 @@ def test_eigvalsh(x):
     assert res.dtype == x.dtype, "eigvalsh() did not return the correct dtype"
     assert res.shape == x.shape[:-1], "eigvalsh() did not return the correct shape"
 
-    _test_stacks(linalg.eigvalsh, x, res=res, dims=1)
+    # The order of the eigenvalues is not specified, so make sure the same
+    # eigenvalues are compared against each other.
+    _test_stacks(linalg.eigvalsh, x, res=res, dims=1, assert_equal=lambda a,
+                 b: assert_equal(xp.sort(a), xp.sort(b)))
 
     # TODO: Should we test that the result is the same as eigh(x).eigenvalues?
 
