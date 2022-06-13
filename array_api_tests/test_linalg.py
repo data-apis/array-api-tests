@@ -46,7 +46,15 @@ todo = none()
 
 def assert_equal(x, y):
     if x.dtype in dh.float_dtypes:
-        assert_allclose(x, y)
+        # It's too difficult to do an approximately equal test here because
+        # different routines can give completely different answers, and even
+        # when it does work, the elementwise comparisons are too slow. So for
+        # floating-point dtypes only test the shape and dtypes.
+
+        # assert_allclose(x, y)
+
+        assert x.shape == y.shape, f"The input arrays do not have the same shapes ({x.shape} != {y.shape})"
+        assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype})"
     else:
         assert_exactly_equal(x, y)
 
@@ -250,18 +258,17 @@ def test_eigh(x):
     assert eigenvectors.dtype == x.dtype, "eigh().eigenvectors did not return the correct dtype"
     assert eigenvectors.shape == x.shape, "eigh().eigenvectors did not return the correct shape"
 
-    # The order of the eigenvalues is not specified, so make sure the same
-    # eigenvalues are compared against each other.
+    # Note: _test_stacks here is only testing the shape and dtype. The actual
+    # eigenvalues and eigenvectors may not be equal at all, since there is not
+    # requirements about how eigh computes an eigenbasis, or about the order
+    # of the eigenvalues
     _test_stacks(lambda x: linalg.eigh(x).eigenvalues, x,
-                 res=eigenvalues, dims=1, assert_equal=lambda a, b:
-                 assert_equal(xp.sort(a), xp.sort(b)))
+                 res=eigenvalues, dims=1)
 
-    # There are equivalent ways of representing eigenvectors, and algorithms
-    # may not give the same eigenvectors on a stack vs. a matrix.
     # TODO: Test that eigenvectors are orthonormal.
 
-    # _test_stacks(lambda x: linalg.eigh(x).eigenvectors, x,
-    #              res=eigenvectors, dims=2)
+    _test_stacks(lambda x: linalg.eigh(x).eigenvectors, x,
+                 res=eigenvectors, dims=2)
 
     # TODO: Test that res actually corresponds to the eigenvalues and
     # eigenvectors of x
@@ -274,12 +281,14 @@ def test_eigvalsh(x):
     assert res.dtype == x.dtype, "eigvalsh() did not return the correct dtype"
     assert res.shape == x.shape[:-1], "eigvalsh() did not return the correct shape"
 
-    # The order of the eigenvalues is not specified, so make sure the same
-    # eigenvalues are compared against each other.
-    _test_stacks(linalg.eigvalsh, x, res=res, dims=1, assert_equal=lambda a,
-                 b: assert_equal(xp.sort(a), xp.sort(b)))
+    # Note: _test_stacks here is only testing the shape and dtype. The actual
+    # eigenvalues may not be equal at all, since there is not requirements or
+    # about the order of the eigenvalues, and the stacking code may use a
+    # different code path.
+    _test_stacks(linalg.eigvalsh, x, res=res, dims=1)
 
     # TODO: Should we test that the result is the same as eigh(x).eigenvalues?
+    # (probably no because the spec doesn't actually require that)
 
     # TODO: Test that res actually corresponds to the eigenvalues of x
 
