@@ -539,7 +539,15 @@ def solve_args():
 @pytest.mark.xp_extension('linalg')
 @given(*solve_args())
 def test_solve(x1, x2):
-    linalg.solve(x1, x2)
+    res = linalg.solve(x1, x2)
+
+    # TODO: This requires an upstream fix to ndindex
+    # (https://github.com/Quansight-Labs/ndindex/pull/131)
+
+    # if x2.ndim == 1:
+    #     _test_stacks(linalg.solve, x1, x2, res=res, dims=1)
+    # else:
+    #     _test_stacks(linalg.solve, x1, x2, res=res, dims=2)
 
 @pytest.mark.xp_extension('linalg')
 @given(
