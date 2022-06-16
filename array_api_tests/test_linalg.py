@@ -686,7 +686,7 @@ def _test_tensordot_stacks(x1, x2, kw, res):
         x1_stack = x1[i]
         x2_stack = x2[j]
         decomp_res_stack = xp.tensordot(x1_stack, x2_stack, axes=res_axes)
-        assert_exactly_equal(res_stack, decomp_res_stack)
+        assert_equal(res_stack, decomp_res_stack)
 
 @given(
     *two_mutual_arrays(dh.numeric_dtypes, two_shapes=tensordot_shapes()),
@@ -770,7 +770,6 @@ def test_vecdot(dtypes, shape, data):
 
     ph.assert_dtype("vecdot", dtypes, out.dtype)
     # TODO: assert shape and elements
-
 
 # Insanely large orders might not work. There isn't a limit specified in the
 # spec, so we just limit to reasonable values here.
