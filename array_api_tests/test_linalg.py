@@ -15,14 +15,14 @@ required, but we don't yet have a clean way to disable only those tests (see htt
 
 import pytest
 from hypothesis import assume, given
-from hypothesis.strategies import (booleans, composite, none, tuples, floats,
+from hypothesis.strategies import (booleans, composite, tuples, floats,
                                    integers, shared, sampled_from, one_of,
                                    data, just)
 from ndindex import iter_indices
 
 import itertools
 
-from .array_helpers import assert_exactly_equal, asarray, assert_allclose
+from .array_helpers import assert_exactly_equal, asarray
 from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
@@ -40,9 +40,6 @@ from . import _array_module as xp
 from ._array_module import linalg
 
 pytestmark = pytest.mark.ci
-
-# Standin strategy for not yet implemented tests
-todo = none()
 
 def assert_equal(x, y):
     if x.dtype in dh.float_dtypes:
