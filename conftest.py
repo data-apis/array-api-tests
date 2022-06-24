@@ -120,8 +120,15 @@ def pytest_collection_modifyitems(config, items):
                         mark.skip(reason="disabled via --disable-data-dependent-shapes")
                     )
                     break
-        # skip if test not appropiate for CI
+        # skip if test not appropriate for CI
         if ci:
             ci_mark = next((m for m in markers if m.name == "ci"), None)
             if ci_mark is None:
                 item.add_marker(mark.skip(reason="disabled via --ci"))
+
+@mark.optionalhook
+def pytest_metadata(metadata):
+    """
+    Additional metadata for --json-report.
+    """
+    metadata['array_api_tests_module'] = xp.mod_name
