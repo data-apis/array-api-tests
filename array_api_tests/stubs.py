@@ -34,6 +34,10 @@ array_methods = [
     f for n, f in inspect.getmembers(array, predicate=inspect.isfunction)
     if n != "__init__"  # probably exists for Sphinx
 ]
+array_attributes = [
+    n for n, f in inspect.getmembers(array, predicate=lambda x: not inspect.isfunction(x))
+    if n != "__init__"  # probably exists for Sphinx
+]
 
 category_to_funcs: Dict[str, List[FunctionType]] = {}
 for name, mod in name_to_mod.items():
