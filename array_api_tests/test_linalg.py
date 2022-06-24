@@ -17,7 +17,7 @@ import pytest
 from hypothesis import assume, given
 from hypothesis.strategies import (booleans, composite, tuples, floats,
                                    integers, shared, sampled_from, one_of,
-                                   data, just)
+                                   data)
 from ndindex import iter_indices
 
 import itertools
@@ -29,6 +29,7 @@ from .hypothesis_helpers import (xps, dtypes, shapes, kwargs, matrix_shapes,
                                  invertible_matrices, two_mutual_arrays,
                                  mutually_promotable_dtypes, one_d_shapes,
                                  two_mutually_broadcastable_shapes,
+                                 mutually_broadcastable_shapes,
                                  SQRT_MAX_ARRAY_SIZE, finite_matrices,
                                  rtol_shared_matrix_shapes, rtols, axes)
 from . import dtype_helpers as dh
@@ -756,20 +757,33 @@ def test_trace(x, kw):
 
 
 @given(
-    dtypes=mutually_promotable_dtypes(dtypes=dh.numeric_dtypes),
-    shape=shapes(min_dims=1),
-    data=data(),
+    *two_mutual_arrays(dh.numeric_dtypes, mutually_broadcastable_shapes(2, min_dims=1)),
+    kwargs(axis=integers()),
 )
-def test_vecdot(dtypes, shape, data):
+def test_vecdot(x1, x2, kw):
     # TODO: vary shapes, test different axis arguments
-    x1 = data.draw(xps.arrays(dtype=dtypes[0], shape=shape), label="x1")
-    x2 = data.draw(xps.arrays(dtype=dtypes[1], shape=shape), label="x2")
-    kw = data.draw(kwargs(axis=just(-1)))
+    broadcasted_shape = sh.broadcast_shapes(x1.shape, x2.shape)
+    ndim = len(broadcasted_shape)
+    axis = kw.get('axis', -1)
+    if not (-ndim <= axis < ndim):
+        ph.raises(Exception, lambda: xp.vecdot(x1, x2, **kw),
+                  f"vecdot did not raise an exception for invalid axis ({ndim=}, {kw=})")
+        return
+    x1_shape = (1,)*(ndim - x1.ndim) + tuple(x1.shape)
+    x2_shape = (1,)*(ndim - x1.ndim) + tuple(x2.shape)
+    if x1_shape[axis] != x2_shape[axis]:
+        ph.raises(Exception, lambda: xp.vecdot(x1, x2, **kw),
+                  "vecdot did not raise an exception for invalid shapes")
+        return
+    expected_shape = list(broadcasted_shape)
+    expected_shape.pop(axis)
+    expected_shape = tuple(expected_shape)
 
     out = xp.vecdot(x1, x2, **kw)
 
-    ph.assert_dtype("vecdot", dtypes, out.dtype)
+    ph.assert_dtype("vecdot", [x1.dtype, x2.dtype], out.dtype)
     # TODO: assert shape and elements
+    ph.assert_shape("vecdot", out.shape, expected_shape)
 
 # Insanely large orders might not work. There isn't a limit specified in the
 # spec, so we just limit to reasonable values here.
