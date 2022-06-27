@@ -1308,7 +1308,7 @@ def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
     note(f"{x2=}")
 
     res = xp.asarray(x1, copy=True)
-    iop(res, x2)
+    res = iop(res, x2)
     # sanity check
     ph.assert_result_shape(iop_name, [x1.shape, x2.shape], res.shape)
 
