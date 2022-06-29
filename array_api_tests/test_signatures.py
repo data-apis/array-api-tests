@@ -32,7 +32,8 @@ from hypothesis.strategies import DataObject
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import xps
-from ._array_module import _UndefinedStub, mod as xp
+from ._array_module import _UndefinedStub
+from ._array_module import mod as xp
 from .stubs import array_methods, category_to_funcs, extension_to_funcs
 from .typing import Array, DataType
 
