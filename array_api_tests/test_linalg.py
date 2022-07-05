@@ -770,7 +770,7 @@ def test_vecdot(x1, x2, kw):
                   f"vecdot did not raise an exception for invalid axis ({ndim=}, {kw=})")
         return
     x1_shape = (1,)*(ndim - x1.ndim) + tuple(x1.shape)
-    x2_shape = (1,)*(ndim - x1.ndim) + tuple(x2.shape)
+    x2_shape = (1,)*(ndim - x2.ndim) + tuple(x2.shape)
     if x1_shape[axis] != x2_shape[axis]:
         ph.raises(Exception, lambda: xp.vecdot(x1, x2, **kw),
                   "vecdot did not raise an exception for invalid shapes")
