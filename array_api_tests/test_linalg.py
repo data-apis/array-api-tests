@@ -779,11 +779,20 @@ def test_vecdot(x1, x2, kw):
     expected_shape.pop(axis)
     expected_shape = tuple(expected_shape)
 
-    out = xp.vecdot(x1, x2, **kw)
+    res = xp.vecdot(x1, x2, **kw)
 
-    ph.assert_dtype("vecdot", [x1.dtype, x2.dtype], out.dtype)
+    ph.assert_dtype("vecdot", [x1.dtype, x2.dtype], res.dtype)
     # TODO: assert shape and elements
-    ph.assert_shape("vecdot", out.shape, expected_shape)
+    ph.assert_shape("vecdot", res.shape, expected_shape)
+
+    if x1.dtype in dh.int_dtypes:
+        def true_val(x, y, axix=-1):
+            return xp.sum(x*y, dtype=res.dtype)
+    else:
+        true_val = None
+
+    _test_stacks(linalg.vecdot, x1, x2, res=res, dims=0,
+                 matrix_axes=(axis,), true_val=true_val)
 
 # Insanely large orders might not work. There isn't a limit specified in the
 # spec, so we just limit to reasonable values here.
