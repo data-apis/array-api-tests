@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from hypothesis import settings
-from pytest import mark
+from pytest import mark, fixture
 
 from array_api_tests import _array_module as xp
 from array_api_tests._array_module import _UndefinedStub
@@ -132,3 +132,16 @@ def pytest_metadata(metadata):
     Additional metadata for --json-report.
     """
     metadata['array_api_tests_module'] = xp.mod_name
+
+@fixture(autouse=True)
+def add_api_name_to_metadata(request, json_metadata):
+    test_module = request.module.__name__
+    test_function = request.function.__name__
+    assert test_function.startswith('test_'), 'unexpected test function name'
+
+    if test_module == 'array_api_tests.test_has_names':
+        array_api_function_name = None
+    else:
+        array_api_function_name = test_function[len('test_'):]
+
+    json_metadata['array_api_function_name'] = array_api_function_name
