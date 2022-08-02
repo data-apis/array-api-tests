@@ -13,7 +13,7 @@ from pytest import mark
 def to_json_serializable(o):
     if o in dtype_to_name:
         return dtype_to_name[o]
-    if isinstance(o, (BuiltinFunctionType, FunctionType)):
+    if isinstance(o, (BuiltinFunctionType, FunctionType, type)):
         return o.__name__
     if dataclasses.is_dataclass(o):
         return to_json_serializable(dataclasses.asdict(o))
