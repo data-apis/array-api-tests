@@ -9,6 +9,7 @@ from typing import Dict, List
 __all__ = [
     "name_to_func",
     "array_methods",
+    "array_attributes",
     "category_to_funcs",
     "EXTENSIONS",
     "extension_to_funcs",
