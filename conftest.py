@@ -2,13 +2,14 @@ from functools import lru_cache
 from pathlib import Path
 
 from hypothesis import settings
-from pytest import mark, fixture
+from pytest import mark
 
 from array_api_tests import _array_module as xp
 from array_api_tests._array_module import _UndefinedStub
 
-settings.register_profile("xp_default", deadline=800)
+from reporting import pytest_metadata, add_api_name_to_metadata # noqa
 
+settings.register_profile("xp_default", deadline=800)
 
 def pytest_addoption(parser):
     # Hypothesis max examples
@@ -125,23 +126,3 @@ def pytest_collection_modifyitems(config, items):
             ci_mark = next((m for m in markers if m.name == "ci"), None)
             if ci_mark is None:
                 item.add_marker(mark.skip(reason="disabled via --ci"))
-
-@mark.optionalhook
-def pytest_metadata(metadata):
-    """
-    Additional metadata for --json-report.
-    """
-    metadata['array_api_tests_module'] = xp.mod_name
-
-@fixture(autouse=True)
-def add_api_name_to_metadata(request, json_metadata):
-    test_module = request.module.__name__
-    test_function = request.function.__name__
-    assert test_function.startswith('test_'), 'unexpected test function name'
-
-    if test_module == 'array_api_tests.test_has_names':
-        array_api_function_name = None
-    else:
-        array_api_function_name = test_function[len('test_'):]
-
-    json_metadata['array_api_function_name'] = array_api_function_name
