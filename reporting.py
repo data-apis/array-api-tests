@@ -9,6 +9,10 @@ import json
 from hypothesis.strategies import SearchStrategy
 
 from pytest import mark
+try:
+    import pytest_jsonreport # noqa
+except ImportError:
+    raise ImportError("pytest-json-report is required to run the array API tests")
 
 def to_json_serializable(o):
     if o in dtype_to_name:
