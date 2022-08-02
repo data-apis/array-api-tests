@@ -1,25 +1,27 @@
-from array_api_tests.test_operators_and_elementwise_functions import (UnaryParamContext, BinaryParamContext)
 from array_api_tests.dtype_helpers import dtype_to_name
 from array_api_tests import _array_module as xp
+
+from types import BuiltinFunctionType, FunctionType
+import dataclasses
+
+from hypothesis.strategies import SearchStrategy
 
 from pytest import mark, fixture
 
 def to_json_serializable(o):
     if o in dtype_to_name:
         return dtype_to_name[o]
-    if isinstance(o, UnaryParamContext):
-        return {'func_name': o.func_name}
-    if isinstance(o, BinaryParamContext):
-        return {
-            'func_name': o.func_name,
-            'left_sym': o.left_sym,
-            'right_sym': o.right_sym,
-            'right_is_scalar': o.right_is_scalar,
-            'res_name': o.res_name,
-        }
+    if isinstance(o, (BuiltinFunctionType, FunctionType)):
+        return o.__name__
+    if dataclasses.is_dataclass(o):
+        return to_json_serializable(dataclasses.asdict(o))
+    if isinstance(o, SearchStrategy):
+        return repr(o)
     if isinstance(o, dict):
         return {to_json_serializable(k): to_json_serializable(v) for k, v in o.items()}
     if isinstance(o, tuple):
+        if hasattr(o, '_asdict'): # namedtuple
+            return to_json_serializable(o._asdict())
         return tuple(to_json_serializable(i) for i in o)
     if isinstance(o, list):
         return [to_json_serializable(i) for i in o]
@@ -55,4 +57,5 @@ def add_api_name_to_metadata(request, json_metadata):
     json_metadata['array_api_function_name'] = array_api_function_name
 
     if hasattr(request.node, 'callspec'):
-        json_metadata['params'] = to_json_serializable(request.node.callspec.params)
+        params = request.node.callspec.params
+        json_metadata['params'] = to_json_serializable(params)
