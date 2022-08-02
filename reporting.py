@@ -1,5 +1,6 @@
 from array_api_tests.dtype_helpers import dtype_to_name
 from array_api_tests import _array_module as xp
+from array_api_tests import __version__
 
 from types import BuiltinFunctionType, FunctionType
 import dataclasses
@@ -34,6 +35,7 @@ def pytest_metadata(metadata):
     Additional global metadata for --json-report.
     """
     metadata['array_api_tests_module'] = xp.mod_name
+    metadata['array_api_tests_version'] = __version__
 
 @fixture(autouse=True)
 def add_api_name_to_metadata(request, json_metadata):
