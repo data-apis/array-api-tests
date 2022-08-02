@@ -5,6 +5,7 @@ from array_api_tests import __version__
 from types import BuiltinFunctionType, FunctionType
 import dataclasses
 import json
+import warnings
 
 from hypothesis.strategies import SearchStrategy
 
@@ -32,6 +33,14 @@ def to_json_serializable(o):
     if isinstance(o, list):
         return [to_json_serializable(i) for i in o]
 
+    # Ensure everything is JSON serializable. If this warning is issued, it
+    # means the given type needs to be added above if possible.
+    try:
+        json.dumps(o)
+    except TypeError:
+        warnings.warn(f"{o!r} (of type {type(o)}) is not JSON-serializable. Using the repr instead.")
+        return repr(o)
+
     return o
 
 @mark.optionalhook
@@ -49,9 +58,6 @@ def add_extra_json_metadata(request, json_metadata):
     """
     def add_metadata(name, obj):
         obj = to_json_serializable(obj)
-        # Ensure everything is JSON serializable. If this errors, it means the
-        # given type needs to be added to to_json_serializable above.
-        json.dumps(obj)
         json_metadata[name] = obj
 
     test_module = request.module.__name__
