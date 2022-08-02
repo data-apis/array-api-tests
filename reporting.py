@@ -38,7 +38,8 @@ def pytest_metadata(metadata):
     metadata['array_api_tests_module'] = xp.mod_name
     metadata['array_api_tests_version'] = __version__
 
-@fixture(autouse=True)
+# This is dynamically decorated as a fixture in pytest_collection_modifyitems
+# when --json-report is used.
 def add_api_name_to_metadata(request, json_metadata):
     """
     Additional per-test metadata for --json-report
