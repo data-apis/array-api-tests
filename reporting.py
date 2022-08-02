@@ -8,7 +8,7 @@ import json
 
 from hypothesis.strategies import SearchStrategy
 
-from pytest import mark
+from pytest import mark, fixture
 try:
     import pytest_jsonreport # noqa
 except ImportError:
@@ -42,8 +42,7 @@ def pytest_metadata(metadata):
     metadata['array_api_tests_module'] = xp.mod_name
     metadata['array_api_tests_version'] = __version__
 
-# This is dynamically decorated as a fixture in pytest_collection_modifyitems
-# when --json-report is used.
+@fixture(autouse=True)
 def add_extra_json_metadata(request, json_metadata):
     """
     Additional per-test metadata for --json-report

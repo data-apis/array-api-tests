@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from hypothesis import settings
-from pytest import mark, fixture
+from pytest import mark
 
 from array_api_tests import _array_module as xp
 from array_api_tests._array_module import _UndefinedStub
@@ -126,6 +126,3 @@ def pytest_collection_modifyitems(config, items):
             ci_mark = next((m for m in markers if m.name == "ci"), None)
             if ci_mark is None:
                 item.add_marker(mark.skip(reason="disabled via --ci"))
-
-    if config.getoption('--json-report'):
-        fixture(autouse=True)(add_extra_json_metadata)
