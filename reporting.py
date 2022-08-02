@@ -40,7 +40,7 @@ def pytest_metadata(metadata):
 
 # This is dynamically decorated as a fixture in pytest_collection_modifyitems
 # when --json-report is used.
-def add_api_name_to_metadata(request, json_metadata):
+def add_extra_json_metadata(request, json_metadata):
     """
     Additional per-test metadata for --json-report
     """
