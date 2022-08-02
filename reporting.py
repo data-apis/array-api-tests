@@ -8,7 +8,7 @@ import json
 
 from hypothesis.strategies import SearchStrategy
 
-from pytest import mark, fixture
+from pytest import mark
 
 def to_json_serializable(o):
     if o in dtype_to_name:

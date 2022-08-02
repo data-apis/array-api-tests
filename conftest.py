@@ -7,7 +7,7 @@ from pytest import mark, fixture
 from array_api_tests import _array_module as xp
 from array_api_tests._array_module import _UndefinedStub
 
-from reporting import pytest_metadata, add_api_name_to_metadata # noqa
+from reporting import pytest_metadata, add_extra_json_metadata # noqa
 
 settings.register_profile("xp_default", deadline=800)
 
@@ -128,4 +128,4 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(mark.skip(reason="disabled via --ci"))
 
     if config.getoption('--json-report'):
-        fixture(autouse=True)(add_api_name_to_metadata)
+        fixture(autouse=True)(add_extra_json_metadata)
