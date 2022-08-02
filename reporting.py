@@ -61,3 +61,13 @@ def add_api_name_to_metadata(request, json_metadata):
     if hasattr(request.node, 'callspec'):
         params = request.node.callspec.params
         json_metadata['params'] = to_json_serializable(params)
+
+    def finalizer():
+        # TODO: This metadata is all in the form of error strings. It might be
+        # nice to extract the hypothesis failing inputs directly somehow.
+        if hasattr(request.node, 'hypothesis_report_information'):
+            json_metadata['hypothesis_report_information'] = request.node.hypothesis_report_information
+        if hasattr(request.node, 'hypothesis_statistics'):
+            json_metadata['hypothesis_statistics'] = request.node.hypothesis_statistics
+
+    request.addfinalizer(finalizer)
