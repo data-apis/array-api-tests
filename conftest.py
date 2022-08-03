@@ -126,8 +126,3 @@ def pytest_collection_modifyitems(config, items):
             ci_mark = next((m for m in markers if m.name == "ci"), None)
             if ci_mark is None:
                 item.add_marker(mark.skip(reason="disabled via --ci"))
-
-    # Avoid long tracebacks for the JSON report, which make the file too
-    # large.
-    if config.getoption('--json-report'):
-        config.option.tbstyle = 'native'
