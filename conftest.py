@@ -7,7 +7,7 @@ from pytest import mark
 from array_api_tests import _array_module as xp
 from array_api_tests._array_module import _UndefinedStub
 
-from reporting import pytest_metadata, add_extra_json_metadata # noqa
+from reporting import pytest_metadata, pytest_json_modifyreport, add_extra_json_metadata # noqa
 
 settings.register_profile("xp_default", deadline=800)
 

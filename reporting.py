@@ -2,6 +2,7 @@ from array_api_tests.dtype_helpers import dtype_to_name
 from array_api_tests import _array_module as xp
 from array_api_tests import __version__
 
+from collections import Counter
 from types import BuiltinFunctionType, FunctionType
 import dataclasses
 import json
@@ -89,3 +90,19 @@ def add_extra_json_metadata(request, json_metadata):
             add_metadata('hypothesis_statistics', request.node.hypothesis_statistics)
 
     request.addfinalizer(finalizer)
+
+def pytest_json_modifyreport(json_report):
+    # Deduplicate warnings. These duplicate warnings can cause the file size
+    # to become huge. For instance, a warning from np.bool which is emitted
+    # every time hypothesis runs (over a million times) causes the warnings
+    # JSON for a plain numpy namespace run to be over 500MB.
+
+    # This will lose information about what order the warnings were issued in,
+    # but that isn't particularly helpful anyway since the warning metadata
+    # doesn't store a full stack of where it was issued from. The resulting
+    # warnings will be in order of the first time each warning is issued since
+    # collections.Counter is ordered just like dict().
+    counted_warnings = Counter([frozenset(i.items()) for i in json_report['warnings']])
+    deduped_warnings = [{**dict(i), 'count': counted_warnings[i]} for i in counted_warnings]
+
+    json_report['warnings'] = deduped_warnings
