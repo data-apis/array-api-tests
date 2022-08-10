@@ -55,12 +55,12 @@ class EqualityMapping(Mapping):
         keys = [k for k, _ in key_value_pairs]
         for i, key in enumerate(keys):
             if not (key == key):  # specifically checking __eq__, not __neq__
-                raise ValueError("Key {key!r} does not have equality with itself")
+                raise ValueError(f"Key {key!r} does not have equality with itself")
             other_keys = keys[:]
             other_keys.pop(i)
             for other_key in other_keys:
                 if key == other_key:
-                    raise ValueError("Key {key!r} has equality with key {other_key!r}")
+                    raise ValueError(f"Key {key!r} has equality with key {other_key!r}")
         self._key_value_pairs = key_value_pairs
 
     def __getitem__(self, key):
