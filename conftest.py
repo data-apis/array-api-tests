@@ -7,8 +7,9 @@ from pytest import mark
 from array_api_tests import _array_module as xp
 from array_api_tests._array_module import _UndefinedStub
 
-settings.register_profile("xp_default", deadline=800)
+from reporting import pytest_metadata, pytest_json_modifyreport, add_extra_json_metadata # noqa
 
+settings.register_profile("xp_default", deadline=800)
 
 def pytest_addoption(parser):
     # Hypothesis max examples
@@ -120,7 +121,7 @@ def pytest_collection_modifyitems(config, items):
                         mark.skip(reason="disabled via --disable-data-dependent-shapes")
                     )
                     break
-        # skip if test not appropiate for CI
+        # skip if test not appropriate for CI
         if ci:
             ci_mark = next((m for m in markers if m.name == "ci"), None)
             if ci_mark is None:

@@ -9,6 +9,7 @@ from typing import Dict, List
 __all__ = [
     "name_to_func",
     "array_methods",
+    "array_attributes",
     "category_to_funcs",
     "EXTENSIONS",
     "extension_to_funcs",
@@ -32,6 +33,10 @@ for path in sigs_dir.glob("*.py"):
 array = name_to_mod["array_object"].array
 array_methods = [
     f for n, f in inspect.getmembers(array, predicate=inspect.isfunction)
+    if n != "__init__"  # probably exists for Sphinx
+]
+array_attributes = [
+    n for n, f in inspect.getmembers(array, predicate=lambda x: not inspect.isfunction(x))
     if n != "__init__"  # probably exists for Sphinx
 ]
 
