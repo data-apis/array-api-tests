@@ -91,6 +91,7 @@ def add_extra_json_metadata(request, json_metadata):
 
     request.addfinalizer(finalizer)
 
+@mark.optionalhook
 def pytest_json_modifyreport(json_report):
     # Deduplicate warnings. These duplicate warnings can cause the file size
     # to become huge. For instance, a warning from np.bool which is emitted
