@@ -1,0 +1,267 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "duration": {
+            "type": "number"
+        },
+        "summary": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "type": "integer"
+                },
+                "collected": {
+                    "type": "integer"
+                },
+                "passed": {
+                    "type": "integer"
+                },
+                "failed": {
+                    "type": "integer"
+                }
+            }
+        },
+        "environment": {
+            "type": "object",
+            "properties": {
+                "Platform": {
+                    "type": "string"
+                },
+                "Packages": {
+                    "type": "object",
+                    "properties": {
+                        "pytest": {
+                            "type": "string"
+                        },
+                        "pluggy": {
+                            "type": "string"
+                        },
+                        "py": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "array_api_tests_version": {
+                    "type": "string"
+                },
+                "array_api_tests_module": {
+                    "type": "string"
+                },
+                "Python": {
+                    "type": "string"
+                },
+                "Plugins": {
+                    "type": "object",
+                    "properties": {
+                        "metadata": {
+                            "type": "string"
+                        },
+                        "dependency": {
+                            "type": "string"
+                        },
+                        "pudb": {
+                            "type": "string"
+                        },
+                        "json-report": {
+                            "type": "string"
+                        },
+                        "html": {
+                            "type": "string"
+                        },
+                        "cov": {
+                            "type": "string"
+                        },
+                        "hypothesis": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "collectors": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "result": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "lineno": {
+                                    "type": "integer"
+                                },
+                                "type": {
+                                    "type": "string"
+                                },
+                                "nodeid": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "nodeid": {
+                        "type": "string"
+                    },
+                    "outcome": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "tests": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "call": {
+                        "type": "object",
+                        "properties": {
+                            "duration": {
+                                "type": "number"
+                            },
+                            "longrepr": {
+                                "type": "string"
+                            },
+                            "traceback": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "lineno": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            },
+                            "outcome": {
+                                "type": "string"
+                            },
+                            "crash": {
+                                "type": "object",
+                                "properties": {
+                                    "path": {
+                                        "type": "string"
+                                    },
+                                    "lineno": {
+                                        "type": "integer"
+                                    },
+                                    "message": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "test_module": {
+                                "type": "string"
+                            },
+                            "array_api_function_name": {
+                                "type": "string"
+                            },
+                            "hypothesis_statistics": {
+                                "type": "string"
+                            },
+                            "test_function": {
+                                "type": "string"
+                            },
+                            "params": {
+                                "type": "object",
+                                "properties": {
+                                    "extension": {
+                                        "type": "string"
+                                    },
+                                    "stub": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "lineno": {
+                        "type": "integer"
+                    },
+                    "keywords": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "setup": {
+                        "type": "object",
+                        "properties": {
+                            "duration": {
+                                "type": "number"
+                            },
+                            "outcome": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "nodeid": {
+                        "type": "string"
+                    },
+                    "teardown": {
+                        "type": "object",
+                        "properties": {
+                            "duration": {
+                                "type": "number"
+                            },
+                            "outcome": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "outcome": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "created": {
+            "type": "number"
+        },
+        "root": {
+            "type": "string"
+        },
+        "warnings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "lineno": {
+                        "type": "integer"
+                    },
+                    "filename": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer"
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "when": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "exitcode": {
+            "type": "integer"
+        }
+    }
+}
