@@ -19,8 +19,18 @@
                 },
                 "failed": {
                     "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "deselected": {
+                    "type": "integer"
                 }
-            }
+            },
+            "additionalProperties": false,
+            "required": [
+                "total"
+            ]
         },
         "environment": {
             "type": "object",
@@ -40,7 +50,15 @@
                         "py": {
                             "type": "string"
                         }
-                    }
+                    },
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "required": [
+                        "pytest",
+                        "pluggy",
+                        "py"
+                    ]
                 },
                 "array_api_tests_version": {
                     "type": "string"
@@ -57,27 +75,31 @@
                         "metadata": {
                             "type": "string"
                         },
-                        "dependency": {
-                            "type": "string"
-                        },
-                        "pudb": {
-                            "type": "string"
-                        },
                         "json-report": {
-                            "type": "string"
-                        },
-                        "html": {
-                            "type": "string"
-                        },
-                        "cov": {
                             "type": "string"
                         },
                         "hypothesis": {
                             "type": "string"
                         }
-                    }
+                    },
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "required": [
+                        "metadata",
+                        "json-report",
+                        "hypothesis"
+                    ]
                 }
-            }
+            },
+            "required": [
+                "Platform",
+                "Packages",
+                "array_api_tests_version",
+                "array_api_tests_module",
+                "Python",
+                "Plugins"
+            ]
         },
         "collectors": {
             "type": "array",
@@ -98,7 +120,12 @@
                                 "nodeid": {
                                     "type": "string"
                                 }
-                            }
+                            },
+                            "additionalProperties": false,
+                            "required": [
+                                "type",
+                                "nodeid"
+                            ]
                         }
                     },
                     "nodeid": {
@@ -106,8 +133,17 @@
                     },
                     "outcome": {
                         "type": "string"
+                    },
+                    "longrepr": {
+                        "type": "string"
                     }
-                }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "result",
+                    "nodeid",
+                    "outcome"
+                ]
             }
         },
         "tests": {
@@ -138,7 +174,12 @@
                                         "message": {
                                             "type": "string"
                                         }
-                                    }
+                                    },
+                                    "required": [
+                                        "path",
+                                        "lineno",
+                                        "message"
+                                    ]
                                 }
                             },
                             "outcome": {
@@ -156,9 +197,35 @@
                                     "message": {
                                         "type": "string"
                                     }
-                                }
+                                },
+                                "required": [
+                                    "path",
+                                    "lineno",
+                                    "message"
+                                ]
+                            },
+                            "stdout": {
+                                "type": "string"
+                            },
+                            "stderr": {
+                                "type": "string"
+                            },
+                            "stdout": {
+                                "type": "string"
                             }
-                        }
+                        },
+                        "additionalProperties": {
+                            "type": [
+                                "number",
+                                "string",
+                                "array",
+                                "object"
+                            ]
+                        },
+                        "required": [
+                            "duration",
+                            "outcome"
+                        ]
                     },
                     "metadata": {
                         "type": "object",
@@ -167,26 +234,33 @@
                                 "type": "string"
                             },
                             "array_api_function_name": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "hypothesis_statistics": {
                                 "type": "string"
+                            },
+                            "hypothesis_report_information": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
                             },
                             "test_function": {
                                 "type": "string"
                             },
                             "params": {
-                                "type": "object",
-                                "properties": {
-                                    "extension": {
-                                        "type": "string"
-                                    },
-                                    "stub": {
-                                        "type": "string"
-                                    }
-                                }
+                                "type": "object"
                             }
-                        }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "test_module",
+                            "array_api_function_name",
+                            "test_function"
+                        ]
                     },
                     "lineno": {
                         "type": "integer"
@@ -205,8 +279,16 @@
                             },
                             "outcome": {
                                 "type": "string"
+                            },
+                            "longrepr": {
+                                "type": "string"
                             }
-                        }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "duration",
+                            "outcome"
+                        ]
                     },
                     "nodeid": {
                         "type": "string"
@@ -220,12 +302,26 @@
                             "outcome": {
                                 "type": "string"
                             }
-                        }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "duration",
+                            "outcome"
+                        ]
                     },
                     "outcome": {
                         "type": "string"
                     }
-                }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "lineno",
+                    "keywords",
+                    "setup",
+                    "nodeid",
+                    "teardown",
+                    "outcome"
+                ]
             }
         },
         "created": {
@@ -257,11 +353,32 @@
                     "when": {
                         "type": "string"
                     }
-                }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "lineno",
+                    "filename",
+                    "count",
+                    "category",
+                    "message",
+                    "when"
+                ]
             }
         },
         "exitcode": {
             "type": "integer"
         }
-    }
+    },
+    "additionalProperties": false,
+    "required": [
+        "duration",
+        "summary",
+        "environment",
+        "collectors",
+        "tests",
+        "created",
+        "root",
+        "warnings",
+        "exitcode"
+    ]
 }
