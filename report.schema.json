@@ -23,6 +23,9 @@
                 "skipped": {
                     "type": "integer"
                 },
+                "error": {
+                    "type": "integer"
+                },
                 "deselected": {
                     "type": "integer"
                 }
@@ -150,14 +153,17 @@
             "type": "array",
             "items": {
                 "type": "object",
-                "properties": {
-                    "call": {
+                "$defs": {
+                    "teststage": {
                         "type": "object",
                         "properties": {
                             "duration": {
                                 "type": "number"
                             },
                             "longrepr": {
+                                "type": "string"
+                            },
+                            "outcome": {
                                 "type": "string"
                             },
                             "traceback": {
@@ -181,9 +187,6 @@
                                         "message"
                                     ]
                                 }
-                            },
-                            "outcome": {
-                                "type": "string"
                             },
                             "crash": {
                                 "type": "object",
@@ -214,18 +217,25 @@
                                 "type": "string"
                             }
                         },
-                        "additionalProperties": {
-                            "type": [
-                                "number",
-                                "string",
-                                "array",
-                                "object"
-                            ]
-                        },
+                        "additionalProperties": false,
                         "required": [
                             "duration",
                             "outcome"
                         ]
+                    }
+                },
+                "properties": {
+                    "call": {
+                        "$ref": "#/properties/tests/items/$defs/teststage"
+                    },
+                    "crash": {
+                        "$ref": "#/properties/tests/items/$defs/teststage"
+                    },
+                    "teardown": {
+                        "$ref": "#/properties/tests/items/$defs/teststage"
+                    },
+                    "setup": {
+                        "$ref": "#/properties/tests/items/$defs/teststage"
                     },
                     "metadata": {
                         "type": "object",
@@ -271,43 +281,8 @@
                             "type": "string"
                         }
                     },
-                    "setup": {
-                        "type": "object",
-                        "properties": {
-                            "duration": {
-                                "type": "number"
-                            },
-                            "outcome": {
-                                "type": "string"
-                            },
-                            "longrepr": {
-                                "type": "string"
-                            }
-                        },
-                        "additionalProperties": false,
-                        "required": [
-                            "duration",
-                            "outcome"
-                        ]
-                    },
                     "nodeid": {
                         "type": "string"
-                    },
-                    "teardown": {
-                        "type": "object",
-                        "properties": {
-                            "duration": {
-                                "type": "number"
-                            },
-                            "outcome": {
-                                "type": "string"
-                            }
-                        },
-                        "additionalProperties": false,
-                        "required": [
-                            "duration",
-                            "outcome"
-                        ]
                     },
                     "outcome": {
                         "type": "string"
