@@ -75,4 +75,6 @@ jobs:
 
         EOF
 
-        pytest -v -rxXfE --ci
+        pytest -v -rxXfE --ci --json-report
+    - name: Verify JSON report against schema
+      run: ./verify_report.py
