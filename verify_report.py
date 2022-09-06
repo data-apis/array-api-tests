@@ -19,6 +19,9 @@ def main():
     with open(report_file) as f:
         report = json.load(f)
 
+    # Make sure there are no nans in the report
+    json.dumps(report, allow_nan=False)
+
     jsonschema.validate(report, schema)
 
 if __name__ == '__main__':
