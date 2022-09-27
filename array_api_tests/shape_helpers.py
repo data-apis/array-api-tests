@@ -156,6 +156,8 @@ def fmt_i(i: AtomicIndex) -> str:
         if i.step is not None:
             res += f":{i.step}"
         return res
+    elif i is None:
+        return "None"
     else:
         return "..."
 

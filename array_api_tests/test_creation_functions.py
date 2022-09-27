@@ -7,12 +7,12 @@ from hypothesis import assume, given, note
 from hypothesis import strategies as st
 
 from . import _array_module as xp
-from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
+from .test_operators_and_elementwise_functions import oneway_promotable_dtypes
 from .typing import DataType, Scalar
 
 pytestmark = pytest.mark.ci
@@ -181,12 +181,12 @@ def test_arange(dtype, data):
     if dh.is_int_dtype(_dtype):
         elements = list(r)
         assume(out.size == len(elements))
-        ah.assert_exactly_equal(out, ah.asarray(elements, dtype=_dtype))
+        ph.assert_array_elements("arange", out, xp.asarray(elements, dtype=_dtype))
     else:
         assume(out.size == size)
         if out.size > 0:
-            assert ah.equal(
-                out[0], ah.asarray(_start, dtype=out.dtype)
+            assert xp.equal(
+                out[0], xp.asarray(_start, dtype=out.dtype)
             ), f"out[0]={out[0]}, but should be {_start} {f_func}"
 
 
@@ -246,11 +246,25 @@ def test_asarray_scalars(shape, data):
         ph.assert_scalar_equals("asarray", scalar_type, idx, v, v_expect, **kw)
 
 
-@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()), st.data())
-def test_asarray_arrays(x, data):
-    # TODO: test other valid dtypes
+def scalar_eq(s1: Scalar, s2: Scalar) -> bool:
+    if math.isnan(s1):
+        return math.isnan(s2)
+    else:
+        return s1 == s2
+
+
+@given(
+    shape=hh.shapes(),
+    dtypes=oneway_promotable_dtypes(dh.all_dtypes),
+    data=st.data(),
+)
+def test_asarray_arrays(shape, dtypes, data):
+    x = data.draw(xps.arrays(dtype=dtypes.input_dtype, shape=shape), label="x")
+    dtypes_strat = st.just(dtypes.input_dtype)
+    if dtypes.input_dtype == dtypes.result_dtype:
+        dtypes_strat |= st.none()
     kw = data.draw(
-        hh.kwargs(dtype=st.none() | st.just(x.dtype), copy=st.none() | st.booleans()),
+        hh.kwargs(dtype=dtypes_strat, copy=st.none() | st.booleans()),
         label="kw",
     )
 
@@ -262,27 +276,35 @@ def test_asarray_arrays(x, data):
     else:
         ph.assert_kw_dtype("asarray", dtype, out.dtype)
     ph.assert_shape("asarray", out.shape, x.shape)
-    if dtype is None or dtype == x.dtype:
-        ph.assert_array("asarray", out, x, **kw)
-    else:
-        pass  # TODO
+    ph.assert_array_elements("asarray", out, x, **kw)
     copy = kw.get("copy", None)
     if copy is not None:
+        stype = dh.get_scalar_type(x.dtype)
         idx = data.draw(xps.indices(x.shape, max_dims=0), label="mutating idx")
-        _dtype = x.dtype if dtype is None else dtype
-        old_value = x[idx]
+        old_value = stype(x[idx])
+        scalar_strat = xps.from_dtype(dtypes.input_dtype).filter(
+            lambda n: not scalar_eq(n, old_value)
+        )
         value = data.draw(
-            xps.arrays(dtype=_dtype, shape=()).filter(lambda y: y != old_value),
+            scalar_strat | scalar_strat.map(lambda n: xp.asarray(n, dtype=x.dtype)),
             label="mutating value",
         )
         x[idx] = value
         note(f"mutated {x=}")
+        # sanity check
+        ph.assert_scalar_equals(
+            "__setitem__", stype, idx, stype(x[idx]), value, repr_name="x"
+        )
+        new_out_value = stype(out[idx])
+        f_out = f"{sh.fmt_idx('out', idx)}={new_out_value}"
         if copy:
-            assert not xp.all(
-                out == x
-            ), f"xp.all(out == x)=True, but should be False after x was mutated\n{out=}"
-        elif copy is False:
-            pass  # TODO
+            assert scalar_eq(
+                new_out_value, old_value
+            ), f"{f_out}, but should be {old_value} even after x was mutated"
+        else:
+            assert scalar_eq(
+                new_out_value, value
+            ), f"{f_out}, but should be {value} after x was mutated"
 
 
 @given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
@@ -409,26 +431,9 @@ def test_full_like(x, fill_value, kw):
 finite_kw = {"allow_nan": False, "allow_infinity": False}
 
 
-def int_stops(
-    start: int, num, dtype: DataType, endpoint: bool
-) -> st.SearchStrategy[int]:
-    min_gap = num
-    if endpoint:
-        min_gap += 1
-    m, M = dh.dtype_ranges[dtype]
-    max_pos_gap = M - start
-    max_neg_gap = start - m
-    max_pos_mul = max_pos_gap // min_gap
-    max_neg_mul = max_neg_gap // min_gap
-    return st.one_of(
-        st.integers(0, max_pos_mul).map(lambda n: start + min_gap * n),
-        st.integers(0, max_neg_mul).map(lambda n: start - min_gap * n),
-    )
-
-
 @given(
     num=hh.sizes,
-    dtype=st.none() | xps.numeric_dtypes(),
+    dtype=st.none() | xps.floating_dtypes(),
     endpoint=st.booleans(),
     data=st.data(),
 )
@@ -436,16 +441,10 @@ def test_linspace(num, dtype, endpoint, data):
     _dtype = dh.default_float if dtype is None else dtype
 
     start = data.draw(xps.from_dtype(_dtype, **finite_kw), label="start")
-    if dh.is_float_dtype(_dtype):
-        stop = data.draw(xps.from_dtype(_dtype, **finite_kw), label="stop")
-        # avoid overflow errors
-        assume(not ah.isnan(ah.asarray(stop - start, dtype=_dtype)))
-        assume(not ah.isnan(ah.asarray(start - stop, dtype=_dtype)))
-    else:
-        if num == 0:
-            stop = start
-        else:
-            stop = data.draw(int_stops(start, num, _dtype, endpoint), label="stop")
+    stop = data.draw(xps.from_dtype(_dtype, **finite_kw), label="stop")
+    # avoid overflow errors
+    assume(not xp.isnan(xp.asarray(stop - start, dtype=_dtype)))
+    assume(not xp.isnan(xp.asarray(start - stop, dtype=_dtype)))
 
     kw = data.draw(
         hh.specified_kwargs(
@@ -463,20 +462,20 @@ def test_linspace(num, dtype, endpoint, data):
     ph.assert_shape("linspace", out.shape, num, start=stop, stop=stop, num=num)
     f_func = f"[linspace({start}, {stop}, {num})]"
     if num > 0:
-        assert ah.equal(
-            out[0], ah.asarray(start, dtype=out.dtype)
+        assert xp.equal(
+            out[0], xp.asarray(start, dtype=out.dtype)
         ), f"out[0]={out[0]}, but should be {start} {f_func}"
     if endpoint:
         if num > 1:
-            assert ah.equal(
-                out[-1], ah.asarray(stop, dtype=out.dtype)
+            assert xp.equal(
+                out[-1], xp.asarray(stop, dtype=out.dtype)
             ), f"out[-1]={out[-1]}, but should be {stop} {f_func}"
     else:
         # linspace(..., num, endpoint=True) should return an array equivalent to
         # the first num elements when endpoint=False
         expected = xp.linspace(start, stop, num + 1, dtype=dtype, endpoint=True)
         expected = expected[:-1]
-        ah.assert_exactly_equal(out, expected)
+        ph.assert_array_elements("linspace", out, expected)
 
 
 @given(dtype=xps.numeric_dtypes(), data=st.data())

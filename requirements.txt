@@ -1,5 +1,4 @@
 pytest
-hypothesis>=6.31.1
+pytest-json-report
+hypothesis>=6.45.0
 ndindex>=1.6
-regex
-removestar

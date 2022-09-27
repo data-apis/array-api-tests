@@ -16,7 +16,7 @@ from . import xps
 from ._array_module import _UndefinedStub
 from ._array_module import bool as bool_dtype
 from ._array_module import broadcast_to, eye, float32, float64, full
-from .function_stubs import elementwise_functions
+from .stubs import category_to_funcs
 from .pytest_helpers import nargs
 from .typing import Array, DataType, Shape
 
@@ -110,7 +110,7 @@ def mutually_promotable_dtypes(
 # will both correspond to the same function.
 
 # TODO: Extend this to all functions, not just elementwise
-elementwise_functions_names = shared(sampled_from(elementwise_functions.__all__))
+elementwise_functions_names = shared(sampled_from([f.__name__ for f in category_to_funcs["elementwise"]]))
 array_functions_names = elementwise_functions_names
 multiarg_array_functions_names = array_functions_names.filter(
     lambda func_name: nargs(func_name) > 1)

@@ -13,7 +13,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import xps
-from .function_stubs import elementwise_functions
+from .stubs import category_to_funcs
 from .typing import DataType, Param, ScalarType
 
 bitwise_shift_funcs = [
@@ -52,7 +52,7 @@ def mark_stubbed_dtypes(*dtypes):
 
 
 func_params: List[Param[str, Tuple[DataType, ...], DataType]] = []
-for func_name in elementwise_functions.__all__:
+for func_name in [f.__name__ for f in category_to_funcs["elementwise"]]:
     valid_in_dtypes = dh.func_in_dtypes[func_name]
     ndtypes = ph.nargs(func_name)
     if ndtypes == 1:

@@ -3,10 +3,9 @@ from inspect import getfullargspec
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 from . import _array_module as xp
-from . import array_helpers as ah
 from . import dtype_helpers as dh
-from . import function_stubs
 from . import shape_helpers as sh
+from . import stubs
 from .typing import Array, DataType, Scalar, ScalarType, Shape
 
 __all__ = [
@@ -26,7 +25,7 @@ __all__ = [
     "assert_keepdimable_shape",
     "assert_0d_equals",
     "assert_fill",
-    "assert_array",
+    "assert_array_elements",
 ]
 
 
@@ -65,7 +64,7 @@ def doesnt_raise(function, message=""):
 
 
 def nargs(func_name):
-    return len(getfullargspec(getattr(function_stubs, func_name)).args)
+    return len(getfullargspec(stubs.name_to_func[func_name]).args)
 
 
 def fmt_kw(kw: Dict[str, Any]) -> str:
@@ -88,7 +87,41 @@ def assert_dtype(
     *,
     repr_name: str = "out.dtype",
 ):
-    in_dtypes = in_dtype if isinstance(in_dtype, Sequence) else [in_dtype]
+    """
+    Assert the output dtype is as expected.
+
+    If expected=None, we infer the expected dtype as in_dtype, to test
+    out_dtype, e.g.
+
+        >>> x = xp.arange(5, dtype=xp.uint8)
+        >>> out = xp.abs(x)
+        >>> assert_dtype('abs', x.dtype, out.dtype)
+
+        is equivalent to
+
+        >>> assert out.dtype == xp.uint8
+
+    Or for multiple input dtypes, the expected dtype is inferred from their
+    resulting type promotion, e.g.
+
+        >>> x1 = xp.arange(5, dtype=xp.uint8)
+        >>> x2 = xp.arange(5, dtype=xp.uint16)
+        >>> out = xp.add(x1, x2)
+        >>> assert_dtype('add', [x1.dtype, x2.dtype], out.dtype)
+
+        is equivalent to
+
+        >>> assert out.dtype == xp.uint16
+
+    We can also specify the expected dtype ourselves, e.g.
+
+        >>> x = xp.arange(5, dtype=xp.int8)
+        >>> out = xp.sum(x)
+        >>> default_int = xp.asarray(0).dtype
+        >>> assert_dtype('sum', x, out.dtype, default_int)
+
+    """
+    in_dtypes = in_dtype if isinstance(in_dtype, Sequence) and not isinstance(in_dtype, str) else [in_dtype]
     f_in_dtypes = dh.fmt_types(tuple(in_dtypes))
     f_out_dtype = dh.dtype_to_name[out_dtype]
     if expected is None:
@@ -102,6 +135,14 @@ def assert_dtype(
 
 
 def assert_kw_dtype(func_name: str, kw_dtype: DataType, out_dtype: DataType):
+    """
+    Assert the output dtype is the passed keyword dtype, e.g.
+
+        >>> kw = {'dtype': xp.uint8}
+        >>> out = xp.ones(5, **kw)
+        >>> assert_kw_dtype('ones', kw['dtype'], out.dtype)
+
+    """
     f_kw_dtype = dh.dtype_to_name[kw_dtype]
     f_out_dtype = dh.dtype_to_name[out_dtype]
     msg = (
@@ -111,33 +152,54 @@ def assert_kw_dtype(func_name: str, kw_dtype: DataType, out_dtype: DataType):
     assert out_dtype == kw_dtype, msg
 
 
-def assert_default_float(func_name: str, dtype: DataType):
-    f_dtype = dh.dtype_to_name[dtype]
+def assert_default_float(func_name: str, out_dtype: DataType):
+    """
+    Assert the output dtype is the default float, e.g.
+
+        >>> out = xp.ones(5)
+        >>> assert_default_float('ones', out.dtype)
+
+    """
+    f_dtype = dh.dtype_to_name[out_dtype]
     f_default = dh.dtype_to_name[dh.default_float]
     msg = (
         f"out.dtype={f_dtype}, should be default "
         f"floating-point dtype {f_default} [{func_name}()]"
     )
-    assert dtype == dh.default_float, msg
+    assert out_dtype == dh.default_float, msg
 
 
-def assert_default_int(func_name: str, dtype: DataType):
-    f_dtype = dh.dtype_to_name[dtype]
+def assert_default_int(func_name: str, out_dtype: DataType):
+    """
+    Assert the output dtype is the default int, e.g.
+
+        >>> out = xp.full(5, 42)
+        >>> assert_default_int('full', out.dtype)
+
+    """
+    f_dtype = dh.dtype_to_name[out_dtype]
     f_default = dh.dtype_to_name[dh.default_int]
     msg = (
         f"out.dtype={f_dtype}, should be default "
         f"integer dtype {f_default} [{func_name}()]"
     )
-    assert dtype == dh.default_int, msg
+    assert out_dtype == dh.default_int, msg
 
 
-def assert_default_index(func_name: str, dtype: DataType, repr_name="out.dtype"):
-    f_dtype = dh.dtype_to_name[dtype]
+def assert_default_index(func_name: str, out_dtype: DataType, repr_name="out.dtype"):
+    """
+    Assert the output dtype is the default index dtype, e.g.
+
+        >>> out = xp.argmax(xp.arange(5))
+        >>> assert_default_int('argmax', out.dtype)
+
+    """
+    f_dtype = dh.dtype_to_name[out_dtype]
     msg = (
         f"{repr_name}={f_dtype}, should be the default index dtype, "
         f"which is either int32 or int64 [{func_name}()]"
     )
-    assert dtype in (xp.int32, xp.int64), msg
+    assert out_dtype in (xp.int32, xp.int64), msg
 
 
 def assert_shape(
@@ -148,6 +210,13 @@ def assert_shape(
     repr_name="out.shape",
     **kw,
 ):
+    """
+    Assert the output shape is as expected, e.g.
+
+        >>> out = xp.ones((3, 3, 3))
+        >>> assert_shape('ones', out.shape, (3, 3, 3))
+
+    """
     if isinstance(out_shape, int):
         out_shape = (out_shape,)
     if isinstance(expected, int):
@@ -168,6 +237,20 @@ def assert_result_shape(
     repr_name="out.shape",
     **kw,
 ):
+    """
+    Assert the output shape is as expected.
+
+    If expected=None, we infer the expected shape as the result of broadcasting
+    in_shapes, to test against out_shape, e.g.
+
+        >>> out = xp.add(xp.ones((3, 1)), xp.ones((1, 3)))
+        >>> assert_shape('add', [(3, 1), (1, 3)], out.shape)
+
+        is equivalent to
+
+        >>> assert out.shape == (3, 3)
+
+    """
     if expected is None:
         expected = sh.broadcast_shapes(*in_shapes)
     f_in_shapes = " . ".join(str(s) for s in in_shapes)
@@ -180,13 +263,28 @@ def assert_result_shape(
 
 def assert_keepdimable_shape(
     func_name: str,
-    out_shape: Shape,
     in_shape: Shape,
+    out_shape: Shape,
     axes: Tuple[int, ...],
     keepdims: bool,
     /,
     **kw,
 ):
+    """
+    Assert the output shape from a keepdimable function is as expected, e.g.
+
+        >>> x = xp.asarray([[0, 1, 2], [3, 4, 5], [6, 7, 8]])
+        >>> out1 = xp.max(x, keepdims=False)
+        >>> out2 = xp.max(x, keepdims=True)
+        >>> assert_keepdimable_shape('max', x.shape, out1.shape, (0, 1), False)
+        >>> assert_keepdimable_shape('max', x.shape, out2.shape, (0, 1), True)
+
+        is equivalent to
+
+        >>> assert out1.shape == ()
+        >>> assert out2.shape == (1, 1)
+
+    """
     if keepdims:
         shape = tuple(1 if axis in axes else side for axis, side in enumerate(in_shape))
     else:
@@ -197,8 +295,21 @@ def assert_keepdimable_shape(
 def assert_0d_equals(
     func_name: str, x_repr: str, x_val: Array, out_repr: str, out_val: Array, **kw
 ):
+    """
+    Assert a 0d array is as expected, e.g.
+
+        >>> x = xp.asarray([0, 1, 2])
+        >>> res = xp.asarray(x, copy=True)
+        >>> res[0] = 42
+        >>> assert_0d_equals('asarray', 'x[0]', x[0], 'x[0]', res[0])
+
+        is equivalent to
+
+        >>> assert res[0] == x[0]
+
+    """
     msg = (
-        f"{out_repr}={out_val}, should be {x_repr}={x_val} "
+        f"{out_repr}={out_val}, but should be {x_repr}={x_val} "
         f"[{func_name}({fmt_kw(kw)})]"
     )
     if dh.is_float_dtype(out_val.dtype) and xp.isnan(out_val):
@@ -217,9 +328,21 @@ def assert_scalar_equals(
     repr_name: str = "out",
     **kw,
 ):
+    """
+    Assert a 0d array, convered to a scalar, is as expected, e.g.
+
+        >>> x = xp.ones(5, dtype=xp.uint8)
+        >>> out = xp.sum(x)
+        >>> assert_scalar_equals('sum', int, (), int(out), 5)
+
+        is equivalent to
+
+        >>> assert int(out) == 5
+
+    """
     repr_name = repr_name if idx == () else f"{repr_name}[{idx}]"
     f_func = f"{func_name}({fmt_kw(kw)})"
-    if type_ is bool or type_ is int:
+    if type_ in [bool, int]:
         msg = f"{repr_name}={out}, but should be {expected} [{f_func}]"
         assert out == expected, msg
     elif math.isnan(expected):
@@ -233,23 +356,48 @@ def assert_scalar_equals(
 def assert_fill(
     func_name: str, fill_value: Scalar, dtype: DataType, out: Array, /, **kw
 ):
+    """
+    Assert all elements of an array is as expected, e.g.
+
+        >>> out = xp.full(5, 42, dtype=xp.uint8)
+        >>> assert_fill('full', 42, xp.uint8, out, 5)
+
+        is equivalent to
+
+        >>> assert xp.all(out == 42)
+
+    """
     msg = f"out not filled with {fill_value} [{func_name}({fmt_kw(kw)})]\n{out=}"
     if math.isnan(fill_value):
-        assert ah.all(ah.isnan(out)), msg
+        assert xp.all(xp.isnan(out)), msg
     else:
-        assert ah.all(ah.equal(out, ah.asarray(fill_value, dtype=dtype))), msg
+        assert xp.all(xp.equal(out, xp.asarray(fill_value, dtype=dtype))), msg
 
 
-def assert_array(func_name: str, out: Array, expected: Array, /, **kw):
-    assert_dtype(func_name, out.dtype, expected.dtype)
-    assert_shape(func_name, out.shape, expected.shape, **kw)
+def assert_array_elements(
+    func_name: str, out: Array, expected: Array, /, *, out_repr: str = "out", **kw
+):
+    """
+    Assert array elements are (strictly) as expected, e.g.
+
+        >>> x = xp.arange(5)
+        >>> out = xp.asarray(x)
+        >>> assert_array_elements('asarray', out, x)
+
+        is equivalent to
+
+        >>> assert xp.all(out == x)
+
+    """
+    dh.result_type(out.dtype, expected.dtype)  # sanity check
+    assert_shape(func_name, out.shape, expected.shape, **kw)  # sanity check
     f_func = f"[{func_name}({fmt_kw(kw)})]"
     if dh.is_float_dtype(out.dtype):
         for idx in sh.ndindex(out.shape):
             at_out = out[idx]
             at_expected = expected[idx]
             msg = (
-                f"{sh.fmt_idx('out', idx)}={at_out}, should be {at_expected} "
+                f"{sh.fmt_idx(out_repr, idx)}={at_out}, should be {at_expected} "
                 f"{f_func}"
             )
             if xp.isnan(at_expected):
@@ -265,6 +413,6 @@ def assert_array(func_name: str, out: Array, expected: Array, /, **kw):
             else:
                 assert at_out == at_expected, msg
     else:
-        assert xp.all(out == expected), (
-            f"out not as expected {f_func}\n" f"{out=}\n{expected=}"
-        )
+        assert xp.all(
+            out == expected
+        ), f"{out_repr} not as expected {f_func}\n{out_repr}={out!r}\n{expected=}"
