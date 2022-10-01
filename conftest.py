@@ -1,7 +1,10 @@
+import os
+import redis
 from functools import lru_cache
 from pathlib import Path
 
 from hypothesis import settings
+from hypothesis.extra.redis import RedisExampleDatabase
 from pytest import mark
 
 from array_api_tests import _array_module as xp
@@ -63,6 +66,9 @@ def pytest_configure(config):
     hypothesis_max_examples = config.getoption("--hypothesis-max-examples")
     disable_deadline = config.getoption("--hypothesis-disable-deadline")
     profile_settings = {}
+    if "REDIS_URL" or "REDIS_PASSWD" in os.environ:
+        r = redis.Redis.from_url(os.environ['REDIS_URL'], password= os.environ['REDIS_PASSWD'])
+        profile_settings['database'] = RedisExampleDatabase(r, key_prefix=b'hypothesis-examples:')
     if hypothesis_max_examples is not None:
         profile_settings["max_examples"] = int(hypothesis_max_examples)
     if disable_deadline is not None:
