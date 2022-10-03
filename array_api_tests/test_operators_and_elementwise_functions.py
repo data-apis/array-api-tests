@@ -107,7 +107,7 @@ def mock_int_dtype(n: int, dtype: DataType) -> int:
 # floats are used internally for optimisation or legacy reasons.
 
 
-def isclose(a: float, b: float, rel_tol: float = 0.25, abs_tol: float = 1) -> bool:
+def isclose(a: float, b: float, *, rel_tol: float = 0.25, abs_tol: float = 1) -> bool:
     """Wraps math.isclose with very generous defaults.
 
     This is useful for many floating-point operations where the spec does not
@@ -137,6 +137,7 @@ def unary_assert_against_refimpl(
     in_: Array,
     res: Array,
     refimpl: Callable[[T], T],
+    *,
     expr_template: Optional[str] = None,
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = default_filter,
@@ -184,6 +185,7 @@ def binary_assert_against_refimpl(
     right: Array,
     res: Array,
     refimpl: Callable[[T, T], T],
+    *,
     expr_template: Optional[str] = None,
     res_stype: Optional[ScalarType] = None,
     left_sym: str = "x1",
@@ -234,6 +236,7 @@ def right_scalar_assert_against_refimpl(
     right: Scalar,
     res: Array,
     refimpl: Callable[[T, T], T],
+    *,
     expr_template: str = None,
     res_stype: Optional[ScalarType] = None,
     left_sym: str = "x1",
@@ -486,6 +489,7 @@ def binary_param_assert_against_refimpl(
     res: Array,
     op_sym: str,
     refimpl: Callable[[T, T], T],
+    *,
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = default_filter,
     strict_check: Optional[bool] = None,
