@@ -66,7 +66,7 @@ def pytest_configure(config):
     hypothesis_max_examples = config.getoption("--hypothesis-max-examples")
     disable_deadline = config.getoption("--hypothesis-disable-deadline")
     profile_settings = {}
-    if "REDIS_URL" and "REDIS_PASSWD" in os.environ:
+    if os.environ["REDIS_URL"] and os.environ["REDIS_PASSWD"]:
         r = redis.Redis.from_url(os.environ['REDIS_URL'], password= os.environ['REDIS_PASSWD'])
         profile_settings['database'] = RedisExampleDatabase(r, key_prefix=b'hypothesis-examples:')
     if hypothesis_max_examples is not None:
