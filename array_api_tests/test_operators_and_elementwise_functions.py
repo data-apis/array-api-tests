@@ -138,10 +138,10 @@ def unary_assert_against_refimpl(
     res: Array,
     refimpl: Callable[[T], T],
     *,
-    expr_template: Optional[str] = None,
     res_stype: Optional[ScalarType] = None,
     filter_: Callable[[Scalar], bool] = default_filter,
     strict_check: Optional[bool] = None,
+    expr_template: Optional[str] = None,
 ):
     if in_.shape != res.shape:
         raise ValueError(f"{res.shape=}, but should be {in_.shape=}")
@@ -186,13 +186,13 @@ def binary_assert_against_refimpl(
     res: Array,
     refimpl: Callable[[T, T], T],
     *,
-    expr_template: Optional[str] = None,
     res_stype: Optional[ScalarType] = None,
+    filter_: Callable[[Scalar], bool] = default_filter,
+    strict_check: Optional[bool] = None,
     left_sym: str = "x1",
     right_sym: str = "x2",
     res_name: str = "out",
-    filter_: Callable[[Scalar], bool] = default_filter,
-    strict_check: Optional[bool] = None,
+    expr_template: Optional[str] = None,
 ):
     if expr_template is None:
         expr_template = func_name + "({}, {})={}"
@@ -237,12 +237,12 @@ def right_scalar_assert_against_refimpl(
     res: Array,
     refimpl: Callable[[T, T], T],
     *,
-    expr_template: str = None,
     res_stype: Optional[ScalarType] = None,
-    left_sym: str = "x1",
-    res_name: str = "out",
     filter_: Callable[[Scalar], bool] = default_filter,
     strict_check: Optional[bool] = None,
+    left_sym: str = "x1",
+    res_name: str = "out",
+    expr_template: str = None,
 ):
     if filter_(right):
         return  # short-circuit here as there will be nothing to test
