@@ -447,7 +447,7 @@ def test_linspace(num, dtype, endpoint, data):
     assume(not xp.isnan(xp.asarray(start - stop, dtype=_dtype)))
     # avoid generating very large distances
     # https://github.com/data-apis/array-api-tests/issues/125
-    assume(abs(stop - start) < dh.dtype_ranges[dtype].max)
+    assume(abs(stop - start) < dh.dtype_ranges[_dtype].max)
 
     kw = data.draw(
         hh.specified_kwargs(
