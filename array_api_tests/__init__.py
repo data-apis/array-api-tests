@@ -41,7 +41,7 @@ except AttributeError:
     pass
 
 
-xps = array_api.make_strategies_namespace(_xp)
+xps = array_api.make_strategies_namespace(_xp, api_version="2021.12")
 
 
 from . import _version
