@@ -106,6 +106,7 @@ def _test_namedtuple(res, fields, func_name):
     # a tuple subclass with the right fields in the right order.
 
     assert isinstance(res, tuple), f"{func_name}() did not return a tuple"
+    assert type(res) != tuple, f"{func_name}() did not return a namedtuple"
     assert len(res) == len(fields), f"{func_name}() result tuple not the correct length (should have {len(fields)} elements)"
     for i, field in enumerate(fields):
         assert hasattr(res, field), f"{func_name}() result namedtuple doesn't have the '{field}' field"
