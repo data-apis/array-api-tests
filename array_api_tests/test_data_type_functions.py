@@ -124,7 +124,11 @@ def test_can_cast(_from, to, data):
             expected = from_min >= to_min and from_max <= to_max
         else:
             expected = False
-    assert out == expected, f"{out=}, but should be {expected} {f_func}"
+    if expected:
+        # cross-kind casting is not explicitly disallowed. We can only test
+        # the cases where it should return True. TODO: if expected=False,
+        # check that the array library actually allows such casts.
+        assert out == expected, f"{out=}, but should be {expected} {f_func}"
 
 
 def make_dtype_id(dtype: DataType) -> str:
