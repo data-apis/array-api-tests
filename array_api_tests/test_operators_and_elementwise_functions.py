@@ -3,6 +3,7 @@ Test element-wise functions/operators against reference implementations.
 """
 import math
 import operator
+from copy import copy
 from enum import Enum, auto
 from typing import Callable, List, NamedTuple, Optional, Sequence, TypeVar, Union
 
@@ -103,8 +104,6 @@ def default_filter(s: Scalar) -> bool:
     """
     if isinstance(s, int):  # note bools are ints
         return True
-    elif isinstance(s, complex):
-        return default_filter(s.real) and default_filter(s.imag)
     else:
         return math.isfinite(s) and s != 0
 
@@ -255,6 +254,9 @@ def unary_assert_against_refimpl(
         m, M = dh.dtype_ranges[dh.dtype_components[res.dtype]]
     else:
         m, M = dh.dtype_ranges[res.dtype]
+    if in_.dtype in dh.complex_dtypes:
+        component_filter = copy(filter_)
+        filter_ = lambda s: component_filter(s.real) and component_filter(s.imag)
     for idx in sh.ndindex(in_.shape):
         scalar_i = in_stype(in_[idx])
         if not filter_(scalar_i):
@@ -313,6 +315,9 @@ def binary_assert_against_refimpl(
     if res_stype is None:
         res_stype = in_stype
     m, M = dh.dtype_ranges.get(res.dtype, (None, None))
+    if left.dtype in dh.complex_dtypes:
+        component_filter = copy(filter_)
+        filter_ = lambda s: component_filter(s.real) and component_filter(s.imag)
     for l_idx, r_idx, o_idx in sh.iter_indices(left.shape, right.shape, res.shape):
         scalar_l = in_stype(left[l_idx])
         scalar_r = in_stype(right[r_idx])
