@@ -15,6 +15,7 @@ __all__ = [
     "uint_dtypes",
     "all_int_dtypes",
     "float_dtypes",
+    "real_dtypes",
     "numeric_dtypes",
     "all_dtypes",
     "dtype_to_name",
@@ -30,6 +31,7 @@ __all__ = [
     "promotion_table",
     "dtype_nbits",
     "dtype_signed",
+    "dtype_components",
     "func_in_dtypes",
     "func_returns_bool",
     "binary_op_to_symbol",
@@ -86,14 +88,19 @@ class EqualityMapping(Mapping):
 _uint_names = ("uint8", "uint16", "uint32", "uint64")
 _int_names = ("int8", "int16", "int32", "int64")
 _float_names = ("float32", "float64")
-_dtype_names = ("bool",) + _uint_names + _int_names + _float_names
+_real_names = _uint_names + _int_names + _float_names
+_complex_names = ("complex64", "complex128")
+_numeric_names = _real_names + _complex_names
+_dtype_names = ("bool",) + _numeric_names
 
 
 uint_dtypes = tuple(getattr(xp, name) for name in _uint_names)
 int_dtypes = tuple(getattr(xp, name) for name in _int_names)
 float_dtypes = tuple(getattr(xp, name) for name in _float_names)
 all_int_dtypes = uint_dtypes + int_dtypes
-numeric_dtypes = all_int_dtypes + float_dtypes
+real_dtypes = all_int_dtypes + float_dtypes
+complex_dtypes = tuple(getattr(xp, name) for name in _complex_names)
+numeric_dtypes = real_dtypes + complex_dtypes
 all_dtypes = (xp.bool,) + numeric_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
 
@@ -129,6 +136,8 @@ def get_scalar_type(dtype: DataType) -> ScalarType:
         return int
     elif is_float_dtype(dtype):
         return float
+    elif dtype in complex_dtypes:
+        return complex
     else:
         return bool
 
@@ -157,12 +166,18 @@ dtype_nbits = EqualityMapping(
     [(d, 8) for d in [xp.int8, xp.uint8]]
     + [(d, 16) for d in [xp.int16, xp.uint16]]
     + [(d, 32) for d in [xp.int32, xp.uint32, xp.float32]]
-    + [(d, 64) for d in [xp.int64, xp.uint64, xp.float64]]
+    + [(d, 64) for d in [xp.int64, xp.uint64, xp.float64, xp.complex64]]
+    + [(xp.complex128, 128)]
 )
 
 
 dtype_signed = EqualityMapping(
     [(d, True) for d in int_dtypes] + [(d, False) for d in uint_dtypes]
+)
+
+
+dtype_components = EqualityMapping(
+    [(xp.complex64, xp.float32), (xp.complex128, xp.float64)]
 )
 
 
@@ -226,6 +241,11 @@ _numeric_promotions = [
     ((xp.float32, xp.float32), xp.float32),
     ((xp.float32, xp.float64), xp.float64),
     ((xp.float64, xp.float64), xp.float64),
+    # complex
+    ((xp.complex64, xp.complex64), xp.complex64),
+    ((xp.complex64, xp.complex128), xp.complex128),
+    ((xp.complex128, xp.complex128), xp.complex128),
+
 ]
 _numeric_promotions += [((d2, d1), res) for (d1, d2), res in _numeric_promotions]
 _promotion_table = list(set(_numeric_promotions))

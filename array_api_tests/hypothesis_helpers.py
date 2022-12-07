@@ -46,7 +46,7 @@ if FILTER_UNDEFINED_DTYPES:
 shared_dtypes = shared(dtypes, key="dtype")
 shared_floating_dtypes = shared(floating_dtypes, key="dtype")
 
-_dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.float_dtypes]
+_dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.float_dtypes, dh.complex_dtypes]
 _sorted_dtypes = [d for category in _dtype_categories for d in category]
 
 def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):

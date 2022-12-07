@@ -103,6 +103,8 @@ def default_filter(s: Scalar) -> bool:
     """
     if isinstance(s, int):  # note bools are ints
         return True
+    elif isinstance(s, complex):
+        return default_filter(s.real) and default_filter(s.imag)
     else:
         return math.isfinite(s) and s != 0
 
@@ -247,7 +249,12 @@ def unary_assert_against_refimpl(
     in_stype = dh.get_scalar_type(in_.dtype)
     if res_stype is None:
         res_stype = in_stype
-    m, M = dh.dtype_ranges.get(res.dtype, (None, None))
+    if res.dtype == xp.bool:
+        m, M = (None, None)
+    if res.dtype in dh.complex_dtypes:
+        m, M = dh.dtype_ranges[dh.dtype_components[res.dtype]]
+    else:
+        m, M = dh.dtype_ranges[res.dtype]
     for idx in sh.ndindex(in_.shape):
         scalar_i = in_stype(in_[idx])
         if not filter_(scalar_i):
@@ -257,9 +264,13 @@ def unary_assert_against_refimpl(
         except Exception:
             continue
         if res.dtype != xp.bool:
-            assert m is not None and M is not None  # for mypy
-            if expected <= m or expected >= M:
-                continue
+            if res.dtype in dh.complex_dtypes:
+                for component in [expected.real, expected.imag]:
+                    if component <= m or expected >= M:
+                        continue
+            else:
+                if expected <= m or expected >= M:
+                    continue
         scalar_o = res_stype(res[idx])
         f_i = sh.fmt_idx("x", idx)
         f_o = sh.fmt_idx("out", idx)
@@ -418,8 +429,11 @@ class UnaryParamContext(NamedTuple):
 
 
 def make_unary_params(
-    elwise_func_name: str, dtypes_strat: st.SearchStrategy[DataType]
+    elwise_func_name: str, dtypes: Sequence[DataType]
 ) -> List[Param[UnaryParamContext]]:
+    if hh.FILTER_UNDEFINED_DTYPES:
+        dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
+    dtypes_strat = st.sampled_from(dtypes)
     strat = xps.arrays(dtype=dtypes_strat, shape=hh.shapes())
     func_ctx = UnaryParamContext(
         func_name=elwise_func_name, func=getattr(xp, elwise_func_name), strat=strat
@@ -633,7 +647,7 @@ def binary_param_assert_against_refimpl(
         )
 
 
-@pytest.mark.parametrize("ctx", make_unary_params("abs", xps.numeric_dtypes()))
+@pytest.mark.parametrize("ctx", make_unary_params("abs", dh.numeric_dtypes))
 @given(data=st.data())
 def test_abs(ctx, data):
     x = data.draw(ctx.strat, label="x")
@@ -643,7 +657,10 @@ def test_abs(ctx, data):
 
     out = ctx.func(x)
 
-    ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
+    if x.dtype in dh.complex_dtypes:
+        assert out.dtype == dh.complex_components[x.dtype]
+    else:
+        ph.assert_dtype(ctx.func_name, x.dtype, out.dtype)
     ph.assert_shape(ctx.func_name, out.shape, x.shape)
     unary_assert_against_refimpl(
         ctx.func_name,
@@ -783,7 +800,7 @@ def test_bitwise_left_shift(ctx, data):
 
 
 @pytest.mark.parametrize(
-    "ctx", make_unary_params("bitwise_invert", boolean_and_all_integer_dtypes())
+    "ctx", make_unary_params("bitwise_invert", dh.bool_and_all_int_dtypes)
 )
 @given(data=st.data())
 def test_bitwise_invert(ctx, data):
@@ -1187,9 +1204,7 @@ def test_multiply(ctx, data):
 
 
 # TODO: clarify if uints are acceptable, adjust accordingly
-@pytest.mark.parametrize(
-    "ctx", make_unary_params("negative", xps.integer_dtypes() | xps.floating_dtypes())
-)
+@pytest.mark.parametrize("ctx", make_unary_params("negative", dh.numeric_dtypes))
 @given(data=st.data())
 def test_negative(ctx, data):
     x = data.draw(ctx.strat, label="x")
@@ -1226,7 +1241,7 @@ def test_not_equal(ctx, data):
     )
 
 
-@pytest.mark.parametrize("ctx", make_unary_params("positive", xps.numeric_dtypes()))
+@pytest.mark.parametrize("ctx", make_unary_params("positive", dh.numeric_dtypes))
 @given(data=st.data())
 def test_positive(ctx, data):
     x = data.draw(ctx.strat, label="x")
@@ -1317,7 +1332,7 @@ def test_square(x):
     ph.assert_dtype("square", x.dtype, out.dtype)
     ph.assert_shape("square", out.shape, x.shape)
     unary_assert_against_refimpl(
-        "square", x, out, lambda s: s ** 2, expr_template="{}²={}"
+        "square", x, out, lambda s: s**2, expr_template="{}²={}"
     )
 
 
