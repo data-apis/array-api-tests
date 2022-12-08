@@ -18,8 +18,9 @@ __all__ = [
     "real_dtypes",
     "numeric_dtypes",
     "all_dtypes",
-    "dtype_to_name",
+    "all_float_dtypes",
     "bool_and_all_int_dtypes",
+    "dtype_to_name",
     "dtype_to_scalars",
     "is_int_dtype",
     "is_float_dtype",
@@ -102,6 +103,7 @@ real_dtypes = all_int_dtypes + float_dtypes
 complex_dtypes = tuple(getattr(xp, name) for name in _complex_names)
 numeric_dtypes = real_dtypes + complex_dtypes
 all_dtypes = (xp.bool,) + numeric_dtypes
+all_float_dtypes = float_dtypes + complex_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
 
 
