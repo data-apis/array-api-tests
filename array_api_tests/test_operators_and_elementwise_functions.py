@@ -959,12 +959,14 @@ def test_divide(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
     right = data.draw(ctx.right_strat, label=ctx.right_sym)
     if ctx.right_is_scalar:
-        assume
+        assume  # TODO: assume what?
 
     res = ctx.func(left, right)
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
+    if res.dtype in dh.complex_dtypes:
+        return  # TOOD: handle complex division
     binary_param_assert_against_refimpl(
         ctx,
         left,
