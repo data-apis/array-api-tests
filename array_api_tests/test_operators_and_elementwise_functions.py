@@ -90,14 +90,25 @@ def mock_int_dtype(n: int, dtype: DataType) -> int:
     return n
 
 
-def isclose(a: float, b: float, *, rel_tol: float = 0.25, abs_tol: float = 1) -> bool:
+def isclose(
+    a: float,
+    b: float,
+    M: float,
+    *,
+    rel_tol: float = 0.25,
+    abs_tol: float = 1,
+) -> bool:
     """Wraps math.isclose with very generous defaults.
 
     This is useful for many floating-point operations where the spec does not
     make accuracy requirements.
     """
-    if not (math.isfinite(a) and math.isfinite(b)):
-        raise ValueError(f"{a=} and {b=}, but input must be finite")
+    if math.isnan(a) or math.isnan(b):
+        raise ValueError(f"{a=} and {b=}, but input must be non-NaN")
+    if math.isinf(a):
+        return math.isinf(b) or abs(b) > math.log(M)
+    elif math.isinf(b):
+        return math.isinf(a) or abs(a) > math.log(M)
     return math.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol)
 
 
@@ -288,10 +299,10 @@ def unary_assert_against_refimpl(
                 f"{f_i}={scalar_i}"
             )
             if res.dtype in dh.complex_dtypes:
-                assert isclose(scalar_o.real, expected.real), msg
-                assert isclose(scalar_o.imag, expected.imag), msg
+                assert isclose(scalar_o.real, expected.real, M), msg
+                assert isclose(scalar_o.imag, expected.imag, M), msg
             else:
-                assert isclose(scalar_o, expected), msg
+                assert isclose(scalar_o, expected, M), msg
         else:
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be {expr} [{func_name}()]\n"
@@ -364,10 +375,10 @@ def binary_assert_against_refimpl(
                 f"{f_l}={scalar_l}, {f_r}={scalar_r}"
             )
             if res.dtype in dh.complex_dtypes:
-                assert isclose(scalar_o.real, expected.real), msg
-                assert isclose(scalar_o.imag, expected.imag), msg
+                assert isclose(scalar_o.real, expected.real, M), msg
+                assert isclose(scalar_o.imag, expected.imag, M), msg
             else:
-                assert isclose(scalar_o, expected), msg
+                assert isclose(scalar_o, expected, M), msg
         else:
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be {expr} [{func_name}()]\n"
@@ -437,10 +448,10 @@ def right_scalar_assert_against_refimpl(
                 f"{f_l}={scalar_l}"
             )
             if res.dtype in dh.complex_dtypes:
-                assert isclose(scalar_o.real, expected.real), msg
-                assert isclose(scalar_o.imag, expected.imag), msg
+                assert isclose(scalar_o.real, expected.real, M), msg
+                assert isclose(scalar_o.imag, expected.imag, M), msg
             else:
-                assert isclose(scalar_o, expected), msg
+                assert isclose(scalar_o, expected, M), msg
         else:
             assert scalar_o == expected, (
                 f"{f_o}={scalar_o}, but should be {expr} [{func_name}()]\n"
