@@ -948,6 +948,14 @@ def test_ceil(x):
     unary_assert_against_refimpl("ceil", x, out, math.ceil, strict_check=True)
 
 
+@given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+def test_conj(x):
+    out = xp.conj(x)
+    ph.assert_dtype("conj", x.dtype, out.dtype)
+    ph.assert_shape("conj", out.shape, x.shape)
+    unary_assert_against_refimpl("conj", x, out, operator.methodcaller("conjugate"))
+
+
 @given(xps.arrays(dtype=all_floating_dtypes(), shape=hh.shapes()))
 def test_cos(x):
     out = xp.cos(x)
