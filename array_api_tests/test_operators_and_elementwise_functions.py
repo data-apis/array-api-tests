@@ -262,7 +262,7 @@ def unary_assert_against_refimpl(
         expr_template = func_name + "({})={}"
     in_stype = dh.get_scalar_type(in_.dtype)
     if res_stype is None:
-        res_stype = in_stype
+        res_stype = dh.get_scalar_type(res.dtype)
     if res.dtype == xp.bool:
         m, M = (None, None)
     elif res.dtype in dh.complex_dtypes:
@@ -334,7 +334,7 @@ def binary_assert_against_refimpl(
         expr_template = func_name + "({}, {})={}"
     in_stype = dh.get_scalar_type(left.dtype)
     if res_stype is None:
-        res_stype = in_stype
+        res_stype = dh.get_scalar_type(left.dtype)
     if res_stype is None:
         res_stype = in_stype
     if res.dtype == xp.bool:
@@ -412,7 +412,7 @@ def right_scalar_assert_against_refimpl(
         return  # short-circuit here as there will be nothing to test
     in_stype = dh.get_scalar_type(left.dtype)
     if res_stype is None:
-        res_stype = in_stype
+        res_stype = dh.get_scalar_type(left.dtype)
     if res_stype is None:
         res_stype = in_stype
     if res.dtype == xp.bool:
@@ -1100,6 +1100,14 @@ def test_greater_equal(ctx, data):
     )
 
 
+@given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+def test_imag(x):
+    out = xp.imag(x)
+    ph.assert_dtype("imag", x.dtype, out.dtype, dh.dtype_components[x.dtype])
+    ph.assert_shape("imag", out.shape, x.shape)
+    unary_assert_against_refimpl("imag", x, out, operator.attrgetter("imag"))
+
+
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isfinite(x):
     out = xp.isfinite(x)
@@ -1341,6 +1349,14 @@ def test_pow(ctx, data):
     # Values testing pow is too finicky
 
 
+@given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+def test_real(x):
+    out = xp.real(x)
+    ph.assert_dtype("real", x.dtype, out.dtype, dh.dtype_components[x.dtype])
+    ph.assert_shape("real", out.shape, x.shape)
+    unary_assert_against_refimpl("real", x, out, operator.attrgetter("real"))
+
+
 @pytest.mark.parametrize("ctx", make_binary_params("remainder", dh.real_dtypes))
 @given(data=st.data())
 def test_remainder(ctx, data):
@@ -1366,8 +1382,7 @@ def test_round(x):
     unary_assert_against_refimpl("round", x, out, round, strict_check=True)
 
 
-# TODO: https://github.com/data-apis/array-api/issues/545
-@given(xps.arrays(dtype=xps.real_dtypes(), shape=hh.shapes(), elements=finite_kw))
+@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(), elements=finite_kw))
 def test_sign(x):
     out = xp.sign(x)
     ph.assert_dtype("sign", x.dtype, out.dtype)
