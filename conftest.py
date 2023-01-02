@@ -47,7 +47,17 @@ def pytest_addoption(parser):
     parser.addoption(
         "--ci",
         action="store_true",
-        help="run just the tests appropiate for CI",
+        help="run just the tests appropriate for CI",
+    )
+    parser.addoption(
+        "--skips-file",
+        action="store",
+        help="file with tests to skip. Defaults to skips.txt"
+    )
+    parser.addoption(
+        "--xfails-file",
+        action="store",
+        help="file with tests to skip. Defaults to xfails.txt"
     )
 
 
@@ -82,26 +92,49 @@ def xp_has_ext(ext: str) -> bool:
         return False
 
 
-skip_ids = []
-skips_path = Path(__file__).parent / "skips.txt"
-if skips_path.exists():
-    with open(skips_path) as f:
-        for line in f:
-            if line.startswith("array_api_tests"):
-                id_ = line.strip("\n")
-                skip_ids.append(id_)
-
-
 def pytest_collection_modifyitems(config, items):
+    skips_file = skips_path = config.getoption('--skips-file')
+    if skips_file is None:
+        skips_file = Path(__file__).parent / "skips.txt"
+        if skips_file.exists():
+            skips_path = skips_file
+
+    skip_ids = []
+    if skips_path:
+        with open(skips_path) as f:
+            for line in f:
+                if line.startswith("array_api_tests"):
+                    id_ = line.strip("\n")
+                    skip_ids.append(id_)
+
+    xfails_file = xfails_path = config.getoption('--xfails-file')
+    if xfails_file is None:
+        xfails_file = Path(__file__).parent / "xfails.txt"
+        if xfails_file.exists():
+            xfails_path = xfails_file
+
+    xfail_ids = []
+    if xfails_path:
+        with open(xfails_path) as f:
+            for line in f:
+                if line.startswith("array_api_tests"):
+                    id_ = line.strip("\n")
+                    xfail_ids.append(id_)
+
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
     ci = config.getoption("--ci")
     for item in items:
         markers = list(item.iter_markers())
-        # skip if specified in skips.txt
+        # skip if specified in skips file
         for id_ in skip_ids:
             if item.nodeid.startswith(id_):
-                item.add_marker(mark.skip(reason="skips.txt"))
+                item.add_marker(mark.skip(reason="skips file"))
+                break
+        # xfail if specified in xfails file
+        for id_ in xfail_ids:
+            if item.nodeid.startswith(id_):
+                item.add_marker(mark.xfails(reason="xfails file"))
                 break
         # skip if disabled or non-existent extension
         ext_mark = next((m for m in markers if m.name == "xp_extension"), None)
