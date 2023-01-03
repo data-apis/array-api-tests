@@ -117,9 +117,10 @@ def pytest_collection_modifyitems(config, items):
     if xfails_path:
         with open(xfails_path) as f:
             for line in f:
-                if line.startswith("array_api_tests"):
-                    id_ = line.strip("\n")
-                    xfail_ids.append(id_)
+                if not line.strip() or line.startswith('#'):
+                    continue
+                id_ = line.strip("\n")
+                xfail_ids.append(id_)
 
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
