@@ -128,13 +128,13 @@ def pytest_collection_modifyitems(config, items):
         markers = list(item.iter_markers())
         # skip if specified in skips file
         for id_ in skip_ids:
-            if item.nodeid.startswith(id_):
-                item.add_marker(mark.skip(reason="skips file"))
+            if id_ in item.nodeid:
+                item.add_marker(mark.skip(reason=f"skips file ({skips_file})"))
                 break
         # xfail if specified in xfails file
         for id_ in xfail_ids:
-            if item.nodeid.startswith(id_):
-                item.add_marker(mark.xfails(reason="xfails file"))
+            if id_ in item.nodeid:
+                item.add_marker(mark.xfail(reason=f"xfails file ({xfails_file})"))
                 break
         # skip if disabled or non-existent extension
         ext_mark = next((m for m in markers if m.name == "xp_extension"), None)
