@@ -244,7 +244,7 @@ jobs:
       run: |
         export PYTHONPATH="${GITHUB_WORKSPACE}/array-api-compat"
         cd ${GITHUB_WORKSPACE}/array-api-tests
-        pytest -v -rxXfE --ci -o xfail_strict=True --xfails-file ${GITHUB_WORKSPACE}/your-array-library/array-api-tests-xfails.txt
+        pytest -v -rxXfE --ci -o xfail_strict=True --xfails-file ${GITHUB_WORKSPACE}/your-array-library/array-api-tests-xfails.txt array_api_tests/
 ```
 
 #### Max examples
