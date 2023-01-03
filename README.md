@@ -178,13 +178,22 @@ By default, tests for the optional Array API extensions such as
 will be skipped if not present in the specified array module. You can purposely
 skip testing extension(s) via the `--disable-extension` option.
 
-#### Skip test cases
+#### Skip or XFAIL test cases
 
-Test cases you want to skip can be specified in a `skips.txt` file in the root
-of this repository, e.g.:
+Test cases you want to skip can be specified in a skips or XFAILS file. The
+difference between skip and XFAIL is that XFAIL tests are still run and
+reported as XPASS if they pass.
+
+By default, the skips and xfails files are `skips.txt` and `fails.txt` in the root
+of this repository, but any file can be specified with the `--skips-file` and
+`--xfails-file` command line flags.
+
+The files should list the test ids to be skipped/xfailed. Empty lines and
+lines starting with `#` are ignored. The test id can be any substring of the
+test ids to skip/xfail.
 
 ```
-# ./skips.txt
+# skips.txt or xfails.txt
 # Line comments can be denoted with the hash symbol (#)
 
 # Skip specific test case, e.g. when argsort() does not respect relative order
@@ -200,29 +209,42 @@ array_api_tests/test_add[__iadd__(x, s)]
 array_api_tests/test_set_functions.py
 ```
 
-For GitHub Actions, you might like to keep everything in the workflow config
-instead of having a seperate `skips.txt` file, e.g.:
+Here is an example GitHub Actions workflow file, where the xfails are stored
+in `array-api-tests.xfails.txt` in the base of the `your-array-library` repo.
+
+Note that this uses `-o xfail_strict=True`. This causes XPASS tests (XFAIL
+tests that actually pass) to fail the test suite. If you don't want this
+behavior, you can remove it, or use `--skips-file` instead of `--xfails-file`.
 
 ```yaml
 # ./.github/workflows/array_api.yml
-...
-    ...
-    - name: Run the test suite
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+
+    steps:
+    - name: Checkout <your array library>
+      uses: actions/checkout@v3
+      with:
+        path: your-array-library
+
+    - name: Checkout array-api-tests
+      uses: actions/checkout@v3
+      with:
+        repository: data-apis/array-api-tests
+        submodules: 'true'
+        path: array-api-tests
+
+    - name: Run the array API test suite
       env:
         ARRAY_API_TESTS_MODULE: your.array.api.namespace
       run: |
-        # Skip test cases with known issues
-        cat << EOF >> skips.txt
-
-        # Comments can still work here
-        array_api_tests/test_sorting_functions.py::test_argsort
-        array_api_tests/test_add[__iadd__(x1, x2)]
-        array_api_tests/test_add[__iadd__(x, s)]
-        array_api_tests/test_set_functions.py
-
-        EOF
-
-        pytest -v -rxXfE --ci
+        export PYTHONPATH="${GITHUB_WORKSPACE}/array-api-compat"
+        cd ${GITHUB_WORKSPACE}/array-api-tests
+        pytest -v -rxXfE --ci -o xfail_strict=True --xfails-file ${GITHUB_WORKSPACE}/your-array-library/array-api-tests-xfails.txt
 ```
 
 #### Max examples
