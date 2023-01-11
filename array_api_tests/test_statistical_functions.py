@@ -175,7 +175,7 @@ def test_prod(x, data):
         dtype=xps.floating_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
-    ).filter(lambda x: x.size >= 2),
+    ).filter(lambda x: math.prod(x.shape) >= 2),
     data=st.data(),
 )
 def test_std(x, data):
@@ -273,7 +273,7 @@ def test_sum(x, data):
         dtype=xps.floating_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
-    ).filter(lambda x: x.size >= 2),
+    ).filter(lambda x: math.prod(x.shape) >= 2),
     data=st.data(),
 )
 def test_var(x, data):

@@ -1,3 +1,5 @@
+import math
+
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -90,12 +92,14 @@ def test_nonzero(x):
         assert len(out) == 1, f"{len(out)=}, but should be 1 for 0-dimensional arrays"
     else:
         assert len(out) == x.ndim, f"{len(out)=}, but should be {x.ndim=}"
-    size = out[0].size
+    out_size = math.prod(out[0].shape)
     for i in range(len(out)):
         assert out[i].ndim == 1, f"out[{i}].ndim={x.ndim}, but should be 1"
-        assert (
-            out[i].size == size
-        ), f"out[{i}].size={x.size}, but should be out[0].size={size}"
+        size_at = math.prod(out[i].shape)
+        assert size_at == out_size, (
+            f"prod(out[{i}].shape)={size_at}, "
+            f"but should be prod(out[0].shape)={out_size}"
+        )
         ph.assert_default_index("nonzero", out[i].dtype, repr_name=f"out[{i}].dtype")
     indices = []
     if x.dtype == xp.bool:
@@ -107,11 +111,11 @@ def test_nonzero(x):
             if x[idx] != 0:
                 indices.append(idx)
     if x.ndim == 0:
-        assert out[0].size == len(
+        assert out_size == len(
             indices
-        ), f"{out[0].size=}, but should be {len(indices)}"
+        ), f"prod(out[0].shape)={out_size}, but should be {len(indices)}"
     else:
-        for i in range(size):
+        for i in range(out_size):
             idx = tuple(int(x[i]) for x in out)
             f_idx = f"Extrapolated index (x[{i}] for x in out)={idx}"
             f_element = f"x[{idx}]={x[idx]}"
