@@ -175,16 +175,17 @@ def test_arange(dtype, data):
     #
     min_size = math.floor(size * 0.9)
     max_size = max(math.ceil(size * 1.1), 1)
+    out_size = math.prod(out.shape)
     assert (
-        min_size <= out.size <= max_size
-    ), f"{out.size=}, but should be roughly {size} {f_func}"
+        min_size <= out_size <= max_size
+    ), f"prod(out.shape)={out_size}, but should be roughly {size} {f_func}"
     if dh.is_int_dtype(_dtype):
         elements = list(r)
-        assume(out.size == len(elements))
+        assume(out_size == len(elements))
         ph.assert_array_elements("arange", out, xp.asarray(elements, dtype=_dtype))
     else:
-        assume(out.size == size)
-        if out.size > 0:
+        assume(out_size == size)
+        if out_size > 0:
             assert xp.equal(
                 out[0], xp.asarray(_start, dtype=out.dtype)
             ), f"out[0]={out[0]}, but should be {_start} {f_func}"
@@ -497,7 +498,8 @@ def test_meshgrid(dtype, data):
     for i, shape in enumerate(shapes, 1):
         x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
         arrays.append(x)
-    assert math.prod(x.size for x in arrays) <= hh.MAX_ARRAY_SIZE  # sanity check
+    # sanity check
+    assert math.prod(math.prod(x.shape) for x in arrays) <= hh.MAX_ARRAY_SIZE
     out = xp.meshgrid(*arrays)
     for i, x in enumerate(out):
         ph.assert_dtype("meshgrid", dtype, x.dtype, repr_name=f"out[{i}].dtype")

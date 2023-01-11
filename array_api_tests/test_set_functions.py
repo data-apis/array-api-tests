@@ -110,7 +110,7 @@ def test_unique_all(x):
             vals_idx[val] = idx
 
     if dh.is_float_dtype(out.values.dtype):
-        assume(x.size <= 128)  # may not be representable
+        assume(math.prod(x.shape) <= 128)  # may not be representable
         expected = sum(v for k, v in counts.items() if math.isnan(k))
         assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
 
@@ -157,7 +157,7 @@ def test_unique_counts(x):
             ), f"out[{idx}]={val}, but {val} is also in out[{vals_idx[val]}]"
             vals_idx[val] = idx
     if dh.is_float_dtype(out.values.dtype):
-        assume(x.size <= 128)  # may not be representable
+        assume(math.prod(x.shape) <= 128)  # may not be representable
         expected = sum(v for k, v in counts.items() if math.isnan(k))
         assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
 
@@ -210,7 +210,7 @@ def test_unique_inverse(x):
         else:
             assert val == expected, msg
     if dh.is_float_dtype(out.values.dtype):
-        assume(x.size <= 128)  # may not be representable
+        assume(math.prod(x.shape) <= 128)  # may not be representable
         expected = xp.sum(xp.astype(xp.isnan(x), xp.uint8))
         assert nans == expected, f"{nans} NaNs in out.values, but should be {expected}"
 
@@ -234,6 +234,6 @@ def test_unique_values(x):
             ), f"out[{idx}]={val}, but {val} is also in out[{vals_idx[val]}]"
             vals_idx[val] = idx
     if dh.is_float_dtype(out.dtype):
-        assume(x.size <= 128)  # may not be representable
+        assume(math.prod(x.shape) <= 128)  # may not be representable
         expected = xp.sum(xp.astype(xp.isnan(x), xp.uint8))
         assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
