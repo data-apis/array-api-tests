@@ -163,8 +163,9 @@ library to fail.
 #### API version
 
 You can specify the API version to use when testing via the
-ARRAY_API_TESTS_VERSION environment variable. Currently this defaults to
-`"2021.12"`.
+`ARRAY_API_TESTS_VERSION` environment variable. Currently this defaults to the
+array module's `__array_api_version__` value, and if that attribute doesn't
+exist then we fallback to `"2021.12"`.
 
 #### CI flag
 

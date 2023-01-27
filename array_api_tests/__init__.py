@@ -46,7 +46,9 @@ except AttributeError:
     pass
 
 
-api_version = getenv("ARRAY_API_TESTS_VERSION", "2021.12")
+api_version = getenv(
+    "ARRAY_API_TESTS_VERSION", getattr(_xp, "__array_api_version__", "2021.12")
+)
 xps = array_api.make_strategies_namespace(_xp, api_version=api_version)
 
 __version__ = _version.get_versions()["version"]
