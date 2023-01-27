@@ -12,7 +12,7 @@ from hypothesis import assume, given
 from hypothesis import strategies as st
 from hypothesis.control import reject
 
-from . import _array_module as xp
+from . import COMPLEX_VER, _array_module as xp, api_version
 from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
@@ -35,7 +35,10 @@ def boolean_and_all_integer_dtypes() -> st.SearchStrategy[DataType]:
 
 
 def all_floating_dtypes() -> st.SearchStrategy[DataType]:
-    return xps.floating_dtypes() | xps.complex_dtypes()
+    strat = xps.floating_dtypes()
+    if api_version >= COMPLEX_VER:
+        strat |= xps.complex_dtypes()
+    return strat
 
 
 class OnewayPromotableDtypes(NamedTuple):
@@ -492,10 +495,15 @@ class UnaryParamContext(NamedTuple):
 
 
 def make_unary_params(
-    elwise_func_name: str, dtypes: Sequence[DataType]
+    elwise_func_name: str,
+    dtypes: Sequence[DataType],
+    *,
+    min_version: str = "2021.12",
 ) -> List[Param[UnaryParamContext]]:
     if hh.FILTER_UNDEFINED_DTYPES:
         dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
+    if api_version < COMPLEX_VER:
+        dtypes = [d for d in dtypes if d not in dh.complex_dtypes]
     dtypes_strat = st.sampled_from(dtypes)
     strat = xps.arrays(dtype=dtypes_strat, shape=hh.shapes())
     func_ctx = UnaryParamContext(
@@ -505,7 +513,16 @@ def make_unary_params(
     op_ctx = UnaryParamContext(
         func_name=op_name, func=lambda x: getattr(x, op_name)(), strat=strat
     )
-    return [pytest.param(func_ctx, id=func_ctx.id), pytest.param(op_ctx, id=op_ctx.id)]
+    if api_version < min_version:
+        marks = pytest.mark.skip(
+            reason=f"requires ARRAY_API_TESTS_VERSION=>{min_version}"
+        )
+    else:
+        marks = ()
+    return [
+        pytest.param(func_ctx, id=func_ctx.id, marks=marks),
+        pytest.param(op_ctx, id=op_ctx.id, marks=marks),
+    ]
 
 
 class FuncType(Enum):
@@ -948,12 +965,14 @@ def test_ceil(x):
     unary_assert_against_refimpl("ceil", x, out, math.ceil, strict_check=True)
 
 
-@given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
-def test_conj(x):
-    out = xp.conj(x)
-    ph.assert_dtype("conj", x.dtype, out.dtype)
-    ph.assert_shape("conj", out.shape, x.shape)
-    unary_assert_against_refimpl("conj", x, out, operator.methodcaller("conjugate"))
+if api_version >= COMPLEX_VER:
+
+    @given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+    def test_conj(x):
+        out = xp.conj(x)
+        ph.assert_dtype("conj", x.dtype, out.dtype)
+        ph.assert_shape("conj", out.shape, x.shape)
+        unary_assert_against_refimpl("conj", x, out, operator.methodcaller("conjugate"))
 
 
 @given(xps.arrays(dtype=all_floating_dtypes(), shape=hh.shapes()))
@@ -1108,12 +1127,14 @@ def test_greater_equal(ctx, data):
     )
 
 
-@given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
-def test_imag(x):
-    out = xp.imag(x)
-    ph.assert_dtype("imag", x.dtype, out.dtype, dh.dtype_components[x.dtype])
-    ph.assert_shape("imag", out.shape, x.shape)
-    unary_assert_against_refimpl("imag", x, out, operator.attrgetter("imag"))
+if api_version >= COMPLEX_VER:
+
+    @given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+    def test_imag(x):
+        out = xp.imag(x)
+        ph.assert_dtype("imag", x.dtype, out.dtype, dh.dtype_components[x.dtype])
+        ph.assert_shape("imag", out.shape, x.shape)
+        unary_assert_against_refimpl("imag", x, out, operator.attrgetter("imag"))
 
 
 @given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
@@ -1357,12 +1378,14 @@ def test_pow(ctx, data):
     # Values testing pow is too finicky
 
 
-@given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
-def test_real(x):
-    out = xp.real(x)
-    ph.assert_dtype("real", x.dtype, out.dtype, dh.dtype_components[x.dtype])
-    ph.assert_shape("real", out.shape, x.shape)
-    unary_assert_against_refimpl("real", x, out, operator.attrgetter("real"))
+if api_version >= COMPLEX_VER:
+
+    @given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+    def test_real(x):
+        out = xp.real(x)
+        ph.assert_dtype("real", x.dtype, out.dtype, dh.dtype_components[x.dtype])
+        ph.assert_shape("real", out.shape, x.shape)
+        unary_assert_against_refimpl("real", x, out, operator.attrgetter("real"))
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("remainder", dh.real_dtypes))

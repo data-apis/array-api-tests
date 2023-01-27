@@ -160,6 +160,12 @@ library to fail.
 
 ### Configuration
 
+#### API version
+
+You can specify the API version to use when testing via the
+ARRAY_API_TESTS_VERSION environment variable. Currently this defaults to
+`"2021.12"`.
+
 #### CI flag
 
 Use the `--ci` flag to run only the primary and special cases tests. You can

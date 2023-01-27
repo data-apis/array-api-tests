@@ -5,6 +5,7 @@ from hypothesis import settings
 from pytest import mark
 
 from array_api_tests import _array_module as xp
+from array_api_tests import api_version
 from array_api_tests._array_module import _UndefinedStub
 
 from reporting import pytest_metadata, pytest_json_modifyreport, add_extra_json_metadata # noqa
@@ -59,6 +60,10 @@ def pytest_configure(config):
         "markers", "data_dependent_shapes: output shapes are dependent on inputs"
     )
     config.addinivalue_line("markers", "ci: primary test")
+    config.addinivalue_line(
+        "markers",
+        "min_version(api_version): run when greater or equal to api_version",
+    )
     # Hypothesis
     hypothesis_max_examples = config.getoption("--hypothesis-max-examples")
     disable_deadline = config.getoption("--hypothesis-disable-deadline")
@@ -126,3 +131,13 @@ def pytest_collection_modifyitems(config, items):
             ci_mark = next((m for m in markers if m.name == "ci"), None)
             if ci_mark is None:
                 item.add_marker(mark.skip(reason="disabled via --ci"))
+        # skip if test is for greater api_version
+        ver_mark = next((m for m in markers if m.name == "min_version"), None)
+        if ver_mark is not None:
+            min_version = ver_mark.args[0]
+            if api_version < min_version:
+                item.add_marker(
+                    mark.skip(
+                        reason=f"requires ARRAY_API_TESTS_VERSION=>{min_version}"
+                    )
+                )
