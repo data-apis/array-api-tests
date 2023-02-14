@@ -7,10 +7,7 @@ from hypothesis.extra import array_api
 from . import _version
 from ._array_module import mod as _xp
 
-__all__ = ["COMPLEX_VER", "api_version", "xps"]
-
-
-COMPLEX_VER: str = "2022.12"
+__all__ = ["api_version", "xps"]
 
 
 # We monkey patch floats() to always disable subnormals as they are out-of-scope

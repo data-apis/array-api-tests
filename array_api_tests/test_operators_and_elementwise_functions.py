@@ -12,7 +12,7 @@ from hypothesis import assume, given
 from hypothesis import strategies as st
 from hypothesis.control import reject
 
-from . import COMPLEX_VER, _array_module as xp, api_version
+from . import _array_module as xp, api_version
 from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
@@ -36,7 +36,7 @@ def boolean_and_all_integer_dtypes() -> st.SearchStrategy[DataType]:
 
 def all_floating_dtypes() -> st.SearchStrategy[DataType]:
     strat = xps.floating_dtypes()
-    if api_version >= COMPLEX_VER:
+    if api_version >= "2022.12":
         strat |= xps.complex_dtypes()
     return strat
 
@@ -502,7 +502,7 @@ def make_unary_params(
 ) -> List[Param[UnaryParamContext]]:
     if hh.FILTER_UNDEFINED_DTYPES:
         dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
-    if api_version < COMPLEX_VER:
+    if api_version < "2022.12":
         dtypes = [d for d in dtypes if d not in dh.complex_dtypes]
     dtypes_strat = st.sampled_from(dtypes)
     strat = xps.arrays(dtype=dtypes_strat, shape=hh.shapes())
@@ -965,7 +965,7 @@ def test_ceil(x):
     unary_assert_against_refimpl("ceil", x, out, math.ceil, strict_check=True)
 
 
-if api_version >= COMPLEX_VER:
+if api_version >= "2022.12":
 
     @given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
     def test_conj(x):
@@ -1127,7 +1127,7 @@ def test_greater_equal(ctx, data):
     )
 
 
-if api_version >= COMPLEX_VER:
+if api_version >= "2022.12":
 
     @given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
     def test_imag(x):
@@ -1378,7 +1378,7 @@ def test_pow(ctx, data):
     # Values testing pow is too finicky
 
 
-if api_version >= COMPLEX_VER:
+if api_version >= "2022.12":
 
     @given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
     def test_real(x):
