@@ -248,6 +248,7 @@ jobs:
 ```
 
 > **Warning**
+>
 > XFAIL tests that use Hypothesis (basically every test in the test suite except
 > those in test_has_names.py) can be flaky, due to the fact that Hypothesis
 > might not always run the test with an input that causes the test to fail.
