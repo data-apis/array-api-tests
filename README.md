@@ -247,14 +247,37 @@ jobs:
         pytest -v -rxXfE --ci -o xfail_strict=True --xfails-file ${GITHUB_WORKSPACE}/your-array-library/array-api-tests-xfails.txt array_api_tests/
 ```
 
+> **Warning**
+> XFAIL tests that use Hypothesis (basically every test in the test suite except
+> those in test_has_names.py) can be flaky, due to the fact that Hypothesis
+> might not always run the test with an input that causes the test to fail.
+> There are several ways to avoid this problem:
+>
+> - Increase the maximum number of examples, e.g., by adding `--max-examples
+>   1000` to the test command (the default is `100`, see below). This will
+>   make it more likely that the failing case will be found.
+> - Don't use `-o xfail_strict=True`. This will make it so that if an XFAIL
+>   test passes, it will alert you in the test summary but will not cause the
+>   test run to register as failed.
+> - Use skips instead of XFAILS. The difference between XFAIL and skip is that
+>   a skipped test is never run at all, whereas an XFAIL test is always run
+>   but ignored if it fails.
+> - Save the [Hypothesis examples
+>   database](https://hypothesis.readthedocs.io/en/latest/database.html)
+>   persistently on CI. That way as soon as a run finds one failing example,
+>   it will always re-run future runs with that example. But note that the
+>   Hypothesis examples database may be cleared when a new version of
+>   Hypothesis or the test suite is released.
+
 #### Max examples
 
 The tests make heavy use
 [Hypothesis](https://hypothesis.readthedocs.io/en/latest/). You can configure
-how many examples are generated using the `--max-examples` flag, which defaults
-to 100. Lower values can be useful for quick checks, and larger values should
-result in more rigorous runs. For example, `--max-examples 10_000` may find bugs
-where default runs don't but will take much longer to run.
+how many examples are generated using the `--max-examples` flag, which
+defaults to `100`. Lower values can be useful for quick checks, and larger
+values should result in more rigorous runs. For example, `--max-examples
+10_000` may find bugs where default runs don't but will take much longer to
+run.
 
 
 ## Contributing
