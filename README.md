@@ -256,7 +256,8 @@ jobs:
 >
 > - Increase the maximum number of examples, e.g., by adding `--max-examples
 >   1000` to the test command (the default is `100`, see below). This will
->   make it more likely that the failing case will be found.
+>   make it more likely that the failing case will be found, but it will also
+>   make the tests take longer to run.
 > - Don't use `-o xfail_strict=True`. This will make it so that if an XFAIL
 >   test passes, it will alert you in the test summary but will not cause the
 >   test run to register as failed.
