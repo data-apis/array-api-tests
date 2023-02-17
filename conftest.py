@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+import warnings
 
 from hypothesis import settings
 from pytest import mark
@@ -125,18 +126,27 @@ def pytest_collection_modifyitems(config, items):
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
     ci = config.getoption("--ci")
-    for item in items:
-        markers = list(item.iter_markers())
-        # skip if specified in skips file
-        for id_ in skip_ids:
+    # skip if specified in skips file
+    for id_ in skip_ids:
+        for item in items:
             if id_ in item.nodeid:
                 item.add_marker(mark.skip(reason=f"skips file ({skips_file})"))
                 break
-        # xfail if specified in xfails file
-        for id_ in xfail_ids:
+        else:
+            warnings.warn(f"Skip ID from {skips_file} doesn't appear to correspond to any tests: {id_!r}")
+
+    # xfail if specified in xfails file
+    for id_ in xfail_ids:
+        for item in items:
             if id_ in item.nodeid:
                 item.add_marker(mark.xfail(reason=f"xfails file ({xfails_file})"))
                 break
+        else:
+            warnings.warn(f"XFAIL ID from {xfails_file} doesn't appear to correspond to any tests: {id_!r}")
+
+    for item in items:
+        markers = list(item.iter_markers())
+
         # skip if disabled or non-existent extension
         ext_mark = next((m for m in markers if m.name == "xp_extension"), None)
         if ext_mark is not None:
