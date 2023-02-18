@@ -91,7 +91,7 @@ def test_concat(dtypes, base_shape, data):
     ph.assert_result_shape("concat", shapes, out.shape, shape, **kw)
 
     if _axis is None:
-        out_indices = (i for i in range(out.size))
+        out_indices = (i for i in range(math.prod(out.shape)))
         for x_num, x in enumerate(arrays, 1):
             for x_idx in sh.ndindex(x.shape):
                 out_i = next(out_indices)

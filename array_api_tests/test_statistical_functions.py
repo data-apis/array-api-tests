@@ -20,6 +20,8 @@ pytestmark = pytest.mark.ci
 
 def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
     dtypes = [d2 for d1, d2 in dh.promotion_table if d1 == dtype]
+    if hh.FILTER_UNDEFINED_DTYPES:
+        dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
     return st.none() | st.sampled_from(dtypes)
 
 
@@ -145,9 +147,13 @@ def test_prod(x, data):
                 _dtype = dh.default_float
     else:
         _dtype = dtype
-    # We ignore asserting the out dtype if what we expect is undefined
-    # See https://github.com/data-apis/array-api-tests/issues/106
-    if not isinstance(_dtype, _UndefinedStub):
+    if isinstance(_dtype, _UndefinedStub):
+        # If a default uint cannot exist (i.e. in PyTorch which doesn't support
+        # uint32 or uint64), we skip testing the output dtype.
+        # See https://github.com/data-apis/array-api-tests/issues/106
+        if _dtype in dh.uint_dtypes:
+            assert dh.is_int_dtype(out.dtype)  # sanity check
+    else:
         ph.assert_dtype("prod", x.dtype, out.dtype, _dtype)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
@@ -173,7 +179,7 @@ def test_prod(x, data):
         dtype=xps.floating_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
-    ).filter(lambda x: x.size >= 2),
+    ).filter(lambda x: math.prod(x.shape) >= 2),
     data=st.data(),
 )
 def test_std(x, data):
@@ -246,7 +252,14 @@ def test_sum(x, data):
                 _dtype = dh.default_float
     else:
         _dtype = dtype
-    ph.assert_dtype("sum", x.dtype, out.dtype, _dtype)
+    if isinstance(_dtype, _UndefinedStub):
+        # If a default uint cannot exist (i.e. in PyTorch which doesn't support
+        # uint32 or uint64), we skip testing the output dtype.
+        # See https://github.com/data-apis/array-api-tests/issues/160
+        if _dtype in dh.uint_dtypes:
+            assert dh.is_int_dtype(out.dtype)  # sanity check
+    else:
+        ph.assert_dtype("sum", x.dtype, out.dtype, _dtype)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "sum", x.shape, out.shape, _axes, kw.get("keepdims", False), **kw
@@ -271,7 +284,7 @@ def test_sum(x, data):
         dtype=xps.floating_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
-    ).filter(lambda x: x.size >= 2),
+    ).filter(lambda x: math.prod(x.shape) >= 2),
     data=st.data(),
 )
 def test_var(x, data):
