@@ -212,9 +212,13 @@ array_api_tests/test_set_functions.py
 Here is an example GitHub Actions workflow file, where the xfails are stored
 in `array-api-tests.xfails.txt` in the base of the `your-array-library` repo.
 
-Note that this uses `-o xfail_strict=True`. This causes XPASS tests (XFAIL
-tests that actually pass) to fail the test suite. If you don't want this
-behavior, you can remove it, or use `--skips-file` instead of `--xfails-file`.
+If you want, you can use `-o xfail_strict=True`, which causes XPASS tests (XFAIL
+tests that actually pass) to fail the test suite. However, be aware that
+XFAILures can be flaky (see below, so this may not be a good idea unless you
+use some other mitigation of such flakyness).
+
+If you don't want this behavior, you can remove it, or use `--skips-file`
+instead of `--xfails-file`.
 
 ```yaml
 # ./.github/workflows/array_api.yml
@@ -244,7 +248,7 @@ jobs:
       run: |
         export PYTHONPATH="${GITHUB_WORKSPACE}/array-api-compat"
         cd ${GITHUB_WORKSPACE}/array-api-tests
-        pytest -v -rxXfE --ci -o xfail_strict=True --xfails-file ${GITHUB_WORKSPACE}/your-array-library/array-api-tests-xfails.txt array_api_tests/
+        pytest -v -rxXfE --ci --xfails-file ${GITHUB_WORKSPACE}/your-array-library/array-api-tests-xfails.txt array_api_tests/
 ```
 
 > **Warning**
