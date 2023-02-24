@@ -26,22 +26,15 @@ from .typing import Array, DataType, Shape
 # work for floating point dtypes as those are assumed to be defined in other
 # places in the tests.
 FILTER_UNDEFINED_DTYPES = True
+# TODO: currently we assume this to be true - we probably can remove this completely
+assert FILTER_UNDEFINED_DTYPES
 
-integer_dtypes = sampled_from(dh.all_int_dtypes)
-floating_dtypes = sampled_from(dh.float_dtypes)
-numeric_dtypes = sampled_from(dh.numeric_dtypes)
-integer_or_boolean_dtypes = sampled_from(dh.bool_and_all_int_dtypes)
-boolean_dtypes = just(xp.bool)
-dtypes = sampled_from(dh.all_dtypes)
-
-if FILTER_UNDEFINED_DTYPES:
-    integer_dtypes = integer_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    floating_dtypes = floating_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    numeric_dtypes = numeric_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    integer_or_boolean_dtypes = integer_or_boolean_dtypes.filter(lambda x: not
-                                                                 isinstance(x, _UndefinedStub))
-    boolean_dtypes = boolean_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    dtypes = dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
+integer_dtypes = xps.integer_dtypes() | xps.unsigned_integer_dtypes()
+floating_dtypes = xps.floating_dtypes()
+numeric_dtypes = xps.numeric_dtypes()
+integer_or_boolean_dtypes = xps.boolean_dtypes() | integer_dtypes
+boolean_dtypes = xps.boolean_dtypes()
+dtypes = xps.scalar_dtypes()
 
 shared_dtypes = shared(dtypes, key="dtype")
 shared_floating_dtypes = shared(floating_dtypes, key="dtype")
