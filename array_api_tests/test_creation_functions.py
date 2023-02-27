@@ -315,7 +315,7 @@ def test_asarray_arrays(shape, dtypes, data):
             ), f"{f_out}, but should be {value} after x was mutated"
 
 
-@given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
+@given(hh.shapes(), hh.kwargs(dtype=st.none() | xps.scalar_dtypes()))
 def test_empty(shape, kw):
     out = xp.empty(shape, **kw)
     if kw.get("dtype", None) is None:
