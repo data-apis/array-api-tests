@@ -8,9 +8,8 @@ from enum import Enum, auto
 from typing import Callable, List, NamedTuple, Optional, Sequence, TypeVar, Union
 
 import pytest
-from hypothesis import assume, given
+from hypothesis import assume, given, reject
 from hypothesis import strategies as st
-from hypothesis.control import reject
 
 from . import _array_module as xp, api_version
 from . import array_helpers as ah
@@ -39,46 +38,6 @@ def all_floating_dtypes() -> st.SearchStrategy[DataType]:
     if api_version >= "2022.12":
         strat |= xps.complex_dtypes()
     return strat
-
-
-class OnewayPromotableDtypes(NamedTuple):
-    input_dtype: DataType
-    result_dtype: DataType
-
-
-@st.composite
-def oneway_promotable_dtypes(
-    draw, dtypes: Sequence[DataType]
-) -> st.SearchStrategy[OnewayPromotableDtypes]:
-    """Return a strategy for input dtypes that promote to result dtypes."""
-    d1, d2 = draw(hh.mutually_promotable_dtypes(dtypes=dtypes))
-    result_dtype = dh.result_type(d1, d2)
-    if d1 == result_dtype:
-        return OnewayPromotableDtypes(d2, d1)
-    elif d2 == result_dtype:
-        return OnewayPromotableDtypes(d1, d2)
-    else:
-        reject()
-
-
-class OnewayBroadcastableShapes(NamedTuple):
-    input_shape: Shape
-    result_shape: Shape
-
-
-@st.composite
-def oneway_broadcastable_shapes(draw) -> st.SearchStrategy[OnewayBroadcastableShapes]:
-    """Return a strategy for input shapes that broadcast to result shapes."""
-    result_shape = draw(hh.shapes(min_side=1))
-    input_shape = draw(
-        xps.broadcastable_shapes(
-            result_shape,
-            # Override defaults so bad shapes are less likely to be generated.
-            max_side=None if result_shape == () else max(result_shape),
-            max_dims=len(result_shape),
-        ).filter(lambda s: sh.broadcast_shapes(result_shape, s) == result_shape)
-    )
-    return OnewayBroadcastableShapes(input_shape, result_shape)
 
 
 def mock_int_dtype(n: int, dtype: DataType) -> int:
@@ -557,7 +516,7 @@ def make_binary_params(
 ) -> List[Param[BinaryParamContext]]:
     if hh.FILTER_UNDEFINED_DTYPES:
         dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
-    shared_oneway_dtypes = st.shared(oneway_promotable_dtypes(dtypes))
+    shared_oneway_dtypes = st.shared(hh.oneway_promotable_dtypes(dtypes))
     left_dtypes = shared_oneway_dtypes.map(lambda D: D.result_dtype)
     right_dtypes = shared_oneway_dtypes.map(lambda D: D.input_dtype)
 
@@ -576,7 +535,7 @@ def make_binary_params(
             right_strat = right_dtypes.flatmap(lambda d: xps.from_dtype(d, **finite_kw))
         else:
             if func_type is FuncType.IOP:
-                shared_oneway_shapes = st.shared(oneway_broadcastable_shapes())
+                shared_oneway_shapes = st.shared(hh.oneway_broadcastable_shapes())
                 left_strat = xps.arrays(
                     dtype=left_dtypes,
                     shape=shared_oneway_shapes.map(lambda S: S.result_shape),

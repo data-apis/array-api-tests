@@ -4,7 +4,7 @@ from math import sqrt
 from operator import mul
 from typing import Any, List, NamedTuple, Optional, Sequence, Tuple, Union
 
-from hypothesis import assume
+from hypothesis import assume, reject
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    integers, just, lists, none, one_of,
                                    sampled_from, shared)
@@ -97,6 +97,46 @@ def mutually_promotable_dtypes(
                 lambda l: not (xp.uint64 in l and any(d in dh.int_dtypes for d in l))
             )
     return one_of(strats).map(tuple)
+
+
+class OnewayPromotableDtypes(NamedTuple):
+    input_dtype: DataType
+    result_dtype: DataType
+
+
+@composite
+def oneway_promotable_dtypes(
+    draw, dtypes: Sequence[DataType]
+) -> SearchStrategy[OnewayPromotableDtypes]:
+    """Return a strategy for input dtypes that promote to result dtypes."""
+    d1, d2 = draw(mutually_promotable_dtypes(dtypes=dtypes))
+    result_dtype = dh.result_type(d1, d2)
+    if d1 == result_dtype:
+        return OnewayPromotableDtypes(d2, d1)
+    elif d2 == result_dtype:
+        return OnewayPromotableDtypes(d1, d2)
+    else:
+        reject()
+
+
+class OnewayBroadcastableShapes(NamedTuple):
+    input_shape: Shape
+    result_shape: Shape
+
+
+@composite
+def oneway_broadcastable_shapes(draw) -> SearchStrategy[OnewayBroadcastableShapes]:
+    """Return a strategy for input shapes that broadcast to result shapes."""
+    result_shape = draw(shapes(min_side=1))
+    input_shape = draw(
+        xps.broadcastable_shapes(
+            result_shape,
+            # Override defaults so bad shapes are less likely to be generated.
+            max_side=None if result_shape == () else max(result_shape),
+            max_dims=len(result_shape),
+        ).filter(lambda s: sh.broadcast_shapes(result_shape, s) == result_shape)
+    )
+    return OnewayBroadcastableShapes(input_shape, result_shape)
 
 
 # shared() allows us to draw either the function or the function name and they

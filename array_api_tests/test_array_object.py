@@ -12,7 +12,6 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .test_operators_and_elementwise_functions import oneway_promotable_dtypes
 from .typing import DataType, Index, Param, Scalar, ScalarType, Shape
 
 pytestmark = pytest.mark.ci
@@ -108,7 +107,7 @@ def test_getitem(shape, dtype, data):
 
 @given(
     shape=hh.shapes(),
-    dtypes=oneway_promotable_dtypes(dh.all_dtypes),
+    dtypes=hh.oneway_promotable_dtypes(dh.all_dtypes),
     data=st.data(),
 )
 def test_setitem(shape, dtypes, data):

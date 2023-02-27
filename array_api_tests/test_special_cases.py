@@ -35,10 +35,6 @@ from . import shape_helpers as sh
 from . import xps
 from ._array_module import mod as xp
 from .stubs import category_to_funcs
-from .test_operators_and_elementwise_functions import (
-    oneway_broadcastable_shapes,
-    oneway_promotable_dtypes,
-)
 
 pytestmark = pytest.mark.ci
 
@@ -1281,8 +1277,8 @@ def test_binary(func_name, func, case, x1, x2, data):
 
 @pytest.mark.parametrize("iop_name, iop, case", iop_params)
 @given(
-    oneway_dtypes=oneway_promotable_dtypes(dh.float_dtypes),
-    oneway_shapes=oneway_broadcastable_shapes(),
+    oneway_dtypes=hh.oneway_promotable_dtypes(dh.float_dtypes),
+    oneway_shapes=hh.oneway_broadcastable_shapes(),
     data=st.data(),
 )
 def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
