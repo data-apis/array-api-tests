@@ -103,9 +103,13 @@ float_dtypes = tuple(getattr(xp, name) for name in _float_names)
 all_int_dtypes = uint_dtypes + int_dtypes
 real_dtypes = all_int_dtypes + float_dtypes
 complex_dtypes = tuple(getattr(xp, name) for name in _complex_names)
-numeric_dtypes = real_dtypes + complex_dtypes
+numeric_dtypes = real_dtypes
+if api_version > "2021.12":
+    numeric_dtypes += complex_dtypes
 all_dtypes = (xp.bool,) + numeric_dtypes
-all_float_dtypes = float_dtypes + complex_dtypes
+all_float_dtypes = float_dtypes
+if api_version > "2021.12":
+    all_float_dtypes += complex_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
 
 
@@ -132,7 +136,10 @@ def is_float_dtype(dtype):
     # See https://github.com/numpy/numpy/issues/18434
     if dtype is None:
         return False
-    return dtype in float_dtypes
+    valid_dtypes = float_dtypes
+    if api_version > "2021.12":
+        valid_dtypes += complex_dtypes
+    return dtype in valid_dtypes
 
 
 def get_scalar_type(dtype: DataType) -> ScalarType:
