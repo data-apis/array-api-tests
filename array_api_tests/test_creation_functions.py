@@ -369,13 +369,15 @@ if dh.default_int == xp.int32:
     default_unsafe_dtypes.extend([xp.uint32, xp.int64])
 if dh.default_float == xp.float32:
     default_unsafe_dtypes.append(xp.float64)
+if dh.default_complex == xp.complex64:
+    default_unsafe_dtypes.append(xp.complex64)
 default_safe_dtypes: st.SearchStrategy = xps.scalar_dtypes().filter(
     lambda d: d not in default_unsafe_dtypes
 )
 
 
 @st.composite
-def full_fill_values(draw) -> st.SearchStrategy[float]:
+def full_fill_values(draw) -> st.SearchStrategy[Union[bool, int, float, complex]]:
     kw = draw(
         st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_kw")
     )
@@ -396,15 +398,28 @@ def test_full(shape, fill_value, kw):
         dtype = xp.bool
     elif isinstance(fill_value, int):
         dtype = dh.default_int
-    else:
+    elif isinstance(fill_value, float):
         dtype = dh.default_float
+    else:
+        assert isinstance(fill_value, complex)  # sanity check
+        dtype = dh.default_complex
+        # Ignore large components so we don't fail like
+        #
+        #     >>> torch.fill(complex(0.0, 3.402823466385289e+38))
+        #     RuntimeError: value cannot be converted to complex<float> without overflow
+        #
+        M = dh.dtype_ranges[dh.dtype_components[dtype]].max
+        assume(all(abs(c) < math.sqrt(M) for c in [fill_value.real, fill_value.imag]))
     if kw.get("dtype", None) is None:
         if isinstance(fill_value, bool):
-            pass  # TODO
+            assert out.dtype == xp.bool, f"{out.dtype=}, but should be bool [full()]"
         elif isinstance(fill_value, int):
             ph.assert_default_int("full", out.dtype)
-        else:
+        elif isinstance(fill_value, float):
             ph.assert_default_float("full", out.dtype)
+        else:
+            assert isinstance(fill_value, complex)  # sanity check
+            ph.assert_default_complex("full", out.dtype)
     else:
         ph.assert_kw_dtype("full", kw["dtype"], out.dtype)
     ph.assert_shape("full", out.shape, shape, shape=shape)

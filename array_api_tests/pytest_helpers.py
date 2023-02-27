@@ -170,6 +170,23 @@ def assert_default_float(func_name: str, out_dtype: DataType):
     assert out_dtype == dh.default_float, msg
 
 
+def assert_default_complex(func_name: str, out_dtype: DataType):
+    """
+    Assert the output dtype is the default complex, e.g.
+
+        >>> out = xp.asarray(4+2j)
+        >>> assert_default_complex('asarray', out.dtype)
+
+    """
+    f_dtype = dh.dtype_to_name[out_dtype]
+    f_default = dh.dtype_to_name[dh.default_complex]
+    msg = (
+        f"out.dtype={f_dtype}, should be default "
+        f"complex dtype {f_default} [{func_name}()]"
+    )
+    assert out_dtype == dh.default_complex, msg
+
+
 def assert_default_int(func_name: str, out_dtype: DataType):
     """
     Assert the output dtype is the default int, e.g.

@@ -5,6 +5,7 @@ from inspect import signature
 from typing import Any, Dict, NamedTuple, Sequence, Tuple, Union
 from warnings import warn
 
+from . import api_version
 from . import _array_module as xp
 from ._array_module import _UndefinedStub
 from .stubs import name_to_func
@@ -29,6 +30,7 @@ __all__ = [
     "default_int",
     "default_uint",
     "default_float",
+    "default_complex",
     "promotion_table",
     "dtype_nbits",
     "dtype_signed",
@@ -197,6 +199,15 @@ else:
     default_float = xp.asarray(float()).dtype
     if default_float not in float_dtypes:
         warn(f"inferred default float is {default_float!r}, which is not a float")
+    if api_version > "2021.12":
+        default_complex = xp.asarray(complex()).dtype
+        if default_complex not in complex_dtypes:
+            warn(
+                f"inferred default complex is {default_complex!r}, "
+                "which is not a complex"
+            )
+    else:
+        default_complex = None
 if dtype_nbits[default_int] == 32:
     default_uint = xp.uint32
 else:
