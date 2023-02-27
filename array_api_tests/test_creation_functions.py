@@ -1,3 +1,4 @@
+import cmath
 import math
 from itertools import count
 from typing import Iterator, NamedTuple, Union
@@ -247,8 +248,8 @@ def test_asarray_scalars(shape, data):
 
 
 def scalar_eq(s1: Scalar, s2: Scalar) -> bool:
-    if math.isnan(s1):
-        return math.isnan(s2)
+    if cmath.isnan(s1):
+        return cmath.isnan(s2)
     else:
         return s1 == s2
 

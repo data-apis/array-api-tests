@@ -1,4 +1,4 @@
-import math
+import cmath
 from typing import Set
 
 import pytest
@@ -26,7 +26,7 @@ def assert_scalar_in_set(
     **kw,
 ):
     out_repr = "out" if idx == () else f"out[{idx}]"
-    if math.isnan(out):
+    if cmath.isnan(out):
         raise NotImplementedError()
     msg = f"{out_repr}={out}, but should be in {set_} [{func_name}({ph.fmt_kw(kw)})]"
     assert out in set_, msg

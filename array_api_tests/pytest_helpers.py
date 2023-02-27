@@ -1,3 +1,4 @@
+import cmath
 import math
 from inspect import getfullargspec
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
@@ -345,12 +346,12 @@ def assert_scalar_equals(
     if type_ in [bool, int]:
         msg = f"{repr_name}={out}, but should be {expected} [{f_func}]"
         assert out == expected, msg
-    elif math.isnan(expected):
+    elif cmath.isnan(expected):
         msg = f"{repr_name}={out}, but should be {expected} [{f_func}]"
-        assert math.isnan(out), msg
+        assert cmath.isnan(out), msg
     else:
         msg = f"{repr_name}={out}, but should be roughly {expected} [{f_func}]"
-        assert math.isclose(out, expected, rel_tol=0.25, abs_tol=1), msg
+        assert cmath.isclose(out, expected, rel_tol=0.25, abs_tol=1), msg
 
 
 def assert_fill(
@@ -368,7 +369,7 @@ def assert_fill(
 
     """
     msg = f"out not filled with {fill_value} [{func_name}({fmt_kw(kw)})]\n{out=}"
-    if math.isnan(fill_value):
+    if cmath.isnan(fill_value):
         assert xp.all(xp.isnan(out)), msg
     else:
         assert xp.all(xp.equal(out, xp.asarray(fill_value, dtype=dtype))), msg

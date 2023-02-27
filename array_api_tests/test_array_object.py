@@ -1,3 +1,4 @@
+import cmath
 import math
 from itertools import product
 from typing import List, Sequence, Tuple, Union, get_args
@@ -135,7 +136,7 @@ def test_setitem(shape, dtypes, data):
     f_res = sh.fmt_idx("x", key)
     if isinstance(value, get_args(Scalar)):
         msg = f"{f_res}={res[key]!r}, but should be {value=} [__setitem__()]"
-        if math.isnan(value):
+        if cmath.isnan(value):
             assert xp.isnan(res[key]), msg
         else:
             assert res[key] == value, msg
