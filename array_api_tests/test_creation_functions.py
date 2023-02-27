@@ -79,7 +79,8 @@ def reals(min_value=None, max_value=None) -> st.SearchStrategy[Union[int, float]
     )
 
 
-@given(dtype=st.none() | hh.numeric_dtypes, data=st.data())
+# TODO: support testing complex dtypes
+@given(dtype=st.none() | xps.real_dtypes(), data=st.data())
 def test_arange(dtype, data):
     if dtype is None or dh.is_float_dtype(dtype):
         start = data.draw(reals(), label="start")
@@ -128,6 +129,12 @@ def test_arange(dtype, data):
         assert m <= _start <= M
         assert m <= _stop <= M
         assert m <= step <= M
+        # Ignore ridiculous distances so we don't fail like
+        #
+        #     >>> torch.arange(9132051521638391890, 0, -91320515216383920)
+        #     RuntimeError: invalid size, possible overflow?
+        #
+        assume(abs(_start - _stop) < M // 2)
 
     r = frange(_start, _stop, step)
     size = len(r)
