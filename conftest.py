@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 import warnings
+import os
 
 from hypothesis import settings
 from pytest import mark
@@ -102,7 +103,7 @@ def pytest_collection_modifyitems(config, items):
 
     skip_ids = []
     if skips_path:
-        with open(skips_path) as f:
+        with open(os.path.expanduser(skips_path)) as f:
             for line in f:
                 if line.startswith("array_api_tests"):
                     id_ = line.strip("\n")
@@ -116,7 +117,7 @@ def pytest_collection_modifyitems(config, items):
 
     xfail_ids = []
     if xfails_path:
-        with open(xfails_path) as f:
+        with open(os.path.expanduser(xfails_path)) as f:
             for line in f:
                 if not line.strip() or line.startswith('#'):
                     continue
