@@ -1,3 +1,4 @@
+import cmath
 import math
 from inspect import getfullargspec
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
@@ -167,6 +168,23 @@ def assert_default_float(func_name: str, out_dtype: DataType):
         f"floating-point dtype {f_default} [{func_name}()]"
     )
     assert out_dtype == dh.default_float, msg
+
+
+def assert_default_complex(func_name: str, out_dtype: DataType):
+    """
+    Assert the output dtype is the default complex, e.g.
+
+        >>> out = xp.asarray(4+2j)
+        >>> assert_default_complex('asarray', out.dtype)
+
+    """
+    f_dtype = dh.dtype_to_name[out_dtype]
+    f_default = dh.dtype_to_name[dh.default_complex]
+    msg = (
+        f"out.dtype={f_dtype}, should be default "
+        f"complex dtype {f_default} [{func_name}()]"
+    )
+    assert out_dtype == dh.default_complex, msg
 
 
 def assert_default_int(func_name: str, out_dtype: DataType):
@@ -345,12 +363,12 @@ def assert_scalar_equals(
     if type_ in [bool, int]:
         msg = f"{repr_name}={out}, but should be {expected} [{f_func}]"
         assert out == expected, msg
-    elif math.isnan(expected):
+    elif cmath.isnan(expected):
         msg = f"{repr_name}={out}, but should be {expected} [{f_func}]"
-        assert math.isnan(out), msg
+        assert cmath.isnan(out), msg
     else:
         msg = f"{repr_name}={out}, but should be roughly {expected} [{f_func}]"
-        assert math.isclose(out, expected, rel_tol=0.25, abs_tol=1), msg
+        assert cmath.isclose(out, expected, rel_tol=0.25, abs_tol=1), msg
 
 
 def assert_fill(
@@ -368,10 +386,25 @@ def assert_fill(
 
     """
     msg = f"out not filled with {fill_value} [{func_name}({fmt_kw(kw)})]\n{out=}"
-    if math.isnan(fill_value):
+    if cmath.isnan(fill_value):
         assert xp.all(xp.isnan(out)), msg
     else:
         assert xp.all(xp.equal(out, xp.asarray(fill_value, dtype=dtype))), msg
+
+
+def _assert_float_element(at_out: Array, at_expected: Array, msg: str):
+    if xp.isnan(at_expected):
+        assert xp.isnan(at_out), msg
+    elif at_expected == 0.0 or at_expected == -0.0:
+        scalar_at_expected = float(at_expected)
+        scalar_at_out = float(at_out)
+        if is_pos_zero(scalar_at_expected):
+            assert is_pos_zero(scalar_at_out), msg
+        else:
+            assert is_neg_zero(scalar_at_expected)  # sanity check
+            assert is_neg_zero(scalar_at_out), msg
+    else:
+        assert at_out == at_expected, msg
 
 
 def assert_array_elements(
@@ -392,7 +425,7 @@ def assert_array_elements(
     dh.result_type(out.dtype, expected.dtype)  # sanity check
     assert_shape(func_name, out.shape, expected.shape, **kw)  # sanity check
     f_func = f"[{func_name}({fmt_kw(kw)})]"
-    if dh.is_float_dtype(out.dtype):
+    if out.dtype in dh.float_dtypes:
         for idx in sh.ndindex(out.shape):
             at_out = out[idx]
             at_expected = expected[idx]
@@ -400,18 +433,18 @@ def assert_array_elements(
                 f"{sh.fmt_idx(out_repr, idx)}={at_out}, should be {at_expected} "
                 f"{f_func}"
             )
-            if xp.isnan(at_expected):
-                assert xp.isnan(at_out), msg
-            elif at_expected == 0.0 or at_expected == -0.0:
-                scalar_at_expected = float(at_expected)
-                scalar_at_out = float(at_out)
-                if is_pos_zero(scalar_at_expected):
-                    assert is_pos_zero(scalar_at_out), msg
-                else:
-                    assert is_neg_zero(scalar_at_expected)  # sanity check
-                    assert is_neg_zero(scalar_at_out), msg
-            else:
-                assert at_out == at_expected, msg
+            _assert_float_element(at_out, at_expected, msg)
+    elif out.dtype in dh.complex_dtypes:
+        assert (out.dtype in dh.complex_dtypes) == (expected.dtype in dh.complex_dtypes)
+        for idx in sh.ndindex(out.shape):
+            at_out = out[idx]
+            at_expected = expected[idx]
+            msg = (
+                f"{sh.fmt_idx(out_repr, idx)}={at_out}, should be {at_expected} "
+                f"{f_func}"
+            )
+            _assert_float_element(at_out.real, at_expected.real, msg)
+            _assert_float_element(at_out.imag, at_expected.imag, msg)
     else:
         assert xp.all(
             out == expected

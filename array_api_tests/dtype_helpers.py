@@ -5,6 +5,7 @@ from inspect import signature
 from typing import Any, Dict, NamedTuple, Sequence, Tuple, Union
 from warnings import warn
 
+from . import api_version
 from . import _array_module as xp
 from ._array_module import _UndefinedStub
 from .stubs import name_to_func
@@ -15,10 +16,12 @@ __all__ = [
     "uint_dtypes",
     "all_int_dtypes",
     "float_dtypes",
+    "real_dtypes",
     "numeric_dtypes",
     "all_dtypes",
-    "dtype_to_name",
+    "all_float_dtypes",
     "bool_and_all_int_dtypes",
+    "dtype_to_name",
     "dtype_to_scalars",
     "is_int_dtype",
     "is_float_dtype",
@@ -27,9 +30,11 @@ __all__ = [
     "default_int",
     "default_uint",
     "default_float",
+    "default_complex",
     "promotion_table",
     "dtype_nbits",
     "dtype_signed",
+    "dtype_components",
     "func_in_dtypes",
     "func_returns_bool",
     "binary_op_to_symbol",
@@ -86,15 +91,25 @@ class EqualityMapping(Mapping):
 _uint_names = ("uint8", "uint16", "uint32", "uint64")
 _int_names = ("int8", "int16", "int32", "int64")
 _float_names = ("float32", "float64")
-_dtype_names = ("bool",) + _uint_names + _int_names + _float_names
+_real_names = _uint_names + _int_names + _float_names
+_complex_names = ("complex64", "complex128")
+_numeric_names = _real_names + _complex_names
+_dtype_names = ("bool",) + _numeric_names
 
 
 uint_dtypes = tuple(getattr(xp, name) for name in _uint_names)
 int_dtypes = tuple(getattr(xp, name) for name in _int_names)
 float_dtypes = tuple(getattr(xp, name) for name in _float_names)
 all_int_dtypes = uint_dtypes + int_dtypes
-numeric_dtypes = all_int_dtypes + float_dtypes
+real_dtypes = all_int_dtypes + float_dtypes
+complex_dtypes = tuple(getattr(xp, name) for name in _complex_names)
+numeric_dtypes = real_dtypes
+if api_version > "2021.12":
+    numeric_dtypes += complex_dtypes
 all_dtypes = (xp.bool,) + numeric_dtypes
+all_float_dtypes = float_dtypes
+if api_version > "2021.12":
+    all_float_dtypes += complex_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
 
 
@@ -121,7 +136,10 @@ def is_float_dtype(dtype):
     # See https://github.com/numpy/numpy/issues/18434
     if dtype is None:
         return False
-    return dtype in float_dtypes
+    valid_dtypes = float_dtypes
+    if api_version > "2021.12":
+        valid_dtypes += complex_dtypes
+    return dtype in valid_dtypes
 
 
 def get_scalar_type(dtype: DataType) -> ScalarType:
@@ -129,6 +147,8 @@ def get_scalar_type(dtype: DataType) -> ScalarType:
         return int
     elif is_float_dtype(dtype):
         return float
+    elif dtype in complex_dtypes:
+        return complex
     else:
         return bool
 
@@ -157,12 +177,18 @@ dtype_nbits = EqualityMapping(
     [(d, 8) for d in [xp.int8, xp.uint8]]
     + [(d, 16) for d in [xp.int16, xp.uint16]]
     + [(d, 32) for d in [xp.int32, xp.uint32, xp.float32]]
-    + [(d, 64) for d in [xp.int64, xp.uint64, xp.float64]]
+    + [(d, 64) for d in [xp.int64, xp.uint64, xp.float64, xp.complex64]]
+    + [(xp.complex128, 128)]
 )
 
 
 dtype_signed = EqualityMapping(
     [(d, True) for d in int_dtypes] + [(d, False) for d in uint_dtypes]
+)
+
+
+dtype_components = EqualityMapping(
+    [(xp.complex64, xp.float32), (xp.complex128, xp.float64)]
 )
 
 
@@ -180,6 +206,15 @@ else:
     default_float = xp.asarray(float()).dtype
     if default_float not in float_dtypes:
         warn(f"inferred default float is {default_float!r}, which is not a float")
+    if api_version > "2021.12":
+        default_complex = xp.asarray(complex()).dtype
+        if default_complex not in complex_dtypes:
+            warn(
+                f"inferred default complex is {default_complex!r}, "
+                "which is not a complex"
+            )
+    else:
+        default_complex = None
 if dtype_nbits[default_int] == 32:
     default_uint = xp.uint32
 else:
@@ -226,6 +261,11 @@ _numeric_promotions = [
     ((xp.float32, xp.float32), xp.float32),
     ((xp.float32, xp.float64), xp.float64),
     ((xp.float64, xp.float64), xp.float64),
+    # complex
+    ((xp.complex64, xp.complex64), xp.complex64),
+    ((xp.complex64, xp.complex128), xp.complex128),
+    ((xp.complex128, xp.complex128), xp.complex128),
+
 ]
 _numeric_promotions += [((d2, d1), res) for (d1, d2), res in _numeric_promotions]
 _promotion_table = list(set(_numeric_promotions))

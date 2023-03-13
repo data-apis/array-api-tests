@@ -1,11 +1,13 @@
 from functools import wraps
+from os import getenv
 
 from hypothesis import strategies as st
 from hypothesis.extra import array_api
 
+from . import _version
 from ._array_module import mod as _xp
 
-__all__ = ["xps"]
+__all__ = ["api_version", "xps"]
 
 
 # We monkey patch floats() to always disable subnormals as they are out-of-scope
@@ -41,9 +43,9 @@ except AttributeError:
     pass
 
 
-xps = array_api.make_strategies_namespace(_xp, api_version="2021.12")
-
-
-from . import _version
+api_version = getenv(
+    "ARRAY_API_TESTS_VERSION", getattr(_xp, "__array_api_version__", "2021.12")
+)
+xps = array_api.make_strategies_namespace(_xp, api_version=api_version)
 
 __version__ = _version.get_versions()["version"]

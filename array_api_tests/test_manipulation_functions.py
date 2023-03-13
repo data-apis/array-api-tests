@@ -350,7 +350,6 @@ def test_stack(shape, dtypes, kw, data):
     out_indices = sh.ndindex(out.shape)
     for idx in sh.axis_ndindex(arrays[0].shape, axis=_axis):
         f_idx = ", ".join(str(i) if isinstance(i, int) else ":" for i in idx)
-        print(f"{f_idx=}")
         for x_num, x in enumerate(arrays, 1):
             indexed_x = x[idx]
             for x_idx in sh.ndindex(indexed_x.shape):

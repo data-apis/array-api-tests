@@ -1,3 +1,4 @@
+import cmath
 import math
 from itertools import product
 from typing import List, Sequence, Tuple, Union, get_args
@@ -12,7 +13,6 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .test_operators_and_elementwise_functions import oneway_promotable_dtypes
 from .typing import DataType, Index, Param, Scalar, ScalarType, Shape
 
 pytestmark = pytest.mark.ci
@@ -108,7 +108,7 @@ def test_getitem(shape, dtype, data):
 
 @given(
     shape=hh.shapes(),
-    dtypes=oneway_promotable_dtypes(dh.all_dtypes),
+    dtypes=hh.oneway_promotable_dtypes(dh.all_dtypes),
     data=st.data(),
 )
 def test_setitem(shape, dtypes, data):
@@ -136,7 +136,7 @@ def test_setitem(shape, dtypes, data):
     f_res = sh.fmt_idx("x", key)
     if isinstance(value, get_args(Scalar)):
         msg = f"{f_res}={res[key]!r}, but should be {value=} [__setitem__()]"
-        if math.isnan(value):
+        if cmath.isnan(value):
             assert xp.isnan(res[key]), msg
         else:
             assert res[key] == value, msg
