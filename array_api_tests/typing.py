@@ -12,8 +12,8 @@ __all__ = [
 ]
 
 DataType = Type[Any]
-Scalar = Union[bool, int, float]
-ScalarType = Union[Type[bool], Type[int], Type[float]]
+Scalar = Union[bool, int, float, complex]
+ScalarType = Union[Type[bool], Type[int], Type[float], Type[complex]]
 Array = Any
 Shape = Tuple[int, ...]
 AtomicIndex = Union[int, "ellipsis", slice, None]  # noqa

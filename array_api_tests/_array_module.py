@@ -58,6 +58,7 @@ _dtypes = [
     "uint8", "uint16", "uint32", "uint64",
     "int8", "int16", "int32", "int64",
     "float32", "float64",
+    "complex64", "complex128",
 ]
 _constants = ["e", "inf", "nan", "pi"]
 _funcs = [f.__name__ for funcs in stubs.category_to_funcs.values() for f in funcs]

@@ -1,4 +1,5 @@
 # TODO: disable if opted out, refactor things
+import cmath
 import math
 from collections import Counter, defaultdict
 
@@ -61,7 +62,7 @@ def test_unique_all(x):
 
     for idx in sh.ndindex(out.indices.shape):
         val = scalar_type(out.values[idx])
-        if math.isnan(val):
+        if cmath.isnan(val):
             break
         i = int(out.indices[idx])
         expected = firsts[val]
@@ -88,7 +89,7 @@ def test_unique_all(x):
     for idx in sh.ndindex(out.values.shape):
         val = scalar_type(out.values[idx])
         count = int(out.counts[idx])
-        if math.isnan(val):
+        if cmath.isnan(val):
             nans += 1
             assert count == 1, (
                 f"out.counts[{idx}]={count} for out.values[{idx}]={val}, "
@@ -225,7 +226,7 @@ def test_unique_values(x):
     nans = 0
     for idx in sh.ndindex(out.shape):
         val = scalar_type(out[idx])
-        if math.isnan(val):
+        if cmath.isnan(val):
             nans += 1
         else:
             assert val in distinct, f"out[{idx}]={val}, but {val} not in input array"

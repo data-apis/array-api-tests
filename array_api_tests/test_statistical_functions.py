@@ -1,3 +1,4 @@
+import cmath
 import math
 from typing import Optional
 
@@ -162,7 +163,7 @@ def test_prod(x, data):
     scalar_type = dh.get_scalar_type(out.dtype)
     for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
         prod = scalar_type(out[out_idx])
-        assume(math.isfinite(prod))
+        assume(cmath.isfinite(prod))
         elements = []
         for idx in indices:
             s = scalar_type(x[idx])
@@ -267,7 +268,7 @@ def test_sum(x, data):
     scalar_type = dh.get_scalar_type(out.dtype)
     for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
         sum_ = scalar_type(out[out_idx])
-        assume(math.isfinite(sum_))
+        assume(cmath.isfinite(sum_))
         elements = []
         for idx in indices:
             s = scalar_type(x[idx])

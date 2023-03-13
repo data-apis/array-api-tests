@@ -16,13 +16,18 @@ from .typing import DataType
 pytestmark = pytest.mark.ci
 
 
+# TODO: test with complex dtypes
+def non_complex_dtypes():
+    return xps.boolean_dtypes() | xps.real_dtypes()
+
+
 def float32(n: Union[int, float]) -> float:
     return struct.unpack("!f", struct.pack("!f", float(n)))[0]
 
 
 @given(
-    x_dtype=xps.scalar_dtypes(),
-    dtype=xps.scalar_dtypes(),
+    x_dtype=non_complex_dtypes(),
+    dtype=non_complex_dtypes(),
     kw=hh.kwargs(copy=st.booleans()),
     data=st.data(),
 )
@@ -101,7 +106,7 @@ def test_broadcast_to(x, data):
     # TODO: test values
 
 
-@given(_from=xps.scalar_dtypes(), to=xps.scalar_dtypes(), data=st.data())
+@given(_from=non_complex_dtypes(), to=non_complex_dtypes(), data=st.data())
 def test_can_cast(_from, to, data):
     from_ = data.draw(
         st.just(_from) | xps.arrays(dtype=_from, shape=hh.shapes()), label="from_"
@@ -114,10 +119,12 @@ def test_can_cast(_from, to, data):
     if _from == xp.bool:
         expected = to == xp.bool
     else:
-        for dtypes in [dh.all_int_dtypes, dh.float_dtypes]:
+        same_family = None
+        for dtypes in [dh.all_int_dtypes, dh.float_dtypes, dh.complex_dtypes]:
             if _from in dtypes:
                 same_family = to in dtypes
                 break
+        assert same_family is not None  # sanity check
         if same_family:
             from_min, from_max = dh.dtype_ranges[_from]
             to_min, to_max = dh.dtype_ranges[to]

@@ -1,3 +1,4 @@
+import cmath
 import math
 from itertools import count
 from typing import Iterator, NamedTuple, Union
@@ -12,7 +13,6 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from .test_operators_and_elementwise_functions import oneway_promotable_dtypes
 from .typing import DataType, Scalar
 
 pytestmark = pytest.mark.ci
@@ -79,7 +79,8 @@ def reals(min_value=None, max_value=None) -> st.SearchStrategy[Union[int, float]
     )
 
 
-@given(dtype=st.none() | hh.numeric_dtypes, data=st.data())
+# TODO: support testing complex dtypes
+@given(dtype=st.none() | xps.real_dtypes(), data=st.data())
 def test_arange(dtype, data):
     if dtype is None or dh.is_float_dtype(dtype):
         start = data.draw(reals(), label="start")
@@ -128,6 +129,12 @@ def test_arange(dtype, data):
         assert m <= _start <= M
         assert m <= _stop <= M
         assert m <= step <= M
+        # Ignore ridiculous distances so we don't fail like
+        #
+        #     >>> torch.arange(9132051521638391890, 0, -91320515216383920)
+        #     RuntimeError: invalid size, possible overflow?
+        #
+        assume(abs(_start - _stop) < M // 2)
 
     r = frange(_start, _stop, step)
     size = len(r)
@@ -248,15 +255,15 @@ def test_asarray_scalars(shape, data):
 
 
 def scalar_eq(s1: Scalar, s2: Scalar) -> bool:
-    if math.isnan(s1):
-        return math.isnan(s2)
+    if cmath.isnan(s1):
+        return cmath.isnan(s2)
     else:
         return s1 == s2
 
 
 @given(
     shape=hh.shapes(),
-    dtypes=oneway_promotable_dtypes(dh.all_dtypes),
+    dtypes=hh.oneway_promotable_dtypes(dh.all_dtypes),
     data=st.data(),
 )
 def test_asarray_arrays(shape, dtypes, data):
@@ -308,7 +315,7 @@ def test_asarray_arrays(shape, dtypes, data):
             ), f"{f_out}, but should be {value} after x was mutated"
 
 
-@given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.shared_dtypes))
+@given(hh.shapes(), hh.kwargs(dtype=st.none() | xps.scalar_dtypes()))
 def test_empty(shape, kw):
     out = xp.empty(shape, **kw)
     if kw.get("dtype", None) is None:
@@ -362,13 +369,15 @@ if dh.default_int == xp.int32:
     default_unsafe_dtypes.extend([xp.uint32, xp.int64])
 if dh.default_float == xp.float32:
     default_unsafe_dtypes.append(xp.float64)
+if dh.default_complex == xp.complex64:
+    default_unsafe_dtypes.append(xp.complex64)
 default_safe_dtypes: st.SearchStrategy = xps.scalar_dtypes().filter(
     lambda d: d not in default_unsafe_dtypes
 )
 
 
 @st.composite
-def full_fill_values(draw) -> st.SearchStrategy[float]:
+def full_fill_values(draw) -> st.SearchStrategy[Union[bool, int, float, complex]]:
     kw = draw(
         st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_kw")
     )
@@ -389,15 +398,28 @@ def test_full(shape, fill_value, kw):
         dtype = xp.bool
     elif isinstance(fill_value, int):
         dtype = dh.default_int
-    else:
+    elif isinstance(fill_value, float):
         dtype = dh.default_float
+    else:
+        assert isinstance(fill_value, complex)  # sanity check
+        dtype = dh.default_complex
+        # Ignore large components so we don't fail like
+        #
+        #     >>> torch.fill(complex(0.0, 3.402823466385289e+38))
+        #     RuntimeError: value cannot be converted to complex<float> without overflow
+        #
+        M = dh.dtype_ranges[dh.dtype_components[dtype]].max
+        assume(all(abs(c) < math.sqrt(M) for c in [fill_value.real, fill_value.imag]))
     if kw.get("dtype", None) is None:
         if isinstance(fill_value, bool):
-            pass  # TODO
+            assert out.dtype == xp.bool, f"{out.dtype=}, but should be bool [full()]"
         elif isinstance(fill_value, int):
             ph.assert_default_int("full", out.dtype)
-        else:
+        elif isinstance(fill_value, float):
             ph.assert_default_float("full", out.dtype)
+        else:
+            assert isinstance(fill_value, complex)  # sanity check
+            ph.assert_default_complex("full", out.dtype)
     else:
         ph.assert_kw_dtype("full", kw["dtype"], out.dtype)
     ph.assert_shape("full", out.shape, shape, shape=shape)
@@ -448,7 +470,7 @@ def test_linspace(num, dtype, endpoint, data):
     assume(not xp.isnan(xp.asarray(start - stop, dtype=_dtype)))
     # avoid generating very large distances
     # https://github.com/data-apis/array-api-tests/issues/125
-    assume(abs(stop - start) < dh.dtype_ranges[_dtype].max)
+    assume(abs(stop - start) < math.sqrt(dh.dtype_ranges[_dtype].max))
 
     kw = data.draw(
         hh.specified_kwargs(

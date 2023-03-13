@@ -4,7 +4,7 @@ from math import sqrt
 from operator import mul
 from typing import Any, List, NamedTuple, Optional, Sequence, Tuple, Union
 
-from hypothesis import assume
+from hypothesis import assume, reject
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    integers, just, lists, none, one_of,
                                    sampled_from, shared)
@@ -26,27 +26,20 @@ from .typing import Array, DataType, Shape
 # work for floating point dtypes as those are assumed to be defined in other
 # places in the tests.
 FILTER_UNDEFINED_DTYPES = True
+# TODO: currently we assume this to be true - we probably can remove this completely
+assert FILTER_UNDEFINED_DTYPES
 
-integer_dtypes = sampled_from(dh.all_int_dtypes)
-floating_dtypes = sampled_from(dh.float_dtypes)
-numeric_dtypes = sampled_from(dh.numeric_dtypes)
-integer_or_boolean_dtypes = sampled_from(dh.bool_and_all_int_dtypes)
-boolean_dtypes = just(xp.bool)
-dtypes = sampled_from(dh.all_dtypes)
-
-if FILTER_UNDEFINED_DTYPES:
-    integer_dtypes = integer_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    floating_dtypes = floating_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    numeric_dtypes = numeric_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    integer_or_boolean_dtypes = integer_or_boolean_dtypes.filter(lambda x: not
-                                                                 isinstance(x, _UndefinedStub))
-    boolean_dtypes = boolean_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    dtypes = dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
+integer_dtypes = xps.integer_dtypes() | xps.unsigned_integer_dtypes()
+floating_dtypes = xps.floating_dtypes()
+numeric_dtypes = xps.numeric_dtypes()
+integer_or_boolean_dtypes = xps.boolean_dtypes() | integer_dtypes
+boolean_dtypes = xps.boolean_dtypes()
+dtypes = xps.scalar_dtypes()
 
 shared_dtypes = shared(dtypes, key="dtype")
 shared_floating_dtypes = shared(floating_dtypes, key="dtype")
 
-_dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.float_dtypes]
+_dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.float_dtypes, dh.complex_dtypes]
 _sorted_dtypes = [d for category in _dtype_categories for d in category]
 
 def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):
@@ -104,6 +97,46 @@ def mutually_promotable_dtypes(
                 lambda l: not (xp.uint64 in l and any(d in dh.int_dtypes for d in l))
             )
     return one_of(strats).map(tuple)
+
+
+class OnewayPromotableDtypes(NamedTuple):
+    input_dtype: DataType
+    result_dtype: DataType
+
+
+@composite
+def oneway_promotable_dtypes(
+    draw, dtypes: Sequence[DataType]
+) -> SearchStrategy[OnewayPromotableDtypes]:
+    """Return a strategy for input dtypes that promote to result dtypes."""
+    d1, d2 = draw(mutually_promotable_dtypes(dtypes=dtypes))
+    result_dtype = dh.result_type(d1, d2)
+    if d1 == result_dtype:
+        return OnewayPromotableDtypes(d2, d1)
+    elif d2 == result_dtype:
+        return OnewayPromotableDtypes(d1, d2)
+    else:
+        reject()
+
+
+class OnewayBroadcastableShapes(NamedTuple):
+    input_shape: Shape
+    result_shape: Shape
+
+
+@composite
+def oneway_broadcastable_shapes(draw) -> SearchStrategy[OnewayBroadcastableShapes]:
+    """Return a strategy for input shapes that broadcast to result shapes."""
+    result_shape = draw(shapes(min_side=1))
+    input_shape = draw(
+        xps.broadcastable_shapes(
+            result_shape,
+            # Override defaults so bad shapes are less likely to be generated.
+            max_side=None if result_shape == () else max(result_shape),
+            max_dims=len(result_shape),
+        ).filter(lambda s: sh.broadcast_shapes(result_shape, s) == result_shape)
+    )
+    return OnewayBroadcastableShapes(input_shape, result_shape)
 
 
 # shared() allows us to draw either the function or the function name and they
