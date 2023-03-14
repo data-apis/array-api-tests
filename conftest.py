@@ -129,30 +129,27 @@ def pytest_collection_modifyitems(config, items):
                 id_ = line.strip("\n")
                 xfail_ids.append(id_)
 
+    skip_id_matched = {id_: False for id_ in skip_ids}
+    xfail_id_matched = {id_: False for id_ in xfail_ids}
+
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
     ci = config.getoption("--ci")
-    # skip if specified in skips file
-    for id_ in skip_ids:
-        for item in items:
-            if id_ in item.nodeid:
-                item.add_marker(mark.skip(reason=f"skips file ({skips_file})"))
-                break
-        else:
-            warnings.warn(f"Skip ID from {skips_file} doesn't appear to correspond to any tests: {id_!r}")
-
-    # xfail if specified in xfails file
-    for id_ in xfail_ids:
-        for item in items:
-            if id_ in item.nodeid:
-                item.add_marker(mark.xfail(reason=f"xfails file ({xfails_file})"))
-                break
-        else:
-            warnings.warn(f"XFAIL ID from {xfails_file} doesn't appear to correspond to any tests: {id_!r}")
 
     for item in items:
         markers = list(item.iter_markers())
-
+        # skip if specified in skips file
+        for id_ in skip_ids:
+            if item.nodeid.startswith(id_):
+                item.add_marker(mark.skip(reason=f"--skips-file ({skips_file})"))
+                skip_id_matched[id_] = True
+                break
+        # xfail if specified in xfails file
+        for id_ in xfail_ids:
+            if item.nodeid.startswith(id_):
+                item.add_marker(mark.xfail(reason=f"--xfails-file ({xfails_file})"))
+                xfail_id_matched[id_] = True
+                break
         # skip if disabled or non-existent extension
         ext_mark = next((m for m in markers if m.name == "xp_extension"), None)
         if ext_mark is not None:
@@ -186,3 +183,26 @@ def pytest_collection_modifyitems(config, items):
                         reason=f"requires ARRAY_API_TESTS_VERSION=>{min_version}"
                     )
                 )
+
+    bad_ids_end_msg = (
+        "Note the relevant tests might not of been collected by pytest, or "
+        "another specified id might have already matched a test."
+    )
+    bad_skip_ids = [id_ for id_, matched in skip_id_matched.items() if not matched]
+    if bad_skip_ids:
+        f_bad_ids = "\n".join(f"    {id_}" for id_ in bad_skip_ids)
+        warnings.warn(
+            f"{len(bad_skip_ids)} ids in skips file don't match any collected tests: \n"
+            f"{f_bad_ids}\n"
+            f"(skips file: {skips_file})\n"
+            f"{bad_ids_end_msg}"
+        )
+    bad_xfail_ids = [id_ for id_, matched in xfail_id_matched.items() if not matched]
+    if bad_xfail_ids:
+        f_bad_ids = "\n".join(f"    {id_}" for id_ in bad_xfail_ids)
+        warnings.warn(
+            f"{len(bad_xfail_ids)} ids in xfails file don't match any collected tests: \n"
+            f"{f_bad_ids}\n"
+            f"(xfails file: {xfails_file})\n"
+            f"{bad_ids_end_msg}"
+        )
