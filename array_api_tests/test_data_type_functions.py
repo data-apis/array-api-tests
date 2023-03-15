@@ -177,6 +177,33 @@ def test_iinfo(dtype):
     # TODO: test values
 
 
+def atomic_kinds() -> st.SearchStrategy[Union[DataType, str]]:
+    return xps.scalar_dtypes() | st.sampled_from(list(dh.kind_to_dtypes.keys()))
+
+
+@pytest.mark.min_version("2022.12")
+@given(
+    dtype=xps.scalar_dtypes(),
+    kind=atomic_kinds() | st.lists(atomic_kinds(), min_size=1).map(tuple),
+)
+def test_isdtype(dtype, kind):
+    out = xp.isdtype(dtype, kind)
+
+    assert isinstance(out, bool), f"{type(out)=}, but should be bool [isdtype()]"
+    _kinds = kind if isinstance(kind, tuple) else (kind,)
+    expected = False
+    for _kind in _kinds:
+        if isinstance(_kind, str):
+            if dtype in dh.kind_to_dtypes[_kind]:
+                expected = True
+                break
+        else:
+            if dtype == _kind:
+                expected = True
+                break
+    assert out == expected, f"{out=}, but should be {expected} [isdtype()]"
+
+
 @given(hh.mutually_promotable_dtypes(None))
 def test_result_type(dtypes):
     out = xp.result_type(*dtypes)
