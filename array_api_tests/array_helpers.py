@@ -7,6 +7,7 @@ from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
 # These are exported here so that they can be included in the special cases
 # tests from this file.
 from ._array_module import logical_not, subtract, floor, ceil, where
+from . import _array_module as xp
 from . import dtype_helpers as dh
 
 from ndindex import iter_indices
@@ -345,3 +346,14 @@ def same_sign(x, y):
 
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
+
+def _matrix_transpose(x):
+    if not isinstance(xp.matrix_transpose, xp._UndefinedStub):
+        return xp.matrix_transpose(x)
+    if hasattr(x, 'mT'):
+        return x.mT
+    if not isinstance(xp.permute_dims, xp._UndefinedStub):
+        perm = list(range(x.ndim))
+        perm[-1], perm[-2] = perm[-2], perm[-1]
+        return xp.permute_dims(x, axes=tuple(perm))
+    raise NotImplementedError("No way to compute matrix transpose")

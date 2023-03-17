@@ -10,6 +10,7 @@ from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    sampled_from, shared)
 
 from . import _array_module as xp
+from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import shape_helpers as sh
 from . import xps
@@ -212,7 +213,8 @@ def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True):
     elements = {'allow_nan': False, 'allow_infinity': False} if finite else None
     a = draw(xps.arrays(dtype=dtype, shape=shape, elements=elements))
     upper = xp.triu(a)
-    lower = xp.triu(a, k=1).mT
+    # mT and matrix_transpose are more likely to not be implemented
+    lower = ah._matrix_transpose(xp.triu(a, k=1))
     return upper + lower
 
 @composite
