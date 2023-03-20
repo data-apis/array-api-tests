@@ -207,15 +207,17 @@ two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(2)
 
 # Note: This should become hermitian_matrices when complex dtypes are added
 @composite
-def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True):
+def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True, bound=10.):
     shape = draw(square_matrix_shapes)
     dtype = draw(dtypes)
     elements = {'allow_nan': False, 'allow_infinity': False} if finite else None
     a = draw(xps.arrays(dtype=dtype, shape=shape, elements=elements))
-    upper = xp.triu(a)
-    # mT and matrix_transpose are more likely to not be implemented
-    lower = ah._matrix_transpose(xp.triu(a, k=1))
-    return upper + lower
+    at = ah._matrix_transpose(a)
+    H = (a + at)*0.5
+    if finite:
+        assume(not xp.any(xp.isinf(H)))
+    assume(xp.all((H == 0.) | ((1/bound <= xp.abs(H)) & (xp.abs(H) <= bound))))
+    return H
 
 @composite
 def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
