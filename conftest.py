@@ -140,13 +140,13 @@ def pytest_collection_modifyitems(config, items):
         markers = list(item.iter_markers())
         # skip if specified in skips file
         for id_ in skip_ids:
-            if item.nodeid.startswith(id_):
+            if id_ in item.nodeid:
                 item.add_marker(mark.skip(reason=f"--skips-file ({skips_file})"))
                 skip_id_matched[id_] = True
                 break
         # xfail if specified in xfails file
         for id_ in xfail_ids:
-            if item.nodeid.startswith(id_):
+            if id_ in item.nodeid:
                 item.add_marker(mark.xfail(reason=f"--xfails-file ({xfails_file})"))
                 xfail_id_matched[id_] = True
                 break
