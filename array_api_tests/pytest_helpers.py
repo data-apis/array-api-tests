@@ -267,7 +267,6 @@ def assert_keepdimable_shape(
     out_shape: Shape,
     axes: Tuple[int, ...],
     keepdims: bool,
-    /,
     **kw,
 ):
     """
