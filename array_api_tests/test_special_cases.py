@@ -1254,7 +1254,7 @@ def test_binary(func_name, func, case, x1, x2, data):
 
     res = func(x1, x2)
     # sanity check
-    ph.assert_result_shape(func_name, [x1.shape, x2.shape], res.shape, result_shape)
+    ph.assert_result_shape(func_name, in_shapes=[x1.shape, x2.shape], out_shape=res.shape, expected=result_shape)
 
     good_example = False
     for l_idx, r_idx, o_idx in all_indices:
@@ -1306,7 +1306,7 @@ def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
     res = xp.asarray(x1, copy=True)
     res = iop(res, x2)
     # sanity check
-    ph.assert_result_shape(iop_name, [x1.shape, x2.shape], res.shape)
+    ph.assert_result_shape(iop_name, in_shapes=[x1.shape, x2.shape], out_shape=res.shape)
 
     good_example = False
     for l_idx, r_idx, o_idx in all_indices:
@@ -1341,7 +1341,7 @@ def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
 def test_empty_arrays(func_name, expected):  # TODO: parse docstrings to get expected
     func = getattr(xp, func_name)
     out = func(xp.asarray([], dtype=dh.default_float))
-    ph.assert_shape(func_name, out.shape, ())  # sanity check
+    ph.assert_shape(func_name, out_shape=out.shape, expected=())  # sanity check
     msg = f"{out=!r}, but should be {expected}"
     if math.isnan(expected):
         assert xp.isnan(out), msg
@@ -1366,5 +1366,5 @@ def test_nan_propagation(func_name, x, data):
 
     out = func(x)
 
-    ph.assert_shape(func_name, out.shape, ())  # sanity check
+    ph.assert_shape(func_name, out_shape=out.shape, expected=())  # sanity check
     assert xp.isnan(out), f"{out=!r}, but should be NaN"

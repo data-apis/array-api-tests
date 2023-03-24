@@ -22,8 +22,7 @@ def assert_scalar_in_set(
     idx: Shape,
     out: Scalar,
     set_: Set[Scalar],
-    /,
-    **kw,
+    kw={},
 ):
     out_repr = "out" if idx == () else f"out[{idx}]"
     if cmath.isnan(out):
@@ -57,7 +56,7 @@ def test_argsort(x, data):
     out = xp.argsort(x, **kw)
 
     ph.assert_default_index("argsort", out.dtype)
-    ph.assert_shape("argsort", out.shape, x.shape, **kw)
+    ph.assert_shape("argsort", out_shape=out.shape, expected=x.shape, kw=kw)
     axis = kw.get("axis", -1)
     axes = sh.normalise_axis(axis, x.ndim)
     scalar_type = dh.get_scalar_type(x.dtype)
@@ -69,7 +68,7 @@ def test_argsort(x, data):
         )
         if kw.get("stable", True):
             for idx, o in zip(indices, sorders):
-                ph.assert_scalar_equals("argsort", int, idx, int(out[idx]), o, **kw)
+                ph.assert_scalar_equals("argsort", type_=int, idx=idx, out=int(out[idx]), expected=o, kw=kw)
         else:
             idx_elements = dict(zip(indices, elements))
             idx_orders = dict(zip(indices, orders))
@@ -84,11 +83,11 @@ def test_argsort(x, data):
                 out_o = int(out[idx])
                 if len(expected_orders) == 1:
                     ph.assert_scalar_equals(
-                        "argsort", int, idx, out_o, expected_orders[0], **kw
+                        "argsort", type_=int, idx=idx, out=out_o, expected=expected_orders[0], kw=kw
                     )
                 else:
                     assert_scalar_in_set(
-                        "argsort", idx, out_o, set(expected_orders), **kw
+                        "argsort", idx=idx, out=out_o, set_=set(expected_orders), kw=kw
                     )
 
 
@@ -116,8 +115,8 @@ def test_sort(x, data):
 
     out = xp.sort(x, **kw)
 
-    ph.assert_dtype("sort", out.dtype, x.dtype)
-    ph.assert_shape("sort", out.shape, x.shape, **kw)
+    ph.assert_dtype("sort", out_dtype=out.dtype, in_dtype=x.dtype)
+    ph.assert_shape("sort", out_shape=out.shape, expected=x.shape, kw=kw)
     axis = kw.get("axis", -1)
     axes = sh.normalise_axis(axis, x.ndim)
     scalar_type = dh.get_scalar_type(x.dtype)
@@ -132,9 +131,9 @@ def test_sort(x, data):
             # TODO: error message when unstable should not imply just one idx
             ph.assert_0d_equals(
                 "sort",
-                f"x[{x_idx}]",
-                x[x_idx],
-                f"out[{out_idx}]",
-                out[out_idx],
-                **kw,
+                x_repr=f"x[{x_idx}]",
+                x_val=x[x_idx],
+                out_repr=f"out[{out_idx}]",
+                out_val=out[out_idx],
+                kw=kw,
             )
