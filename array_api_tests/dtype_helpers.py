@@ -24,6 +24,7 @@ __all__ = [
     "bool_and_all_int_dtypes",
     "dtype_to_name",
     "dtype_to_scalars",
+    "kind_to_dtypes",
     "is_int_dtype",
     "is_float_dtype",
     "get_scalar_type",
@@ -137,6 +138,17 @@ dtype_to_scalars = EqualityMapping(
         *[(d, [int, float]) for d in float_dtypes],
     ]
 )
+
+
+kind_to_dtypes = {
+    "bool": [xp.bool],
+    "signed integer": int_dtypes,
+    "unsigned integer": uint_dtypes,
+    "integral": all_int_dtypes,
+    "real floating": float_dtypes,
+    "complex floating": complex_dtypes,
+    "numeric": numeric_dtypes,
+}
 
 
 def is_int_dtype(dtype):
