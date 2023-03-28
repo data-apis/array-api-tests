@@ -58,8 +58,8 @@ def test_astype(x_dtype, dtype, kw, data):
 
     out = xp.astype(x, dtype, **kw)
 
-    ph.assert_kw_dtype("astype", dtype, out.dtype)
-    ph.assert_shape("astype", out.shape, x.shape)
+    ph.assert_kw_dtype("astype", kw_dtype=dtype, out_dtype=out.dtype)
+    ph.assert_shape("astype", out_shape=out.shape, expected=x.shape, kw=kw)
     # TODO: test values
     # TODO: test copy
 
@@ -75,16 +75,19 @@ def test_broadcast_arrays(shapes, data):
 
     out = xp.broadcast_arrays(*arrays)
 
-    out_shape = sh.broadcast_shapes(*shapes)
+    expected_shape = sh.broadcast_shapes(*shapes)
     for i, x in enumerate(arrays):
         ph.assert_dtype(
-            "broadcast_arrays", x.dtype, out[i].dtype, repr_name=f"out[{i}].dtype"
+            "broadcast_arrays",
+            in_dtype=x.dtype,
+            out_dtype=out[i].dtype,
+            repr_name=f"out[{i}].dtype"
         )
         ph.assert_result_shape(
             "broadcast_arrays",
-            shapes,
-            out[i].shape,
-            out_shape,
+            in_shapes=shapes,
+            out_shape=out[i].shape,
+            expected=expected_shape,
             repr_name=f"out[{i}].shape",
         )
     # TODO: test values
@@ -101,8 +104,8 @@ def test_broadcast_to(x, data):
 
     out = xp.broadcast_to(x, shape)
 
-    ph.assert_dtype("broadcast_to", x.dtype, out.dtype)
-    ph.assert_shape("broadcast_to", out.shape, shape)
+    ph.assert_dtype("broadcast_to", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_shape("broadcast_to", out_shape=out.shape, expected=shape)
     # TODO: test values
 
 
@@ -177,4 +180,4 @@ def test_iinfo(dtype):
 @given(hh.mutually_promotable_dtypes(None))
 def test_result_type(dtypes):
     out = xp.result_type(*dtypes)
-    ph.assert_dtype("result_type", dtypes, out, repr_name="out")
+    ph.assert_dtype("result_type", in_dtype=dtypes, out_dtype=out, repr_name="out")

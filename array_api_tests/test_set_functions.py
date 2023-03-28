@@ -26,7 +26,7 @@ def test_unique_all(x):
     assert hasattr(out, "counts")
 
     ph.assert_dtype(
-        "unique_all", x.dtype, out.values.dtype, repr_name="out.values.dtype"
+        "unique_all", in_dtype=x.dtype, out_dtype=out.values.dtype, repr_name="out.values.dtype"
     )
     ph.assert_default_index(
         "unique_all", out.indices.dtype, repr_name="out.indices.dtype"
@@ -43,8 +43,8 @@ def test_unique_all(x):
     ), f"{out.indices.shape=}, but should be {out.values.shape=}"
     ph.assert_shape(
         "unique_all",
-        out.inverse_indices.shape,
-        x.shape,
+        out_shape=out.inverse_indices.shape,
+        expected=x.shape,
         repr_name="out.inverse_indices.shape",
     )
     assert (
@@ -122,7 +122,7 @@ def test_unique_counts(x):
     assert hasattr(out, "values")
     assert hasattr(out, "counts")
     ph.assert_dtype(
-        "unique_counts", x.dtype, out.values.dtype, repr_name="out.values.dtype"
+        "unique_counts", in_dtype=x.dtype, out_dtype=out.values.dtype, repr_name="out.values.dtype"
     )
     ph.assert_default_index(
         "unique_counts", out.counts.dtype, repr_name="out.counts.dtype"
@@ -169,7 +169,7 @@ def test_unique_inverse(x):
     assert hasattr(out, "values")
     assert hasattr(out, "inverse_indices")
     ph.assert_dtype(
-        "unique_inverse", x.dtype, out.values.dtype, repr_name="out.values.dtype"
+        "unique_inverse", in_dtype=x.dtype, out_dtype=out.values.dtype, repr_name="out.values.dtype"
     )
     ph.assert_default_index(
         "unique_inverse",
@@ -178,8 +178,8 @@ def test_unique_inverse(x):
     )
     ph.assert_shape(
         "unique_inverse",
-        out.inverse_indices.shape,
-        x.shape,
+        out_shape=out.inverse_indices.shape,
+        expected=x.shape,
         repr_name="out.inverse_indices.shape",
     )
     scalar_type = dh.get_scalar_type(out.values.dtype)
@@ -219,7 +219,7 @@ def test_unique_inverse(x):
 @given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
 def test_unique_values(x):
     out = xp.unique_values(x)
-    ph.assert_dtype("unique_values", x.dtype, out.dtype)
+    ph.assert_dtype("unique_values", in_dtype=x.dtype, out_dtype=out.dtype)
     scalar_type = dh.get_scalar_type(x.dtype)
     distinct = set(scalar_type(x[idx]) for idx in sh.ndindex(x.shape))
     vals_idx = {}

@@ -18,13 +18,14 @@ pytestmark = pytest.mark.ci
 )
 def test_all(x, data):
     kw = data.draw(hh.kwargs(axis=hh.axes(x.ndim), keepdims=st.booleans()), label="kw")
+    keepdims = kw.get("keepdims", False)
 
     out = xp.all(x, **kw)
 
-    ph.assert_dtype("all", x.dtype, out.dtype, xp.bool)
+    ph.assert_dtype("all", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
-        "all", x.shape, out.shape, _axes, kw.get("keepdims", False), **kw
+        "all", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
@@ -34,7 +35,8 @@ def test_all(x, data):
             s = scalar_type(x[idx])
             elements.append(s)
         expected = all(elements)
-        ph.assert_scalar_equals("all", scalar_type, out_idx, result, expected)
+        ph.assert_scalar_equals("all", type_=scalar_type, idx=out_idx,
+                                out=result, expected=expected, kw=kw)
 
 
 @given(
@@ -43,13 +45,14 @@ def test_all(x, data):
 )
 def test_any(x, data):
     kw = data.draw(hh.kwargs(axis=hh.axes(x.ndim), keepdims=st.booleans()), label="kw")
+    keepdims = kw.get("keepdims", False)
 
     out = xp.any(x, **kw)
 
-    ph.assert_dtype("any", x.dtype, out.dtype, xp.bool)
+    ph.assert_dtype("any", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
-        "any", x.shape, out.shape, _axes, kw.get("keepdims", False), **kw
+        "any", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw,
     )
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
@@ -59,4 +62,5 @@ def test_any(x, data):
             s = scalar_type(x[idx])
             elements.append(s)
         expected = any(elements)
-        ph.assert_scalar_equals("any", scalar_type, out_idx, result, expected)
+        ph.assert_scalar_equals("any", type_=scalar_type, idx=out_idx,
+                                out=result, expected=expected, kw=kw)
