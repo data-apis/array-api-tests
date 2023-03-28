@@ -5,9 +5,10 @@ from inspect import signature
 from typing import Any, Dict, NamedTuple, Sequence, Tuple, Union
 from warnings import warn
 
-from . import api_version
 from . import _array_module as xp
+from . import api_version
 from ._array_module import _UndefinedStub
+from ._array_module import mod as _xp
 from .stubs import name_to_func
 from .typing import DataType, ScalarType
 
@@ -88,6 +89,12 @@ class EqualityMapping(Mapping):
         return f"EqualityMapping({self})"
 
 
+def _filter_stubs(*args):
+    for a in args:
+        if not isinstance(a, _UndefinedStub):
+            yield a
+
+
 _uint_names = ("uint8", "uint16", "uint32", "uint64")
 _int_names = ("int8", "int16", "int32", "int64")
 _float_names = ("float32", "float64")
@@ -113,7 +120,14 @@ if api_version > "2021.12":
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
 
 
-dtype_to_name = EqualityMapping([(getattr(xp, name), name) for name in _dtype_names])
+_dtype_name_pairs = []
+for name in _dtype_names:
+    try:
+        dtype = getattr(_xp, name)
+    except AttributeError:
+        continue
+    _dtype_name_pairs.append((dtype, name))
+dtype_to_name = EqualityMapping(_dtype_name_pairs)
 
 
 dtype_to_scalars = EqualityMapping(
@@ -173,12 +187,13 @@ dtype_ranges = EqualityMapping(
     ]
 )
 
+
 dtype_nbits = EqualityMapping(
-    [(d, 8) for d in [xp.int8, xp.uint8]]
-    + [(d, 16) for d in [xp.int16, xp.uint16]]
-    + [(d, 32) for d in [xp.int32, xp.uint32, xp.float32]]
-    + [(d, 64) for d in [xp.int64, xp.uint64, xp.float64, xp.complex64]]
-    + [(xp.complex128, 128)]
+    [(d, 8) for d in _filter_stubs(xp.int8, xp.uint8)]
+    + [(d, 16) for d in _filter_stubs(xp.int16, xp.uint16)]
+    + [(d, 32) for d in _filter_stubs(xp.int32, xp.uint32, xp.float32)]
+    + [(d, 64) for d in _filter_stubs(xp.int64, xp.uint64, xp.float64, xp.complex64)]
+    + [(d, 128) for d in _filter_stubs(xp.complex128)]
 )
 
 
@@ -265,7 +280,6 @@ _numeric_promotions = [
     ((xp.complex64, xp.complex64), xp.complex64),
     ((xp.complex64, xp.complex128), xp.complex128),
     ((xp.complex128, xp.complex128), xp.complex128),
-
 ]
 _numeric_promotions += [((d2, d1), res) for (d1, d2), res in _numeric_promotions]
 _promotion_table = list(set(_numeric_promotions))
