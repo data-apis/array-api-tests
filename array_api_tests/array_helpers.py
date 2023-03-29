@@ -217,7 +217,7 @@ def assert_exactly_equal(x, y):
 
     assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype})"
 
-    assert all(exactly_equal(x, y)), "The input arrays have different values"
+    assert all(exactly_equal(x, y)), f"The input arrays have different values ({x!r} != {y!r})"
 
 def assert_finite(x):
     """
