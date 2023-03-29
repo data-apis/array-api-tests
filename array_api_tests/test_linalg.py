@@ -97,7 +97,7 @@ def _test_stacks(f, *args, res=None, dims=2, true_val=None,
         msg_extra = f'{x_idxes = }, {res_idx = }'
         assert_equal(res_stack, decomp_res_stack, msg_extra)
         if true_val:
-            assert_equal(decomp_res_stack, true_val(*x_stacks), msg_extra)
+            assert_equal(decomp_res_stack, true_val(*x_stacks, **kw), msg_extra)
 
 def _test_namedtuple(res, fields, func_name):
     """
@@ -789,7 +789,7 @@ def test_vecdot(x1, x2, kw):
     ph.assert_shape("vecdot", res.shape, expected_shape)
 
     if x1.dtype in dh.int_dtypes:
-        def true_val(x, y, axix=-1):
+        def true_val(x, y, axis=-1):
             return xp.sum(x*y, dtype=res.dtype)
     else:
         true_val = None
