@@ -790,7 +790,7 @@ def test_vecdot(x1, x2, kw):
 
     if x1.dtype in dh.int_dtypes:
         def true_val(x, y, axis=-1):
-            return xp.sum(x*y, dtype=res.dtype)
+            return xp.sum(xp.multiply(x, y), dtype=res.dtype)
     else:
         true_val = None
 
