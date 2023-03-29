@@ -234,7 +234,7 @@ def test_diagonal(x, kw):
 
     assert res.shape == (*x.shape[:-2], diag_size), "diagonal() returned the wrong shape"
 
-    def true_diag(x_stack):
+    def true_diag(x_stack, offset=0):
         if offset >= 0:
             x_stack_diag = [x_stack[i, i + offset] for i in range(diag_size)]
         else:
