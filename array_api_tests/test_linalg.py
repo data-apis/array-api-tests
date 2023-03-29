@@ -42,7 +42,8 @@ from ._array_module import linalg
 
 pytestmark = pytest.mark.ci
 
-def assert_equal(x, y):
+def assert_equal(x, y, msg_extra=None):
+    extra = '' if not msg_extra else f' ({msg_extra})'
     if x.dtype in dh.float_dtypes:
         # It's too difficult to do an approximately equal test here because
         # different routines can give completely different answers, and even
@@ -51,10 +52,10 @@ def assert_equal(x, y):
 
         # assert_allclose(x, y)
 
-        assert x.shape == y.shape, f"The input arrays do not have the same shapes ({x.shape} != {y.shape})"
-        assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype})"
+        assert x.shape == y.shape, f"The input arrays do not have the same shapes ({x.shape} != {y.shape}){extra}"
+        assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype}){extra}"
     else:
-        assert_exactly_equal(x, y)
+        assert_exactly_equal(x, y, msg_extra=msg_extra)
 
 def _test_stacks(f, *args, res=None, dims=2, true_val=None,
                  matrix_axes=(-2, -1),
@@ -93,9 +94,10 @@ def _test_stacks(f, *args, res=None, dims=2, true_val=None,
         res_stack = res[res_idx]
         x_stacks = [x[x_idx] for x, x_idx in zip(args, x_idxes)]
         decomp_res_stack = f(*x_stacks, **kw)
-        assert_equal(res_stack, decomp_res_stack)
+        msg_extra = f'{x_idxes = }, {res_idx = }'
+        assert_equal(res_stack, decomp_res_stack, msg_extra)
         if true_val:
-            assert_equal(decomp_res_stack, true_val(*x_stacks))
+            assert_equal(decomp_res_stack, true_val(*x_stacks), msg_extra)
 
 def _test_namedtuple(res, fields, func_name):
     """

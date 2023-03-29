@@ -205,7 +205,7 @@ def notequal(x, y):
 
     return not_equal(x, y)
 
-def assert_exactly_equal(x, y):
+def assert_exactly_equal(x, y, msg_extra=None):
     """
     Test that the arrays x and y are exactly equal.
 
@@ -213,11 +213,13 @@ def assert_exactly_equal(x, y):
     equal.
 
     """
-    assert x.shape == y.shape, f"The input arrays do not have the same shapes ({x.shape} != {y.shape})"
+    extra = '' if not msg_extra else f' ({msg_extra})'
 
-    assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype})"
+    assert x.shape == y.shape, f"The input arrays do not have the same shapes ({x.shape} != {y.shape}){extra}"
 
-    assert all(exactly_equal(x, y)), f"The input arrays have different values ({x!r} != {y!r})"
+    assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype}){extra}"
+
+    assert all(exactly_equal(x, y)), f"The input arrays have different values ({x!r} != {y!r}){extra}"
 
 def assert_finite(x):
     """
