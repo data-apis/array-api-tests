@@ -93,6 +93,7 @@ def _test_inspectable_func(sig: Signature, stub_sig: Signature):
             stub_param.name in sig.parameters.keys()
         ), f"Argument '{stub_param.name}' missing from signature"
         param = next(p for p in params if p.name == stub_param.name)
+        f_stub_kind = kind_to_str[stub_param.kind]
         assert param.kind in [stub_param.kind, Parameter.POSITIONAL_OR_KEYWORD,], (
             f"{param.name} is a {kind_to_str[param.kind]}, "
             f"but should be a {f_stub_kind} "
