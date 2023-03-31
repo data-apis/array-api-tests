@@ -1,0 +1,358 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "duration": {
+            "type": "number"
+        },
+        "summary": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "type": "integer"
+                },
+                "collected": {
+                    "type": "integer"
+                },
+                "passed": {
+                    "type": "integer"
+                },
+                "failed": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "error": {
+                    "type": "integer"
+                },
+                "deselected": {
+                    "type": "integer"
+                }
+            },
+            "additionalProperties": false,
+            "required": [
+                "total"
+            ]
+        },
+        "environment": {
+            "type": "object",
+            "properties": {
+                "Platform": {
+                    "type": "string"
+                },
+                "Packages": {
+                    "type": "object",
+                    "properties": {
+                        "pytest": {
+                            "type": "string"
+                        },
+                        "pluggy": {
+                            "type": "string"
+                        },
+                        "py": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "required": [
+                        "pytest",
+                        "pluggy",
+                        "py"
+                    ]
+                },
+                "array_api_tests_version": {
+                    "type": "string"
+                },
+                "array_api_tests_module": {
+                    "type": "string"
+                },
+                "Python": {
+                    "type": "string"
+                },
+                "Plugins": {
+                    "type": "object",
+                    "properties": {
+                        "metadata": {
+                            "type": "string"
+                        },
+                        "json-report": {
+                            "type": "string"
+                        },
+                        "hypothesis": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "required": [
+                        "metadata",
+                        "json-report",
+                        "hypothesis"
+                    ]
+                }
+            },
+            "required": [
+                "Platform",
+                "Packages",
+                "array_api_tests_version",
+                "array_api_tests_module",
+                "Python",
+                "Plugins"
+            ]
+        },
+        "collectors": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "result": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "lineno": {
+                                    "type": "integer"
+                                },
+                                "type": {
+                                    "type": "string"
+                                },
+                                "nodeid": {
+                                    "type": "string"
+                                }
+                            },
+                            "additionalProperties": false,
+                            "required": [
+                                "type",
+                                "nodeid"
+                            ]
+                        }
+                    },
+                    "nodeid": {
+                        "type": "string"
+                    },
+                    "outcome": {
+                        "type": "string"
+                    },
+                    "longrepr": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "result",
+                    "nodeid",
+                    "outcome"
+                ]
+            }
+        },
+        "tests": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "$defs": {
+                    "teststage": {
+                        "type": "object",
+                        "properties": {
+                            "duration": {
+                                "type": "number"
+                            },
+                            "longrepr": {
+                                "type": "string"
+                            },
+                            "outcome": {
+                                "type": "string"
+                            },
+                            "traceback": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "path": {
+                                            "type": "string"
+                                        },
+                                        "lineno": {
+                                            "type": "integer"
+                                        },
+                                        "message": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "path",
+                                        "lineno",
+                                        "message"
+                                    ]
+                                }
+                            },
+                            "crash": {
+                                "type": "object",
+                                "properties": {
+                                    "path": {
+                                        "type": "string"
+                                    },
+                                    "lineno": {
+                                        "type": "integer"
+                                    },
+                                    "message": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "path",
+                                    "lineno",
+                                    "message"
+                                ]
+                            },
+                            "stdout": {
+                                "type": "string"
+                            },
+                            "stderr": {
+                                "type": "string"
+                            },
+                            "stdout": {
+                                "type": "string"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "duration",
+                            "outcome"
+                        ]
+                    }
+                },
+                "properties": {
+                    "call": {
+                        "$ref": "#/properties/tests/items/$defs/teststage"
+                    },
+                    "crash": {
+                        "$ref": "#/properties/tests/items/$defs/teststage"
+                    },
+                    "teardown": {
+                        "$ref": "#/properties/tests/items/$defs/teststage"
+                    },
+                    "setup": {
+                        "$ref": "#/properties/tests/items/$defs/teststage"
+                    },
+                    "metadata": {
+                        "type": "object",
+                        "properties": {
+                            "test_module": {
+                                "type": "string"
+                            },
+                            "array_api_function_name": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "hypothesis_statistics": {
+                                "type": "string"
+                            },
+                            "hypothesis_report_information": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "test_function": {
+                                "type": "string"
+                            },
+                            "params": {
+                                "type": "object"
+                            }
+                        },
+                        "additionalProperties": false,
+                        "required": [
+                            "test_module",
+                            "array_api_function_name",
+                            "test_function"
+                        ]
+                    },
+                    "lineno": {
+                        "type": "integer"
+                    },
+                    "keywords": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "nodeid": {
+                        "type": "string"
+                    },
+                    "outcome": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "lineno",
+                    "keywords",
+                    "setup",
+                    "nodeid",
+                    "teardown",
+                    "outcome"
+                ]
+            }
+        },
+        "created": {
+            "type": "number"
+        },
+        "root": {
+            "type": "string"
+        },
+        "warnings": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "lineno": {
+                        "type": "integer"
+                    },
+                    "filename": {
+                        "type": "string"
+                    },
+                    "count": {
+                        "type": "integer"
+                    },
+                    "category": {
+                        "type": "string"
+                    },
+                    "message": {
+                        "type": "string"
+                    },
+                    "when": {
+                        "type": "string"
+                    }
+                },
+                "additionalProperties": false,
+                "required": [
+                    "lineno",
+                    "filename",
+                    "count",
+                    "category",
+                    "message",
+                    "when"
+                ]
+            }
+        },
+        "exitcode": {
+            "type": "integer"
+        }
+    },
+    "additionalProperties": false,
+    "required": [
+        "duration",
+        "summary",
+        "environment",
+        "tests",
+        "created",
+        "root",
+        "warnings",
+        "exitcode"
+    ]
+}

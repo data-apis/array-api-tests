@@ -7,6 +7,7 @@ from types import BuiltinFunctionType, FunctionType
 import dataclasses
 import json
 import warnings
+import math
 
 from hypothesis.strategies import SearchStrategy
 
@@ -33,6 +34,13 @@ def to_json_serializable(o):
         return tuple(to_json_serializable(i) for i in o)
     if isinstance(o, list):
         return [to_json_serializable(i) for i in o]
+    if isinstance(o, float):
+        if math.isnan(o):
+            return "NaN"
+        if o == float('inf'):
+            return 'Infinity'
+        if o == -float('inf'):
+            return '-Infinity'
 
     # Ensure everything is JSON serializable. If this warning is issued, it
     # means the given type needs to be added above if possible.
