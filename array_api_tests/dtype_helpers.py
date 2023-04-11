@@ -1,8 +1,8 @@
 import re
+from collections import defaultdict
 from collections.abc import Mapping
 from functools import lru_cache
-from inspect import signature
-from typing import Any, Dict, NamedTuple, Sequence, Tuple, Union
+from typing import Any, DefaultDict, NamedTuple, Sequence, Tuple, Union
 from warnings import warn
 
 from . import _array_module as xp
@@ -323,7 +323,7 @@ category_to_dtypes = {
     "numeric": numeric_dtypes,
     "integer or boolean": bool_and_all_int_dtypes,
 }
-func_in_dtypes: Dict[str, Tuple[DataType, ...]] = {}
+func_in_dtypes: DefaultDict[str, Tuple[DataType, ...]] = defaultdict(lambda: all_dtypes)
 for name, func in name_to_func.items():
     if m := r_in_dtypes.search(func.__doc__):
         dtype_category = m.group(1)
@@ -331,8 +331,6 @@ for name, func in name_to_func.items():
             dtype_category = "floating-point"
         dtypes = category_to_dtypes[dtype_category]
         func_in_dtypes[name] = dtypes
-    elif any("x" in name for name in signature(func).parameters.keys()):
-        func_in_dtypes[name] = all_dtypes
 # See https://github.com/data-apis/array-api/pull/413
 func_in_dtypes["expm1"] = float_dtypes
 
