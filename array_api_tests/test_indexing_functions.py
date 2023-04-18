@@ -32,14 +32,16 @@ def test_take(x, data):
 
     out = xp.take(x, indices, axis=axis)
 
-    ph.assert_dtype("take", x.dtype, out.dtype)
+    ph.assert_dtype("take", in_dtype=x.dtype, out_dtype=out.dtype)
     ph.assert_shape(
         "take",
-        out.shape,
-        x.shape[:axis] + (len(_indices),) + x.shape[axis + 1 :],
-        x=x,
-        indices=indices,
-        axis=axis,
+        out_shape=out.shape,
+        expected=x.shape[:axis] + (len(_indices),) + x.shape[axis + 1 :],
+        kw=dict(
+            x=x,
+            indices=indices,
+            axis=axis,
+        ),
     )
     out_indices = sh.ndindex(out.shape)
     axis_indices = list(sh.axis_ndindex(x.shape, axis))
@@ -52,10 +54,10 @@ def test_take(x, data):
                 out_idx = next(out_indices)
                 ph.assert_0d_equals(
                     "take",
-                    sh.fmt_idx(f_take_idx, at_idx),
-                    indexed_x[at_idx],
-                    sh.fmt_idx("out", out_idx),
-                    out[out_idx],
+                    x_repr=sh.fmt_idx(f_take_idx, at_idx),
+                    x_val=indexed_x[at_idx],
+                    out_repr=sh.fmt_idx("out", out_idx),
+                    out_val=out[out_idx],
                 )
     # sanity check
     with pytest.raises(StopIteration):
