@@ -253,7 +253,7 @@ jobs:
       env:
         ARRAY_API_TESTS_MODULE: your.array.api.namespace
       run: |
-        export PYTHONPATH="${GITHUB_WORKSPACE}/array-api-compat"
+        export PYTHONPATH="${GITHUB_WORKSPACE}/your-array-library"
         cd ${GITHUB_WORKSPACE}/array-api-tests
         pytest -v -rxXfE --ci --xfails-file ${GITHUB_WORKSPACE}/your-array-library/array-api-tests-xfails.txt array_api_tests/
 ```
