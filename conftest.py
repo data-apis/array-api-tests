@@ -1,5 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
+import warnings
+import os
 
 from hypothesis import settings
 from pytest import mark
@@ -48,7 +50,17 @@ def pytest_addoption(parser):
     parser.addoption(
         "--ci",
         action="store_true",
-        help="run just the tests appropiate for CI",
+        help="run just the tests appropriate for CI",
+    )
+    parser.addoption(
+        "--skips-file",
+        action="store",
+        help="file with tests to skip. Defaults to skips.txt"
+    )
+    parser.addoption(
+        "--xfails-file",
+        action="store",
+        help="file with tests to skip. Defaults to xfails.txt"
     )
 
 
@@ -87,26 +99,56 @@ def xp_has_ext(ext: str) -> bool:
         return False
 
 
-skip_ids = []
-skips_path = Path(__file__).parent / "skips.txt"
-if skips_path.exists():
-    with open(skips_path) as f:
-        for line in f:
-            if line.startswith("array_api_tests"):
-                id_ = line.strip("\n")
-                skip_ids.append(id_)
-
-
 def pytest_collection_modifyitems(config, items):
+    skips_file = skips_path = config.getoption('--skips-file')
+    if skips_file is None:
+        skips_file = Path(__file__).parent / "skips.txt"
+        if skips_file.exists():
+            skips_path = skips_file
+
+    skip_ids = []
+    if skips_path:
+        with open(os.path.expanduser(skips_path)) as f:
+            for line in f:
+                if line.startswith("array_api_tests"):
+                    id_ = line.strip("\n")
+                    skip_ids.append(id_)
+
+    xfails_file = xfails_path = config.getoption('--xfails-file')
+    if xfails_file is None:
+        xfails_file = Path(__file__).parent / "xfails.txt"
+        if xfails_file.exists():
+            xfails_path = xfails_file
+
+    xfail_ids = []
+    if xfails_path:
+        with open(os.path.expanduser(xfails_path)) as f:
+            for line in f:
+                if not line.strip() or line.startswith('#'):
+                    continue
+                id_ = line.strip("\n")
+                xfail_ids.append(id_)
+
+    skip_id_matched = {id_: False for id_ in skip_ids}
+    xfail_id_matched = {id_: False for id_ in xfail_ids}
+
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
     ci = config.getoption("--ci")
+
     for item in items:
         markers = list(item.iter_markers())
-        # skip if specified in skips.txt
+        # skip if specified in skips file
         for id_ in skip_ids:
-            if item.nodeid.startswith(id_):
-                item.add_marker(mark.skip(reason="skips.txt"))
+            if id_ in item.nodeid:
+                item.add_marker(mark.skip(reason=f"--skips-file ({skips_file})"))
+                skip_id_matched[id_] = True
+                break
+        # xfail if specified in xfails file
+        for id_ in xfail_ids:
+            if id_ in item.nodeid:
+                item.add_marker(mark.xfail(reason=f"--xfails-file ({xfails_file})"))
+                xfail_id_matched[id_] = True
                 break
         # skip if disabled or non-existent extension
         ext_mark = next((m for m in markers if m.name == "xp_extension"), None)
@@ -141,3 +183,26 @@ def pytest_collection_modifyitems(config, items):
                         reason=f"requires ARRAY_API_TESTS_VERSION=>{min_version}"
                     )
                 )
+
+    bad_ids_end_msg = (
+        "Note the relevant tests might not of been collected by pytest, or "
+        "another specified id might have already matched a test."
+    )
+    bad_skip_ids = [id_ for id_, matched in skip_id_matched.items() if not matched]
+    if bad_skip_ids:
+        f_bad_ids = "\n".join(f"    {id_}" for id_ in bad_skip_ids)
+        warnings.warn(
+            f"{len(bad_skip_ids)} ids in skips file don't match any collected tests: \n"
+            f"{f_bad_ids}\n"
+            f"(skips file: {skips_file})\n"
+            f"{bad_ids_end_msg}"
+        )
+    bad_xfail_ids = [id_ for id_, matched in xfail_id_matched.items() if not matched]
+    if bad_xfail_ids:
+        f_bad_ids = "\n".join(f"    {id_}" for id_ in bad_xfail_ids)
+        warnings.warn(
+            f"{len(bad_xfail_ids)} ids in xfails file don't match any collected tests: \n"
+            f"{f_bad_ids}\n"
+            f"(xfails file: {xfails_file})\n"
+            f"{bad_ids_end_msg}"
+        )
