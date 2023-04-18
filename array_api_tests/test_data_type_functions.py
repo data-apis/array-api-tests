@@ -164,7 +164,7 @@ def test_finfo(dtype):
     # TODO: test values
 
 
-@pytest.mark.parametrize("dtype", dh.all_int_dtypes, ids=make_dtype_id)
+@pytest.mark.parametrize("dtype", dh._filter_stubs(*dh.all_int_dtypes), ids=make_dtype_id)
 def test_iinfo(dtype):
     out = xp.iinfo(dtype)
     f_func = f"[iinfo({dh.dtype_to_name[dtype]})]"
