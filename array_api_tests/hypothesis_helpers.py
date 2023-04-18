@@ -138,6 +138,7 @@ def tuples(elements, *, min_size=0, max_size=None, unique_by=None, unique=False)
 
 # Use this to avoid memory errors with NumPy.
 # See https://github.com/numpy/numpy/issues/15753
+# Note, the hypothesis default for max_dims is min_dims + 2 (i.e., 0 + 2)
 def shapes(**kw):
     kw.setdefault('min_dims', 0)
     kw.setdefault('min_side', 0)
