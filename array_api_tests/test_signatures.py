@@ -131,7 +131,11 @@ func_to_specified_arg_exprs = defaultdict(
         "stack": {"arrays": "[xp.ones((5,)), xp.ones((5,))]"},
         "iinfo": {"type": "xp.int64"},
         "finfo": {"type": "xp.float64"},
-        "logaddexp": {a: "xp.ones((5,), dtype=xp.float64)" for a in ["x1", "x2"]},
+        "cholesky": {"x": "xp.asarray([[1, 0], [0, 1]], dtype=xp.float64)"},
+        "inv": {"x": "xp.asarray([[1, 2], [3, 4]], dtype=xp.float64)"},
+        "solve": {
+            a: "xp.asarray([[1, 2], [3, 4]], dtype=xp.float64)" for a in ["x1", "x2"]
+        },
     },
 )
 # We default most array arguments heuristically. As functions/methods work only
@@ -163,7 +167,7 @@ for func_name, func in name_to_func.items():
                     if func_name in casty_names:
                         shape = ()
                     elif func_name in matrixy_names:
-                        shape = (2, 2)
+                        shape = (3, 3)
                     else:
                         shape = (5,)
                     fallback_array_expr = f"xp.ones({shape}, dtype=xp.{dtype_name})"
@@ -179,9 +183,6 @@ for func_name, func in name_to_func.items():
 
 
 def _test_uninspectable_func(func_name: str, func: Callable, stub_sig: Signature):
-    if func_name in matrixy_names:
-        pytest.xfail("TODO")
-
     params = list(stub_sig.parameters.values())
 
     if len(params) == 0:
