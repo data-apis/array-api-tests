@@ -21,6 +21,7 @@ axis has to be pos-or-keyword to support both styles
 
 """
 from collections import defaultdict
+from copy import copy
 from inspect import Parameter, Signature, signature
 from types import FunctionType
 from typing import Any, Callable, Dict, Literal, get_args
@@ -194,7 +195,7 @@ def _test_uninspectable_func(func_name: str, func: Callable, stub_sig: Signature
         "manually to test the signature."
     )
 
-    argname_to_arg = func_to_specified_args[func_name]
+    argname_to_arg = copy(func_to_specified_args[func_name])
     argname_to_expr = func_to_specified_arg_exprs[func_name]
     for argname, expr in argname_to_expr.items():
         assert argname not in argname_to_arg.keys()  # sanity check
@@ -238,8 +239,11 @@ def _test_uninspectable_func(func_name: str, func: Callable, stub_sig: Signature
     if len(posorkw_args) == 0:
         func(*posargs, **kwargs)
     else:
-        func(*posargs, **posorkw_args, **kwargs)
-        # TODO: test all positional and keyword permutations of pos-or-kw args
+        posorkw_name_to_arg_pairs = list(posorkw_args.items())
+        for i in range(len(posorkw_name_to_arg_pairs), -1, -1):
+            extra_posargs = [arg for _, arg in posorkw_name_to_arg_pairs[:i]]
+            extra_kwargs = dict(posorkw_name_to_arg_pairs[i:])
+            func(*posargs, *extra_posargs, **kwargs, **extra_kwargs)
 
 
 def _test_func_signature(func: Callable, stub: FunctionType, is_method=False):
