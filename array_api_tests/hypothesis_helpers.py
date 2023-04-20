@@ -1,4 +1,6 @@
+import re
 import itertools
+from contextlib import contextmanager
 from functools import reduce
 from math import sqrt
 from operator import mul
@@ -477,3 +479,14 @@ def axes(ndim: int) -> SearchStrategy[Optional[Union[int, Shape]]]:
         axes_strats.append(integers(-ndim, ndim - 1))
         axes_strats.append(xps.valid_tuple_axes(ndim))
     return one_of(axes_strats)
+
+
+@contextmanager
+def reject_overflow():
+    try:
+        yield
+    except Exception as e:
+        if isinstance(e, OverflowError) or re.search("[Oo]verflow", str(e)):
+            reject()
+        else:
+            raise e
