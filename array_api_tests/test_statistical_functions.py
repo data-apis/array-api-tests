@@ -5,7 +5,6 @@ from typing import Optional
 import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
-from hypothesis.control import reject
 
 from . import _array_module as xp
 from . import dtype_helpers as dh
@@ -127,10 +126,8 @@ def test_prod(x, data):
     )
     keepdims = kw.get("keepdims", False)
 
-    try:
+    with hh.reject_overflow():
         out = xp.prod(x, **kw)
-    except OverflowError:
-        reject()
 
     dtype = kw.get("dtype", None)
     if dtype is None:
@@ -234,10 +231,8 @@ def test_sum(x, data):
     )
     keepdims = kw.get("keepdims", False)
 
-    try:
+    with hh.reject_overflow():
         out = xp.sum(x, **kw)
-    except OverflowError:
-        reject()
 
     dtype = kw.get("dtype", None)
     if dtype is None:

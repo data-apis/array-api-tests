@@ -8,7 +8,7 @@ from enum import Enum, auto
 from typing import Callable, List, NamedTuple, Optional, Sequence, TypeVar, Union
 
 import pytest
-from hypothesis import assume, given, reject
+from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from . import _array_module as xp, api_version
@@ -740,10 +740,8 @@ def test_add(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
     right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    try:
+    with hh.reject_overflow():
         res = ctx.func(left, right)
-    except OverflowError:
-        reject()
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
@@ -1327,10 +1325,8 @@ def test_pow(ctx, data):
         if dh.is_int_dtype(right.dtype):
             assume(xp.all(right >= 0))
 
-    try:
+    with hh.reject_overflow():
         res = ctx.func(left, right)
-    except OverflowError:
-        reject()
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
@@ -1425,10 +1421,8 @@ def test_subtract(ctx, data):
     left = data.draw(ctx.left_strat, label=ctx.left_sym)
     right = data.draw(ctx.right_strat, label=ctx.right_sym)
 
-    try:
+    with hh.reject_overflow():
         res = ctx.func(left, right)
-    except OverflowError:
-        reject()
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
