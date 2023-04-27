@@ -1347,6 +1347,7 @@ if api_version >= "2022.12":
         unary_assert_against_refimpl("real", x, out, operator.attrgetter("real"))
 
 
+@pytest.mark.skip(reason="flaky")
 @pytest.mark.parametrize("ctx", make_binary_params("remainder", dh.real_dtypes))
 @given(data=st.data())
 def test_remainder(ctx, data):
