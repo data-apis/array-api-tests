@@ -171,9 +171,9 @@ def is_float_dtype(dtype):
 
 
 def get_scalar_type(dtype: DataType) -> ScalarType:
-    if is_int_dtype(dtype):
+    if dtype in all_int_dtypes:
         return int
-    elif is_float_dtype(dtype):
+    elif dtype in float_dtypes:
         return float
     elif dtype in complex_dtypes:
         return complex
