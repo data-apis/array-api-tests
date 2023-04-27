@@ -29,7 +29,6 @@ __all__ = [
     "all_float_dtypes",
     "bool_and_all_int_dtypes",
     "dtype_to_name",
-    "dtype_to_scalars",
     "kind_to_dtypes",
     "is_int_dtype",
     "is_float_dtype",
@@ -141,15 +140,6 @@ all_float_dtypes = float_dtypes
 if api_version > "2021.12":
     all_float_dtypes += complex_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
-
-
-dtype_to_scalars = EqualityMapping(
-    [
-        (xp.bool, [bool]),
-        *[(d, [int]) for d in all_int_dtypes],
-        *[(d, [int, float]) for d in float_dtypes],
-    ]
-)
 
 
 kind_to_dtypes = {
