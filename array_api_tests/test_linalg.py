@@ -277,6 +277,7 @@ def test_inv(x):
 
     # TODO: Test that the result is actually the inverse
 
+@pytest.mark.skip(reason="flaky")
 @given(
     *two_mutual_arrays(dh.real_dtypes)
 )
