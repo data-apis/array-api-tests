@@ -255,7 +255,7 @@ def make_scalar_casting_param(
     [make_scalar_casting_param("__bool__", "bool", bool)]
     + [make_scalar_casting_param("__int__", n, int) for n in dh.all_int_names]
     + [make_scalar_casting_param("__index__", n, int) for n in dh.all_int_names]
-    + [make_scalar_casting_param("__float__", n, float) for n in dh.float_names],
+    + [make_scalar_casting_param("__float__", n, float) for n in dh.real_float_names],
 )
 @given(data=st.data())
 def test_scalar_casting(method_name, dtype_name, stype, data):

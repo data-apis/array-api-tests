@@ -14,7 +14,7 @@ __all__ = [
     "uint_names",
     "int_names",
     "all_int_names",
-    "float_names",
+    "real_float_names",
     "real_names",
     "complex_names",
     "numeric_names",
@@ -22,7 +22,7 @@ __all__ = [
     "int_dtypes",
     "uint_dtypes",
     "all_int_dtypes",
-    "float_dtypes",
+    "real_float_dtypes",
     "real_dtypes",
     "numeric_dtypes",
     "all_dtypes",
@@ -98,8 +98,8 @@ class EqualityMapping(Mapping):
 uint_names = ("uint8", "uint16", "uint32", "uint64")
 int_names = ("int8", "int16", "int32", "int64")
 all_int_names = uint_names + int_names
-float_names = ("float32", "float64")
-real_names = uint_names + int_names + float_names
+real_float_names = ("float32", "float64")
+real_names = uint_names + int_names + real_float_names
 complex_names = ("complex64", "complex128")
 numeric_names = real_names + complex_names
 dtype_names = ("bool",) + numeric_names
@@ -128,15 +128,15 @@ def _make_dtype_tuple_from_names(names: List[str]) -> Tuple[DataType]:
 
 uint_dtypes = _make_dtype_tuple_from_names(uint_names)
 int_dtypes = _make_dtype_tuple_from_names(int_names)
-float_dtypes = _make_dtype_tuple_from_names(float_names)
+real_float_dtypes = _make_dtype_tuple_from_names(real_float_names)
 all_int_dtypes = uint_dtypes + int_dtypes
-real_dtypes = all_int_dtypes + float_dtypes
+real_dtypes = all_int_dtypes + real_float_dtypes
 complex_dtypes = _make_dtype_tuple_from_names(complex_names)
 numeric_dtypes = real_dtypes
 if api_version > "2021.12":
     numeric_dtypes += complex_dtypes
 all_dtypes = (xp.bool,) + numeric_dtypes
-all_float_dtypes = float_dtypes
+all_float_dtypes = real_float_dtypes
 if api_version > "2021.12":
     all_float_dtypes += complex_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
@@ -147,7 +147,7 @@ kind_to_dtypes = {
     "signed integer": int_dtypes,
     "unsigned integer": uint_dtypes,
     "integral": all_int_dtypes,
-    "real floating": float_dtypes,
+    "real floating": real_float_dtypes,
     "complex floating": complex_dtypes,
     "numeric": numeric_dtypes,
 }
@@ -164,7 +164,7 @@ def is_float_dtype(dtype):
     # See https://github.com/numpy/numpy/issues/18434
     if dtype is None:
         return False
-    valid_dtypes = float_dtypes
+    valid_dtypes = real_float_dtypes
     if api_version > "2021.12":
         valid_dtypes += complex_dtypes
     return dtype in valid_dtypes
@@ -173,7 +173,7 @@ def is_float_dtype(dtype):
 def get_scalar_type(dtype: DataType) -> ScalarType:
     if dtype in all_int_dtypes:
         return int
-    elif dtype in float_dtypes:
+    elif dtype in real_float_dtypes:
         return float
     elif dtype in complex_dtypes:
         return complex
@@ -245,7 +245,7 @@ else:
     if default_int not in int_dtypes:
         warn(f"inferred default int is {default_int!r}, which is not an int")
     default_float = xp.asarray(float()).dtype
-    if default_float not in float_dtypes:
+    if default_float not in real_float_dtypes:
         warn(f"inferred default float is {default_float!r}, which is not a float")
     if api_version > "2021.12":
         default_complex = xp.asarray(complex()).dtype
@@ -346,7 +346,7 @@ r_int_note = re.compile(
 category_to_dtypes = {
     "boolean": (xp.bool,),
     "integer": all_int_dtypes,
-    "floating-point": float_dtypes,
+    "floating-point": real_float_dtypes,
     "numeric": numeric_dtypes,
     "integer or boolean": bool_and_all_int_dtypes,
 }
@@ -360,7 +360,7 @@ for name, func in name_to_func.items():
         dtypes = category_to_dtypes[dtype_category]
         func_in_dtypes[name] = dtypes
 # See https://github.com/data-apis/array-api/pull/413
-func_in_dtypes["expm1"] = float_dtypes
+func_in_dtypes["expm1"] = real_float_dtypes
 
 
 func_returns_bool = {
@@ -500,7 +500,7 @@ for op, symbol in binary_op_to_symbol.items():
 func_in_dtypes["__bool__"] = (xp.bool,)
 func_in_dtypes["__int__"] = all_int_dtypes
 func_in_dtypes["__index__"] = all_int_dtypes
-func_in_dtypes["__float__"] = float_dtypes
+func_in_dtypes["__float__"] = real_float_dtypes
 func_in_dtypes["from_dlpack"] = numeric_dtypes
 func_in_dtypes["__dlpack__"] = numeric_dtypes
 

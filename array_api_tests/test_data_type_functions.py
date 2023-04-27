@@ -124,7 +124,7 @@ def test_can_cast(_from, to, data):
         expected = to == xp.bool
     else:
         same_family = None
-        for dtypes in [dh.all_int_dtypes, dh.float_dtypes, dh.complex_dtypes]:
+        for dtypes in [dh.all_int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]:
             if _from in dtypes:
                 same_family = to in dtypes
                 break
@@ -142,7 +142,7 @@ def test_can_cast(_from, to, data):
         assert out == expected, f"{out=}, but should be {expected} {f_func}"
 
 
-@pytest.mark.parametrize("dtype_name", dh.float_names)
+@pytest.mark.parametrize("dtype_name", dh.real_float_names)
 def test_finfo(dtype_name):
     try:
         dtype = getattr(_xp, dtype_name)

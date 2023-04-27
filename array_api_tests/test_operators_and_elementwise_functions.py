@@ -776,7 +776,7 @@ def test_atan(x):
     unary_assert_against_refimpl("atan", x, out, math.atan)
 
 
-@given(*hh.two_mutual_arrays(dh.float_dtypes))
+@given(*hh.two_mutual_arrays(dh.real_float_dtypes))
 def test_atan2(x1, x2):
     out = xp.atan2(x1, x2)
     ph.assert_dtype("atan2", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
@@ -1204,7 +1204,7 @@ def logaddexp(l: float, r: float) -> float:
     return math.log(math.exp(l) + math.exp(r))
 
 
-@given(*hh.two_mutual_arrays(dh.float_dtypes))
+@given(*hh.two_mutual_arrays(dh.real_float_dtypes))
 def test_logaddexp(x1, x2):
     out = xp.logaddexp(x1, x2)
     ph.assert_dtype("logaddexp", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
