@@ -250,8 +250,8 @@ def make_param(method_name: str, dtype: DataType, stype: ScalarType) -> Param:
 @pytest.mark.parametrize(
     "method_name, dtype, stype",
     [make_param("__bool__", xp.bool, bool)]
-    + [make_param("__int__", d, int) for d in dh.all_int_dtypes]
-    + [make_param("__index__", d, int) for d in dh.all_int_dtypes]
+    + [make_param("__int__", d, int) for d in dh._filter_stubs(*dh.all_int_dtypes)]
+    + [make_param("__index__", d, int) for d in dh._filter_stubs(*dh.all_int_dtypes)]
     + [make_param("__float__", d, float) for d in dh.float_dtypes],
 )
 @given(data=st.data())
