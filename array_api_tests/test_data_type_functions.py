@@ -11,6 +11,7 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
+from ._array_module import mod as _xp
 from .typing import DataType
 
 pytestmark = pytest.mark.ci
@@ -141,12 +142,12 @@ def test_can_cast(_from, to, data):
         assert out == expected, f"{out=}, but should be {expected} {f_func}"
 
 
-def make_dtype_id(dtype: DataType) -> str:
-    return dh.dtype_to_name[dtype]
-
-
-@pytest.mark.parametrize("dtype", dh.float_dtypes, ids=make_dtype_id)
-def test_finfo(dtype):
+@pytest.mark.parametrize("dtype_name", dh.float_names)
+def test_finfo(dtype_name):
+    try:
+        dtype = getattr(_xp, dtype_name)
+    except AttributeError as e:
+        pytest.skip(str(e))
     out = xp.finfo(dtype)
     f_func = f"[finfo({dh.dtype_to_name[dtype]})]"
     for attr, stype in [
@@ -164,8 +165,12 @@ def test_finfo(dtype):
     # TODO: test values
 
 
-@pytest.mark.parametrize("dtype", dh._filter_stubs(*dh.all_int_dtypes), ids=make_dtype_id)
-def test_iinfo(dtype):
+@pytest.mark.parametrize("dtype_name", dh.all_int_names)
+def test_iinfo(dtype_name):
+    try:
+        dtype = getattr(_xp, dtype_name)
+    except AttributeError as e:
+        pytest.skip(str(e))
     out = xp.iinfo(dtype)
     f_func = f"[iinfo({dh.dtype_to_name[dtype]})]"
     for attr in ["bits", "max", "min"]:
