@@ -27,7 +27,7 @@ def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
 
 @given(
     x=xps.arrays(
-        dtype=xps.numeric_dtypes(),
+        dtype=xps.real_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -79,7 +79,7 @@ def test_mean(x, data):
 
 @given(
     x=xps.arrays(
-        dtype=xps.numeric_dtypes(),
+        dtype=xps.real_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
