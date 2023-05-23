@@ -1,8 +1,10 @@
 from math import prod
+from typing import Type
 
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
+from hypothesis.errors import Unsatisfiable
 
 from .. import _array_module as xp
 from .. import array_helpers as ah
@@ -15,7 +17,7 @@ from .._array_module import _UndefinedStub
 UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in dh.all_dtypes)
 pytestmark = [pytest.mark.skipif(UNDEFINED_DTYPES, reason="undefined dtypes")]
 
-@given(hh.mutually_promotable_dtypes(dtypes=dh.float_dtypes))
+@given(hh.mutually_promotable_dtypes(dtypes=dh.real_float_dtypes))
 def test_mutually_promotable_dtypes(pair):
     assert pair in (
         (xp.float32, xp.float32),
@@ -144,3 +146,27 @@ def test_symmetric_matrices(m, dtype, finite):
 def test_positive_definite_matrices(m, dtype):
     assert m.dtype == dtype
     # TODO: Test that it actually is positive definite
+
+
+def make_raising_func(cls: Type[Exception], msg: str):
+    def raises():
+        raise cls(msg)
+
+    return raises
+
+@pytest.mark.parametrize(
+    "func",
+    [
+        make_raising_func(OverflowError, "foo"),
+        make_raising_func(RuntimeError, "Overflow when unpacking long"),
+        make_raising_func(Exception, "Got an overflow"),
+    ]
+)
+def test_reject_overflow(func):
+    @given(data=st.data())
+    def test_case(data):
+        with hh.reject_overflow():
+            func()
+
+    with pytest.raises(Unsatisfiable):
+        test_case()

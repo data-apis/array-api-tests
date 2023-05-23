@@ -2,28 +2,33 @@ import re
 from collections import defaultdict
 from collections.abc import Mapping
 from functools import lru_cache
-from typing import Any, DefaultDict, NamedTuple, Sequence, Tuple, Union
+from typing import Any, DefaultDict, Dict, List, NamedTuple, Sequence, Tuple, Union
 from warnings import warn
 
-from . import _array_module as xp
 from . import api_version
-from ._array_module import _UndefinedStub
-from ._array_module import mod as _xp
+from ._array_module import mod as xp
 from .stubs import name_to_func
 from .typing import DataType, ScalarType
 
 __all__ = [
+    "uint_names",
+    "int_names",
+    "all_int_names",
+    "real_float_names",
+    "real_names",
+    "complex_names",
+    "numeric_names",
+    "dtype_names",
     "int_dtypes",
     "uint_dtypes",
     "all_int_dtypes",
-    "float_dtypes",
+    "real_float_dtypes",
     "real_dtypes",
     "numeric_dtypes",
     "all_dtypes",
     "all_float_dtypes",
     "bool_and_all_int_dtypes",
     "dtype_to_name",
-    "dtype_to_scalars",
     "kind_to_dtypes",
     "is_int_dtype",
     "is_float_dtype",
@@ -90,54 +95,51 @@ class EqualityMapping(Mapping):
         return f"EqualityMapping({self})"
 
 
-def _filter_stubs(*args):
-    for a in args:
-        if not isinstance(a, _UndefinedStub):
-            yield a
+uint_names = ("uint8", "uint16", "uint32", "uint64")
+int_names = ("int8", "int16", "int32", "int64")
+all_int_names = uint_names + int_names
+real_float_names = ("float32", "float64")
+real_names = uint_names + int_names + real_float_names
+complex_names = ("complex64", "complex128")
+numeric_names = real_names + complex_names
+dtype_names = ("bool",) + numeric_names
 
 
-_uint_names = ("uint8", "uint16", "uint32", "uint64")
-_int_names = ("int8", "int16", "int32", "int64")
-_float_names = ("float32", "float64")
-_real_names = _uint_names + _int_names + _float_names
-_complex_names = ("complex64", "complex128")
-_numeric_names = _real_names + _complex_names
-_dtype_names = ("bool",) + _numeric_names
+_name_to_dtype = {}
+for name in dtype_names:
+    try:
+        dtype = getattr(xp, name)
+    except AttributeError:
+        continue
+    _name_to_dtype[name] = dtype
+dtype_to_name = EqualityMapping([(d, n) for n, d in _name_to_dtype.items()])
 
 
-uint_dtypes = tuple(getattr(xp, name) for name in _uint_names)
-int_dtypes = tuple(getattr(xp, name) for name in _int_names)
-float_dtypes = tuple(getattr(xp, name) for name in _float_names)
+def _make_dtype_tuple_from_names(names: List[str]) -> Tuple[DataType]:
+    dtypes = []
+    for name in names:
+        try:
+            dtype = _name_to_dtype[name]
+        except KeyError:
+            continue
+        dtypes.append(dtype)
+    return tuple(dtypes)
+
+
+uint_dtypes = _make_dtype_tuple_from_names(uint_names)
+int_dtypes = _make_dtype_tuple_from_names(int_names)
+real_float_dtypes = _make_dtype_tuple_from_names(real_float_names)
 all_int_dtypes = uint_dtypes + int_dtypes
-real_dtypes = all_int_dtypes + float_dtypes
-complex_dtypes = tuple(getattr(xp, name) for name in _complex_names)
+real_dtypes = all_int_dtypes + real_float_dtypes
+complex_dtypes = _make_dtype_tuple_from_names(complex_names)
 numeric_dtypes = real_dtypes
 if api_version > "2021.12":
     numeric_dtypes += complex_dtypes
 all_dtypes = (xp.bool,) + numeric_dtypes
-all_float_dtypes = float_dtypes
+all_float_dtypes = real_float_dtypes
 if api_version > "2021.12":
     all_float_dtypes += complex_dtypes
 bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
-
-
-_dtype_name_pairs = []
-for name in _dtype_names:
-    try:
-        dtype = getattr(_xp, name)
-    except AttributeError:
-        continue
-    _dtype_name_pairs.append((dtype, name))
-dtype_to_name = EqualityMapping(_dtype_name_pairs)
-
-
-dtype_to_scalars = EqualityMapping(
-    [
-        (xp.bool, [bool]),
-        *[(d, [int]) for d in all_int_dtypes],
-        *[(d, [int, float]) for d in float_dtypes],
-    ]
-)
 
 
 kind_to_dtypes = {
@@ -145,7 +147,7 @@ kind_to_dtypes = {
     "signed integer": int_dtypes,
     "unsigned integer": uint_dtypes,
     "integral": all_int_dtypes,
-    "real floating": float_dtypes,
+    "real floating": real_float_dtypes,
     "complex floating": complex_dtypes,
     "numeric": numeric_dtypes,
 }
@@ -162,16 +164,16 @@ def is_float_dtype(dtype):
     # See https://github.com/numpy/numpy/issues/18434
     if dtype is None:
         return False
-    valid_dtypes = float_dtypes
+    valid_dtypes = real_float_dtypes
     if api_version > "2021.12":
         valid_dtypes += complex_dtypes
     return dtype in valid_dtypes
 
 
 def get_scalar_type(dtype: DataType) -> ScalarType:
-    if is_int_dtype(dtype):
+    if dtype in all_int_dtypes:
         return int
-    elif is_float_dtype(dtype):
+    elif dtype in real_float_dtypes:
         return float
     elif dtype in complex_dtypes:
         return complex
@@ -179,47 +181,59 @@ def get_scalar_type(dtype: DataType) -> ScalarType:
         return bool
 
 
+def _make_dtype_mapping_from_names(mapping: Dict[str, Any]) -> EqualityMapping:
+    dtype_value_pairs = []
+    for name, value in mapping.items():
+        assert isinstance(name, str) and name in dtype_names  # sanity check
+        try:
+            dtype = getattr(xp, name)
+        except AttributeError:
+            continue
+        dtype_value_pairs.append((dtype, value))
+    return EqualityMapping(dtype_value_pairs)
+
+
 class MinMax(NamedTuple):
     min: Union[int, float]
     max: Union[int, float]
 
 
-dtype_ranges = EqualityMapping(
-    [
-        (xp.int8, MinMax(-128, +127)),
-        (xp.int16, MinMax(-32_768, +32_767)),
-        (xp.int32, MinMax(-2_147_483_648, +2_147_483_647)),
-        (xp.int64, MinMax(-9_223_372_036_854_775_808, +9_223_372_036_854_775_807)),
-        (xp.uint8, MinMax(0, +255)),
-        (xp.uint16, MinMax(0, +65_535)),
-        (xp.uint32, MinMax(0, +4_294_967_295)),
-        (xp.uint64, MinMax(0, +18_446_744_073_709_551_615)),
-        (xp.float32, MinMax(-3.4028234663852886e38, 3.4028234663852886e38)),
-        (xp.float64, MinMax(-1.7976931348623157e308, 1.7976931348623157e308)),
-    ]
+dtype_ranges = _make_dtype_mapping_from_names(
+    {
+        "int8": MinMax(-128, +127),
+        "int16": MinMax(-32_768, +32_767),
+        "int32": MinMax(-2_147_483_648, +2_147_483_647),
+        "int64": MinMax(-9_223_372_036_854_775_808, +9_223_372_036_854_775_807),
+        "uint8": MinMax(0, +255),
+        "uint16": MinMax(0, +65_535),
+        "uint32": MinMax(0, +4_294_967_295),
+        "uint64": MinMax(0, +18_446_744_073_709_551_615),
+        "float32": MinMax(-3.4028234663852886e38, 3.4028234663852886e38),
+        "float64": MinMax(-1.7976931348623157e308, 1.7976931348623157e308),
+    }
 )
 
 
-dtype_nbits = EqualityMapping(
-    [(d, 8) for d in _filter_stubs(xp.int8, xp.uint8)]
-    + [(d, 16) for d in _filter_stubs(xp.int16, xp.uint16)]
-    + [(d, 32) for d in _filter_stubs(xp.int32, xp.uint32, xp.float32)]
-    + [(d, 64) for d in _filter_stubs(xp.int64, xp.uint64, xp.float64, xp.complex64)]
-    + [(d, 128) for d in _filter_stubs(xp.complex128)]
+r_nbits = re.compile(r"[a-z]+([0-9]+)")
+_dtype_nbits: Dict[str, int] = {}
+for name in numeric_names:
+    m = r_nbits.fullmatch(name)
+    assert m is not None  # sanity check / for mypy
+    _dtype_nbits[name] = int(m.group(1))
+dtype_nbits = _make_dtype_mapping_from_names(_dtype_nbits)
+
+
+dtype_signed = _make_dtype_mapping_from_names(
+    {**{name: True for name in int_names}, **{name: False for name in uint_names}}
 )
 
 
-dtype_signed = EqualityMapping(
-    [(d, True) for d in int_dtypes] + [(d, False) for d in uint_dtypes]
+dtype_components = _make_dtype_mapping_from_names(
+    {"complex64": xp.float32, "complex128": xp.float64}
 )
 
 
-dtype_components = EqualityMapping(
-    [(xp.complex64, xp.float32), (xp.complex128, xp.float64)]
-)
-
-
-if isinstance(xp.asarray, _UndefinedStub):
+if not hasattr(xp, "asarray"):
     default_int = xp.int32
     default_float = xp.float32
     warn(
@@ -231,7 +245,7 @@ else:
     if default_int not in int_dtypes:
         warn(f"inferred default int is {default_int!r}, which is not an int")
     default_float = xp.asarray(float()).dtype
-    if default_float not in float_dtypes:
+    if default_float not in real_float_dtypes:
         warn(f"inferred default float is {default_float!r}, which is not a float")
     if api_version > "2021.12":
         default_complex = xp.asarray(complex()).dtype
@@ -243,60 +257,73 @@ else:
     else:
         default_complex = None
 if dtype_nbits[default_int] == 32:
-    default_uint = xp.uint32
+    default_uint = getattr(xp, "uint32", None)
 else:
-    default_uint = xp.uint64
+    default_uint = getattr(xp, "uint64", None)
 
-
-_numeric_promotions = [
+_promotion_table: Dict[Tuple[str, str], str] = {
+    ("bool", "bool"): "bool",
     # ints
-    ((xp.int8, xp.int8), xp.int8),
-    ((xp.int8, xp.int16), xp.int16),
-    ((xp.int8, xp.int32), xp.int32),
-    ((xp.int8, xp.int64), xp.int64),
-    ((xp.int16, xp.int16), xp.int16),
-    ((xp.int16, xp.int32), xp.int32),
-    ((xp.int16, xp.int64), xp.int64),
-    ((xp.int32, xp.int32), xp.int32),
-    ((xp.int32, xp.int64), xp.int64),
-    ((xp.int64, xp.int64), xp.int64),
+    ("int8", "int8"): "int8",
+    ("int8", "int16"): "int16",
+    ("int8", "int32"): "int32",
+    ("int8", "int64"): "int64",
+    ("int16", "int16"): "int16",
+    ("int16", "int32"): "int32",
+    ("int16", "int64"): "int64",
+    ("int32", "int32"): "int32",
+    ("int32", "int64"): "int64",
+    ("int64", "int64"): "int64",
     # uints
-    ((xp.uint8, xp.uint8), xp.uint8),
-    ((xp.uint8, xp.uint16), xp.uint16),
-    ((xp.uint8, xp.uint32), xp.uint32),
-    ((xp.uint8, xp.uint64), xp.uint64),
-    ((xp.uint16, xp.uint16), xp.uint16),
-    ((xp.uint16, xp.uint32), xp.uint32),
-    ((xp.uint16, xp.uint64), xp.uint64),
-    ((xp.uint32, xp.uint32), xp.uint32),
-    ((xp.uint32, xp.uint64), xp.uint64),
-    ((xp.uint64, xp.uint64), xp.uint64),
+    ("uint8", "uint8"): "uint8",
+    ("uint8", "uint16"): "uint16",
+    ("uint8", "uint32"): "uint32",
+    ("uint8", "uint64"): "uint64",
+    ("uint16", "uint16"): "uint16",
+    ("uint16", "uint32"): "uint32",
+    ("uint16", "uint64"): "uint64",
+    ("uint32", "uint32"): "uint32",
+    ("uint32", "uint64"): "uint64",
+    ("uint64", "uint64"): "uint64",
     # ints and uints (mixed sign)
-    ((xp.int8, xp.uint8), xp.int16),
-    ((xp.int8, xp.uint16), xp.int32),
-    ((xp.int8, xp.uint32), xp.int64),
-    ((xp.int16, xp.uint8), xp.int16),
-    ((xp.int16, xp.uint16), xp.int32),
-    ((xp.int16, xp.uint32), xp.int64),
-    ((xp.int32, xp.uint8), xp.int32),
-    ((xp.int32, xp.uint16), xp.int32),
-    ((xp.int32, xp.uint32), xp.int64),
-    ((xp.int64, xp.uint8), xp.int64),
-    ((xp.int64, xp.uint16), xp.int64),
-    ((xp.int64, xp.uint32), xp.int64),
+    ("int8", "uint8"): "int16",
+    ("int8", "uint16"): "int32",
+    ("int8", "uint32"): "int64",
+    ("int16", "uint8"): "int16",
+    ("int16", "uint16"): "int32",
+    ("int16", "uint32"): "int64",
+    ("int32", "uint8"): "int32",
+    ("int32", "uint16"): "int32",
+    ("int32", "uint32"): "int64",
+    ("int64", "uint8"): "int64",
+    ("int64", "uint16"): "int64",
+    ("int64", "uint32"): "int64",
     # floats
-    ((xp.float32, xp.float32), xp.float32),
-    ((xp.float32, xp.float64), xp.float64),
-    ((xp.float64, xp.float64), xp.float64),
+    ("float32", "float32"): "float32",
+    ("float32", "float64"): "float64",
+    ("float64", "float64"): "float64",
     # complex
-    ((xp.complex64, xp.complex64), xp.complex64),
-    ((xp.complex64, xp.complex128), xp.complex128),
-    ((xp.complex128, xp.complex128), xp.complex128),
-]
-_numeric_promotions += [((d2, d1), res) for (d1, d2), res in _numeric_promotions]
-_promotion_table = list(set(_numeric_promotions))
-_promotion_table.insert(0, ((xp.bool, xp.bool), xp.bool))
-promotion_table = EqualityMapping(_promotion_table)
+    ("complex64", "complex64"): "complex64",
+    ("complex64", "complex128"): "complex128",
+    ("complex128", "complex128"): "complex128",
+}
+_promotion_table.update({(d2, d1): res for (d1, d2), res in _promotion_table.items()})
+_promotion_table_pairs: List[Tuple[Tuple[DataType, DataType], DataType]] = []
+for (in_name1, in_name2), res_name in _promotion_table.items():
+    try:
+        in_dtype1 = getattr(xp, in_name1)
+    except AttributeError:
+        continue
+    try:
+        in_dtype2 = getattr(xp, in_name2)
+    except AttributeError:
+        continue
+    try:
+        res_dtype = getattr(xp, res_name)
+    except AttributeError:
+        continue
+    _promotion_table_pairs.append(((in_dtype1, in_dtype2), res_dtype))
+promotion_table = EqualityMapping(_promotion_table_pairs)
 
 
 def result_type(*dtypes: DataType):
@@ -319,12 +346,13 @@ r_int_note = re.compile(
 category_to_dtypes = {
     "boolean": (xp.bool,),
     "integer": all_int_dtypes,
-    "floating-point": float_dtypes,
+    "floating-point": real_float_dtypes,
     "numeric": numeric_dtypes,
     "integer or boolean": bool_and_all_int_dtypes,
 }
 func_in_dtypes: DefaultDict[str, Tuple[DataType, ...]] = defaultdict(lambda: all_dtypes)
 for name, func in name_to_func.items():
+    assert func.__doc__ is not None  # for mypy
     if m := r_in_dtypes.search(func.__doc__):
         dtype_category = m.group(1)
         if dtype_category == "numeric" and r_int_note.search(func.__doc__):
@@ -332,7 +360,7 @@ for name, func in name_to_func.items():
         dtypes = category_to_dtypes[dtype_category]
         func_in_dtypes[name] = dtypes
 # See https://github.com/data-apis/array-api/pull/413
-func_in_dtypes["expm1"] = float_dtypes
+func_in_dtypes["expm1"] = real_float_dtypes
 
 
 func_returns_bool = {
@@ -457,11 +485,10 @@ op_to_func = {
 }
 
 
+# Construct func_in_dtypes and func_returns bool
 for op, elwise_func in op_to_func.items():
     func_in_dtypes[op] = func_in_dtypes[elwise_func]
     func_returns_bool[op] = func_returns_bool[elwise_func]
-
-
 inplace_op_to_symbol = {}
 for op, symbol in binary_op_to_symbol.items():
     if op == "__matmul__" or func_returns_bool[op]:
@@ -470,12 +497,10 @@ for op, symbol in binary_op_to_symbol.items():
     inplace_op_to_symbol[iop] = f"{symbol}="
     func_in_dtypes[iop] = func_in_dtypes[op]
     func_returns_bool[iop] = func_returns_bool[op]
-
-
 func_in_dtypes["__bool__"] = (xp.bool,)
 func_in_dtypes["__int__"] = all_int_dtypes
 func_in_dtypes["__index__"] = all_int_dtypes
-func_in_dtypes["__float__"] = float_dtypes
+func_in_dtypes["__float__"] = real_float_dtypes
 func_in_dtypes["from_dlpack"] = numeric_dtypes
 func_in_dtypes["__dlpack__"] = numeric_dtypes
 

@@ -391,7 +391,8 @@ def full_fill_values(draw) -> st.SearchStrategy[Union[bool, int, float, complex]
     kw=st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_kw"),
 )
 def test_full(shape, fill_value, kw):
-    out = xp.full(shape, fill_value, **kw)
+    with hh.reject_overflow():
+        out = xp.full(shape, fill_value, **kw)
     if kw.get("dtype", None):
         dtype = kw["dtype"]
     elif isinstance(fill_value, bool):

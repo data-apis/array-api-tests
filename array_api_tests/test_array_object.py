@@ -13,6 +13,7 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
+from ._array_module import mod as _xp
 from .typing import DataType, Index, Param, Scalar, ScalarType, Shape
 
 pytestmark = pytest.mark.ci
@@ -241,21 +242,27 @@ def test_setitem_masking(shape, data):
             )
 
 
-def make_param(method_name: str, dtype: DataType, stype: ScalarType) -> Param:
+def make_scalar_casting_param(
+    method_name: str, dtype_name: DataType, stype: ScalarType
+) -> Param:
     return pytest.param(
-        method_name, dtype, stype, id=f"{method_name}({dh.dtype_to_name[dtype]})"
+        method_name, dtype_name, stype, id=f"{method_name}({dtype_name})"
     )
 
 
 @pytest.mark.parametrize(
-    "method_name, dtype, stype",
-    [make_param("__bool__", xp.bool, bool)]
-    + [make_param("__int__", d, int) for d in dh._filter_stubs(*dh.all_int_dtypes)]
-    + [make_param("__index__", d, int) for d in dh._filter_stubs(*dh.all_int_dtypes)]
-    + [make_param("__float__", d, float) for d in dh.float_dtypes],
+    "method_name, dtype_name, stype",
+    [make_scalar_casting_param("__bool__", "bool", bool)]
+    + [make_scalar_casting_param("__int__", n, int) for n in dh.all_int_names]
+    + [make_scalar_casting_param("__index__", n, int) for n in dh.all_int_names]
+    + [make_scalar_casting_param("__float__", n, float) for n in dh.real_float_names],
 )
 @given(data=st.data())
-def test_scalar_casting(method_name, dtype, stype, data):
+def test_scalar_casting(method_name, dtype_name, stype, data):
+    try:
+        dtype = getattr(_xp, dtype_name)
+    except AttributeError as e:
+        pytest.skip(str(e))
     x = data.draw(xps.arrays(dtype, shape=()), label="x")
     method = getattr(x, method_name)
     out = method()

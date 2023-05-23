@@ -1,4 +1,6 @@
+import re
 import itertools
+from contextlib import contextmanager
 from functools import reduce
 from math import sqrt
 from operator import mul
@@ -39,7 +41,7 @@ dtypes = xps.scalar_dtypes()
 shared_dtypes = shared(dtypes, key="dtype")
 shared_floating_dtypes = shared(floating_dtypes, key="dtype")
 
-_dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.float_dtypes, dh.complex_dtypes]
+_dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]
 _sorted_dtypes = [d for category in _dtype_categories for d in category]
 
 def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):
@@ -477,3 +479,14 @@ def axes(ndim: int) -> SearchStrategy[Optional[Union[int, Shape]]]:
         axes_strats.append(integers(-ndim, ndim - 1))
         axes_strats.append(xps.valid_tuple_axes(ndim))
     return one_of(axes_strats)
+
+
+@contextmanager
+def reject_overflow():
+    try:
+        yield
+    except Exception as e:
+        if isinstance(e, OverflowError) or re.search("[Oo]verflow", str(e)):
+            reject()
+        else:
+            raise e

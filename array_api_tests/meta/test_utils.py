@@ -1,5 +1,5 @@
 import pytest
-from hypothesis import given, reject
+from hypothesis import given
 from hypothesis import strategies as st
 
 from .. import _array_module as xp
@@ -105,10 +105,8 @@ def test_fmt_idx(idx, expected):
 
 @given(x=st.integers(), dtype=xps.unsigned_integer_dtypes() | xps.integer_dtypes())
 def test_int_to_dtype(x, dtype):
-    try:
+    with hh.reject_overflow():
         d = xp.asarray(x, dtype=dtype)
-    except OverflowError:
-        reject()
     assert mock_int_dtype(x, dtype) == d
 
 

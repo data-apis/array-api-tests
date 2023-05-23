@@ -1231,7 +1231,7 @@ def test_unary(func_name, func, case, x, data):
 
 
 x1_strat, x2_strat = hh.two_mutual_arrays(
-    dtypes=dh.float_dtypes,
+    dtypes=dh.real_float_dtypes,
     two_shapes=hh.mutually_broadcastable_shapes(2, min_side=1),
 )
 
@@ -1277,7 +1277,7 @@ def test_binary(func_name, func, case, x1, x2, data):
 
 @pytest.mark.parametrize("iop_name, iop, case", iop_params)
 @given(
-    oneway_dtypes=hh.oneway_promotable_dtypes(dh.float_dtypes),
+    oneway_dtypes=hh.oneway_promotable_dtypes(dh.real_float_dtypes),
     oneway_shapes=hh.oneway_broadcastable_shapes(),
     data=st.data(),
 )
