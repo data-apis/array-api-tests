@@ -464,8 +464,8 @@ def assert_array_elements(
                 f"{sh.fmt_idx(out_repr, idx)}={at_out}, should be {at_expected} "
                 f"{f_func}"
             )
-            _assert_float_element(at_out.real, at_expected.real, msg)
-            _assert_float_element(at_out.imag, at_expected.imag, msg)
+            _assert_float_element(xp.real(at_out), xp.real(at_expected), msg)
+            _assert_float_element(xp.imag(at_out), xp.imag(at_expected), msg)
     else:
         assert xp.all(
             out == expected
