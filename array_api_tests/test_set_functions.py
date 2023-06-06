@@ -112,7 +112,7 @@ def test_unique_all(x):
 
     if dh.is_float_dtype(out.values.dtype):
         assume(math.prod(x.shape) <= 128)  # may not be representable
-        expected = sum(v for k, v in counts.items() if math.isnan(k))
+        expected = sum(v for k, v in counts.items() if cmath.isnan(k))
         assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
 
 
@@ -137,7 +137,7 @@ def test_unique_counts(x):
     for idx in sh.ndindex(out.values.shape):
         val = scalar_type(out.values[idx])
         count = int(out.counts[idx])
-        if math.isnan(val):
+        if cmath.isnan(val):
             nans += 1
             assert count == 1, (
                 f"out.counts[{idx}]={count} for out.values[{idx}]={val}, "
@@ -159,7 +159,7 @@ def test_unique_counts(x):
             vals_idx[val] = idx
     if dh.is_float_dtype(out.values.dtype):
         assume(math.prod(x.shape) <= 128)  # may not be representable
-        expected = sum(v for k, v in counts.items() if math.isnan(k))
+        expected = sum(v for k, v in counts.items() if cmath.isnan(k))
         assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
 
 
@@ -188,7 +188,7 @@ def test_unique_inverse(x):
     nans = 0
     for idx in sh.ndindex(out.values.shape):
         val = scalar_type(out.values[idx])
-        if math.isnan(val):
+        if cmath.isnan(val):
             nans += 1
         else:
             assert (
