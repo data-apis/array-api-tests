@@ -49,7 +49,7 @@ def test_take(x, data):
         f_axis_idx = sh.fmt_idx("x", axis_idx)
         for i in _indices:
             f_take_idx = sh.fmt_idx(f_axis_idx, i)
-            indexed_x = x[axis_idx][i]
+            indexed_x = x[axis_idx][i, ...]
             for at_idx in sh.ndindex(indexed_x.shape):
                 out_idx = next(out_indices)
                 ph.assert_0d_equals(
