@@ -162,6 +162,7 @@ def test_finfo(dtype_name):
         assert isinstance(
             value, stype
         ), f"type(out.{attr})={type(value)!r}, but should be {stype.__name__} {f_func}"
+    assert hasattr(out, "dtype"), f"out has no attribute 'dtype' {f_func}"
     # TODO: test values
 
 
@@ -179,6 +180,7 @@ def test_iinfo(dtype_name):
         assert isinstance(
             value, int
         ), f"type(out.{attr})={type(value)!r}, but should be int {f_func}"
+    assert hasattr(out, "dtype"), f"out has no attribute 'dtype' {f_func}"
     # TODO: test values
 
 
