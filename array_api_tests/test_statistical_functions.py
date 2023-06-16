@@ -145,7 +145,7 @@ def test_prod(x, data):
                     _dtype = x.dtype
                 else:
                     _dtype = default_dtype
-        elif dh.is_float_dtype(x.dtype, real=True):
+        elif dh.is_float_dtype(x.dtype, include_complex=False):
             if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_float]:
                 _dtype = x.dtype
             else:
@@ -261,7 +261,7 @@ def test_sum(x, data):
                     _dtype = x.dtype
                 else:
                     _dtype = default_dtype
-        elif dh.is_float_dtype(x.dtype, real=True):
+        elif dh.is_float_dtype(x.dtype, include_complex=False):
             if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_float]:
                 _dtype = x.dtype
             else:
