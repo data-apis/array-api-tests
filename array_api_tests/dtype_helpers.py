@@ -157,7 +157,7 @@ def is_int_dtype(dtype):
     return dtype in all_int_dtypes
 
 
-def is_float_dtype(dtype):
+def is_float_dtype(dtype, *, include_complex=True):
     # None equals NumPy's xp.float64 object, so we specifically check it here.
     # xp.float64 is in fact an alias of np.dtype('float64'), and its equality
     # with None is meant to be deprecated at some point.
@@ -165,10 +165,9 @@ def is_float_dtype(dtype):
     if dtype is None:
         return False
     valid_dtypes = real_float_dtypes
-    if api_version > "2021.12":
+    if api_version > "2021.12" and include_complex:
         valid_dtypes += complex_dtypes
     return dtype in valid_dtypes
-
 
 def get_scalar_type(dtype: DataType) -> ScalarType:
     if dtype in all_int_dtypes:

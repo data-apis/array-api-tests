@@ -11,7 +11,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps
+from . import xps, api_version
 from ._array_module import _UndefinedStub
 from .typing import DataType
 
@@ -145,11 +145,19 @@ def test_prod(x, data):
                     _dtype = x.dtype
                 else:
                     _dtype = default_dtype
-        else:
+        elif dh.is_float_dtype(x.dtype, include_complex=False):
             if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_float]:
                 _dtype = x.dtype
             else:
                 _dtype = dh.default_float
+        elif api_version > "2021.12":
+            # Complex dtype
+            if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_complex]:
+                _dtype = x.dtype
+            else:
+                _dtype = dh.default_complex
+        else:
+            raise RuntimeError("Unexpected dtype. This indicates a bug in the test suite.")
     else:
         _dtype = dtype
     if _dtype is None:
@@ -253,11 +261,19 @@ def test_sum(x, data):
                     _dtype = x.dtype
                 else:
                     _dtype = default_dtype
-        else:
+        elif dh.is_float_dtype(x.dtype, include_complex=False):
             if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_float]:
                 _dtype = x.dtype
             else:
                 _dtype = dh.default_float
+        elif api_version > "2021.12":
+            # Complex dtype
+            if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_complex]:
+                _dtype = x.dtype
+            else:
+                _dtype = dh.default_complex
+        else:
+            raise RuntimeError("Unexpected dtype. This indicates a bug in the test suite.")
     else:
         _dtype = dtype
     if _dtype is None:
