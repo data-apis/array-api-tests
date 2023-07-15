@@ -22,7 +22,14 @@ def test_take(x, data):
     # * negative axis
     # * negative indices
     # * different dtypes for indices
-    axis = data.draw(st.integers(0, max(x.ndim - 1, 0)), label="axis")
+
+    # axis is optional but only if x.ndim == 1
+    _axis_st = st.integers(0, max(x.ndim - 1, 0))
+    if x.ndim == 1:
+        kw = data.draw(hh.kwargs(axis=_axis_st))
+    else:
+        kw = {"axis": data.draw(_axis_st)}
+    axis = kw.get("axis", 0)
     _indices = data.draw(
         st.lists(st.integers(0, x.shape[axis] - 1), min_size=1, unique=True),
         label="_indices",
@@ -30,7 +37,7 @@ def test_take(x, data):
     indices = xp.asarray(_indices, dtype=dh.default_int)
     note(f"{indices=}")
 
-    out = xp.take(x, indices, axis=axis)
+    out = xp.take(x, indices, **kw)
 
     ph.assert_dtype("take", in_dtype=x.dtype, out_dtype=out.dtype)
     ph.assert_shape(
