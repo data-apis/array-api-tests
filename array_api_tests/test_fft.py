@@ -36,3 +36,24 @@ def test_fft(x):
     out = xp.fft.fft(x)
     assert_fft_dtype("fft", in_dtype=x.dtype, out_dtype=out.dtype)
     ph.assert_shape("fft", out_shape=out.shape, expected=x.shape)
+
+
+@given(x=xps.arrays(dtype=xps.floating_dtypes(), shape=fft_shapes_strat))
+def test_ifft(x):
+    out = xp.fft.ifft(x)
+    assert_fft_dtype("ifft", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_shape("ifft", out_shape=out.shape, expected=x.shape)
+
+
+@given(x=xps.arrays(dtype=xps.floating_dtypes(), shape=fft_shapes_strat))
+def test_fftn(x):
+    out = xp.fft.fftn(x)
+    assert_fft_dtype("fftn", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_shape("fftn", out_shape=out.shape, expected=x.shape)
+
+
+@given(x=xps.arrays(dtype=xps.floating_dtypes(), shape=fft_shapes_strat))
+def test_ifftn(x):
+    out = xp.fft.ifftn(x)
+    assert_fft_dtype("ifftn", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_shape("ifftn", out_shape=out.shape, expected=x.shape)
