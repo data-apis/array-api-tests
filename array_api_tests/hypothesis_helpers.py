@@ -11,7 +11,7 @@ from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    integers, just, lists, none, one_of,
                                    sampled_from, shared)
 
-from . import _array_module as xp
+from . import _array_module as xp, api_version
 from . import dtype_helpers as dh
 from . import shape_helpers as sh
 from . import xps
@@ -139,6 +139,13 @@ def oneway_broadcastable_shapes(draw) -> SearchStrategy[OnewayBroadcastableShape
         ).filter(lambda s: sh.broadcast_shapes(result_shape, s) == result_shape)
     )
     return OnewayBroadcastableShapes(input_shape, result_shape)
+
+
+def all_floating_dtypes() -> SearchStrategy[DataType]:
+    strat = xps.floating_dtypes()
+    if api_version >= "2022.12":
+        strat |= xps.complex_dtypes()
+    return strat
 
 
 # shared() allows us to draw either the function or the function name and they
