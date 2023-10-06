@@ -1,6 +1,6 @@
 import math
 from itertools import product
-from typing import Iterator, List, Optional, Tuple, Union
+from typing import Iterator, List, Optional, Sequence, Tuple, Union
 
 from ndindex import iter_indices as _iter_indices
 
@@ -66,10 +66,12 @@ def broadcast_shapes(*shapes: Shape):
 
 
 def normalise_axis(
-    axis: Optional[Union[int, Tuple[int, ...]]], ndim: int
+    axis: Optional[Union[int, Sequence[int]]], ndim: int
 ) -> Tuple[int, ...]:
     if axis is None:
         return tuple(range(ndim))
+    elif isinstance(axis, Sequence) and not isinstance(axis, tuple):
+        axis = tuple(axis)
     axes = axis if isinstance(axis, tuple) else (axis,)
     axes = tuple(axis if axis >= 0 else ndim + axis for axis in axes)
     return axes
