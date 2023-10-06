@@ -2,7 +2,7 @@ import math
 from typing import List, Optional
 
 import pytest
-from hypothesis import given
+from hypothesis import assume, given
 from hypothesis import strategies as st
 
 from array_api_tests.typing import Array, DataType
@@ -24,10 +24,15 @@ pytestmark = [
 fft_shapes_strat = hh.shapes(min_dims=1).filter(lambda s: math.prod(s) > 1)
 
 
-def draw_n_axis_norm_kwargs(x: Array, data: st.DataObject) -> tuple:
+def draw_n_axis_norm_kwargs(x: Array, data: st.DataObject, *, size_gt_1=False) -> tuple:
     size = math.prod(x.shape)
-    n = data.draw(st.none() | st.integers((size // 2), math.ceil(size * 1.5)), label="n")
+    n = data.draw(
+        st.none() | st.integers((size // 2), math.ceil(size * 1.5)), label="n"
+    )
     axis = data.draw(st.integers(-1, x.ndim - 1), label="axis")
+    if size_gt_1:
+        _axis = x.ndim - 1 if axis == -1 else axis
+        assume(x.shape[_axis] > 1)
     norm = data.draw(st.sampled_from(["backward", "ortho", "forward"]), label="norm")
     kwargs = data.draw(
         hh.specified_kwargs(
@@ -40,7 +45,7 @@ def draw_n_axis_norm_kwargs(x: Array, data: st.DataObject) -> tuple:
     return n, axis, norm, kwargs
 
 
-def draw_s_axes_norm_kwargs(x: Array, data: st.DataObject) -> tuple:
+def draw_s_axes_norm_kwargs(x: Array, data: st.DataObject, *, size_gt_1=False) -> tuple:
     all_axes = list(range(x.ndim))
     axes = data.draw(
         st.none() | st.lists(st.sampled_from(all_axes), min_size=1, unique=True),
@@ -54,6 +59,14 @@ def draw_s_axes_norm_kwargs(x: Array, data: st.DataObject) -> tuple:
     if axes is None:
         s_strat = st.none() | s_strat
     s = data.draw(s_strat, label="s")
+    if size_gt_1:
+        _s = x.shape if s is None else s
+        for i in range(x.ndim):
+            if i in _axes:
+                side = _s[_axes.index(i)]
+            else:
+                side = x.shape[i]
+                assume(side > 1)
     norm = data.draw(st.sampled_from(["backward", "ortho", "forward"]), label="norm")
     kwargs = data.draw(
         hh.specified_kwargs(
@@ -163,7 +176,7 @@ def test_ifftn(x, data):
 
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=fft_shapes_strat),
+    x=xps.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
     data=st.data(),
 )
 def test_rfft(x, data):
@@ -176,11 +189,11 @@ def test_rfft(x, data):
 
 
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=fft_shapes_strat),
+    x=xps.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
     data=st.data(),
 )
 def test_irfft(x, data):
-    n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data)
+    n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data, size_gt_1=True)
 
     out = xp.fft.irfft(x, **kwargs)
 
@@ -188,11 +201,58 @@ def test_irfft(x, data):
     # TODO: assert shape
 
 
-# TODO:
-# test_rfftn
-# test_irfftn
-# test_hfft
-# test_ihfft
+@given(
+    x=xps.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
+    data=st.data(),
+)
+def test_rfftn(x, data):
+    s, axes, norm, kwargs = draw_s_axes_norm_kwargs(x, data)
+
+    out = xp.fft.rfftn(x, **kwargs)
+
+    assert_fft_dtype("rfftn", in_dtype=x.dtype, out_dtype=out.dtype)
+    assert_s_axes_shape("rfftn", x=x, s=s, axes=axes, out=out)
+
+
+@given(
+    x=xps.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
+    data=st.data(),
+)
+def test_irfftn(x, data):
+    s, axes, norm, kwargs = draw_s_axes_norm_kwargs(x, data, size_gt_1=True)
+
+    out = xp.fft.irfftn(x, **kwargs)
+
+    assert_fft_dtype("irfftn", in_dtype=x.dtype, out_dtype=out.dtype)
+    assert_s_axes_shape("irfftn", x=x, s=s, axes=axes, out=out)
+
+
+@given(
+    x=xps.arrays(dtype=hh.all_floating_dtypes(), shape=fft_shapes_strat),
+    data=st.data(),
+)
+def test_hfft(x, data):
+    n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data, size_gt_1=True)
+
+    out = xp.fft.hfft(x, **kwargs)
+
+    assert_fft_dtype("hfft", in_dtype=x.dtype, out_dtype=out.dtype)
+    # TODO: shape
+
+
+@given(
+    x=xps.arrays(dtype=hh.all_floating_dtypes(), shape=fft_shapes_strat),
+    data=st.data(),
+)
+def test_ihfft(x, data):
+    n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data)
+
+    out = xp.fft.ihfft(x, **kwargs)
+
+    assert_fft_dtype("ihfft", in_dtype=x.dtype, out_dtype=out.dtype)
+    # TODO: shape
+
+
 # fftfreq
 # rfftfreq
 # fftshift
