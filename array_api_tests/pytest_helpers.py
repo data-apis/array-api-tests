@@ -1,7 +1,8 @@
 import cmath
 import math
+from functools import wraps
 from inspect import getfullargspec
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
 
 from . import _array_module as xp
 from . import dtype_helpers as dh
@@ -122,6 +123,7 @@ def assert_dtype(
         >>> assert_dtype('sum', in_dtype=x, out_dtype=out.dtype, expected=default_int)
 
     """
+    __tracebackhide__ = True
     in_dtypes = in_dtype if isinstance(in_dtype, Sequence) and not isinstance(in_dtype, str) else [in_dtype]
     f_in_dtypes = dh.fmt_types(tuple(in_dtypes))
     f_out_dtype = dh.dtype_to_name[out_dtype]
@@ -149,6 +151,7 @@ def assert_kw_dtype(
         >>> assert_kw_dtype('ones', kw_dtype=kw['dtype'], out_dtype=out.dtype)
 
     """
+    __tracebackhide__ = True
     f_kw_dtype = dh.dtype_to_name[kw_dtype]
     f_out_dtype = dh.dtype_to_name[out_dtype]
     msg = (
@@ -166,6 +169,7 @@ def assert_default_float(func_name: str, out_dtype: DataType):
         >>> assert_default_float('ones', out.dtype)
 
     """
+    __tracebackhide__ = True
     f_dtype = dh.dtype_to_name[out_dtype]
     f_default = dh.dtype_to_name[dh.default_float]
     msg = (
@@ -183,6 +187,7 @@ def assert_default_complex(func_name: str, out_dtype: DataType):
         >>> assert_default_complex('asarray', out.dtype)
 
     """
+    __tracebackhide__ = True
     f_dtype = dh.dtype_to_name[out_dtype]
     f_default = dh.dtype_to_name[dh.default_complex]
     msg = (
@@ -200,6 +205,7 @@ def assert_default_int(func_name: str, out_dtype: DataType):
         >>> assert_default_int('full', out.dtype)
 
     """
+    __tracebackhide__ = True
     f_dtype = dh.dtype_to_name[out_dtype]
     f_default = dh.dtype_to_name[dh.default_int]
     msg = (
@@ -217,6 +223,7 @@ def assert_default_index(func_name: str, out_dtype: DataType, repr_name="out.dty
         >>> assert_default_int('argmax', out.dtype)
 
     """
+    __tracebackhide__ = True
     f_dtype = dh.dtype_to_name[out_dtype]
     msg = (
         f"{repr_name}={f_dtype}, should be the default index dtype, "
@@ -240,6 +247,7 @@ def assert_shape(
         >>> assert_shape('ones', out_shape=out.shape, expected=(3, 3, 3))
 
     """
+    __tracebackhide__ = True
     if isinstance(out_shape, int):
         out_shape = (out_shape,)
     if isinstance(expected, int):
@@ -273,6 +281,7 @@ def assert_result_shape(
         >>> assert out.shape == (3, 3)
 
     """
+    __tracebackhide__ = True
     if expected is None:
         expected = sh.broadcast_shapes(*in_shapes)
     f_in_shapes = " . ".join(str(s) for s in in_shapes)
@@ -307,6 +316,7 @@ def assert_keepdimable_shape(
         >>> assert out2.shape == (1, 1)
 
     """
+    __tracebackhide__ = True
     if keepdims:
         shape = tuple(1 if axis in axes else side for axis, side in enumerate(in_shape))
     else:
@@ -337,6 +347,7 @@ def assert_0d_equals(
         >>> assert res[0] == x[0]
 
     """
+    __tracebackhide__ = True
     msg = (
         f"{out_repr}={out_val}, but should be {x_repr}={x_val} "
         f"[{func_name}({fmt_kw(kw)})]"
@@ -369,6 +380,7 @@ def assert_scalar_equals(
         >>> assert int(out) == 5
 
     """
+    __tracebackhide__ = True
     repr_name = repr_name if idx == () else f"{repr_name}[{idx}]"
     f_func = f"{func_name}({fmt_kw(kw)})"
     if type_ in [bool, int]:
@@ -401,6 +413,7 @@ def assert_fill(
         >>> assert xp.all(out == 42)
 
     """
+    __tracebackhide__ = True
     msg = f"out not filled with {fill_value} [{func_name}({fmt_kw(kw)})]\n{out=}"
     if cmath.isnan(fill_value):
         assert xp.all(xp.isnan(out)), msg
@@ -443,6 +456,7 @@ def assert_array_elements(
         >>> assert xp.all(out == x)
 
     """
+    __tracebackhide__ = True
     dh.result_type(out.dtype, expected.dtype)  # sanity check
     assert_shape(func_name, out_shape=out.shape, expected=expected.shape, kw=kw)  # sanity check
     f_func = f"[{func_name}({fmt_kw(kw)})]"
@@ -470,3 +484,18 @@ def assert_array_elements(
         assert xp.all(
             out == expected
         ), f"{out_repr} not as expected {f_func}\n{out_repr}={out!r}\n{expected=}"
+
+
+def _make_wrapped_assert_helper(assert_helper: Callable) -> Callable:
+    @wraps(assert_helper)
+    def wrapped_assert_helper(*args, **kwargs):
+        __tracebackhide__ = True
+        assert_helper(*args, **kwargs)
+
+    return wrapped_assert_helper
+
+
+for func_name in __all__:
+    if func_name.startswith("assert"):
+        assert_helper = globals()[func_name]
+        globals()[func_name] = _make_wrapped_assert_helper(assert_helper)
