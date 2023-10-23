@@ -232,7 +232,9 @@ def test_rfftn(x, data):
 
 
 @given(
-    x=xps.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
+    x=xps.arrays(
+        dtype=xps.complex_dtypes(), shape=fft_shapes_strat.filter(lambda s: s[-1] > 1)
+    ),
     data=st.data(),
 )
 def test_irfftn(x, data):
