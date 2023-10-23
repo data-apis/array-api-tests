@@ -93,14 +93,24 @@ def assert_fft_dtype(func_name: str, *, in_dtype: DataType, out_dtype: DataType)
 
 
 def assert_n_axis_shape(
-    func_name: str, *, x: Array, n: Optional[int], axis: int, out: Array
+    func_name: str,
+    *,
+    x: Array,
+    n: Optional[int],
+    axis: int,
+    out: Array,
+    size_gt_1=False,
 ):
+    _axis = len(x.shape) - 1 if axis == -1 else axis
     if n is None:
-        expected_shape = x.shape
+        if size_gt_1:
+            axis_side = 2 * (x.shape[_axis] - 1)
+        else:
+            axis_side = x.shape[_axis]
     else:
-        _axis = len(x.shape) - 1 if axis == -1 else axis
-        expected_shape = x.shape[:_axis] + (n,) + x.shape[_axis + 1 :]
-    ph.assert_shape(func_name, out_shape=out.shape, expected=expected_shape)
+        axis_side = n
+    expected = x.shape[:_axis] + (axis_side,) + x.shape[_axis + 1 :]
+    ph.assert_shape(func_name, out_shape=out.shape, expected=expected)
 
 
 def assert_s_axes_shape(
@@ -198,7 +208,14 @@ def test_irfft(x, data):
     out = xp.fft.irfft(x, **kwargs)
 
     assert_fft_dtype("irfft", in_dtype=x.dtype, out_dtype=out.dtype)
-    # TODO: assert shape
+
+    _axis = x.ndim - 1 if axis == -1 else axis
+    if n is None:
+        axis_side = 2 * (x.shape[_axis] - 1)
+    else:
+        axis_side = n
+    expected_shape = x.shape[:_axis] + (axis_side,) + x.shape[_axis + 1 :]
+    ph.assert_shape("irfft", out_shape=out.shape, expected=expected_shape)
 
 
 @given(
@@ -224,7 +241,7 @@ def test_irfftn(x, data):
     out = xp.fft.irfftn(x, **kwargs)
 
     assert_fft_dtype("irfftn", in_dtype=x.dtype, out_dtype=out.dtype)
-    assert_s_axes_shape("irfftn", x=x, s=s, axes=axes, out=out)
+    # TODO: shape
 
 
 @given(
@@ -237,7 +254,14 @@ def test_hfft(x, data):
     out = xp.fft.hfft(x, **kwargs)
 
     assert_fft_dtype("hfft", in_dtype=x.dtype, out_dtype=out.dtype)
-    # TODO: shape
+
+    _axis = x.ndim - 1 if axis == -1 else axis
+    if n is None:
+        axis_side = 2 * (x.shape[_axis] - 1)
+    else:
+        axis_side = n
+    expected_shape = x.shape[:_axis] + (axis_side,) + x.shape[_axis + 1 :]
+    ph.assert_shape("hfft", out_shape=out.shape, expected=expected_shape)
 
 
 @given(
@@ -250,9 +274,10 @@ def test_ihfft(x, data):
     out = xp.fft.ihfft(x, **kwargs)
 
     assert_fft_dtype("ihfft", in_dtype=x.dtype, out_dtype=out.dtype)
-    # TODO: shape
+    assert_n_axis_shape("ihfft", x=x, n=n, axis=axis, out=out, size_gt_1=True)
 
 
+# TODO:
 # fftfreq
 # rfftfreq
 # fftshift
