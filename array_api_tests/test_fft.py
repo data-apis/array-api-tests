@@ -99,7 +99,7 @@ def assert_n_axis_shape(
     n: Optional[int],
     axis: int,
     out: Array,
-    size_gt_1=False,
+    size_gt_1: bool = False,
 ):
     _axis = len(x.shape) - 1 if axis == -1 else axis
     if n is None:
@@ -120,6 +120,7 @@ def assert_s_axes_shape(
     s: Optional[List[int]],
     axes: Optional[List[int]],
     out: Array,
+    size_gt_1: bool = False,
 ):
     _axes = sh.normalise_axis(axes, x.ndim)
     _s = x.shape if s is None else s
@@ -130,6 +131,10 @@ def assert_s_axes_shape(
         else:
             side = x.shape[i]
         expected.append(side)
+    if size_gt_1:
+        last_axis = _axes[-1]
+        expected[last_axis] = 2 * (expected[last_axis] - 1)
+        assume(expected[last_axis] > 0)  # TODO: generate valid examples
     ph.assert_shape(func_name, out_shape=out.shape, expected=tuple(expected))
 
 
@@ -243,7 +248,7 @@ def test_irfftn(x, data):
     out = xp.fft.irfftn(x, **kwargs)
 
     assert_fft_dtype("irfftn", in_dtype=x.dtype, out_dtype=out.dtype)
-    # TODO: shape
+    assert_s_axes_shape("rfftn", x=x, s=s, axes=axes, out=out, size_gt_1=True)
 
 
 @given(
