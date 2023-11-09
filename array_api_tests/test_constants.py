@@ -51,3 +51,8 @@ def test_nan():
     x = xp.asarray(xp.nan)
     assert_0d_float("nan", x)
     assert xp.isnan(x), "xp.isnan(xp.asarray(xp.nan))=False"
+
+
+def test_newaxis():
+    assert hasattr(xp, "newaxis")
+    assert xp.newaxis is None
