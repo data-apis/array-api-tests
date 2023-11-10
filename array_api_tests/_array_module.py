@@ -63,7 +63,7 @@ _dtypes = [
 _constants = ["e", "inf", "nan", "pi"]
 _funcs = [f.__name__ for funcs in stubs.category_to_funcs.values() for f in funcs]
 _funcs += ["take", "isdtype", "conj", "imag", "real"]  # TODO: bump spec and update array-api-tests to new spec layout
-_top_level_attrs = _dtypes + _constants + _funcs + stubs.EXTENSIONS
+_top_level_attrs = _dtypes + _constants + _funcs + stubs.EXTENSIONS + ["fft"]
 
 for attr in _top_level_attrs:
     try:
