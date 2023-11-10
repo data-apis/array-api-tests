@@ -1,8 +1,7 @@
 import cmath
 import math
-from functools import wraps
 from inspect import getfullargspec
-from typing import Any, Callable, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 from . import _array_module as xp
 from . import dtype_helpers as dh
@@ -484,18 +483,3 @@ def assert_array_elements(
         assert xp.all(
             out == expected
         ), f"{out_repr} not as expected {f_func}\n{out_repr}={out!r}\n{expected=}"
-
-
-def _make_wrapped_assert_helper(assert_helper: Callable) -> Callable:
-    @wraps(assert_helper)
-    def wrapped_assert_helper(*args, **kwargs):
-        __tracebackhide__ = True
-        assert_helper(*args, **kwargs)
-
-    return wrapped_assert_helper
-
-
-for func_name in __all__:
-    if func_name.startswith("assert"):
-        assert_helper = globals()[func_name]
-        globals()[func_name] = _make_wrapped_assert_helper(assert_helper)
