@@ -17,7 +17,7 @@ from ._array_module import mod as xp
 pytestmark = [
     pytest.mark.ci,
     pytest.mark.xp_extension("fft"),
-    pytest.mark.min_version("draft"),
+    pytest.mark.min_version("2022.12"),
 ]
 
 
