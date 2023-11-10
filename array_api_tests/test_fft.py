@@ -1,5 +1,6 @@
 import math
 from typing import List, Optional
+from unittest.mock import MagicMock
 
 import pytest
 from hypothesis import assume, given
@@ -7,6 +8,7 @@ from hypothesis import strategies as st
 
 from array_api_tests.typing import Array, DataType
 
+from . import api_version
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
@@ -20,6 +22,11 @@ pytestmark = [
     pytest.mark.min_version("2022.12"),
 ]
 
+
+# Using xps.complex_dtypes() raises an AttributeError for 2021.12 instances of
+# xps, hence this hack. TODO: figure out a better way to manage this!
+if api_version < "2022.12":
+    xps = MagicMock(xps)
 
 fft_shapes_strat = hh.shapes(min_dims=1).filter(lambda s: math.prod(s) > 1)
 
