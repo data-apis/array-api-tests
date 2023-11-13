@@ -459,6 +459,13 @@ def assert_array_elements(
     dh.result_type(out.dtype, expected.dtype)  # sanity check
     assert_shape(func_name, out_shape=out.shape, expected=expected.shape, kw=kw)  # sanity check
     f_func = f"[{func_name}({fmt_kw(kw)})]"
+
+    match = (out == expected)
+    if xp.all(match):
+        return
+
+    # In case of mismatch, generate a more helpful error. Cycling through all indices is
+    # costly in some array api implementations, so we only do this in the case of a failure.
     if out.dtype in dh.real_float_dtypes:
         for idx in sh.ndindex(out.shape):
             at_out = out[idx]
@@ -480,6 +487,4 @@ def assert_array_elements(
             _assert_float_element(xp.real(at_out), xp.real(at_expected), msg)
             _assert_float_element(xp.imag(at_out), xp.imag(at_expected), msg)
     else:
-        assert xp.all(
-            out == expected
-        ), f"{out_repr} not as expected {f_func}\n{out_repr}={out!r}\n{expected=}"
+        assert xp.all(match), f"{out_repr} not as expected {f_func}\n{out_repr}={out!r}\n{expected=}"
