@@ -626,7 +626,7 @@ def test_trace(x, kw):
             x_stack_diag = [x_stack[i, i + offset] for i in range(diag_size)]
         else:
             x_stack_diag = [x_stack[i - offset, i] for i in range(diag_size)]
-        return _array_module.sum(asarray(x_stack_diag, dtype=x.dtype), dtype=x.dtype)
+        return _array_module.sum(asarray(x_stack_diag, dtype=x.dtype))
 
     _test_stacks(linalg.trace, x, **kw, res=res, dims=0, true_val=true_trace)
 
