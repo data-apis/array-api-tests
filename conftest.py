@@ -31,6 +31,13 @@ def pytest_addoption(parser):
         action="store_true",
         help="disable the Hypothesis deadline",
     )
+    # Hypothesis derandomize
+    parser.addoption(
+        "--hypothesis-derandomize",
+        "--derandomize",
+        action="store_true",
+        help="set the Hypothesis derandomize parameter",
+    )
     # disable extensions
     parser.addoption(
         "--disable-extension",
@@ -79,11 +86,14 @@ def pytest_configure(config):
     # Hypothesis
     hypothesis_max_examples = config.getoption("--hypothesis-max-examples")
     disable_deadline = config.getoption("--hypothesis-disable-deadline")
+    derandomize = config.getoption("--hypothesis-derandomize")
     profile_settings = {}
     if hypothesis_max_examples is not None:
         profile_settings["max_examples"] = int(hypothesis_max_examples)
     if disable_deadline:
         profile_settings["deadline"] = None
+    if derandomize:
+        profile_settings["derandomize"] = True
     if profile_settings:
         settings.register_profile("xp_override", **profile_settings)
         settings.load_profile("xp_override")
