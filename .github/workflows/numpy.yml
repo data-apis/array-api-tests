@@ -28,4 +28,4 @@ jobs:
       env:
         ARRAY_API_TESTS_MODULE: numpy.array_api
       run: |
-        pytest -v -rxXfE --ci --skips-file numpy-skips.txt --derandomize
+        pytest -v -rxXfE --ci --skips-file numpy-skips.txt
