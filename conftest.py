@@ -82,7 +82,7 @@ def pytest_configure(config):
     profile_settings = {}
     if hypothesis_max_examples is not None:
         profile_settings["max_examples"] = int(hypothesis_max_examples)
-    if disable_deadline is not None:
+    if disable_deadline:
         profile_settings["deadline"] = None
     if profile_settings:
         settings.register_profile("xp_override", **profile_settings)
