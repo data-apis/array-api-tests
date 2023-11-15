@@ -49,7 +49,7 @@ def mock_int_dtype(n: int, dtype: DataType) -> int:
 def isclose(
     a: float,
     b: float,
-    M: float,
+    maximum: float,
     *,
     rel_tol: float = 0.25,
     abs_tol: float = 1,
@@ -62,33 +62,28 @@ def isclose(
     if math.isnan(a) or math.isnan(b):
         raise ValueError(f"{a=} and {b=}, but input must be non-NaN")
     if math.isinf(a):
-        return math.isinf(b) or abs(b) > math.log(M)
+        return math.isinf(b) or abs(b) > math.log(maximum)
     elif math.isinf(b):
-        return math.isinf(a) or abs(a) > math.log(M)
+        return math.isinf(a) or abs(a) > math.log(maximum)
     return math.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol)
 
 
 def isclose_complex(
     a: complex,
     b: complex,
-    M: float,
+    maximum: float,
     *,
     rel_tol: float = 0.25,
     abs_tol: float = 1,
 ) -> bool:
-    """Wraps math.isclose with very generous defaults.
-
-    This is useful for many floating-point operations where the spec does not
-    make accuracy requirements.
-    """
+    """Like isclose() but specifically for complex values."""
     if cmath.isnan(a) or cmath.isnan(b):
         raise ValueError(f"{a=} and {b=}, but input must be non-NaN")
     if cmath.isinf(a):
-        return cmath.isinf(b) or abs(b) > cmath.log(M)
+        return cmath.isinf(b) or abs(b) > cmath.log(maximum)
     elif cmath.isinf(b):
-        return cmath.isinf(a) or abs(a) > cmath.log(M)
+        return cmath.isinf(a) or abs(a) > cmath.log(maximum)
     return cmath.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol)
-
 
 
 def default_filter(s: Scalar) -> bool:
