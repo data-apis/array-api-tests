@@ -72,3 +72,7 @@ for funcs in extension_to_funcs.values():
     for func in funcs:
         if func.__name__ not in name_to_func.keys():
             name_to_func[func.__name__] = func
+
+# sanity check public attributes are not empty
+for attr in __all__:
+    assert len(locals()[attr]) != 0, f"{attr} is empty"

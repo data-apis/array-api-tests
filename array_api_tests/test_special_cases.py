@@ -1197,6 +1197,11 @@ for stub in category_to_funcs["elementwise"]:
 # its False - Hypothesis will complain if we reject too many examples, thus
 # indicating we've done something wrong.
 
+# sanity checks
+assert len(unary_params) != 0
+assert len(binary_params) != 0
+assert len(iop_params) != 0
+
 
 @pytest.mark.parametrize("func_name, func, case", unary_params)
 @given(
