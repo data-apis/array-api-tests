@@ -235,6 +235,12 @@ dtype_components = _make_dtype_mapping_from_names(
 if not hasattr(xp, "asarray"):
     default_int = xp.int32
     default_float = xp.float32
+    # TODO: when api_version > '2021.12', just assign to xp.complex64,
+    # otherwise default to None. Need array-api spec to be bumped first (#187).
+    try:
+        default_complex = xp.complex64
+    except AttributeError:
+        default_complex = None
     warn(
         "array module does not have attribute asarray. "
         "default int is assumed int32, default float is assumed float32"
