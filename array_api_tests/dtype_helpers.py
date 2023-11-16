@@ -355,7 +355,6 @@ category_to_dtypes = {
     "real-valued": real_float_dtypes,
     "real-valued floating-point": real_float_dtypes,
     "complex floating-point": complex_dtypes,
-    "complex-floating point": complex_dtypes,
     "numeric": numeric_dtypes,
     "integer or boolean": bool_and_all_int_dtypes,
 }
