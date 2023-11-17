@@ -36,13 +36,7 @@ You need to specify the array library to test. It can be specified via the
 $ export ARRAY_API_TESTS_MODULE=numpy.array_api
 ```
 
-Alternately, change the `array_module` variable in `array_api_tests/_array_module.py`
-line, e.g.
-
-```diff
-- array_module = None
-+ import numpy.array_api as array_module
-```
+Alternately, import/define the `xp` variable in `array_api_tests/__init__.py`.
 
 ### Run the suite
 

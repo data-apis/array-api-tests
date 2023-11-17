@@ -49,7 +49,7 @@ def pytest_metadata(metadata):
     """
     Additional global metadata for --json-report.
     """
-    metadata['array_api_tests_module'] = xp.mod_name
+    metadata['array_api_tests_module'] = xp.__name__
     metadata['array_api_tests_version'] = __version__
 
 @fixture(autouse=True)

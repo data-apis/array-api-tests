@@ -6,7 +6,7 @@ from typing import Any, DefaultDict, Dict, List, NamedTuple, Sequence, Tuple, Un
 from warnings import warn
 
 from . import api_version
-from ._array_module import mod as xp
+from . import xp
 from .stubs import name_to_func
 from .typing import DataType, ScalarType
 

@@ -14,7 +14,7 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from ._array_module import mod as xp
+from . import xp
 
 pytestmark = [
     pytest.mark.ci,

@@ -6,6 +6,8 @@ from pathlib import Path
 from types import FunctionType, ModuleType
 from typing import Dict, List
 
+from . import api_version
+
 __all__ = [
     "name_to_func",
     "array_methods",
@@ -15,10 +17,9 @@ __all__ = [
     "extension_to_funcs",
 ]
 
-spec_version = "2022.12"
-spec_module = "_" + spec_version.replace('.', '_')
+spec_module = "_" + api_version.replace('.', '_')
 
-spec_dir = Path(__file__).parent.parent / "array-api" / "spec" / spec_version / "API_specification"
+spec_dir = Path(__file__).parent.parent / "array-api" / "spec" / api_version / "API_specification"
 assert spec_dir.exists(), f"{spec_dir} not found - try `git submodule update --init`"
 sigs_dir = Path(__file__).parent.parent / "array-api" / "src" / "array_api_stubs" / spec_module
 assert sigs_dir.exists()
