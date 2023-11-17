@@ -109,7 +109,7 @@ class OnewayPromotableDtypes(NamedTuple):
 @composite
 def oneway_promotable_dtypes(
     draw, dtypes: Sequence[DataType]
-) -> SearchStrategy[OnewayPromotableDtypes]:
+) -> OnewayPromotableDtypes:
     """Return a strategy for input dtypes that promote to result dtypes."""
     d1, d2 = draw(mutually_promotable_dtypes(dtypes=dtypes))
     result_dtype = dh.result_type(d1, d2)
@@ -127,7 +127,7 @@ class OnewayBroadcastableShapes(NamedTuple):
 
 
 @composite
-def oneway_broadcastable_shapes(draw) -> SearchStrategy[OnewayBroadcastableShapes]:
+def oneway_broadcastable_shapes(draw) -> OnewayBroadcastableShapes:
     """Return a strategy for input shapes that broadcast to result shapes."""
     result_shape = draw(shapes(min_side=1))
     input_shape = draw(
