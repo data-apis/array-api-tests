@@ -377,7 +377,7 @@ default_safe_dtypes: st.SearchStrategy = xps.scalar_dtypes().filter(
 
 
 @st.composite
-def full_fill_values(draw) -> st.SearchStrategy[Union[bool, int, float, complex]]:
+def full_fill_values(draw) -> Union[bool, int, float, complex]:
     kw = draw(
         st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_kw")
     )
