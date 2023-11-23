@@ -159,7 +159,10 @@ def parse_value(value_str: str) -> float:
         if denominator := pi_m.group(2):
             value /= int(denominator)
     else:
-        value = repr_to_value[m.group(2)]
+        try:
+            value = repr_to_value[m.group(2)]
+        except KeyError as e:
+            raise ParseError(value_str) from e
     if sign := m.group(1):
         if sign == "-":
             value *= -1
