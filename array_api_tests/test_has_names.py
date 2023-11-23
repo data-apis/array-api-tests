@@ -5,7 +5,7 @@ does not even require functioning hypothesis array_api support.
 
 import pytest
 
-from ._array_module import mod as xp, mod_name
+from . import xp
 from .stubs import (array_attributes, array_methods, category_to_funcs,
                     extension_to_funcs, EXTENSIONS)
 
@@ -27,13 +27,13 @@ for attr in array_attributes:
 def test_has_names(category, name):
     if category in EXTENSIONS:
         ext_mod = getattr(xp, category)
-        assert hasattr(ext_mod, name), f"{mod_name} is missing the {category} extension function {name}()"
+        assert hasattr(ext_mod, name), f"{xp.__name__} is missing the {category} extension function {name}()"
     elif category.startswith('array_'):
         # TODO: This would fail if ones() is missing.
         arr = xp.ones((1, 1))
         if category == 'array_attribute':
-            assert hasattr(arr, name), f"The {mod_name} array object is missing the attribute {name}"
+            assert hasattr(arr, name), f"The {xp.__name__} array object is missing the attribute {name}"
         else:
-            assert hasattr(arr, name), f"The {mod_name} array object is missing the method {name}()"
+            assert hasattr(arr, name), f"The {xp.__name__} array object is missing the method {name}()"
     else:
-        assert hasattr(xp, name), f"{mod_name} is missing the {category} function {name}()"
+        assert hasattr(xp, name), f"{xp.__name__} is missing the {category} function {name}()"

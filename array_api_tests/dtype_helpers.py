@@ -6,7 +6,7 @@ from typing import Any, DefaultDict, Dict, List, NamedTuple, Sequence, Tuple, Un
 from warnings import warn
 
 from . import api_version
-from ._array_module import mod as xp
+from . import xp
 from .stubs import name_to_func
 from .typing import DataType, ScalarType
 
@@ -352,6 +352,9 @@ category_to_dtypes = {
     "boolean": (xp.bool,),
     "integer": all_int_dtypes,
     "floating-point": real_float_dtypes,
+    "real-valued": real_float_dtypes,
+    "real-valued floating-point": real_float_dtypes,
+    "complex floating-point": complex_dtypes,
     "numeric": numeric_dtypes,
     "integer or boolean": bool_and_all_int_dtypes,
 }
@@ -364,8 +367,6 @@ for name, func in name_to_func.items():
             dtype_category = "floating-point"
         dtypes = category_to_dtypes[dtype_category]
         func_in_dtypes[name] = dtypes
-# See https://github.com/data-apis/array-api/pull/413
-func_in_dtypes["expm1"] = real_float_dtypes
 
 
 func_returns_bool = {

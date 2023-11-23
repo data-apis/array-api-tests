@@ -32,8 +32,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps
-from ._array_module import mod as xp
+from . import xp, xps
 from .stubs import category_to_funcs
 
 pytestmark = pytest.mark.ci
@@ -126,6 +125,8 @@ repr_to_value = {
     "infinity": float("inf"),
     "0": 0.0,
     "1": 1.0,
+    "False": 0.0,
+    "True": 1.0,
 }
 r_value = re.compile(r"([+-]?)(.+)")
 r_pi = re.compile(r"(\d?)π(?:/(\d))?")
@@ -158,7 +159,10 @@ def parse_value(value_str: str) -> float:
         if denominator := pi_m.group(2):
             value /= int(denominator)
     else:
-        value = repr_to_value[m.group(2)]
+        try:
+            value = repr_to_value[m.group(2)]
+        except KeyError as e:
+            raise ParseError(value_str) from e
     if sign := m.group(1):
         if sign == "-":
             value *= -1
@@ -507,7 +511,10 @@ class Case(Protocol):
         return f"{self.__class__.__name__}(<{self}>)"
 
 
-r_case_block = re.compile(r"\*\*Special [Cc]ases\*\*\n+((?:(.*\n)+))\n+\s*Parameters")
+r_case_block = re.compile(
+    r"\*\*Special [Cc]ases\*\*\n+((?:(.*\n)+))\n+\s*"
+    r"(?:.+\n--+)?(?:\.\. versionchanged.*)?"
+)
 r_case = re.compile(r"\s+-\s*(.*)\.")
 
 
@@ -1121,6 +1128,9 @@ binary_params = []
 iop_params = []
 func_to_op: Dict[str, str] = {v: k for k, v in dh.op_to_func.items()}
 for stub in category_to_funcs["elementwise"]:
+    # if stub.__name__ == "abs":
+    #     import ipdb; ipdb.set_trace()
+
     if stub.__doc__ is None:
         warn(f"{stub.__name__}() stub has no docstring")
         continue
@@ -1167,6 +1177,8 @@ for stub in category_to_funcs["elementwise"]:
                 op = getattr(operator, op_name)
                 name_to_func[op_name] = op
                 # We collect inplace operator test cases seperately
+                if stub.__name__ == "equal":
+                    break
                 iop_name = "__i" + op_name[2:]
                 iop = getattr(operator, iop_name)
                 for case in cases:
@@ -1196,6 +1208,11 @@ for stub in category_to_funcs["elementwise"]:
 # with at least on element that is special-cased. We reject the example when
 # its False - Hypothesis will complain if we reject too many examples, thus
 # indicating we've done something wrong.
+
+# sanity checks
+assert len(unary_params) != 0
+assert len(binary_params) != 0
+assert len(iop_params) != 0
 
 
 @pytest.mark.parametrize("func_name, func, case", unary_params)
@@ -1254,7 +1271,12 @@ def test_binary(func_name, func, case, x1, x2, data):
 
     res = func(x1, x2)
     # sanity check
-    ph.assert_result_shape(func_name, in_shapes=[x1.shape, x2.shape], out_shape=res.shape, expected=result_shape)
+    ph.assert_result_shape(
+        func_name,
+        in_shapes=[x1.shape, x2.shape],
+        out_shape=res.shape,
+        expected=result_shape,
+    )
 
     good_example = False
     for l_idx, r_idx, o_idx in all_indices:
@@ -1306,7 +1328,9 @@ def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
     res = xp.asarray(x1, copy=True)
     res = iop(res, x2)
     # sanity check
-    ph.assert_result_shape(iop_name, in_shapes=[x1.shape, x2.shape], out_shape=res.shape)
+    ph.assert_result_shape(
+        iop_name, in_shapes=[x1.shape, x2.shape], out_shape=res.shape
+    )
 
     good_example = False
     for l_idx, r_idx, o_idx in all_indices:

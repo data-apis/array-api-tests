@@ -1,13 +1,36 @@
+import os
 from functools import wraps
-from os import getenv
+from importlib import import_module
 
 from hypothesis import strategies as st
 from hypothesis.extra import array_api
 
 from . import _version
-from ._array_module import mod as _xp
 
-__all__ = ["api_version", "xps"]
+__all__ = ["xp", "api_version", "xps"]
+
+
+# You can comment the following out and instead import the specific array module
+# you want to test, e.g. `import numpy.array_api as xp`.
+if "ARRAY_API_TESTS_MODULE" in os.environ:
+    xp_name = os.environ["ARRAY_API_TESTS_MODULE"]
+    _module, _sub = xp_name, None
+    if "." in xp_name:
+        _module, _sub = xp_name.split(".", 1)
+    xp = import_module(_module)
+    if _sub:
+        try:
+            xp = getattr(xp, _sub)
+        except AttributeError:
+            # _sub may be a submodule that needs to be imported. WE can't
+            # do this in every case because some array modules are not
+            # submodules that can be imported (like mxnet.nd).
+            xp = import_module(xp_name)
+else:
+    raise RuntimeError(
+        "No array module specified - either edit __init__.py or set the "
+        "ARRAY_API_TESTS_MODULE environment variable."
+    )
 
 
 # We monkey patch floats() to always disable subnormals as they are out-of-scope
@@ -43,9 +66,9 @@ except AttributeError:
     pass
 
 
-api_version = getenv(
-    "ARRAY_API_TESTS_VERSION", getattr(_xp, "__array_api_version__", "2021.12")
+api_version = os.getenv(
+    "ARRAY_API_TESTS_VERSION", getattr(xp, "__array_api_version__", "2021.12")
 )
-xps = array_api.make_strategies_namespace(_xp, api_version=api_version)
+xps = array_api.make_strategies_namespace(xp, api_version=api_version)
 
 __version__ = _version.get_versions()["version"]

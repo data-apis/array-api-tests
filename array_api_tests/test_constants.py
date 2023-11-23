@@ -4,7 +4,7 @@ from typing import Any, SupportsFloat
 import pytest
 
 from . import dtype_helpers as dh
-from ._array_module import mod as xp
+from . import xp
 from .typing import Array
 
 pytestmark = pytest.mark.ci

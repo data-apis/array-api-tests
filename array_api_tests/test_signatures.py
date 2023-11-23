@@ -30,7 +30,7 @@ from warnings import warn
 import pytest
 
 from . import dtype_helpers as dh
-from ._array_module import mod as xp
+from . import xp
 from .stubs import array_methods, category_to_funcs, extension_to_funcs, name_to_func
 
 pytestmark = pytest.mark.ci
