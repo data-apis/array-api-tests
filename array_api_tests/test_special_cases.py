@@ -1128,9 +1128,6 @@ binary_params = []
 iop_params = []
 func_to_op: Dict[str, str] = {v: k for k, v in dh.op_to_func.items()}
 for stub in category_to_funcs["elementwise"]:
-    # if stub.__name__ == "abs":
-    #     import ipdb; ipdb.set_trace()
-
     if stub.__doc__ is None:
         warn(f"{stub.__name__}() stub has no docstring")
         continue
