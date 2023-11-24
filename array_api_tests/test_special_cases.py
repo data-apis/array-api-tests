@@ -1174,8 +1174,8 @@ for stub in category_to_funcs["elementwise"]:
                 op = getattr(operator, op_name)
                 name_to_func[op_name] = op
                 # We collect inplace operator test cases seperately
-                if stub.__name__ == "equal":
-                    break
+                if "equal" in stub.__name__:
+                    continue
                 iop_name = "__i" + op_name[2:]
                 iop = getattr(operator, iop_name)
                 for case in cases:
