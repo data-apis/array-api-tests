@@ -22,16 +22,6 @@ from .stubs import category_to_funcs
 from .pytest_helpers import nargs
 from .typing import Array, DataType, Shape
 
-integer_dtypes = xps.integer_dtypes() | xps.unsigned_integer_dtypes()
-floating_dtypes = xps.floating_dtypes()
-numeric_dtypes = xps.numeric_dtypes()
-integer_or_boolean_dtypes = xps.boolean_dtypes() | integer_dtypes
-boolean_dtypes = xps.boolean_dtypes()
-dtypes = xps.scalar_dtypes()
-
-shared_dtypes = shared(dtypes, key="dtype")
-shared_floating_dtypes = shared(floating_dtypes, key="dtype")
-
 _dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]
 _sorted_dtypes = [d for category in _dtype_categories for d in category]
 
@@ -337,7 +327,7 @@ def python_integer_indices(draw, sizes):
 def integer_indices(draw, sizes):
     # Return either a Python integer or a 0-D array with some integer dtype
     idx = draw(python_integer_indices(sizes))
-    dtype = draw(integer_dtypes)
+    dtype = draw(xps.integer_dtypes() | xps.unsigned_integer_dtypes())
     m, M = dh.dtype_ranges[dtype]
     if m <= idx <= M:
         return draw(one_of(just(idx),

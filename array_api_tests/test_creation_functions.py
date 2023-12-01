@@ -427,21 +427,11 @@ def test_full(shape, fill_value, kw):
     ph.assert_fill("full", fill_value=fill_value, dtype=dtype, out=out, kw=dict(fill_value=fill_value))
 
 
-@st.composite
-def full_like_fill_values(draw):
-    kw = draw(
-        st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_like_kw")
-    )
-    dtype = kw.get("dtype", None) or draw(hh.shared_dtypes)
-    return draw(xps.from_dtype(dtype))
-
-
-@given(
-    x=xps.arrays(dtype=hh.shared_dtypes, shape=hh.shapes()),
-    fill_value=full_like_fill_values(),
-    kw=st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_like_kw"),
-)
-def test_full_like(x, fill_value, kw):
+@given(kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), data=st.data())
+def test_full_like(kw, data):
+    dtype = kw.get("dtype", None) or data.draw(xps.scalar_dtypes(), label="dtype")
+    x = data.draw(xps.arrays(dtype=dtype, shape=hh.shapes()), label="x")
+    fill_value = data.draw(xps.from_dtype(dtype), label="fill_value")
     out = xp.full_like(x, fill_value, **kw)
     dtype = kw.get("dtype", None) or x.dtype
     if kw.get("dtype", None) is None:
@@ -551,7 +541,7 @@ def test_ones(shape, kw):
 
 
 @given(
-    x=xps.arrays(dtype=hh.dtypes, shape=hh.shapes()),
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
     kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
 )
 def test_ones_like(x, kw):
@@ -589,7 +579,7 @@ def test_zeros(shape, kw):
 
 
 @given(
-    x=xps.arrays(dtype=hh.dtypes, shape=hh.shapes()),
+    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
     kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
 )
 def test_zeros_like(x, kw):

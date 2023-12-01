@@ -128,10 +128,9 @@ def test_specified_kwargs():
     assert any("d" in kw.keys() and kw["d"] is xp.float64 for kw in results)
 
 
-
 @given(finite=st.booleans(), dtype=xps.floating_dtypes(), data=st.data())
 def test_symmetric_matrices(finite, dtype, data):
-    m = data.draw(hh.symmetric_matrices(st.just(dtype), finite=finite))
+    m = data.draw(hh.symmetric_matrices(st.just(dtype), finite=finite), label="m")
     assert m.dtype == dtype
     # TODO: This part of this test should be part of the .mT test
     ah.assert_exactly_equal(m, m.mT)
@@ -139,9 +138,10 @@ def test_symmetric_matrices(finite, dtype, data):
     if finite:
         ah.assert_finite(m)
 
-@given(m=hh.positive_definite_matrices(hh.shared_floating_dtypes),
-       dtype=hh.shared_floating_dtypes)
-def test_positive_definite_matrices(m, dtype):
+
+@given(dtype=xps.floating_dtypes(), data=st.data())
+def test_positive_definite_matrices(dtype, data):
+    m = data.draw(hh.positive_definite_matrices(st.just(dtype)), label="m")
     assert m.dtype == dtype
     # TODO: Test that it actually is positive definite
 
