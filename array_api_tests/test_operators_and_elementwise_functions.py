@@ -468,8 +468,8 @@ def make_unary_params(
     *,
     min_version: str = "2021.12",
 ) -> List[Param[UnaryParamContext]]:
-    if hh.FILTER_UNDEFINED_DTYPES:
-        dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
+    dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
+    assert len(dtypes) > 0  # sanity check
     if api_version < "2022.12":
         dtypes = [d for d in dtypes if d not in dh.complex_dtypes]
     dtypes_strat = st.sampled_from(dtypes)
@@ -523,8 +523,8 @@ class BinaryParamContext(NamedTuple):
 def make_binary_params(
     elwise_func_name: str, dtypes: Sequence[DataType]
 ) -> List[Param[BinaryParamContext]]:
-    if hh.FILTER_UNDEFINED_DTYPES:
-        dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
+    dtypes = [d for d in dtypes if not isinstance(d, xp._UndefinedStub)]
+    assert len(dtypes) > 0  # sanity check
     shared_oneway_dtypes = st.shared(hh.oneway_promotable_dtypes(dtypes))
     left_dtypes = shared_oneway_dtypes.map(lambda D: D.result_dtype)
     right_dtypes = shared_oneway_dtypes.map(lambda D: D.input_dtype)

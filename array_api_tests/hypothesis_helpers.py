@@ -22,15 +22,6 @@ from .stubs import category_to_funcs
 from .pytest_helpers import nargs
 from .typing import Array, DataType, Shape
 
-# Set this to True to not fail tests just because a dtype isn't implemented.
-# If no compatible dtype is implemented for a given test, the test will fail
-# with a hypothesis health check error. Note that this functionality will not
-# work for floating point dtypes as those are assumed to be defined in other
-# places in the tests.
-FILTER_UNDEFINED_DTYPES = True
-# TODO: currently we assume this to be true - we probably can remove this completely
-assert FILTER_UNDEFINED_DTYPES
-
 integer_dtypes = xps.integer_dtypes() | xps.unsigned_integer_dtypes()
 floating_dtypes = xps.floating_dtypes()
 numeric_dtypes = xps.numeric_dtypes()
@@ -62,11 +53,10 @@ def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):
     return key
 
 _promotable_dtypes = list(dh.promotion_table.keys())
-if FILTER_UNDEFINED_DTYPES:
-    _promotable_dtypes = [
-        (d1, d2) for d1, d2 in _promotable_dtypes
-        if not isinstance(d1, _UndefinedStub) or not isinstance(d2, _UndefinedStub)
-    ]
+_promotable_dtypes = [
+    (d1, d2) for d1, d2 in _promotable_dtypes
+    if not isinstance(d1, _UndefinedStub) or not isinstance(d2, _UndefinedStub)
+]
 promotable_dtypes: List[Tuple[DataType, DataType]] = sorted(_promotable_dtypes, key=_dtypes_sorter)
 
 def mutually_promotable_dtypes(
@@ -74,9 +64,8 @@ def mutually_promotable_dtypes(
     *,
     dtypes: Sequence[DataType] = dh.all_dtypes,
 ) -> SearchStrategy[Tuple[DataType, ...]]:
-    if FILTER_UNDEFINED_DTYPES:
-        dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
-        assert len(dtypes) > 0, "all dtypes undefined"  # sanity check
+    dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
+    assert len(dtypes) > 0, "all dtypes undefined"  # sanity check
     if max_size == 2:
         return sampled_from(
             [(i, j) for i, j in promotable_dtypes if i in dtypes and j in dtypes]
@@ -424,9 +413,8 @@ def two_mutual_arrays(
 ) -> Tuple[SearchStrategy[Array], SearchStrategy[Array]]:
     if not isinstance(dtypes, Sequence):
         raise TypeError(f"{dtypes=} not a sequence")
-    if FILTER_UNDEFINED_DTYPES:
-        dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
-        assert len(dtypes) > 0  # sanity check
+    dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
+    assert len(dtypes) > 0  # sanity check
     mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtypes))
     mutual_shapes = shared(two_shapes)
     arrays1 = xps.arrays(

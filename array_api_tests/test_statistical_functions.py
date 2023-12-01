@@ -20,8 +20,8 @@ pytestmark = pytest.mark.ci
 
 def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
     dtypes = [d2 for d1, d2 in dh.promotion_table if d1 == dtype]
-    if hh.FILTER_UNDEFINED_DTYPES:
-        dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
+    dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
+    assert len(dtypes) > 0  # sanity check
     return st.none() | st.sampled_from(dtypes)
 
 
