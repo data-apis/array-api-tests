@@ -251,6 +251,8 @@ two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(2)
 def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True):
     shape = draw(square_matrix_shapes)
     dtype = draw(dtypes)
+    if not isinstance(finite, bool):
+        finite = draw(finite)
     elements = {'allow_nan': False, 'allow_infinity': False} if finite else None
     a = draw(xps.arrays(dtype=dtype, shape=shape, elements=elements))
     upper = xp.triu(a)
