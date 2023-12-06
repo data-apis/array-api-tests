@@ -87,14 +87,17 @@ def test_argmin(x, data):
         ph.assert_scalar_equals("argmin", type_=int, idx=out_idx, out=min_i, expected=expected)
 
 
+@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=0, max_dims=0)))
+def test_nonzero_zerodim_error(x):
+    with pytest.raises(Exception):
+        xp.nonzero(x)
+
+
 @pytest.mark.data_dependent_shapes
-@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
+@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1, min_side=1)))
 def test_nonzero(x):
     out = xp.nonzero(x)
-    if x.ndim == 0:
-        assert len(out) == 1, f"{len(out)=}, but should be 1 for 0-dimensional arrays"
-    else:
-        assert len(out) == x.ndim, f"{len(out)=}, but should be {x.ndim=}"
+    assert len(out) == x.ndim, f"{len(out)=}, but should be {x.ndim=}"
     out_size = math.prod(out[0].shape)
     for i in range(len(out)):
         assert out[i].ndim == 1, f"out[{i}].ndim={x.ndim}, but should be 1"
