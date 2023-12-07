@@ -87,7 +87,7 @@ def test_argmin(x, data):
         ph.assert_scalar_equals("argmin", type_=int, idx=out_idx, out=min_i, expected=expected)
 
 
-@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=0, max_dims=0)))
+@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=()))
 def test_nonzero_zerodim_error(x):
     with pytest.raises(Exception):
         xp.nonzero(x)
