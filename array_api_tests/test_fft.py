@@ -198,7 +198,7 @@ def test_ifftn(x, data):
 
 
 @given(
-    x=xps.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=fft_shapes_strat),
     data=st.data(),
 )
 def test_rfft(x, data):
@@ -231,7 +231,7 @@ def test_irfft(x, data):
 
 
 @given(
-    x=xps.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=fft_shapes_strat),
     data=st.data(),
 )
 def test_rfftn(x, data):
@@ -279,7 +279,7 @@ def test_hfft(x, data):
 
 
 @given(
-    x=xps.arrays(dtype=hh.all_floating_dtypes(), shape=fft_shapes_strat),
+    x=xps.arrays(dtype=xps.floating_dtypes(), shape=fft_shapes_strat),
     data=st.data(),
 )
 def test_ihfft(x, data):
