@@ -21,6 +21,9 @@ array_api_tests/test_array_object.py::test_getitem
 # missing copy arg
 array_api_tests/test_signatures.py::test_func_signature[reshape]
 
+# does not (yet) raise an exception for zero-dimensional inputs to nonzero
+array_api_tests/test_searching_functions.py::test_nonzero_zerodim_error
+
 # https://github.com/numpy/numpy/issues/21211
 array_api_tests/test_special_cases.py::test_iop[__iadd__(x1_i is -0 and x2_i is -0) -> -0]
 # https://github.com/numpy/numpy/issues/21213
