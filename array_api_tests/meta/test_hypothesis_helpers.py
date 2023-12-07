@@ -129,11 +129,9 @@ def test_specified_kwargs():
 
 
 
-@given(m=hh.symmetric_matrices(hh.shared_floating_dtypes,
-                                     finite=st.shared(st.booleans(), key='finite')),
-       dtype=hh.shared_floating_dtypes,
-       finite=st.shared(st.booleans(), key='finite'))
-def test_symmetric_matrices(m, dtype, finite):
+@given(finite=st.booleans(), dtype=xps.floating_dtypes(), data=st.data())
+def test_symmetric_matrices(finite, dtype, data):
+    m = data.draw(hh.symmetric_matrices(st.just(dtype), finite=finite))
     assert m.dtype == dtype
     # TODO: This part of this test should be part of the .mT test
     ah.assert_exactly_equal(m, m.mT)
