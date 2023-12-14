@@ -33,7 +33,7 @@ def assert_scalar_in_set(
 
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.real_dtypes(),
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
@@ -93,7 +93,7 @@ def test_argsort(x, data):
 
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.real_dtypes(),
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},

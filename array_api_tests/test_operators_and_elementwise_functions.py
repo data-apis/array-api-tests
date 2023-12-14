@@ -473,7 +473,7 @@ def make_unary_params(
     if api_version < "2022.12":
         dtypes = [d for d in dtypes if d not in dh.complex_dtypes]
     dtypes_strat = st.sampled_from(dtypes)
-    strat = xps.arrays(dtype=dtypes_strat, shape=hh.shapes())
+    strat = hh.arrays(dtype=dtypes_strat, shape=hh.shapes())
     func_ctx = UnaryParamContext(
         func_name=elwise_func_name, func=getattr(xp, elwise_func_name), strat=strat
     )
@@ -540,16 +540,16 @@ def make_binary_params(
             right_sym = "x2"
 
         if right_is_scalar:
-            left_strat = xps.arrays(dtype=left_dtypes, shape=hh.shapes(**shapes_kw))
-            right_strat = right_dtypes.flatmap(lambda d: xps.from_dtype(d, **finite_kw))
+            left_strat = hh.arrays(dtype=left_dtypes, shape=hh.shapes(**shapes_kw))
+            right_strat = right_dtypes.flatmap(lambda d: hh.from_dtype(d, **finite_kw))
         else:
             if func_type is FuncType.IOP:
                 shared_oneway_shapes = st.shared(hh.oneway_broadcastable_shapes())
-                left_strat = xps.arrays(
+                left_strat = hh.arrays(
                     dtype=left_dtypes,
                     shape=shared_oneway_shapes.map(lambda S: S.result_shape),
                 )
-                right_strat = xps.arrays(
+                right_strat = hh.arrays(
                     dtype=right_dtypes,
                     shape=shared_oneway_shapes.map(lambda S: S.input_shape),
                 )
@@ -557,10 +557,10 @@ def make_binary_params(
                 mutual_shapes = st.shared(
                     hh.mutually_broadcastable_shapes(2, **shapes_kw)
                 )
-                left_strat = xps.arrays(
+                left_strat = hh.arrays(
                     dtype=left_dtypes, shape=mutual_shapes.map(lambda pair: pair[0])
                 )
-                right_strat = xps.arrays(
+                right_strat = hh.arrays(
                     dtype=right_dtypes, shape=mutual_shapes.map(lambda pair: pair[1])
                 )
 
@@ -723,7 +723,7 @@ def test_abs(ctx, data):
     )
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_acos(x):
     out = xp.acos(x)
     ph.assert_dtype("acos", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -733,7 +733,7 @@ def test_acos(x):
     )
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_acosh(x):
     out = xp.acosh(x)
     ph.assert_dtype("acosh", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -757,7 +757,7 @@ def test_add(ctx, data):
     binary_param_assert_against_refimpl(ctx, left, right, res, "+", operator.add)
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_asin(x):
     out = xp.asin(x)
     ph.assert_dtype("asin", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -767,7 +767,7 @@ def test_asin(x):
     )
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_asinh(x):
     out = xp.asinh(x)
     ph.assert_dtype("asinh", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -775,7 +775,7 @@ def test_asinh(x):
     unary_assert_against_refimpl("asinh", x, out, math.asinh)
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_atan(x):
     out = xp.atan(x)
     ph.assert_dtype("atan", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -791,7 +791,7 @@ def test_atan2(x1, x2):
     binary_assert_against_refimpl("atan2", x1, x2, out, math.atan2)
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_atanh(x):
     out = xp.atanh(x)
     ph.assert_dtype("atanh", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -923,7 +923,7 @@ def test_bitwise_xor(ctx, data):
     binary_param_assert_against_refimpl(ctx, left, right, res, "^", refimpl)
 
 
-@given(xps.arrays(dtype=xps.real_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=xps.real_dtypes(), shape=hh.shapes()))
 def test_ceil(x):
     out = xp.ceil(x)
     ph.assert_dtype("ceil", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -933,7 +933,7 @@ def test_ceil(x):
 
 if api_version >= "2022.12":
 
-    @given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+    @given(hh.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
     def test_conj(x):
         out = xp.conj(x)
         ph.assert_dtype("conj", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -941,7 +941,7 @@ if api_version >= "2022.12":
         unary_assert_against_refimpl("conj", x, out, operator.methodcaller("conjugate"))
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_cos(x):
     out = xp.cos(x)
     ph.assert_dtype("cos", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -949,7 +949,7 @@ def test_cos(x):
     unary_assert_against_refimpl("cos", x, out, math.cos)
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_cosh(x):
     out = xp.cosh(x)
     ph.assert_dtype("cosh", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1010,7 +1010,7 @@ def test_equal(ctx, data):
     )
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_exp(x):
     out = xp.exp(x)
     ph.assert_dtype("exp", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1018,7 +1018,7 @@ def test_exp(x):
     unary_assert_against_refimpl("exp", x, out, math.exp)
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_expm1(x):
     out = xp.expm1(x)
     ph.assert_dtype("expm1", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1026,7 +1026,7 @@ def test_expm1(x):
     unary_assert_against_refimpl("expm1", x, out, math.expm1)
 
 
-@given(xps.arrays(dtype=xps.real_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=xps.real_dtypes(), shape=hh.shapes()))
 def test_floor(x):
     out = xp.floor(x)
     ph.assert_dtype("floor", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1095,7 +1095,7 @@ def test_greater_equal(ctx, data):
 
 if api_version >= "2022.12":
 
-    @given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+    @given(hh.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
     def test_imag(x):
         out = xp.imag(x)
         ph.assert_dtype("imag", in_dtype=x.dtype, out_dtype=out.dtype, expected=dh.dtype_components[x.dtype])
@@ -1103,7 +1103,7 @@ if api_version >= "2022.12":
         unary_assert_against_refimpl("imag", x, out, operator.attrgetter("imag"))
 
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isfinite(x):
     out = xp.isfinite(x)
     ph.assert_dtype("isfinite", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
@@ -1111,7 +1111,7 @@ def test_isfinite(x):
     unary_assert_against_refimpl("isfinite", x, out, math.isfinite, res_stype=bool)
 
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isinf(x):
     out = xp.isinf(x)
     ph.assert_dtype("isfinite", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
@@ -1119,7 +1119,7 @@ def test_isinf(x):
     unary_assert_against_refimpl("isinf", x, out, math.isinf, res_stype=bool)
 
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isnan(x):
     out = xp.isnan(x)
     ph.assert_dtype("isnan", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
@@ -1167,7 +1167,7 @@ def test_less_equal(ctx, data):
     )
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_log(x):
     out = xp.log(x)
     ph.assert_dtype("log", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1177,7 +1177,7 @@ def test_log(x):
     )
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_log1p(x):
     out = xp.log1p(x)
     ph.assert_dtype("log1p", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1187,7 +1187,7 @@ def test_log1p(x):
     )
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_log2(x):
     out = xp.log2(x)
     ph.assert_dtype("log2", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1197,7 +1197,7 @@ def test_log2(x):
     )
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_log10(x):
     out = xp.log10(x)
     ph.assert_dtype("log10", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1229,7 +1229,7 @@ def test_logical_and(x1, x2):
     )
 
 
-@given(xps.arrays(dtype=xp.bool, shape=hh.shapes()))
+@given(hh.arrays(dtype=xp.bool, shape=hh.shapes()))
 def test_logical_not(x):
     out = xp.logical_not(x)
     ph.assert_dtype("logical_not", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1344,7 +1344,7 @@ def test_pow(ctx, data):
 
 if api_version >= "2022.12":
 
-    @given(xps.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+    @given(hh.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
     def test_real(x):
         out = xp.real(x)
         ph.assert_dtype("real", in_dtype=x.dtype, out_dtype=out.dtype, expected=dh.dtype_components[x.dtype])
@@ -1370,7 +1370,7 @@ def test_remainder(ctx, data):
     binary_param_assert_against_refimpl(ctx, left, right, res, "%", operator.mod)
 
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_round(x):
     out = xp.round(x)
     ph.assert_dtype("round", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1378,7 +1378,7 @@ def test_round(x):
     unary_assert_against_refimpl("round", x, out, round, strict_check=True)
 
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(), elements=finite_kw))
+@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(), elements=finite_kw))
 def test_sign(x):
     out = xp.sign(x)
     ph.assert_dtype("sign", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1388,7 +1388,7 @@ def test_sign(x):
     )
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_sin(x):
     out = xp.sin(x)
     ph.assert_dtype("sin", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1396,7 +1396,7 @@ def test_sin(x):
     unary_assert_against_refimpl("sin", x, out, math.sin)
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_sinh(x):
     out = xp.sinh(x)
     ph.assert_dtype("sinh", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1404,7 +1404,7 @@ def test_sinh(x):
     unary_assert_against_refimpl("sinh", x, out, math.sinh)
 
 
-@given(xps.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_square(x):
     out = xp.square(x)
     ph.assert_dtype("square", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1414,7 +1414,7 @@ def test_square(x):
     )
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_sqrt(x):
     out = xp.sqrt(x)
     ph.assert_dtype("sqrt", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1438,7 +1438,7 @@ def test_subtract(ctx, data):
     binary_param_assert_against_refimpl(ctx, left, right, res, "-", operator.sub)
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_tan(x):
     out = xp.tan(x)
     ph.assert_dtype("tan", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1446,7 +1446,7 @@ def test_tan(x):
     unary_assert_against_refimpl("tan", x, out, math.tan)
 
 
-@given(xps.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
 def test_tanh(x):
     out = xp.tanh(x)
     ph.assert_dtype("tanh", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1454,7 +1454,7 @@ def test_tanh(x):
     unary_assert_against_refimpl("tanh", x, out, math.tanh)
 
 
-@given(xps.arrays(dtype=xps.real_dtypes(), shape=xps.array_shapes()))
+@given(hh.arrays(dtype=xps.real_dtypes(), shape=xps.array_shapes()))
 def test_trunc(x):
     out = xp.trunc(x)
     ph.assert_dtype("trunc", in_dtype=x.dtype, out_dtype=out.dtype)

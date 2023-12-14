@@ -1,15 +1,16 @@
 import re
 import itertools
 from contextlib import contextmanager
-from functools import reduce
-from math import sqrt
+from functools import reduce, wraps
+import math
 from operator import mul
-from typing import Any, List, NamedTuple, Optional, Sequence, Tuple, Union
+import struct
+from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Union
 
 from hypothesis import assume, reject
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    integers, just, lists, none, one_of,
-                                   sampled_from, shared)
+                                   sampled_from, shared, builds)
 
 from . import _array_module as xp, api_version
 from . import dtype_helpers as dh
@@ -20,7 +21,60 @@ from ._array_module import bool as bool_dtype
 from ._array_module import broadcast_to, eye, float32, float64, full
 from .stubs import category_to_funcs
 from .pytest_helpers import nargs
-from .typing import Array, DataType, Shape
+from .typing import Array, DataType, Scalar, Shape
+
+
+def _float32ify(n: Union[int, float]) -> float:
+    n = float(n)
+    return struct.unpack("!f", struct.pack("!f", n))[0]
+
+
+@wraps(xps.from_dtype)
+def from_dtype(dtype, **kwargs) -> SearchStrategy[Scalar]:
+    """xps.from_dtype() without the crazy large numbers."""
+    if dtype == xp.bool:
+        return xps.from_dtype(dtype, **kwargs)
+
+    if dtype in dh.complex_dtypes:
+        component_dtype = dh.dtype_components[dtype]
+    else:
+        component_dtype = dtype
+
+    min_, max_ = dh.dtype_ranges[component_dtype]
+
+    if "min_value" not in kwargs.keys() and min_ != 0:
+        assert min_ < 0  # sanity check
+        min_value = -1 * math.floor(math.sqrt(abs(min_)))
+        if component_dtype == xp.float32:
+            min_value = _float32ify(min_value)
+        kwargs["min_value"] = min_value
+    if "max_value" not in kwargs.keys():
+        assert max_ > 0  # sanity check
+        max_value = math.floor(math.sqrt(max_))
+        if component_dtype == xp.float32:
+            max_value = _float32ify(max_value)
+        kwargs["max_value"] = max_value
+
+    if dtype in dh.complex_dtypes:
+        component_strat = xps.from_dtype(dh.dtype_components[dtype], **kwargs)
+        return builds(complex, component_strat, component_strat)
+    else:
+        return xps.from_dtype(dtype, **kwargs)
+
+
+@wraps(xps.arrays)
+def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
+    """xps.arrays() without the crazy large numbers."""
+    if isinstance(dtype, SearchStrategy):
+        return dtype.flatmap(lambda d: arrays(d, *args, elements=elements, **kwargs))
+
+    if elements is None:
+        elements = from_dtype(dtype)
+    elif isinstance(elements, Mapping):
+        elements = from_dtype(dtype, **elements)
+
+    return xps.arrays(dtype, *args, elements=elements, **kwargs)
+
 
 _dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]
 _sorted_dtypes = [d for category in _dtype_categories for d in category]
@@ -145,7 +199,7 @@ multiarg_array_functions = multiarg_array_functions_names.map(
 # Limit the total size of an array shape
 MAX_ARRAY_SIZE = 10000
 # Size to use for 2-dim arrays
-SQRT_MAX_ARRAY_SIZE = int(sqrt(MAX_ARRAY_SIZE))
+SQRT_MAX_ARRAY_SIZE = int(math.sqrt(MAX_ARRAY_SIZE))
 
 # np.prod and others have overflow and math.prod is Python 3.8+ only
 def prod(seq):
@@ -181,7 +235,7 @@ square_matrix_shapes = matrix_shapes().filter(lambda shape: shape[-1] == shape[-
 
 @composite
 def finite_matrices(draw, shape=matrix_shapes()):
-    return draw(xps.arrays(dtype=xps.floating_dtypes(),
+    return draw(arrays(dtype=xps.floating_dtypes(),
                            shape=shape,
                            elements=dict(allow_nan=False,
                                          allow_infinity=False)))
@@ -190,7 +244,7 @@ rtol_shared_matrix_shapes = shared(matrix_shapes())
 # Should we set a max_value here?
 _rtol_float_kw = dict(allow_nan=False, allow_infinity=False, min_value=0)
 rtols = one_of(floats(**_rtol_float_kw),
-               xps.arrays(dtype=xps.floating_dtypes(),
+               arrays(dtype=xps.floating_dtypes(),
                           shape=rtol_shared_matrix_shapes.map(lambda shape:  shape[:-2]),
                           elements=_rtol_float_kw))
 
@@ -233,7 +287,7 @@ def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True):
     if not isinstance(finite, bool):
         finite = draw(finite)
     elements = {'allow_nan': False, 'allow_infinity': False} if finite else None
-    a = draw(xps.arrays(dtype=dtype, shape=shape, elements=elements))
+    a = draw(arrays(dtype=dtype, shape=shape, elements=elements))
     upper = xp.triu(a)
     lower = xp.triu(a, k=1).mT
     return upper + lower
@@ -256,7 +310,7 @@ def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes(
     n = draw(integers(0, SQRT_MAX_ARRAY_SIZE),)
     stack_shape = draw(stack_shapes)
     shape = stack_shape + (n, n)
-    d = draw(xps.arrays(dtypes, shape=n*prod(stack_shape),
+    d = draw(arrays(dtypes, shape=n*prod(stack_shape),
                         elements=dict(allow_nan=False, allow_infinity=False)))
     # Functions that require invertible matrices may do anything when it is
     # singular, including raising an exception, so we make sure the diagonals
@@ -282,7 +336,7 @@ def two_broadcastable_shapes(draw):
 sizes = integers(0, MAX_ARRAY_SIZE)
 sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
 
-numeric_arrays = xps.arrays(
+numeric_arrays = arrays(
     dtype=shared(xps.floating_dtypes(), key='dtypes'),
     shape=shared(xps.array_shapes(), key='shapes'),
 )
@@ -407,11 +461,11 @@ def two_mutual_arrays(
     assert len(dtypes) > 0  # sanity check
     mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtypes))
     mutual_shapes = shared(two_shapes)
-    arrays1 = xps.arrays(
+    arrays1 = arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[0]),
         shape=mutual_shapes.map(lambda pair: pair[0]),
     )
-    arrays2 = xps.arrays(
+    arrays2 = arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[1]),
         shape=mutual_shapes.map(lambda pair: pair[1]),
     )

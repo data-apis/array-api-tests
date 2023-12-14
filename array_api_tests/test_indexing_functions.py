@@ -14,7 +14,7 @@ pytestmark = pytest.mark.ci
 
 @pytest.mark.min_version("2022.12")
 @given(
-    x=xps.arrays(xps.scalar_dtypes(), hh.shapes(min_dims=1, min_side=1)),
+    x=hh.arrays(xps.scalar_dtypes(), hh.shapes(min_dims=1, min_side=1)),
     data=st.data(),
 )
 def test_take(x, data):

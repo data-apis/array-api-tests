@@ -24,7 +24,7 @@ def scalar_objects(
 ) -> st.SearchStrategy[Union[Scalar, List[Scalar]]]:
     """Generates scalars or nested sequences which are valid for xp.asarray()"""
     size = math.prod(shape)
-    return st.lists(xps.from_dtype(dtype), min_size=size, max_size=size).map(
+    return st.lists(hh.from_dtype(dtype), min_size=size, max_size=size).map(
         lambda l: sh.reshape(l, shape)
     )
 
@@ -123,10 +123,10 @@ def test_setitem(shape, dtypes, data):
     key = data.draw(xps.indices(shape=shape), label="key")
     _key = normalise_key(key, shape)
     axes_indices, out_shape = get_indexed_axes_and_out_shape(_key, shape)
-    value_strat = xps.arrays(dtype=dtypes.result_dtype, shape=out_shape)
+    value_strat = hh.arrays(dtype=dtypes.result_dtype, shape=out_shape)
     if out_shape == ():
         # We can pass scalars if we're only indexing one element
-        value_strat |= xps.from_dtype(dtypes.result_dtype)
+        value_strat |= hh.from_dtype(dtypes.result_dtype)
     value = data.draw(value_strat, label="value")
 
     res = xp.asarray(x, copy=True)
@@ -157,7 +157,7 @@ def test_setitem(shape, dtypes, data):
 @pytest.mark.data_dependent_shapes
 @given(hh.shapes(), st.data())
 def test_getitem_masking(shape, data):
-    x = data.draw(xps.arrays(xps.scalar_dtypes(), shape=shape), label="x")
+    x = data.draw(hh.arrays(xps.scalar_dtypes(), shape=shape), label="x")
     mask_shapes = st.one_of(
         st.sampled_from([x.shape, ()]),
         st.lists(st.booleans(), min_size=x.ndim, max_size=x.ndim).map(
@@ -165,7 +165,7 @@ def test_getitem_masking(shape, data):
         ),
         hh.shapes(),
     )
-    key = data.draw(xps.arrays(dtype=xp.bool, shape=mask_shapes), label="key")
+    key = data.draw(hh.arrays(dtype=xp.bool, shape=mask_shapes), label="key")
 
     if key.ndim > x.ndim or not all(
         ks in (xs, 0) for xs, ks in zip(x.shape, key.shape)
@@ -201,10 +201,10 @@ def test_getitem_masking(shape, data):
 
 @given(hh.shapes(), st.data())
 def test_setitem_masking(shape, data):
-    x = data.draw(xps.arrays(xps.scalar_dtypes(), shape=shape), label="x")
-    key = data.draw(xps.arrays(dtype=xp.bool, shape=shape), label="key")
+    x = data.draw(hh.arrays(xps.scalar_dtypes(), shape=shape), label="x")
+    key = data.draw(hh.arrays(dtype=xp.bool, shape=shape), label="key")
     value = data.draw(
-        xps.from_dtype(x.dtype) | xps.arrays(dtype=x.dtype, shape=()), label="value"
+        hh.from_dtype(x.dtype) | hh.arrays(dtype=x.dtype, shape=()), label="value"
     )
 
     res = xp.asarray(x, copy=True)
@@ -263,7 +263,7 @@ def test_scalar_casting(method_name, dtype_name, stype, data):
         dtype = getattr(_xp, dtype_name)
     except AttributeError as e:
         pytest.skip(str(e))
-    x = data.draw(xps.arrays(dtype, shape=()), label="x")
+    x = data.draw(hh.arrays(dtype, shape=()), label="x")
     method = getattr(x, method_name)
     out = method()
     assert isinstance(

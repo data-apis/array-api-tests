@@ -13,7 +13,7 @@ pytestmark = pytest.mark.ci
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)),
+    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)),
     data=st.data(),
 )
 def test_all(x, data):
@@ -40,7 +40,7 @@ def test_all(x, data):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
+    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
     data=st.data(),
 )
 def test_any(x, data):

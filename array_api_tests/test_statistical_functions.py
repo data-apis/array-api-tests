@@ -26,7 +26,7 @@ def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
 
 
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.real_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
@@ -56,7 +56,7 @@ def test_max(x, data):
 
 
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.floating_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
@@ -78,7 +78,7 @@ def test_mean(x, data):
 
 
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.real_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
@@ -108,7 +108,7 @@ def test_min(x, data):
 
 
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.numeric_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
@@ -188,7 +188,7 @@ def test_prod(x, data):
 
 
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.floating_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
@@ -224,7 +224,7 @@ def test_std(x, data):
 
 
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.numeric_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
@@ -304,7 +304,7 @@ def test_sum(x, data):
 
 
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.floating_dtypes(),
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
