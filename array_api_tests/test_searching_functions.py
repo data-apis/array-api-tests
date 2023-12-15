@@ -15,7 +15,7 @@ pytestmark = pytest.mark.ci
 
 
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.real_dtypes(),
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
@@ -52,7 +52,7 @@ def test_argmax(x, data):
 
 
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.real_dtypes(),
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
@@ -87,14 +87,14 @@ def test_argmin(x, data):
         ph.assert_scalar_equals("argmin", type_=int, idx=out_idx, out=min_i, expected=expected)
 
 
-@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=()))
+@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=()))
 def test_nonzero_zerodim_error(x):
     with pytest.raises(Exception):
         xp.nonzero(x)
 
 
 @pytest.mark.data_dependent_shapes
-@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1, min_side=1)))
+@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1, min_side=1)))
 def test_nonzero(x):
     out = xp.nonzero(x)
     assert len(out) == x.ndim, f"{len(out)=}, but should be {x.ndim=}"
@@ -137,9 +137,9 @@ def test_nonzero(x):
     data=st.data(),
 )
 def test_where(shapes, dtypes, data):
-    cond = data.draw(xps.arrays(dtype=xp.bool, shape=shapes[0]), label="condition")
-    x1 = data.draw(xps.arrays(dtype=dtypes[0], shape=shapes[1]), label="x1")
-    x2 = data.draw(xps.arrays(dtype=dtypes[1], shape=shapes[2]), label="x2")
+    cond = data.draw(hh.arrays(dtype=xp.bool, shape=shapes[0]), label="condition")
+    x1 = data.draw(hh.arrays(dtype=dtypes[0], shape=shapes[1]), label="x1")
+    x2 = data.draw(hh.arrays(dtype=dtypes[1], shape=shapes[2]), label="x2")
 
     out = xp.where(cond, x1, x2)
 

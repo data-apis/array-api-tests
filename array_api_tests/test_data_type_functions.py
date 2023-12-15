@@ -34,7 +34,7 @@ def float32(n: Union[int, float]) -> float:
 )
 def test_astype(x_dtype, dtype, kw, data):
     if xp.bool in (x_dtype, dtype):
-        elements_strat = xps.from_dtype(x_dtype)
+        elements_strat = hh.from_dtype(x_dtype)
     else:
         m1, M1 = dh.dtype_ranges[x_dtype]
         m2, M2 = dh.dtype_ranges[dtype]
@@ -46,7 +46,7 @@ def test_astype(x_dtype, dtype, kw, data):
             cast = float
         min_value = cast(max(m1, m2))
         max_value = cast(min(M1, M2))
-        elements_strat = xps.from_dtype(
+        elements_strat = hh.from_dtype(
             x_dtype,
             min_value=min_value,
             max_value=max_value,
@@ -54,7 +54,7 @@ def test_astype(x_dtype, dtype, kw, data):
             allow_infinity=False,
         )
     x = data.draw(
-        xps.arrays(dtype=x_dtype, shape=hh.shapes(), elements=elements_strat), label="x"
+        hh.arrays(dtype=x_dtype, shape=hh.shapes(), elements=elements_strat), label="x"
     )
 
     out = xp.astype(x, dtype, **kw)
@@ -71,7 +71,7 @@ def test_astype(x_dtype, dtype, kw, data):
 def test_broadcast_arrays(shapes, data):
     arrays = []
     for c, shape in enumerate(shapes, 1):
-        x = data.draw(xps.arrays(dtype=xps.scalar_dtypes(), shape=shape), label=f"x{c}")
+        x = data.draw(hh.arrays(dtype=xps.scalar_dtypes(), shape=shape), label=f"x{c}")
         arrays.append(x)
 
     out = xp.broadcast_arrays(*arrays)
@@ -94,7 +94,7 @@ def test_broadcast_arrays(shapes, data):
     # TODO: test values
 
 
-@given(x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()), data=st.data())
+@given(x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()), data=st.data())
 def test_broadcast_to(x, data):
     shape = data.draw(
         hh.mutually_broadcastable_shapes(1, base_shape=x.shape)
@@ -113,7 +113,7 @@ def test_broadcast_to(x, data):
 @given(_from=non_complex_dtypes(), to=non_complex_dtypes(), data=st.data())
 def test_can_cast(_from, to, data):
     from_ = data.draw(
-        st.just(_from) | xps.arrays(dtype=_from, shape=hh.shapes()), label="from_"
+        st.just(_from) | hh.arrays(dtype=_from, shape=hh.shapes()), label="from_"
     )
 
     out = xp.can_cast(from_, to)

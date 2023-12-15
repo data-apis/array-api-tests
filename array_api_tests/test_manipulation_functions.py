@@ -72,7 +72,7 @@ def test_concat(dtypes, base_shape, data):
         )
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
-        x = data.draw(xps.arrays(dtype=dtype, shape=shape_strat), label=f"x{i}")
+        x = data.draw(hh.arrays(dtype=dtype, shape=shape_strat), label=f"x{i}")
         arrays.append(x)
 
     out = xp.concat(arrays, **kw)
@@ -122,7 +122,7 @@ def test_concat(dtypes, base_shape, data):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
+    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
     axis=shared_shapes().flatmap(
         # Generate both valid and invalid axis
         lambda s: st.integers(2 * (-len(s) - 1), 2 * len(s))
@@ -150,7 +150,7 @@ def test_expand_dims(x, axis):
 
 
 @given(
-    x=xps.arrays(
+    x=hh.arrays(
         dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1).filter(lambda s: 1 in s)
     ),
     data=st.data(),
@@ -187,7 +187,7 @@ def test_squeeze(x, data):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
+    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
     data=st.data(),
 )
 def test_flip(x, data):
@@ -211,7 +211,7 @@ def test_flip(x, data):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes(min_dims=1)),
+    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes(min_dims=1)),
     axes=shared_shapes(min_dims=1).flatmap(
         lambda s: st.lists(
             st.integers(0, len(s) - 1),
@@ -251,7 +251,7 @@ def reshape_shapes(draw, shape):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(max_side=MAX_SIDE)),
+    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(max_side=MAX_SIDE)),
     data=st.data(),
 )
 def test_reshape(x, data):
@@ -281,7 +281,7 @@ def roll_ndindex(shape: Shape, shifts: Tuple[int], axes: Tuple[int]) -> Iterator
         yield tuple((i + sh) % si for i, sh, si in zip(idx, all_shifts, shape))
 
 
-@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()), st.data())
+@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()), st.data())
 def test_roll(x, data):
     shift_strat = st.integers(-hh.MAX_ARRAY_SIZE, hh.MAX_ARRAY_SIZE)
     if x.ndim > 0:
@@ -333,7 +333,7 @@ def test_roll(x, data):
 def test_stack(shape, dtypes, kw, data):
     arrays = []
     for i, dtype in enumerate(dtypes, 1):
-        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
+        x = data.draw(hh.arrays(dtype=dtype, shape=shape), label=f"x{i}")
         arrays.append(x)
 
     out = xp.stack(arrays, **kw)

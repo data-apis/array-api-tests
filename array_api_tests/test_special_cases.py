@@ -263,7 +263,7 @@ class BoundFromDtype(FromDtypeFunc):
 
     def __call__(self, dtype: DataType, **kw) -> st.SearchStrategy[float]:
         assert len(kw) == 0  # sanity check
-        from_dtype = self.base_func or xps.from_dtype
+        from_dtype = self.base_func or hh.from_dtype
         strat = from_dtype(dtype, **self.kwargs)
         if self.filter_ is not None:
             strat = strat.filter(self.filter_)
@@ -1010,7 +1010,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                         return use_x1_or_x2_strat.flatmap(
                             lambda t: cond_from_dtype(dtype)
                             if t[0]
-                            else xps.from_dtype(dtype)
+                            else hh.from_dtype(dtype)
                         )
 
                     def _x2_cond_from_dtype(dtype, **kw) -> st.SearchStrategy[float]:
@@ -1018,7 +1018,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                         return use_x1_or_x2_strat.flatmap(
                             lambda t: cond_from_dtype(dtype)
                             if t[1]
-                            else xps.from_dtype(dtype)
+                            else hh.from_dtype(dtype)
                         )
 
                     x1_cond_from_dtypes.append(
@@ -1214,7 +1214,7 @@ assert len(iop_params) != 0
 
 @pytest.mark.parametrize("func_name, func, case", unary_params)
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
+    x=hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
     data=st.data(),
 )
 def test_unary(func_name, func, case, x, data):
@@ -1302,11 +1302,11 @@ def test_binary(func_name, func, case, x1, x2, data):
 )
 def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
     x1 = data.draw(
-        xps.arrays(dtype=oneway_dtypes.result_dtype, shape=oneway_shapes.result_shape),
+        hh.arrays(dtype=oneway_dtypes.result_dtype, shape=oneway_shapes.result_shape),
         label="x1",
     )
     x2 = data.draw(
-        xps.arrays(dtype=oneway_dtypes.input_dtype, shape=oneway_shapes.input_shape),
+        hh.arrays(dtype=oneway_dtypes.input_dtype, shape=oneway_shapes.input_shape),
         label="x2",
     )
 
@@ -1374,7 +1374,7 @@ def test_empty_arrays(func_name, expected):  # TODO: parse docstrings to get exp
     "func_name", [f.__name__ for f in category_to_funcs["statistical"]]
 )
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
+    x=hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
     data=st.data(),
 )
 def test_nan_propagation(func_name, x, data):

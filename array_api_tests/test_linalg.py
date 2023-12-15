@@ -21,7 +21,7 @@ from hypothesis.strategies import (booleans, composite, none, tuples, integers,
 from ndindex import iter_indices
 
 from .array_helpers import assert_exactly_equal, asarray
-from .hypothesis_helpers import (xps, shapes, kwargs, matrix_shapes,
+from .hypothesis_helpers import (arrays, xps, shapes, kwargs, matrix_shapes,
                                  square_matrix_shapes, symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
                                  invertible_matrices, two_mutual_arrays,
@@ -136,11 +136,11 @@ def cross_args(draw, dtype_objects=dh.real_dtypes):
     shape = tuple(shape)
 
     mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtype_objects))
-    arrays1 = xps.arrays(
+    arrays1 = arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[0]),
         shape=shape,
     )
-    arrays2 = xps.arrays(
+    arrays2 = arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[1]),
         shape=shape,
     )
@@ -179,7 +179,7 @@ def test_cross(x1_x2_kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
+    x=arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
 )
 def test_det(x):
     res = linalg.det(x)
@@ -193,7 +193,7 @@ def test_det(x):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.real_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=xps.real_dtypes(), shape=matrix_shapes()),
     # offset may produce an overflow if it is too large. Supporting offsets
     # that are way larger than the array shape isn't very important.
     kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
@@ -342,7 +342,7 @@ matrix_power_n = shared(integers(-1000, 1000), key='matrix_power n')
 @given(
     # Generate any square matrix if n >= 0 but only invertible matrices if n < 0
     x=matrix_power_n.flatmap(lambda n: invertible_matrices() if n < 0 else
-                             xps.arrays(dtype=xps.floating_dtypes(),
+                             arrays(dtype=xps.floating_dtypes(),
                                         shape=square_matrix_shapes)),
     n=matrix_power_n,
 )
@@ -369,7 +369,7 @@ def test_matrix_rank(x, kw):
     linalg.matrix_rank(x, **kw)
 
 @given(
-    x=xps.arrays(dtype=xps.real_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=xps.real_dtypes(), shape=matrix_shapes()),
 )
 def test_matrix_transpose(x):
     res = _array_module.matrix_transpose(x)
@@ -419,7 +419,7 @@ def test_pinv(x, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=xps.floating_dtypes(), shape=matrix_shapes()),
     kw=kwargs(mode=sampled_from(['reduced', 'complete']))
 )
 def test_qr(x, kw):
@@ -455,7 +455,7 @@ def test_qr(x, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
+    x=arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
 )
 def test_slogdet(x):
     res = linalg.slogdet(x)
@@ -510,7 +510,7 @@ def solve_args():
         return draw(stack_shapes)[1] + draw(x1).shape[-1:] + (end,)
 
     x2_shapes = one_of(x1.map(lambda x: (x.shape[-1],)), _x2_shapes())
-    x2 = xps.arrays(dtype=xps.floating_dtypes(), shape=x2_shapes)
+    x2 = arrays(dtype=xps.floating_dtypes(), shape=x2_shapes)
     return x1, x2
 
 @pytest.mark.xp_extension('linalg')
@@ -582,8 +582,8 @@ def test_svdvals(x):
 )
 def test_tensordot(dtypes, shape, data):
     # TODO: vary shapes, vary contracted axes, test different axes arguments
-    x1 = data.draw(xps.arrays(dtype=dtypes[0], shape=shape), label="x1")
-    x2 = data.draw(xps.arrays(dtype=dtypes[1], shape=shape), label="x2")
+    x1 = data.draw(arrays(dtype=dtypes[0], shape=shape), label="x1")
+    x2 = data.draw(arrays(dtype=dtypes[1], shape=shape), label="x2")
 
     out = xp.tensordot(x1, x2, axes=len(shape))
 
@@ -593,7 +593,7 @@ def test_tensordot(dtypes, shape, data):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.real_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=xps.real_dtypes(), shape=matrix_shapes()),
     # offset may produce an overflow if it is too large. Supporting offsets
     # that are way larger than the array shape isn't very important.
     kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
@@ -638,8 +638,8 @@ def test_trace(x, kw):
 )
 def test_vecdot(dtypes, shape, data):
     # TODO: vary shapes, test different axis arguments
-    x1 = data.draw(xps.arrays(dtype=dtypes[0], shape=shape), label="x1")
-    x2 = data.draw(xps.arrays(dtype=dtypes[1], shape=shape), label="x2")
+    x1 = data.draw(arrays(dtype=dtypes[0], shape=shape), label="x1")
+    x2 = data.draw(arrays(dtype=dtypes[1], shape=shape), label="x2")
     kw = data.draw(kwargs(axis=just(-1)))
 
     out = xp.vecdot(x1, x2, **kw)
@@ -650,7 +650,7 @@ def test_vecdot(dtypes, shape, data):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes()),
+    x=arrays(dtype=xps.floating_dtypes(), shape=shapes()),
     kw=kwargs(axis=todo, keepdims=todo, ord=todo)
 )
 def test_vector_norm(x, kw):

@@ -86,8 +86,8 @@ def test_arange(dtype, data):
         start = data.draw(reals(), label="start")
         stop = data.draw(reals() | st.none(), label="stop")
     else:
-        start = data.draw(xps.from_dtype(dtype), label="start")
-        stop = data.draw(xps.from_dtype(dtype), label="stop")
+        start = data.draw(hh.from_dtype(dtype), label="start")
+        stop = data.draw(hh.from_dtype(dtype), label="stop")
     if stop is None:
         _start = 0
         _stop = start
@@ -107,9 +107,9 @@ def test_arange(dtype, data):
         step_strats = []
         if dtype in dh.int_dtypes:
             step_min = min(math.floor(-tol), -1)
-            step_strats.append(xps.from_dtype(dtype, max_value=step_min))
+            step_strats.append(hh.from_dtype(dtype, max_value=step_min))
         step_max = max(math.ceil(tol), 1)
-        step_strats.append(xps.from_dtype(dtype, min_value=step_max))
+        step_strats.append(hh.from_dtype(dtype, min_value=step_max))
         step = data.draw(st.one_of(step_strats), label="step")
     assert step != 0, "step must not equal 0"  # sanity check
 
@@ -215,11 +215,11 @@ def test_asarray_scalars(shape, data):
     else:
         _dtype = dtype
     if dh.is_float_dtype(_dtype):
-        elements_strat = xps.from_dtype(_dtype) | xps.from_dtype(xp.int32)
+        elements_strat = hh.from_dtype(_dtype) | hh.from_dtype(xp.int32)
     elif dh.is_int_dtype(_dtype):
-        elements_strat = xps.from_dtype(_dtype) | st.booleans()
+        elements_strat = hh.from_dtype(_dtype) | st.booleans()
     else:
-        elements_strat = xps.from_dtype(_dtype)
+        elements_strat = hh.from_dtype(_dtype)
     size = math.prod(shape)
     obj_strat = st.lists(elements_strat, min_size=size, max_size=size)
     scalar_type = dh.get_scalar_type(_dtype)
@@ -267,7 +267,7 @@ def scalar_eq(s1: Scalar, s2: Scalar) -> bool:
     data=st.data(),
 )
 def test_asarray_arrays(shape, dtypes, data):
-    x = data.draw(xps.arrays(dtype=dtypes.input_dtype, shape=shape), label="x")
+    x = data.draw(hh.arrays(dtype=dtypes.input_dtype, shape=shape), label="x")
     dtypes_strat = st.just(dtypes.input_dtype)
     if dtypes.input_dtype == dtypes.result_dtype:
         dtypes_strat |= st.none()
@@ -290,7 +290,7 @@ def test_asarray_arrays(shape, dtypes, data):
         stype = dh.get_scalar_type(x.dtype)
         idx = data.draw(xps.indices(x.shape, max_dims=0), label="mutating idx")
         old_value = stype(x[idx])
-        scalar_strat = xps.from_dtype(dtypes.input_dtype).filter(
+        scalar_strat = hh.from_dtype(dtypes.input_dtype).filter(
             lambda n: not scalar_eq(n, old_value)
         )
         value = data.draw(
@@ -326,7 +326,7 @@ def test_empty(shape, kw):
 
 
 @given(
-    x=xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
+    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
     kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
 )
 def test_empty_like(x, kw):
@@ -382,7 +382,7 @@ def full_fill_values(draw) -> Union[bool, int, float, complex]:
         st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_kw")
     )
     dtype = kw.get("dtype", None) or draw(default_safe_dtypes)
-    return draw(xps.from_dtype(dtype))
+    return draw(hh.from_dtype(dtype))
 
 
 @given(
@@ -427,21 +427,11 @@ def test_full(shape, fill_value, kw):
     ph.assert_fill("full", fill_value=fill_value, dtype=dtype, out=out, kw=dict(fill_value=fill_value))
 
 
-@st.composite
-def full_like_fill_values(draw):
-    kw = draw(
-        st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_like_kw")
-    )
-    dtype = kw.get("dtype", None) or draw(hh.shared_dtypes)
-    return draw(xps.from_dtype(dtype))
-
-
-@given(
-    x=xps.arrays(dtype=hh.shared_dtypes, shape=hh.shapes()),
-    fill_value=full_like_fill_values(),
-    kw=st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_like_kw"),
-)
-def test_full_like(x, fill_value, kw):
+@given(kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), data=st.data())
+def test_full_like(kw, data):
+    dtype = kw.get("dtype", None) or data.draw(xps.scalar_dtypes(), label="dtype")
+    x = data.draw(hh.arrays(dtype=dtype, shape=hh.shapes()), label="x")
+    fill_value = data.draw(hh.from_dtype(dtype), label="fill_value")
     out = xp.full_like(x, fill_value, **kw)
     dtype = kw.get("dtype", None) or x.dtype
     if kw.get("dtype", None) is None:
@@ -464,8 +454,8 @@ finite_kw = {"allow_nan": False, "allow_infinity": False}
 def test_linspace(num, dtype, endpoint, data):
     _dtype = dh.default_float if dtype is None else dtype
 
-    start = data.draw(xps.from_dtype(_dtype, **finite_kw), label="start")
-    stop = data.draw(xps.from_dtype(_dtype, **finite_kw), label="stop")
+    start = data.draw(hh.from_dtype(_dtype, **finite_kw), label="start")
+    stop = data.draw(hh.from_dtype(_dtype, **finite_kw), label="stop")
     # avoid overflow errors
     assume(not xp.isnan(xp.asarray(stop - start, dtype=_dtype)))
     assume(not xp.isnan(xp.asarray(start - stop, dtype=_dtype)))
@@ -519,7 +509,7 @@ def test_meshgrid(dtype, data):
     )
     arrays = []
     for i, shape in enumerate(shapes, 1):
-        x = data.draw(xps.arrays(dtype=dtype, shape=shape), label=f"x{i}")
+        x = data.draw(hh.arrays(dtype=dtype, shape=shape), label=f"x{i}")
         arrays.append(x)
     # sanity check
     assert math.prod(math.prod(x.shape) for x in arrays) <= hh.MAX_ARRAY_SIZE
@@ -551,7 +541,7 @@ def test_ones(shape, kw):
 
 
 @given(
-    x=xps.arrays(dtype=hh.dtypes, shape=hh.shapes()),
+    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
     kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
 )
 def test_ones_like(x, kw):
@@ -589,7 +579,7 @@ def test_zeros(shape, kw):
 
 
 @given(
-    x=xps.arrays(dtype=hh.dtypes, shape=hh.shapes()),
+    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
     kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
 )
 def test_zeros_like(x, kw):
