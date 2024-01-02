@@ -1383,9 +1383,8 @@ def test_sign(x):
     out = xp.sign(x)
     ph.assert_dtype("sign", in_dtype=x.dtype, out_dtype=out.dtype)
     ph.assert_shape("sign", out_shape=out.shape, expected=x.shape)
-    unary_assert_against_refimpl(
-        "sign", x, out, lambda s: math.copysign(1, s), filter_=lambda s: s != 0
-    )
+    refimpl = lambda x: x / xp.abs(x) if x != 0 else 0
+    unary_assert_against_refimpl("sign", x, out, refimpl, filter_=lambda s: s != 0)
 
 
 @given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
