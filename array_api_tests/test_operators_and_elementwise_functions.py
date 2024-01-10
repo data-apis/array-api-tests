@@ -267,6 +267,7 @@ def unary_assert_against_refimpl(
         f_i = sh.fmt_idx("x", idx)
         f_o = sh.fmt_idx("out", idx)
         expr = expr_template.format(f_i, expected)
+        # TODO: strict check floating results too
         if strict_check == False or res.dtype in dh.all_float_dtypes:
             msg = (
                 f"{f_o}={scalar_o}, but should be roughly {expr} [{func_name}()]\n"
@@ -1383,8 +1384,14 @@ def test_sign(x):
     out = xp.sign(x)
     ph.assert_dtype("sign", in_dtype=x.dtype, out_dtype=out.dtype)
     ph.assert_shape("sign", out_shape=out.shape, expected=x.shape)
+    refimpl = lambda x: x / math.abs(x) if x != 0 else 0
     unary_assert_against_refimpl(
-        "sign", x, out, lambda s: math.copysign(1, s), filter_=lambda s: s != 0
+        "sign",
+        x,
+        out,
+        refimpl,
+        filter_=lambda s: s != 0,
+        strict_check=True,
     )
 
 
