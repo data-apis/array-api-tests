@@ -291,8 +291,18 @@ def test_ihfft(x, data):
     assert_n_axis_shape("ihfft", x=x, n=n, axis=axis, out=out, size_gt_1=True)
 
 
+@given( n=st.integers(1, 100), kw=hh.kwargs(d=st.floats(0.1, 5)))
+def test_fftfreq(n, kw):
+    out = xp.fft.fftfreq(n, **kw)
+    ph.assert_shape("fftfreq", out_shape=out.shape, expected=(n,), kw={"n": n})
+
+
+@given(n=st.integers(1, 100), kw=hh.kwargs(d=st.floats(0.1, 5)))
+def test_rfftfreq(n, kw):
+    out = xp.fft.rfftfreq(n, **kw)
+    ph.assert_shape("rfftfreq", out_shape=out.shape, expected=(n // 2 + 1,), kw={"n": n})
+
+
 # TODO:
-# fftfreq
-# rfftfreq
 # fftshift
 # ifftshift
