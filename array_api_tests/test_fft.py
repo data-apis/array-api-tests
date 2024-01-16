@@ -303,6 +303,15 @@ def test_rfftfreq(n, kw):
     ph.assert_shape("rfftfreq", out_shape=out.shape, expected=(n // 2 + 1,), kw={"n": n})
 
 
-# TODO:
-# fftshift
-# ifftshift
+@given(x=hh.arrays(xps.floating_dtypes(), fft_shapes_strat))
+def test_fftshift(x):
+    out = xp.fft.fftshift(x)
+    ph.assert_dtype("fftshift", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_shape("fftshift", out_shape=out.shape, expected=x.shape)
+
+
+@given(x=hh.arrays(xps.floating_dtypes(), fft_shapes_strat))
+def test_ifftshift(x):
+    out = xp.fft.ifftshift(x)
+    ph.assert_dtype("ifftshift", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_shape("ifftshift", out_shape=out.shape, expected=x.shape)
