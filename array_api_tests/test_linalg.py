@@ -12,7 +12,7 @@ functions from the linalg extension. The functions in the latter are not
 required, but we don't yet have a clean way to disable only those tests (see https://github.com/data-apis/array-api-tests/issues/25).
 
 """
-# TODO: test with complex dtypes where appropiate
+# TODO: test with complex dtypes where appropriate
 
 import pytest
 from hypothesis import assume, given
@@ -558,9 +558,6 @@ def solve_args():
 def test_solve(x1, x2):
     res = linalg.solve(x1, x2)
 
-    # TODO: This requires an upstream fix to ndindex
-    # (https://github.com/Quansight-Labs/ndindex/pull/131)
-
     if x2.ndim == 1:
         _test_stacks(linalg.solve, x1, x2, res=res, dims=1,
                      matrix_axes=[(-2, -1), (0,)], res_axes=[-1])
@@ -714,7 +711,6 @@ def _test_tensordot_stacks(x1, x2, kw, res):
     tensordot_kw,
 )
 def test_tensordot(x1, x2, kw):
-    # TODO: vary shapes, vary contracted axes, test different axes arguments
     res = xp.tensordot(x1, x2, **kw)
 
     ph.assert_dtype("tensordot", in_dtype=[x1.dtype, x2.dtype],
@@ -734,7 +730,6 @@ def test_tensordot(x1, x2, kw):
     result_shape = _shape1 + _shape2
     ph.assert_result_shape('tensordot', [x1.shape, x2.shape], res.shape,
                            expected=result_shape)
-    # TODO: assert stacking and elements
     _test_tensordot_stacks(x1, x2, kw, res)
 
 @pytest.mark.xp_extension('linalg')
@@ -781,7 +776,6 @@ def test_trace(x, kw):
     data(),
 )
 def test_vecdot(x1, x2, data):
-    # TODO: vary shapes, test different axis arguments
     broadcasted_shape = sh.broadcast_shapes(x1.shape, x2.shape)
     min_ndim = min(x1.ndim, x2.ndim)
     ndim = len(broadcasted_shape)
