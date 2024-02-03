@@ -231,6 +231,16 @@ dtype_components = _make_dtype_mapping_from_names(
     {"complex64": xp.float32, "complex128": xp.float64}
 )
 
+def as_real_dtype(dtype):
+    """
+    Return the corresponding real dtype for a given floating-point dtype.
+    """
+    if dtype in real_float_dtypes:
+        return dtype
+    elif dtype_to_name[dtype] in complex_names:
+        return dtype_components[dtype]
+    else:
+        raise ValueError("as_real_dtype requires a floating-point dtype")
 
 if not hasattr(xp, "asarray"):
     default_int = xp.int32

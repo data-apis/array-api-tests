@@ -12,8 +12,6 @@ functions from the linalg extension. The functions in the latter are not
 required, but we don't yet have a clean way to disable only those tests (see https://github.com/data-apis/array-api-tests/issues/25).
 
 """
-# TODO: test with complex dtypes where appropriate
-
 import pytest
 from hypothesis import assume, given
 from hypothesis.strategies import (booleans, composite, tuples, floats,
@@ -24,8 +22,9 @@ from ndindex import iter_indices
 import itertools
 
 from .array_helpers import assert_exactly_equal, asarray
-from .hypothesis_helpers import (arrays, xps, shapes, kwargs, matrix_shapes,
-                                 square_matrix_shapes, symmetric_matrices,
+from .hypothesis_helpers import (arrays, all_floating_dtypes, xps, shapes,
+                                 kwargs, matrix_shapes, square_matrix_shapes,
+                                 symmetric_matrices,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
                                  invertible_matrices, two_mutual_arrays,
                                  mutually_promotable_dtypes, one_d_shapes,
@@ -210,7 +209,7 @@ def test_cross(x1_x2_kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
+    x=arrays(dtype=all_floating_dtypes(), shape=square_matrix_shapes),
 )
 def test_det(x):
     res = linalg.det(x)
@@ -224,7 +223,7 @@ def test_det(x):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.real_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=xps.scalar_dtypes(), shape=matrix_shapes()),
     # offset may produce an overflow if it is too large. Supporting offsets
     # that are way larger than the array shape isn't very important.
     kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
@@ -382,7 +381,7 @@ matrix_power_n = shared(integers(-100, 100), key='matrix_power n')
 @given(
     # Generate any square matrix if n >= 0 but only invertible matrices if n < 0
     x=matrix_power_n.flatmap(lambda n: invertible_matrices() if n < 0 else
-                             arrays(dtype=xps.floating_dtypes(),
+                             arrays(dtype=all_floating_dtypes(),
                                         shape=square_matrix_shapes)),
     n=matrix_power_n,
 )
@@ -409,7 +408,7 @@ def test_matrix_rank(x, kw):
     linalg.matrix_rank(x, **kw)
 
 @given(
-    x=arrays(dtype=xps.real_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=xps.scalar_dtypes(), shape=matrix_shapes()),
 )
 def test_matrix_transpose(x):
     res = _array_module.matrix_transpose(x)
@@ -459,7 +458,7 @@ def test_pinv(x, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.floating_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=all_floating_dtypes(), shape=matrix_shapes()),
     kw=kwargs(mode=sampled_from(['reduced', 'complete']))
 )
 def test_qr(x, kw):
@@ -495,7 +494,7 @@ def test_qr(x, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.floating_dtypes(), shape=square_matrix_shapes),
+    x=arrays(dtype=all_floating_dtypes(), shape=square_matrix_shapes),
 )
 def test_slogdet(x):
     res = linalg.slogdet(x)
@@ -504,11 +503,16 @@ def test_slogdet(x):
 
     sign, logabsdet = res
 
-    assert sign.dtype == x.dtype, "slogdet().sign did not return the correct dtype"
-    assert sign.shape == x.shape[:-2], "slogdet().sign did not return the correct shape"
-    assert logabsdet.dtype == x.dtype, "slogdet().logabsdet did not return the correct dtype"
-    assert logabsdet.shape == x.shape[:-2], "slogdet().logabsdet did not return the correct shape"
-
+    ph.assert_dtype("slogdet", in_dtype=x.dtype, out_dtype=sign.dtype,
+                    expected=x.dtype, repr_name="sign.dtype")
+    ph.assert_shape("slogdet", out_shape=sign.shape, expected=x.shape[:-2],
+                    repr_name="sign.shape")
+    expected_dtype = dh.as_real_dtype(x.dtype)
+    ph.assert_dtype("slogdet", in_dtype=x.dtype, out_dtype=logabsdet.dtype,
+                    expected=expected_dtype, repr_name="logabsdet.dtype")
+    ph.assert_shape("slogdet", out_shape=logabsdet.shape,
+                    expected=x.shape[:-2],
+                    repr_name="logabsdet.shape")
 
     _test_stacks(lambda x: linalg.slogdet(x).sign, x,
                  res=sign, dims=0)
@@ -550,7 +554,7 @@ def solve_args():
         return draw(stack_shapes)[1] + draw(x1).shape[-1:] + (end,)
 
     x2_shapes = one_of(x1.map(lambda x: (x.shape[-1],)), _x2_shapes())
-    x2 = arrays(dtype=xps.floating_dtypes(), shape=x2_shapes)
+    x2 = arrays(dtype=all_floating_dtypes(), shape=x2_shapes)
     return x1, x2
 
 @pytest.mark.xp_extension('linalg')
@@ -734,7 +738,7 @@ def test_tensordot(x1, x2, kw):
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.real_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=xps.numeric_dtypes(), shape=matrix_shapes()),
     # offset may produce an overflow if it is too large. Supporting offsets
     # that are way larger than the array shape isn't very important.
     kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
@@ -812,7 +816,7 @@ max_ord = 100
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.floating_dtypes(), shape=shapes(min_side=1)),
+    x=arrays(dtype=all_floating_dtypes(), shape=shapes(min_side=1)),
     data=data(),
 )
 def test_vector_norm(x, data):
@@ -838,8 +842,9 @@ def test_vector_norm(x, data):
     ph.assert_keepdimable_shape('linalg.vector_norm', out_shape=res.shape,
                                 in_shape=x.shape, axes=_axes,
                                 keepdims=keepdims, kw=kw)
+    expected_dtype = dh.as_real_dtype(x.dtype)
     ph.assert_dtype('linalg.vector_norm', in_dtype=x.dtype,
-                    out_dtype=res.dtype)
+                    out_dtype=res.dtype, expected=expected_dtype)
 
     _kw = kw.copy()
     _kw.pop('axis', None)
