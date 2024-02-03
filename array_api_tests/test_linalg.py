@@ -126,8 +126,9 @@ def _test_namedtuple(res, fields, func_name):
 def test_cholesky(x, kw):
     res = linalg.cholesky(x, **kw)
 
-    assert res.shape == x.shape, "cholesky() did not return the correct shape"
-    assert res.dtype == x.dtype, "cholesky() did not return the correct dtype"
+    ph.assert_dtype("cholesky", in_dtype=x.dtype, out_dtype=res.dtype)
+    ph.assert_result_shape("cholesky", in_shapes=[x.shape],
+                           out_shape=res.shape, expected=x.shape)
 
     _test_stacks(linalg.cholesky, x, **kw, res=res)
 
@@ -192,7 +193,7 @@ def test_cross(x1_x2_kw):
 
     ph.assert_dtype("cross", in_dtype=[x1.dtype, x2.dtype],
                     out_dtype=res.dtype)
-    ph.assert_shape("cross", out_shape=res.shape, expected=broadcasted_shape)
+    ph.assert_result_shape("cross", in_shapes=[x1.shape, x2.shape], out_shape=res.shape, expected=broadcasted_shape)
 
     def exact_cross(a, b):
         assert a.shape == b.shape == (3,), "Invalid cross() stack shapes. This indicates a bug in the test suite."
@@ -214,8 +215,9 @@ def test_cross(x1_x2_kw):
 def test_det(x):
     res = linalg.det(x)
 
-    assert res.dtype == x.dtype, "det() did not return the correct dtype"
-    assert res.shape == x.shape[:-2], "det() did not return the correct shape"
+    ph.assert_dtype("det", in_dtype=x.dtype, out_dtype=res.dtype)
+    ph.assert_result_shape("det", in_shapes=[x.shape], out_shape=res.shape,
+                           expected=x.shape[:-2])
 
     _test_stacks(linalg.det, x, res=res, dims=0)
 
@@ -231,7 +233,7 @@ def test_det(x):
 def test_diagonal(x, kw):
     res = linalg.diagonal(x, **kw)
 
-    assert res.dtype == x.dtype, "diagonal() returned the wrong dtype"
+    ph.assert_dtype("diagonal", in_dtype=x.dtype, out_dtype=res.dtype)
 
     n, m = x.shape[-2:]
     offset = kw.get('offset', 0)
@@ -245,7 +247,9 @@ def test_diagonal(x, kw):
     else:
         diag_size = min(n, m, max(m - offset, 0))
 
-    assert res.shape == (*x.shape[:-2], diag_size), "diagonal() returned the wrong shape"
+    expected_shape = (*x.shape[:-2], diag_size)
+    ph.assert_result_shape("diagonal", in_shapes=[x.shape],
+                           out_shape=res.shape, expected=expected_shape)
 
     def true_diag(x_stack, offset=0):
         if offset >= 0:
@@ -266,11 +270,18 @@ def test_eigh(x):
     eigenvalues = res.eigenvalues
     eigenvectors = res.eigenvectors
 
-    assert eigenvalues.dtype == x.dtype, "eigh().eigenvalues did not return the correct dtype"
-    assert eigenvalues.shape == x.shape[:-1], "eigh().eigenvalues did not return the correct shape"
+    ph.assert_dtype("eigh", in_dtype=x.dtype, out_dtype=eigenvalues.dtype,
+                    expected=x.dtype, repr_name="eigenvalues.dtype")
+    ph.assert_result_shape("eigh", in_shapes=[x.shape],
+                           out_shape=eigenvalues.shape,
+                           expected=x.shape[:-1],
+                           repr_name="eigenvalues.shape")
 
-    assert eigenvectors.dtype == x.dtype, "eigh().eigenvectors did not return the correct dtype"
-    assert eigenvectors.shape == x.shape, "eigh().eigenvectors did not return the correct shape"
+    ph.assert_dtype("eigh", in_dtype=x.dtype, out_dtype=eigenvectors.dtype,
+                    expected=x.dtype, repr_name="eigenvectors.dtype")
+    ph.assert_result_shape("eigh", in_shapes=[x.shape],
+                           out_shape=eigenvectors.shape, expected=x.shape,
+                           repr_name="eigenvectors.shape")
 
     # Note: _test_stacks here is only testing the shape and dtype. The actual
     # eigenvalues and eigenvectors may not be equal at all, since there is not
@@ -292,8 +303,9 @@ def test_eigh(x):
 def test_eigvalsh(x):
     res = linalg.eigvalsh(x)
 
-    assert res.dtype == x.dtype, "eigvalsh() did not return the correct dtype"
-    assert res.shape == x.shape[:-1], "eigvalsh() did not return the correct shape"
+    ph.assert_dtype("eigvalsh", in_dtype=x.dtype, out_dtype=res.dtype)
+    ph.assert_result_shape("eigvalsh", in_shapes=[x.shape],
+                           out_shape=res.shape, expected=x.shape[:-1])
 
     # Note: _test_stacks here is only testing the shape and dtype. The actual
     # eigenvalues may not be equal at all, since there is not requirements or
@@ -311,8 +323,9 @@ def test_eigvalsh(x):
 def test_inv(x):
     res = linalg.inv(x)
 
-    assert res.shape == x.shape, "inv() did not return the correct shape"
-    assert res.dtype == x.dtype, "inv() did not return the correct dtype"
+    ph.assert_dtype("inv", in_dtype=x.dtype, out_dtype=res.dtype)
+    ph.assert_result_shape("inv", in_shapes=[x.shape], out_shape=res.shape,
+                           expected=x.shape)
 
     _test_stacks(linalg.inv, x, res=res)
 
@@ -339,18 +352,24 @@ def test_matmul(x1, x2):
     ph.assert_dtype("matmul", in_dtype=[x1.dtype, x2.dtype], out_dtype=res.dtype)
 
     if len(x1.shape) == len(x2.shape) == 1:
-        assert res.shape == ()
+        ph.assert_result_shape("matmul", in_shapes=[x1.shape, x2.shape],
+                               out_shape=res.shape, expected=())
     elif len(x1.shape) == 1:
-        assert res.shape == x2.shape[:-2] + x2.shape[-1:]
+        ph.assert_result_shape("matmul", in_shapes=[x1.shape, x2.shape],
+                               out_shape=res.shape,
+                               expected=x2.shape[:-2] + x2.shape[-1:])
         _test_stacks(_array_module.matmul, x1, x2, res=res, dims=1,
                      matrix_axes=[(0,), (-2, -1)], res_axes=[-1])
     elif len(x2.shape) == 1:
-        assert res.shape == x1.shape[:-1]
+        ph.assert_result_shape("matmul", in_shapes=[x1.shape, x2.shape],
+                               out_shape=res.shape, expected=x1.shape[:-1])
         _test_stacks(_array_module.matmul, x1, x2, res=res, dims=1,
                      matrix_axes=[(-2, -1), (0,)], res_axes=[-1])
     else:
         stack_shape = sh.broadcast_shapes(x1.shape[:-2], x2.shape[:-2])
-        assert res.shape == stack_shape + (x1.shape[-2], x2.shape[-1])
+        ph.assert_result_shape("matmul", in_shapes=[x1.shape, x2.shape],
+                               out_shape=res.shape,
+                               expected=stack_shape + (x1.shape[-2], x2.shape[-1]))
         _test_stacks(_array_module.matmul, x1, x2, res=res)
 
 @pytest.mark.xp_extension('linalg')
@@ -370,8 +389,9 @@ def test_matrix_norm(x, kw):
         expected_shape = x.shape[:-2] + (1, 1)
     else:
         expected_shape = x.shape[:-2]
-    assert res.shape == expected_shape, f"matrix_norm({keepdims=}) did not return the correct shape"
-    assert res.dtype == x.dtype, "matrix_norm() did not return the correct dtype"
+    ph.assert_dtype("matrix_norm", in_dtype=x.dtype, out_dtype=res.dtype)
+    ph.assert_result_shape("matrix_norm", in_shapes=[x.shape],
+                           out_shape=res.shape, expected=expected_shape)
 
     _test_stacks(linalg.matrix_norm, x, **kw, dims=2 if keepdims else 0,
                  res=res)
@@ -388,8 +408,9 @@ matrix_power_n = shared(integers(-100, 100), key='matrix_power n')
 def test_matrix_power(x, n):
     res = linalg.matrix_power(x, n)
 
-    assert res.shape == x.shape, "matrix_power() did not return the correct shape"
-    assert res.dtype == x.dtype, "matrix_power() did not return the correct dtype"
+    ph.assert_dtype("matrix_power", in_dtype=x.dtype, out_dtype=res.dtype)
+    ph.assert_result_shape("matrix_power", in_shapes=[x.shape],
+                           out_shape=res.shape, expected=x.shape)
 
     if n == 0:
         true_val = lambda x: _array_module.eye(x.shape[0], dtype=x.dtype)
@@ -419,8 +440,9 @@ def test_matrix_transpose(x):
     shape = list(x.shape)
     shape[-1], shape[-2] = shape[-2], shape[-1]
     shape = tuple(shape)
-    assert res.shape == shape, "matrix_transpose() did not return the correct shape"
-    assert res.dtype == x.dtype, "matrix_transpose() did not return the correct dtype"
+    ph.assert_dtype("matrix_transpose", in_dtype=x.dtype, out_dtype=res.dtype)
+    ph.assert_result_shape("matrix_transpose", in_shapes=[x.shape],
+                           out_shape=res.shape, expected=shape)
 
     _test_stacks(_array_module.matrix_transpose, x, res=res, true_val=true_val)
 
@@ -435,8 +457,9 @@ def test_outer(x1, x2):
     res = linalg.outer(x1, x2)
 
     shape = (x1.shape[0], x2.shape[0])
-    assert res.shape == shape, "outer() did not return the correct shape"
-    assert res.dtype == dh.result_type(x1.dtype, x2.dtype), "outer() did not return the correct dtype"
+    ph.assert_dtype("outer", in_dtype=[x1.dtype, x2.dtype], out_dtype=res.dtype)
+    ph.assert_result_shape("outer", in_shapes=[x1.shape, x2.shape],
+                           out_shape=res.shape, expected=shape)
 
     if 0 in shape:
         true_res = _array_module.empty(shape, dtype=res.dtype)
@@ -472,17 +495,23 @@ def test_qr(x, kw):
     Q = res.Q
     R = res.R
 
-    assert Q.dtype == x.dtype, "qr().Q did not return the correct dtype"
+    ph.assert_dtype("qr", in_dtype=x.dtype, out_dtype=Q.dtype,
+                    expected=x.dtype, repr_name="Q.dtype")
     if mode == 'complete':
-        assert Q.shape == x.shape[:-2] + (M, M), "qr().Q did not return the correct shape"
+        expected_Q_shape = x.shape[:-2] + (M, M)
     else:
-        assert Q.shape == x.shape[:-2] + (M, K), "qr().Q did not return the correct shape"
+        expected_Q_shape = x.shape[:-2] + (M, K)
+    ph.assert_result_shape("qr", in_shapes=[x.shape], out_shape=Q.shape,
+                           expected=expected_Q_shape, repr_name="Q.shape")
 
-    assert R.dtype == x.dtype, "qr().R did not return the correct dtype"
+    ph.assert_dtype("qr", in_dtype=x.dtype, out_dtype=R.dtype,
+                    expected=x.dtype, repr_name="R.dtype")
     if mode == 'complete':
-        assert R.shape == x.shape[:-2] + (M, N), "qr().R did not return the correct shape"
+        expected_R_shape = x.shape[:-2] + (M, N)
     else:
-        assert R.shape == x.shape[:-2] + (K, N), "qr().R did not return the correct shape"
+        expected_R_shape = x.shape[:-2] + (K, N)
+    ph.assert_result_shape("qr", in_shapes=[x.shape], out_shape=R.shape,
+                           expected=expected_R_shape, repr_name="R.shape")
 
     _test_stacks(lambda x: linalg.qr(x, **kw).Q, x, res=Q)
     _test_stacks(lambda x: linalg.qr(x, **kw).R, x, res=R)
@@ -505,14 +534,17 @@ def test_slogdet(x):
 
     ph.assert_dtype("slogdet", in_dtype=x.dtype, out_dtype=sign.dtype,
                     expected=x.dtype, repr_name="sign.dtype")
-    ph.assert_shape("slogdet", out_shape=sign.shape, expected=x.shape[:-2],
-                    repr_name="sign.shape")
+    ph.assert_result_shape("slogdet", in_shapes=[x.shape],
+                           out_shape=sign.shape,
+                           expected=x.shape[:-2],
+                           repr_name="sign.shape")
     expected_dtype = dh.as_real_dtype(x.dtype)
     ph.assert_dtype("slogdet", in_dtype=x.dtype, out_dtype=logabsdet.dtype,
                     expected=expected_dtype, repr_name="logabsdet.dtype")
-    ph.assert_shape("slogdet", out_shape=logabsdet.shape,
-                    expected=x.shape[:-2],
-                    repr_name="logabsdet.shape")
+    ph.assert_result_shape("slogdet", in_shapes=[x.shape],
+                           out_shape=logabsdet.shape,
+                           expected=x.shape[:-2],
+                           repr_name="logabsdet.shape")
 
     _test_stacks(lambda x: linalg.slogdet(x).sign, x,
                  res=sign, dims=0)
@@ -584,17 +616,31 @@ def test_svd(x, kw):
 
     U, S, Vh = res
 
-    assert U.dtype == x.dtype, "svd().U did not return the correct dtype"
-    assert S.dtype == x.dtype, "svd().S did not return the correct dtype"
-    assert Vh.dtype == x.dtype, "svd().Vh did not return the correct dtype"
+    ph.assert_dtype("svd", in_dtype=x.dtype, out_dtype=U.dtype,
+                    expected=x.dtype, repr_name="U.dtype")
+    ph.assert_dtype("svd", in_dtype=x.dtype, out_dtype=S.dtype,
+                    expected=x.dtype, repr_name="S.dtype")
+    ph.assert_dtype("svd", in_dtype=x.dtype, out_dtype=Vh.dtype,
+                    expected=x.dtype, repr_name="Vh.dtype")
 
     if full_matrices:
-        assert U.shape == (*stack, M, M), "svd().U did not return the correct shape"
-        assert Vh.shape == (*stack, N, N), "svd().Vh did not return the correct shape"
+        expected_U_shape = (*stack, M, M)
+        expected_Vh_shape = (*stack, N, N)
     else:
-        assert U.shape == (*stack, M, K), "svd(full_matrices=False).U did not return the correct shape"
-        assert Vh.shape == (*stack, K, N), "svd(full_matrices=False).Vh did not return the correct shape"
-    assert S.shape == (*stack, K), "svd().S did not return the correct shape"
+        expected_U_shape = (*stack, M, K)
+        expected_Vh_shape = (*stack, K, N)
+    ph.assert_result_shape("svd", in_shapes=[x.shape],
+                           out_shape=U.shape,
+                           expected=expected_U_shape,
+                           repr_name="U.shape")
+    ph.assert_result_shape("svd", in_shapes=[x.shape],
+                            out_shape=Vh.shape,
+                            expected=expected_Vh_shape,
+                            repr_name="Vh.shape")
+    ph.assert_result_shape("svd", in_shapes=[x.shape],
+                            out_shape=S.shape,
+                            expected=(*stack, K),
+                            repr_name="S.shape")
 
     # The values of s must be sorted from largest to smallest
     if K >= 1:
@@ -614,8 +660,11 @@ def test_svdvals(x):
     *stack, M, N = x.shape
     K = min(M, N)
 
-    assert res.dtype == x.dtype, "svdvals() did not return the correct dtype"
-    assert res.shape == (*stack, K), "svdvals() did not return the correct shape"
+    ph.assert_dtype("svdvals", in_dtype=x.dtype, out_dtype=res.dtype,
+                    expected=x.dtype)
+    ph.assert_result_shape("svdvals", in_shapes=[x.shape],
+                           out_shape=res.shape,
+                           expected=(*stack, K))
 
     # SVD values must be sorted from largest to smallest
     assert _array_module.all(res[..., :-1] >= res[..., 1:]), "svdvals() values are not sorted from largest to smallest"
@@ -753,7 +802,7 @@ def test_trace(x, kw):
     # assert res.dtype == x.dtype, "trace() returned the wrong dtype"
 
     n, m = x.shape[-2:]
-    assert res.shape == x.shape[:-2], "trace() returned the wrong shape"
+    ph.assert_result_shape('trace', x.shape, res.shape, expected=x.shape[:-2])
 
     def true_trace(x_stack, offset=0):
         # Note: the spec does not specify that offset must be within the
@@ -799,7 +848,8 @@ def test_vecdot(x1, x2, data):
 
     ph.assert_dtype("vecdot", in_dtype=[x1.dtype, x2.dtype],
                     out_dtype=res.dtype)
-    ph.assert_shape("vecdot", out_shape=res.shape, expected=expected_shape)
+    ph.assert_result_shape("vecdot", in_shapes=[x1.shape, x2.shape],
+                           out_shape=res.shape, expected=expected_shape)
 
     if x1.dtype in dh.int_dtypes:
         def true_val(x, y, axis=-1):
