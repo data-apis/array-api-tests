@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9]
+        python-version: ["3.10", "3.11"]
 
     steps:
     - name: Checkout array-api-tests
@@ -22,60 +22,10 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install numpy==1.22.1
+        python -m pip install numpy==1.26.2
         python -m pip install -r requirements.txt
     - name: Run the test suite
       env:
         ARRAY_API_TESTS_MODULE: numpy.array_api
       run: |
-        # Skip testing functions with known issues
-        cat << EOF >> skips.txt
-
-        # copy not implemented
-        array_api_tests/test_creation_functions.py::test_asarray_arrays
-        # https://github.com/numpy/numpy/issues/20870
-        array_api_tests/test_data_type_functions.py::test_can_cast
-        # The return dtype for trace is not consistent in the spec
-        # https://github.com/data-apis/array-api/issues/202#issuecomment-952529197
-        array_api_tests/test_linalg.py::test_trace
-        # Various fixes to vector_norm are in
-        # https://github.com/numpy/numpy/pull/21084.
-        array_api_tests/test_linalg.py::test_vector_norm
-        # waiting on NumPy to allow/revert distinct NaNs for np.unique
-        # https://github.com/numpy/numpy/issues/20326#issuecomment-1012380448
-        array_api_tests/test_set_functions.py
-
-        # https://github.com/numpy/numpy/issues/21373
-        array_api_tests/test_array_object.py::test_getitem
-
-        # missing copy arg
-        array_api_tests/test_signatures.py::test_func_signature[reshape]
-
-        # https://github.com/numpy/numpy/issues/21211
-        array_api_tests/test_special_cases.py::test_iop[__iadd__(x1_i is -0 and x2_i is -0) -> -0]
-        # https://github.com/numpy/numpy/issues/21213
-        array_api_tests/test_special_cases.py::test_iop[__ipow__(x1_i is -infinity and x2_i > 0 and not (x2_i.is_integer() and x2_i % 2 == 1)) -> +infinity]
-        array_api_tests/test_special_cases.py::test_iop[__ipow__(x1_i is -0 and x2_i > 0 and not (x2_i.is_integer() and x2_i % 2 == 1)) -> +0]
-        # noted diversions from spec
-        array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is +infinity and isfinite(x2_i) and x2_i > 0) -> +infinity]
-        array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is +infinity and isfinite(x2_i) and x2_i < 0) -> -infinity]
-        array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is -infinity and isfinite(x2_i) and x2_i > 0) -> -infinity]
-        array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is -infinity and isfinite(x2_i) and x2_i < 0) -> +infinity]
-        array_api_tests/test_special_cases.py::test_binary[floor_divide(isfinite(x1_i) and x1_i > 0 and x2_i is -infinity) -> -0]
-        array_api_tests/test_special_cases.py::test_binary[floor_divide(isfinite(x1_i) and x1_i < 0 and x2_i is +infinity) -> -0]
-        array_api_tests/test_special_cases.py::test_binary[__floordiv__(x1_i is +infinity and isfinite(x2_i) and x2_i > 0) -> +infinity]
-        array_api_tests/test_special_cases.py::test_binary[__floordiv__(x1_i is +infinity and isfinite(x2_i) and x2_i < 0) -> -infinity]
-        array_api_tests/test_special_cases.py::test_binary[__floordiv__(x1_i is -infinity and isfinite(x2_i) and x2_i > 0) -> -infinity]
-        array_api_tests/test_special_cases.py::test_binary[__floordiv__(x1_i is -infinity and isfinite(x2_i) and x2_i < 0) -> +infinity]
-        array_api_tests/test_special_cases.py::test_binary[__floordiv__(isfinite(x1_i) and x1_i > 0 and x2_i is -infinity) -> -0]
-        array_api_tests/test_special_cases.py::test_binary[__floordiv__(isfinite(x1_i) and x1_i < 0 and x2_i is +infinity) -> -0]
-        array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(x1_i is +infinity and isfinite(x2_i) and x2_i > 0) -> +infinity]
-        array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(x1_i is +infinity and isfinite(x2_i) and x2_i < 0) -> -infinity]
-        array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(x1_i is -infinity and isfinite(x2_i) and x2_i > 0) -> -infinity]
-        array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(x1_i is -infinity and isfinite(x2_i) and x2_i < 0) -> +infinity]
-        array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(isfinite(x1_i) and x1_i > 0 and x2_i is -infinity) -> -0]
-        array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(isfinite(x1_i) and x1_i < 0 and x2_i is +infinity) -> -0]
-
-        EOF
-
-        pytest -v -rxXfE --ci
+        pytest -v -rxXfE --ci --skips-file numpy-skips.txt

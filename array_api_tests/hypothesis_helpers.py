@@ -1,16 +1,17 @@
-import itertools
-from functools import reduce
-from math import sqrt
+import re
+from contextlib import contextmanager
+from functools import reduce, wraps
+import math
 from operator import mul
-from typing import Any, List, NamedTuple, Optional, Sequence, Tuple, Union
+import struct
+from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Union
 
-from hypothesis import assume
+from hypothesis import assume, reject
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    integers, just, lists, none, one_of,
-                                   sampled_from, shared)
+                                   sampled_from, shared, builds)
 
-from . import _array_module as xp
-from . import array_helpers as ah
+from . import _array_module as xp, api_version
 from . import dtype_helpers as dh
 from . import shape_helpers as sh
 from . import xps
@@ -19,35 +20,62 @@ from ._array_module import bool as bool_dtype
 from ._array_module import broadcast_to, eye, float32, float64, full
 from .stubs import category_to_funcs
 from .pytest_helpers import nargs
-from .typing import Array, DataType, Shape
+from .typing import Array, DataType, Scalar, Shape
 
-# Set this to True to not fail tests just because a dtype isn't implemented.
-# If no compatible dtype is implemented for a given test, the test will fail
-# with a hypothesis health check error. Note that this functionality will not
-# work for floating point dtypes as those are assumed to be defined in other
-# places in the tests.
-FILTER_UNDEFINED_DTYPES = True
 
-integer_dtypes = sampled_from(dh.all_int_dtypes)
-floating_dtypes = sampled_from(dh.float_dtypes)
-numeric_dtypes = sampled_from(dh.numeric_dtypes)
-integer_or_boolean_dtypes = sampled_from(dh.bool_and_all_int_dtypes)
-boolean_dtypes = just(xp.bool)
-dtypes = sampled_from(dh.all_dtypes)
+def _float32ify(n: Union[int, float]) -> float:
+    n = float(n)
+    return struct.unpack("!f", struct.pack("!f", n))[0]
 
-if FILTER_UNDEFINED_DTYPES:
-    integer_dtypes = integer_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    floating_dtypes = floating_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    numeric_dtypes = numeric_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    integer_or_boolean_dtypes = integer_or_boolean_dtypes.filter(lambda x: not
-                                                                 isinstance(x, _UndefinedStub))
-    boolean_dtypes = boolean_dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
-    dtypes = dtypes.filter(lambda x: not isinstance(x, _UndefinedStub))
 
-shared_dtypes = shared(dtypes, key="dtype")
-shared_floating_dtypes = shared(floating_dtypes, key="dtype")
+@wraps(xps.from_dtype)
+def from_dtype(dtype, **kwargs) -> SearchStrategy[Scalar]:
+    """xps.from_dtype() without the crazy large numbers."""
+    if dtype == xp.bool:
+        return xps.from_dtype(dtype, **kwargs)
 
-_dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.float_dtypes]
+    if dtype in dh.complex_dtypes:
+        component_dtype = dh.dtype_components[dtype]
+    else:
+        component_dtype = dtype
+
+    min_, max_ = dh.dtype_ranges[component_dtype]
+
+    if "min_value" not in kwargs.keys() and min_ != 0:
+        assert min_ < 0  # sanity check
+        min_value = -1 * math.floor(math.sqrt(abs(min_)))
+        if component_dtype == xp.float32:
+            min_value = _float32ify(min_value)
+        kwargs["min_value"] = min_value
+    if "max_value" not in kwargs.keys():
+        assert max_ > 0  # sanity check
+        max_value = math.floor(math.sqrt(max_))
+        if component_dtype == xp.float32:
+            max_value = _float32ify(max_value)
+        kwargs["max_value"] = max_value
+
+    if dtype in dh.complex_dtypes:
+        component_strat = xps.from_dtype(dh.dtype_components[dtype], **kwargs)
+        return builds(complex, component_strat, component_strat)
+    else:
+        return xps.from_dtype(dtype, **kwargs)
+
+
+@wraps(xps.arrays)
+def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
+    """xps.arrays() without the crazy large numbers."""
+    if isinstance(dtype, SearchStrategy):
+        return dtype.flatmap(lambda d: arrays(d, *args, elements=elements, **kwargs))
+
+    if elements is None:
+        elements = from_dtype(dtype)
+    elif isinstance(elements, Mapping):
+        elements = from_dtype(dtype, **elements)
+
+    return xps.arrays(dtype, *args, elements=elements, **kwargs)
+
+
+_dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]
 _sorted_dtypes = [d for category in _dtype_categories for d in category]
 
 def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):
@@ -68,11 +96,10 @@ def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):
     return key
 
 _promotable_dtypes = list(dh.promotion_table.keys())
-if FILTER_UNDEFINED_DTYPES:
-    _promotable_dtypes = [
-        (d1, d2) for d1, d2 in _promotable_dtypes
-        if not isinstance(d1, _UndefinedStub) or not isinstance(d2, _UndefinedStub)
-    ]
+_promotable_dtypes = [
+    (d1, d2) for d1, d2 in _promotable_dtypes
+    if not isinstance(d1, _UndefinedStub) or not isinstance(d2, _UndefinedStub)
+]
 promotable_dtypes: List[Tuple[DataType, DataType]] = sorted(_promotable_dtypes, key=_dtypes_sorter)
 
 def mutually_promotable_dtypes(
@@ -80,9 +107,8 @@ def mutually_promotable_dtypes(
     *,
     dtypes: Sequence[DataType] = dh.all_dtypes,
 ) -> SearchStrategy[Tuple[DataType, ...]]:
-    if FILTER_UNDEFINED_DTYPES:
-        dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
-        assert len(dtypes) > 0, "all dtypes undefined"  # sanity check
+    dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
+    assert len(dtypes) > 0, "all dtypes undefined"  # sanity check
     if max_size == 2:
         return sampled_from(
             [(i, j) for i, j in promotable_dtypes if i in dtypes and j in dtypes]
@@ -107,6 +133,53 @@ def mutually_promotable_dtypes(
     return one_of(strats).map(tuple)
 
 
+class OnewayPromotableDtypes(NamedTuple):
+    input_dtype: DataType
+    result_dtype: DataType
+
+
+@composite
+def oneway_promotable_dtypes(
+    draw, dtypes: Sequence[DataType]
+) -> OnewayPromotableDtypes:
+    """Return a strategy for input dtypes that promote to result dtypes."""
+    d1, d2 = draw(mutually_promotable_dtypes(dtypes=dtypes))
+    result_dtype = dh.result_type(d1, d2)
+    if d1 == result_dtype:
+        return OnewayPromotableDtypes(d2, d1)
+    elif d2 == result_dtype:
+        return OnewayPromotableDtypes(d1, d2)
+    else:
+        reject()
+
+
+class OnewayBroadcastableShapes(NamedTuple):
+    input_shape: Shape
+    result_shape: Shape
+
+
+@composite
+def oneway_broadcastable_shapes(draw) -> OnewayBroadcastableShapes:
+    """Return a strategy for input shapes that broadcast to result shapes."""
+    result_shape = draw(shapes(min_side=1))
+    input_shape = draw(
+        xps.broadcastable_shapes(
+            result_shape,
+            # Override defaults so bad shapes are less likely to be generated.
+            max_side=None if result_shape == () else max(result_shape),
+            max_dims=len(result_shape),
+        ).filter(lambda s: sh.broadcast_shapes(result_shape, s) == result_shape)
+    )
+    return OnewayBroadcastableShapes(input_shape, result_shape)
+
+
+def all_floating_dtypes() -> SearchStrategy[DataType]:
+    strat = xps.floating_dtypes()
+    if api_version >= "2022.12":
+        strat |= xps.complex_dtypes()
+    return strat
+
+
 # shared() allows us to draw either the function or the function name and they
 # will both correspond to the same function.
 
@@ -125,7 +198,7 @@ multiarg_array_functions = multiarg_array_functions_names.map(
 # Limit the total size of an array shape
 MAX_ARRAY_SIZE = 10000
 # Size to use for 2-dim arrays
-SQRT_MAX_ARRAY_SIZE = int(sqrt(MAX_ARRAY_SIZE))
+SQRT_MAX_ARRAY_SIZE = int(math.sqrt(MAX_ARRAY_SIZE))
 
 # np.prod and others have overflow and math.prod is Python 3.8+ only
 def prod(seq):
@@ -162,7 +235,7 @@ square_matrix_shapes = matrix_shapes().filter(lambda shape: shape[-1] == shape[-
 
 @composite
 def finite_matrices(draw, shape=matrix_shapes()):
-    return draw(xps.arrays(dtype=xps.floating_dtypes(),
+    return draw(arrays(dtype=xps.floating_dtypes(),
                            shape=shape,
                            elements=dict(allow_nan=False,
                                          allow_infinity=False)))
@@ -171,7 +244,7 @@ rtol_shared_matrix_shapes = shared(matrix_shapes())
 # Should we set a max_value here?
 _rtol_float_kw = dict(allow_nan=False, allow_infinity=False, min_value=0)
 rtols = one_of(floats(**_rtol_float_kw),
-               xps.arrays(dtype=xps.floating_dtypes(),
+               arrays(dtype=xps.floating_dtypes(),
                           shape=rtol_shared_matrix_shapes.map(lambda shape:  shape[:-2]),
                           elements=_rtol_float_kw))
 
@@ -211,8 +284,10 @@ two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(2)
 def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True, bound=10.):
     shape = draw(square_matrix_shapes)
     dtype = draw(dtypes)
+    if not isinstance(finite, bool):
+        finite = draw(finite)
     elements = {'allow_nan': False, 'allow_infinity': False} if finite else None
-    a = draw(xps.arrays(dtype=dtype, shape=shape, elements=elements))
+    a = draw(arrays(dtype=dtype, shape=shape, elements=elements))
     at = ah._matrix_transpose(a)
     H = (a + at)*0.5
     if finite:
@@ -237,18 +312,14 @@ def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes(
     # For now, just generate stacks of diagonal matrices.
     n = draw(integers(0, SQRT_MAX_ARRAY_SIZE),)
     stack_shape = draw(stack_shapes)
-    shape = stack_shape + (n, n)
-    d = draw(xps.arrays(dtypes, shape=n*prod(stack_shape),
+    d = draw(arrays(dtypes, shape=(*stack_shape, 1, n),
                         elements=dict(allow_nan=False, allow_infinity=False)))
     # Functions that require invertible matrices may do anything when it is
     # singular, including raising an exception, so we make sure the diagonals
     # are sufficiently nonzero to avoid any numerical issues.
     assume(xp.all(xp.abs(d) > 0.5))
-
-    a = xp.zeros(shape)
-    for j, (idx, i) in enumerate(itertools.product(sh.ndindex(stack_shape), range(n))):
-        a[idx + (i, i)] = d[j]
-    return a
+    diag_mask = xp.arange(n) == xp.reshape(xp.arange(n), (n, 1))
+    return xp.where(diag_mask, d, xp.zeros_like(d))
 
 # TODO: Better name
 @composite
@@ -264,7 +335,7 @@ def two_broadcastable_shapes(draw):
 sizes = integers(0, MAX_ARRAY_SIZE)
 sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
 
-numeric_arrays = xps.arrays(
+numeric_arrays = arrays(
     dtype=shared(xps.floating_dtypes(), key='dtypes'),
     shape=shared(xps.array_shapes(), key='shapes'),
 )
@@ -309,7 +380,7 @@ def python_integer_indices(draw, sizes):
 def integer_indices(draw, sizes):
     # Return either a Python integer or a 0-D array with some integer dtype
     idx = draw(python_integer_indices(sizes))
-    dtype = draw(integer_dtypes)
+    dtype = draw(xps.integer_dtypes() | xps.unsigned_integer_dtypes())
     m, M = dh.dtype_ranges[dtype]
     if m <= idx <= M:
         return draw(one_of(just(idx),
@@ -385,16 +456,15 @@ def two_mutual_arrays(
 ) -> Tuple[SearchStrategy[Array], SearchStrategy[Array]]:
     if not isinstance(dtypes, Sequence):
         raise TypeError(f"{dtypes=} not a sequence")
-    if FILTER_UNDEFINED_DTYPES:
-        dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
-        assert len(dtypes) > 0  # sanity check
+    dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
+    assert len(dtypes) > 0  # sanity check
     mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dtypes))
     mutual_shapes = shared(two_shapes)
-    arrays1 = xps.arrays(
+    arrays1 = arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[0]),
         shape=mutual_shapes.map(lambda pair: pair[0]),
     )
-    arrays2 = xps.arrays(
+    arrays2 = arrays(
         dtype=mutual_dtypes.map(lambda pair: pair[1]),
         shape=mutual_shapes.map(lambda pair: pair[1]),
     )
@@ -449,3 +519,14 @@ def axes(ndim: int) -> SearchStrategy[Optional[Union[int, Shape]]]:
         axes_strats.append(integers(-ndim, ndim - 1))
         axes_strats.append(xps.valid_tuple_axes(ndim))
     return one_of(axes_strats)
+
+
+@contextmanager
+def reject_overflow():
+    try:
+        yield
+    except Exception as e:
+        if isinstance(e, OverflowError) or re.search("[Oo]verflow", str(e)):
+            reject()
+        else:
+            raise e

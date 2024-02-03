@@ -6,6 +6,8 @@ from pathlib import Path
 from types import FunctionType, ModuleType
 from typing import Dict, List
 
+from . import api_version
+
 __all__ = [
     "name_to_func",
     "array_methods",
@@ -15,20 +17,21 @@ __all__ = [
     "extension_to_funcs",
 ]
 
+spec_module = "_" + api_version.replace('.', '_')
 
-spec_dir = Path(__file__).parent.parent / "array-api" / "spec" / "API_specification"
+spec_dir = Path(__file__).parent.parent / "array-api" / "spec" / api_version / "API_specification"
 assert spec_dir.exists(), f"{spec_dir} not found - try `git submodule update --init`"
-sigs_dir = spec_dir / "signatures"
+sigs_dir = Path(__file__).parent.parent / "array-api" / "src" / "array_api_stubs" / spec_module
 assert sigs_dir.exists()
 
-spec_abs_path: str = str(spec_dir.resolve())
-sys.path.append(spec_abs_path)
-assert find_spec("signatures") is not None
+sigs_abs_path: str = str(sigs_dir.parent.parent.resolve())
+sys.path.append(sigs_abs_path)
+assert find_spec(f"array_api_stubs.{spec_module}") is not None
 
 name_to_mod: Dict[str, ModuleType] = {}
 for path in sigs_dir.glob("*.py"):
     name = path.name.replace(".py", "")
-    name_to_mod[name] = import_module(f"signatures.{name}")
+    name_to_mod[name] = import_module(f"array_api_stubs.{spec_module}.{name}")
 
 array = name_to_mod["array_object"].array
 array_methods = [
@@ -52,7 +55,7 @@ for funcs in [array_methods, *category_to_funcs.values()]:
     all_funcs.extend(funcs)
 name_to_func: Dict[str, FunctionType] = {f.__name__: f for f in all_funcs}
 
-EXTENSIONS: str = ["linalg"]
+EXTENSIONS: List[str] = ["linalg"]  # TODO: add "fft" once stubs available
 extension_to_funcs: Dict[str, List[FunctionType]] = {}
 for ext in EXTENSIONS:
     mod = name_to_mod[ext]
@@ -70,3 +73,7 @@ for funcs in extension_to_funcs.values():
     for func in funcs:
         if func.__name__ not in name_to_func.keys():
             name_to_func[func.__name__] = func
+
+# sanity check public attributes are not empty
+for attr in __all__:
+    assert len(locals()[attr]) != 0, f"{attr} is empty"

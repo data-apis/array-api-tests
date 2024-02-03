@@ -32,13 +32,8 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps
-from ._array_module import mod as xp
+from . import xp, xps
 from .stubs import category_to_funcs
-from .test_operators_and_elementwise_functions import (
-    oneway_broadcastable_shapes,
-    oneway_promotable_dtypes,
-)
 
 pytestmark = pytest.mark.ci
 
@@ -130,6 +125,8 @@ repr_to_value = {
     "infinity": float("inf"),
     "0": 0.0,
     "1": 1.0,
+    "False": 0.0,
+    "True": 1.0,
 }
 r_value = re.compile(r"([+-]?)(.+)")
 r_pi = re.compile(r"(\d?)π(?:/(\d))?")
@@ -162,7 +159,10 @@ def parse_value(value_str: str) -> float:
         if denominator := pi_m.group(2):
             value /= int(denominator)
     else:
-        value = repr_to_value[m.group(2)]
+        try:
+            value = repr_to_value[m.group(2)]
+        except KeyError as e:
+            raise ParseError(value_str) from e
     if sign := m.group(1):
         if sign == "-":
             value *= -1
@@ -263,7 +263,7 @@ class BoundFromDtype(FromDtypeFunc):
 
     def __call__(self, dtype: DataType, **kw) -> st.SearchStrategy[float]:
         assert len(kw) == 0  # sanity check
-        from_dtype = self.base_func or xps.from_dtype
+        from_dtype = self.base_func or hh.from_dtype
         strat = from_dtype(dtype, **self.kwargs)
         if self.filter_ is not None:
             strat = strat.filter(self.filter_)
@@ -511,7 +511,10 @@ class Case(Protocol):
         return f"{self.__class__.__name__}(<{self}>)"
 
 
-r_case_block = re.compile(r"\*\*Special [Cc]ases\*\*\n+((?:(.*\n)+))\n+\s*Parameters")
+r_case_block = re.compile(
+    r"\*\*Special [Cc]ases\*\*\n+((?:(.*\n)+))\n+\s*"
+    r"(?:.+\n--+)?(?:\.\. versionchanged.*)?"
+)
 r_case = re.compile(r"\s+-\s*(.*)\.")
 
 
@@ -1007,7 +1010,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                         return use_x1_or_x2_strat.flatmap(
                             lambda t: cond_from_dtype(dtype)
                             if t[0]
-                            else xps.from_dtype(dtype)
+                            else hh.from_dtype(dtype)
                         )
 
                     def _x2_cond_from_dtype(dtype, **kw) -> st.SearchStrategy[float]:
@@ -1015,7 +1018,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                         return use_x1_or_x2_strat.flatmap(
                             lambda t: cond_from_dtype(dtype)
                             if t[1]
-                            else xps.from_dtype(dtype)
+                            else hh.from_dtype(dtype)
                         )
 
                     x1_cond_from_dtypes.append(
@@ -1171,6 +1174,8 @@ for stub in category_to_funcs["elementwise"]:
                 op = getattr(operator, op_name)
                 name_to_func[op_name] = op
                 # We collect inplace operator test cases seperately
+                if "equal" in stub.__name__:
+                    continue
                 iop_name = "__i" + op_name[2:]
                 iop = getattr(operator, iop_name)
                 for case in cases:
@@ -1201,10 +1206,15 @@ for stub in category_to_funcs["elementwise"]:
 # its False - Hypothesis will complain if we reject too many examples, thus
 # indicating we've done something wrong.
 
+# sanity checks
+assert len(unary_params) != 0
+assert len(binary_params) != 0
+assert len(iop_params) != 0
+
 
 @pytest.mark.parametrize("func_name, func, case", unary_params)
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
+    x=hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
     data=st.data(),
 )
 def test_unary(func_name, func, case, x, data):
@@ -1235,7 +1245,7 @@ def test_unary(func_name, func, case, x, data):
 
 
 x1_strat, x2_strat = hh.two_mutual_arrays(
-    dtypes=dh.float_dtypes,
+    dtypes=dh.real_float_dtypes,
     two_shapes=hh.mutually_broadcastable_shapes(2, min_side=1),
 )
 
@@ -1258,7 +1268,12 @@ def test_binary(func_name, func, case, x1, x2, data):
 
     res = func(x1, x2)
     # sanity check
-    ph.assert_result_shape(func_name, [x1.shape, x2.shape], res.shape, result_shape)
+    ph.assert_result_shape(
+        func_name,
+        in_shapes=[x1.shape, x2.shape],
+        out_shape=res.shape,
+        expected=result_shape,
+    )
 
     good_example = False
     for l_idx, r_idx, o_idx in all_indices:
@@ -1281,17 +1296,17 @@ def test_binary(func_name, func, case, x1, x2, data):
 
 @pytest.mark.parametrize("iop_name, iop, case", iop_params)
 @given(
-    oneway_dtypes=oneway_promotable_dtypes(dh.float_dtypes),
-    oneway_shapes=oneway_broadcastable_shapes(),
+    oneway_dtypes=hh.oneway_promotable_dtypes(dh.real_float_dtypes),
+    oneway_shapes=hh.oneway_broadcastable_shapes(),
     data=st.data(),
 )
 def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
     x1 = data.draw(
-        xps.arrays(dtype=oneway_dtypes.result_dtype, shape=oneway_shapes.result_shape),
+        hh.arrays(dtype=oneway_dtypes.result_dtype, shape=oneway_shapes.result_shape),
         label="x1",
     )
     x2 = data.draw(
-        xps.arrays(dtype=oneway_dtypes.input_dtype, shape=oneway_shapes.input_shape),
+        hh.arrays(dtype=oneway_dtypes.input_dtype, shape=oneway_shapes.input_shape),
         label="x2",
     )
 
@@ -1310,7 +1325,9 @@ def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
     res = xp.asarray(x1, copy=True)
     res = iop(res, x2)
     # sanity check
-    ph.assert_result_shape(iop_name, [x1.shape, x2.shape], res.shape)
+    ph.assert_result_shape(
+        iop_name, in_shapes=[x1.shape, x2.shape], out_shape=res.shape
+    )
 
     good_example = False
     for l_idx, r_idx, o_idx in all_indices:
@@ -1345,7 +1362,7 @@ def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
 def test_empty_arrays(func_name, expected):  # TODO: parse docstrings to get expected
     func = getattr(xp, func_name)
     out = func(xp.asarray([], dtype=dh.default_float))
-    ph.assert_shape(func_name, out.shape, ())  # sanity check
+    ph.assert_shape(func_name, out_shape=out.shape, expected=())  # sanity check
     msg = f"{out=!r}, but should be {expected}"
     if math.isnan(expected):
         assert xp.isnan(out), msg
@@ -1357,7 +1374,7 @@ def test_empty_arrays(func_name, expected):  # TODO: parse docstrings to get exp
     "func_name", [f.__name__ for f in category_to_funcs["statistical"]]
 )
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
+    x=hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
     data=st.data(),
 )
 def test_nan_propagation(func_name, x, data):
@@ -1370,5 +1387,5 @@ def test_nan_propagation(func_name, x, data):
 
     out = func(x)
 
-    ph.assert_shape(func_name, out.shape, ())  # sanity check
+    ph.assert_shape(func_name, out_shape=out.shape, expected=())  # sanity check
     assert xp.isnan(out), f"{out=!r}, but should be NaN"

@@ -10,7 +10,7 @@ import warnings
 
 from hypothesis.strategies import SearchStrategy
 
-from pytest import mark, fixture
+from pytest import hookimpl, fixture
 try:
     import pytest_jsonreport # noqa
 except ImportError:
@@ -44,12 +44,12 @@ def to_json_serializable(o):
 
     return o
 
-@mark.optionalhook
+@hookimpl(optionalhook=True)
 def pytest_metadata(metadata):
     """
     Additional global metadata for --json-report.
     """
-    metadata['array_api_tests_module'] = xp.mod_name
+    metadata['array_api_tests_module'] = xp.__name__
     metadata['array_api_tests_version'] = __version__
 
 @fixture(autouse=True)
@@ -91,7 +91,7 @@ def add_extra_json_metadata(request, json_metadata):
 
     request.addfinalizer(finalizer)
 
-@mark.optionalhook
+@hookimpl(optionalhook=True)
 def pytest_json_modifyreport(json_report):
     # Deduplicate warnings. These duplicate warnings can cause the file size
     # to become huge. For instance, a warning from np.bool which is emitted

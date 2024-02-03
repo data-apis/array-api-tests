@@ -1,3 +1,5 @@
+import math
+
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
@@ -13,8 +15,8 @@ pytestmark = pytest.mark.ci
 
 
 @given(
-    x=xps.arrays(
-        dtype=xps.numeric_dtypes(),
+    x=hh.arrays(
+        dtype=xps.real_dtypes(),
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
@@ -28,13 +30,14 @@ def test_argmax(x, data):
         ),
         label="kw",
     )
+    keepdims = kw.get("keepdims", False)
 
     out = xp.argmax(x, **kw)
 
     ph.assert_default_index("argmax", out.dtype)
     axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
-        "argmax", x.shape, out.shape, axes, kw.get("keepdims", False), **kw
+        "argmax", in_shape=x.shape, out_shape=out.shape, axes=axes, keepdims=keepdims, kw=kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices, out_idx in zip(sh.axes_ndindex(x.shape, axes), sh.ndindex(out.shape)):
@@ -44,12 +47,13 @@ def test_argmax(x, data):
             s = scalar_type(x[idx])
             elements.append(s)
         expected = max(range(len(elements)), key=elements.__getitem__)
-        ph.assert_scalar_equals("argmax", int, out_idx, max_i, expected)
+        ph.assert_scalar_equals("argmax", type_=int, idx=out_idx, out=max_i,
+                                expected=expected, kw=kw)
 
 
 @given(
-    x=xps.arrays(
-        dtype=xps.numeric_dtypes(),
+    x=hh.arrays(
+        dtype=xps.real_dtypes(),
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
@@ -63,13 +67,14 @@ def test_argmin(x, data):
         ),
         label="kw",
     )
+    keepdims = kw.get("keepdims", False)
 
     out = xp.argmin(x, **kw)
 
     ph.assert_default_index("argmin", out.dtype)
     axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
-        "argmin", x.shape, out.shape, axes, kw.get("keepdims", False), **kw
+        "argmin", in_shape=x.shape, out_shape=out.shape, axes=axes, keepdims=keepdims, kw=kw
     )
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices, out_idx in zip(sh.axes_ndindex(x.shape, axes), sh.ndindex(out.shape)):
@@ -79,23 +84,28 @@ def test_argmin(x, data):
             s = scalar_type(x[idx])
             elements.append(s)
         expected = min(range(len(elements)), key=elements.__getitem__)
-        ph.assert_scalar_equals("argmin", int, out_idx, min_i, expected)
+        ph.assert_scalar_equals("argmin", type_=int, idx=out_idx, out=min_i, expected=expected)
+
+
+@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=()))
+def test_nonzero_zerodim_error(x):
+    with pytest.raises(Exception):
+        xp.nonzero(x)
 
 
 @pytest.mark.data_dependent_shapes
-@given(xps.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
+@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1, min_side=1)))
 def test_nonzero(x):
     out = xp.nonzero(x)
-    if x.ndim == 0:
-        assert len(out) == 1, f"{len(out)=}, but should be 1 for 0-dimensional arrays"
-    else:
-        assert len(out) == x.ndim, f"{len(out)=}, but should be {x.ndim=}"
-    size = out[0].size
+    assert len(out) == x.ndim, f"{len(out)=}, but should be {x.ndim=}"
+    out_size = math.prod(out[0].shape)
     for i in range(len(out)):
         assert out[i].ndim == 1, f"out[{i}].ndim={x.ndim}, but should be 1"
-        assert (
-            out[i].size == size
-        ), f"out[{i}].size={x.size}, but should be out[0].size={size}"
+        size_at = math.prod(out[i].shape)
+        assert size_at == out_size, (
+            f"prod(out[{i}].shape)={size_at}, "
+            f"but should be prod(out[0].shape)={out_size}"
+        )
         ph.assert_default_index("nonzero", out[i].dtype, repr_name=f"out[{i}].dtype")
     indices = []
     if x.dtype == xp.bool:
@@ -107,11 +117,11 @@ def test_nonzero(x):
             if x[idx] != 0:
                 indices.append(idx)
     if x.ndim == 0:
-        assert out[0].size == len(
+        assert out_size == len(
             indices
-        ), f"{out[0].size=}, but should be {len(indices)}"
+        ), f"prod(out[0].shape)={out_size}, but should be {len(indices)}"
     else:
-        for i in range(size):
+        for i in range(out_size):
             idx = tuple(int(x[i]) for x in out)
             f_idx = f"Extrapolated index (x[{i}] for x in out)={idx}"
             f_element = f"x[{idx}]={x[idx]}"
@@ -127,14 +137,14 @@ def test_nonzero(x):
     data=st.data(),
 )
 def test_where(shapes, dtypes, data):
-    cond = data.draw(xps.arrays(dtype=xp.bool, shape=shapes[0]), label="condition")
-    x1 = data.draw(xps.arrays(dtype=dtypes[0], shape=shapes[1]), label="x1")
-    x2 = data.draw(xps.arrays(dtype=dtypes[1], shape=shapes[2]), label="x2")
+    cond = data.draw(hh.arrays(dtype=xp.bool, shape=shapes[0]), label="condition")
+    x1 = data.draw(hh.arrays(dtype=dtypes[0], shape=shapes[1]), label="x1")
+    x2 = data.draw(hh.arrays(dtype=dtypes[1], shape=shapes[2]), label="x2")
 
     out = xp.where(cond, x1, x2)
 
     shape = sh.broadcast_shapes(*shapes)
-    ph.assert_shape("where", out.shape, shape)
+    ph.assert_shape("where", out_shape=out.shape, expected=shape)
     # TODO: generate indices without broadcasting arrays
     _cond = xp.broadcast_to(cond, shape)
     _x1 = xp.broadcast_to(x1, shape)
@@ -142,9 +152,17 @@ def test_where(shapes, dtypes, data):
     for idx in sh.ndindex(shape):
         if _cond[idx]:
             ph.assert_0d_equals(
-                "where", f"_x1[{idx}]", _x1[idx], f"out[{idx}]", out[idx]
+                "where",
+                x_repr=f"_x1[{idx}]",
+                x_val=_x1[idx],
+                out_repr=f"out[{idx}]",
+                out_val=out[idx]
             )
         else:
             ph.assert_0d_equals(
-                "where", f"_x2[{idx}]", _x2[idx], f"out[{idx}]", out[idx]
+                "where",
+                x_repr=f"_x2[{idx}]",
+                x_val=_x2[idx],
+                out_repr=f"out[{idx}]",
+                out_val=out[idx]
             )

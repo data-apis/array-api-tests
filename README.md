@@ -36,13 +36,7 @@ You need to specify the array library to test. It can be specified via the
 $ export ARRAY_API_TESTS_MODULE=numpy.array_api
 ```
 
-Alternately, change the `array_module` variable in `array_api_tests/_array_module.py`
-line, e.g.
-
-```diff
-- array_module = None
-+ import numpy.array_api as array_module
-```
+Alternately, import/define the `xp` variable in `array_api_tests/__init__.py`.
 
 ### Run the suite
 
@@ -160,6 +154,13 @@ library to fail.
 
 ### Configuration
 
+#### API version
+
+You can specify the API version to use when testing via the
+`ARRAY_API_TESTS_VERSION` environment variable. Currently this defaults to the
+array module's `__array_api_version__` value, and if that attribute doesn't
+exist then we fallback to `"2021.12"`.
+
 #### CI flag
 
 Use the `--ci` flag to run only the primary and special cases tests. You can
@@ -178,13 +179,22 @@ By default, tests for the optional Array API extensions such as
 will be skipped if not present in the specified array module. You can purposely
 skip testing extension(s) via the `--disable-extension` option.
 
-#### Skip test cases
+#### Skip or XFAIL test cases
 
-Test cases you want to skip can be specified in a `skips.txt` file in the root
-of this repository, e.g.:
+Test cases you want to skip can be specified in a skips or XFAILS file. The
+difference between skip and XFAIL is that XFAIL tests are still run and
+reported as XPASS if they pass.
+
+By default, the skips and xfails files are `skips.txt` and `fails.txt` in the root
+of this repository, but any file can be specified with the `--skips-file` and
+`--xfails-file` command line flags.
+
+The files should list the test ids to be skipped/xfailed. Empty lines and
+lines starting with `#` are ignored. The test id can be any substring of the
+test ids to skip/xfail.
 
 ```
-# ./skips.txt
+# skips.txt or xfails.txt
 # Line comments can be denoted with the hash symbol (#)
 
 # Skip specific test case, e.g. when argsort() does not respect relative order
@@ -200,39 +210,81 @@ array_api_tests/test_add[__iadd__(x, s)]
 array_api_tests/test_set_functions.py
 ```
 
-For GitHub Actions, you might like to keep everything in the workflow config
-instead of having a seperate `skips.txt` file, e.g.:
+Here is an example GitHub Actions workflow file, where the xfails are stored
+in `array-api-tests.xfails.txt` in the base of the `your-array-library` repo.
+
+If you want, you can use `-o xfail_strict=True`, which causes XPASS tests (XFAIL
+tests that actually pass) to fail the test suite. However, be aware that
+XFAILures can be flaky (see below, so this may not be a good idea unless you
+use some other mitigation of such flakyness).
+
+If you don't want this behavior, you can remove it, or use `--skips-file`
+instead of `--xfails-file`.
 
 ```yaml
 # ./.github/workflows/array_api.yml
-...
-    ...
-    - name: Run the test suite
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+
+    steps:
+    - name: Checkout <your array library>
+      uses: actions/checkout@v3
+      with:
+        path: your-array-library
+
+    - name: Checkout array-api-tests
+      uses: actions/checkout@v3
+      with:
+        repository: data-apis/array-api-tests
+        submodules: 'true'
+        path: array-api-tests
+
+    - name: Run the array API test suite
       env:
         ARRAY_API_TESTS_MODULE: your.array.api.namespace
       run: |
-        # Skip test cases with known issues
-        cat << EOF >> skips.txt
-
-        # Comments can still work here
-        array_api_tests/test_sorting_functions.py::test_argsort
-        array_api_tests/test_add[__iadd__(x1, x2)]
-        array_api_tests/test_add[__iadd__(x, s)]
-        array_api_tests/test_set_functions.py
-
-        EOF
-
-        pytest -v -rxXfE --ci
+        export PYTHONPATH="${GITHUB_WORKSPACE}/your-array-library"
+        cd ${GITHUB_WORKSPACE}/array-api-tests
+        pytest -v -rxXfE --ci --xfails-file ${GITHUB_WORKSPACE}/your-array-library/array-api-tests-xfails.txt array_api_tests/
 ```
+
+> **Warning**
+>
+> XFAIL tests that use Hypothesis (basically every test in the test suite except
+> those in test_has_names.py) can be flaky, due to the fact that Hypothesis
+> might not always run the test with an input that causes the test to fail.
+> There are several ways to avoid this problem:
+>
+> - Increase the maximum number of examples, e.g., by adding `--max-examples
+>   200` to the test command (the default is `100`, see below). This will
+>   make it more likely that the failing case will be found, but it will also
+>   make the tests take longer to run.
+> - Don't use `-o xfail_strict=True`. This will make it so that if an XFAIL
+>   test passes, it will alert you in the test summary but will not cause the
+>   test run to register as failed.
+> - Use skips instead of XFAILS. The difference between XFAIL and skip is that
+>   a skipped test is never run at all, whereas an XFAIL test is always run
+>   but ignored if it fails.
+> - Save the [Hypothesis examples
+>   database](https://hypothesis.readthedocs.io/en/latest/database.html)
+>   persistently on CI. That way as soon as a run finds one failing example,
+>   it will always re-run future runs with that example. But note that the
+>   Hypothesis examples database may be cleared when a new version of
+>   Hypothesis or the test suite is released.
 
 #### Max examples
 
 The tests make heavy use
 [Hypothesis](https://hypothesis.readthedocs.io/en/latest/). You can configure
-how many examples are generated using the `--max-examples` flag, which defaults
-to 100. Lower values can be useful for quick checks, and larger values should
-result in more rigorous runs. For example, `--max-examples 10_000` may find bugs
-where default runs don't but will take much longer to run.
+how many examples are generated using the `--max-examples` flag, which
+defaults to `100`. Lower values can be useful for quick checks, and larger
+values should result in more rigorous runs. For example, `--max-examples
+10_000` may find bugs where default runs don't but will take much longer to
+run.
 
 
 ## Contributing
