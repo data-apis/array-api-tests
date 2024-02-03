@@ -745,10 +745,9 @@ def test_trace(x, kw):
     # assert res.dtype == x.dtype, "trace() returned the wrong dtype"
 
     n, m = x.shape[-2:]
-    offset = kw.get('offset', 0)
     assert res.shape == x.shape[:-2], "trace() returned the wrong shape"
 
-    def true_trace(x_stack):
+    def true_trace(x_stack, offset=0):
         # Note: the spec does not specify that offset must be within the
         # bounds of the matrix. A large offset should just produce a size 0
         # diagonal in the last dimension (trace 0). See test_diagonal().
