@@ -45,7 +45,7 @@ pytestmark = pytest.mark.ci
 
 def assert_equal(x, y, msg_extra=None):
     extra = '' if not msg_extra else f' ({msg_extra})'
-    if x.dtype in dh.float_dtypes:
+    if x.dtype in dh.all_float_dtypes:
         # It's too difficult to do an approximately equal test here because
         # different routines can give completely different answers, and even
         # when it does work, the elementwise comparisons are too slow. So for
@@ -701,7 +701,8 @@ def test_tensordot(x1, x2, kw):
     # TODO: vary shapes, vary contracted axes, test different axes arguments
     res = xp.tensordot(x1, x2, **kw)
 
-    ph.assert_dtype("tensordot", [x1.dtype, x2.dtype], res.dtype)
+    ph.assert_dtype("tensordot", in_dtype=[x1.dtype, x2.dtype],
+                    out_dtype=res.dtype)
 
     axes = _axes = kw.get('axes', 2)
 
@@ -785,9 +786,10 @@ def test_vecdot(x1, x2, kw):
 
     res = xp.vecdot(x1, x2, **kw)
 
-    ph.assert_dtype("vecdot", [x1.dtype, x2.dtype], res.dtype)
+    ph.assert_dtype("vecdot", in_dtype=[x1.dtype, x2.dtype],
+                    out_dtype=res.dtype)
     # TODO: assert shape and elements
-    ph.assert_shape("vecdot", res.shape, expected_shape)
+    ph.assert_shape("vecdot", out_shape=res.shape, expected=expected_shape)
 
     if x1.dtype in dh.int_dtypes:
         def true_val(x, y, axis=-1):
@@ -827,9 +829,11 @@ def test_vector_norm(x, data):
 
     _axes = sh.normalise_axis(axis, x.ndim)
 
-    ph.assert_keepdimable_shape('linalg.vector_norm', res.shape, x.shape,
-                                _axes, keepdims, **kw)
-    ph.assert_dtype('linalg.vector_norm', x.dtype, res.dtype)
+    ph.assert_keepdimable_shape('linalg.vector_norm', out_shape=res.shape,
+                                in_shape=x.shape, axes=_axes,
+                                keepdims=keepdims, kw=kw)
+    ph.assert_dtype('linalg.vector_norm', in_dtype=x.dtype,
+                    out_dtype=res.dtype)
 
     _kw = kw.copy()
     _kw.pop('axis', None)

@@ -12,6 +12,7 @@ from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    sampled_from, shared, builds)
 
 from . import _array_module as xp, api_version
+from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import shape_helpers as sh
 from . import xps
