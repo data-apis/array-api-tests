@@ -769,17 +769,15 @@ def test_trace(x, kw):
 
 @given(
     *two_mutual_arrays(dh.numeric_dtypes, mutually_broadcastable_shapes(2, min_dims=1)),
-    kwargs(axis=integers()),
+    data(),
 )
-def test_vecdot(x1, x2, kw):
+def test_vecdot(x1, x2, data):
     # TODO: vary shapes, test different axis arguments
     broadcasted_shape = sh.broadcast_shapes(x1.shape, x2.shape)
+    min_ndim = min(x1.ndim, x2.ndim)
     ndim = len(broadcasted_shape)
+    kw = data.draw(kwargs(axis=integers(-min_ndim, -1)))
     axis = kw.get('axis', -1)
-    if not (-ndim <= axis < ndim):
-        ph.raises(Exception, lambda: xp.vecdot(x1, x2, **kw),
-                  f"vecdot did not raise an exception for invalid axis ({ndim=}, {kw=})")
-        return
     x1_shape = (1,)*(ndim - x1.ndim) + tuple(x1.shape)
     x2_shape = (1,)*(ndim - x2.ndim) + tuple(x2.shape)
     if x1_shape[axis] != x2_shape[axis]:
