@@ -806,7 +806,7 @@ max_ord = 100
 
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=xps.arrays(dtype=xps.floating_dtypes(), shape=shapes(min_side=1)),
+    x=arrays(dtype=xps.floating_dtypes(), shape=shapes(min_side=1)),
     data=data(),
 )
 def test_vector_norm(x, data):
