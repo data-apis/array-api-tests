@@ -294,7 +294,6 @@ def test_eigvalsh(x):
 
     # TODO: Test that res actually corresponds to the eigenvalues of x
 
-@pytest.mark.skip(reason="flaky")
 @pytest.mark.xp_extension('linalg')
 @given(x=invertible_matrices())
 def test_inv(x):
@@ -307,7 +306,6 @@ def test_inv(x):
 
     # TODO: Test that the result is actually the inverse
 
-@pytest.mark.skip(reason="flaky")
 @given(
     *two_mutual_arrays(dh.real_dtypes)
 )
