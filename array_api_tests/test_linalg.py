@@ -795,11 +795,16 @@ def test_tensordot(x1, x2, kw):
 def test_trace(x, kw):
     res = linalg.trace(x, **kw)
 
-    # TODO: trace() should promote in some cases. See
-    # https://github.com/data-apis/array-api/issues/202. See also the dtype
-    # argument to sum() below.
-
-    # assert res.dtype == x.dtype, "trace() returned the wrong dtype"
+    dtype = kw.get("dtype", None)
+    expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
+    if expected_dtype is None:
+        # If a default uint cannot exist (i.e. in PyTorch which doesn't support
+        # uint32 or uint64), we skip testing the output dtype.
+        # See https://github.com/data-apis/array-api-tests/issues/160
+        if x.dtype in dh.uint_dtypes:
+            assert dh.is_int_dtype(res.dtype)  # sanity check
+    else:
+        ph.assert_dtype("trace", in_dtype=x.dtype, out_dtype=res.dtype, expected=expected_dtype)
 
     n, m = x.shape[-2:]
     ph.assert_result_shape('trace', x.shape, res.shape, expected=x.shape[:-2])

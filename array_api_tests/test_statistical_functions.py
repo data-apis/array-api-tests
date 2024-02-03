@@ -130,44 +130,15 @@ def test_prod(x, data):
         out = xp.prod(x, **kw)
 
     dtype = kw.get("dtype", None)
-    if dtype is None:
-        if dh.is_int_dtype(x.dtype):
-            if x.dtype in dh.uint_dtypes:
-                default_dtype = dh.default_uint
-            else:
-                default_dtype = dh.default_int
-            if default_dtype is None:
-                _dtype = None
-            else:
-                m, M = dh.dtype_ranges[x.dtype]
-                d_m, d_M = dh.dtype_ranges[default_dtype]
-                if m < d_m or M > d_M:
-                    _dtype = x.dtype
-                else:
-                    _dtype = default_dtype
-        elif dh.is_float_dtype(x.dtype, include_complex=False):
-            if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_float]:
-                _dtype = x.dtype
-            else:
-                _dtype = dh.default_float
-        elif api_version > "2021.12":
-            # Complex dtype
-            if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_complex]:
-                _dtype = x.dtype
-            else:
-                _dtype = dh.default_complex
-        else:
-            raise RuntimeError("Unexpected dtype. This indicates a bug in the test suite.")
-    else:
-        _dtype = dtype
-    if _dtype is None:
+    expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
+    if expected_dtype is None:
         # If a default uint cannot exist (i.e. in PyTorch which doesn't support
         # uint32 or uint64), we skip testing the output dtype.
         # See https://github.com/data-apis/array-api-tests/issues/106
         if x.dtype in dh.uint_dtypes:
             assert dh.is_int_dtype(out.dtype)  # sanity check
     else:
-        ph.assert_dtype("prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=_dtype)
+        ph.assert_dtype("prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "prod", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
@@ -246,44 +217,15 @@ def test_sum(x, data):
         out = xp.sum(x, **kw)
 
     dtype = kw.get("dtype", None)
-    if dtype is None:
-        if dh.is_int_dtype(x.dtype):
-            if x.dtype in dh.uint_dtypes:
-                default_dtype = dh.default_uint
-            else:
-                default_dtype = dh.default_int
-            if default_dtype is None:
-                _dtype = None
-            else:
-                m, M = dh.dtype_ranges[x.dtype]
-                d_m, d_M = dh.dtype_ranges[default_dtype]
-                if m < d_m or M > d_M:
-                    _dtype = x.dtype
-                else:
-                    _dtype = default_dtype
-        elif dh.is_float_dtype(x.dtype, include_complex=False):
-            if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_float]:
-                _dtype = x.dtype
-            else:
-                _dtype = dh.default_float
-        elif api_version > "2021.12":
-            # Complex dtype
-            if dh.dtype_nbits[x.dtype] > dh.dtype_nbits[dh.default_complex]:
-                _dtype = x.dtype
-            else:
-                _dtype = dh.default_complex
-        else:
-            raise RuntimeError("Unexpected dtype. This indicates a bug in the test suite.")
-    else:
-        _dtype = dtype
-    if _dtype is None:
+    expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
+    if expected_dtype is None:
         # If a default uint cannot exist (i.e. in PyTorch which doesn't support
         # uint32 or uint64), we skip testing the output dtype.
         # See https://github.com/data-apis/array-api-tests/issues/160
         if x.dtype in dh.uint_dtypes:
             assert dh.is_int_dtype(out.dtype)  # sanity check
     else:
-        ph.assert_dtype("sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=_dtype)
+        ph.assert_dtype("sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "sum", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
