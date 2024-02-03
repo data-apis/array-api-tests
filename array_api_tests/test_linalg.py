@@ -191,8 +191,9 @@ def test_cross(x1_x2_kw):
 
     broadcasted_shape = sh.broadcast_shapes(x1.shape, x2.shape)
 
-    assert res.dtype == dh.result_type(x1.dtype, x2.dtype), "cross() did not return the correct dtype"
-    assert res.shape == broadcasted_shape, "cross() did not return the correct shape"
+    ph.assert_dtype("cross", in_dtype=[x1.dtype, x2.dtype],
+                    out_dtype=res.dtype)
+    ph.assert_shape("cross", out_shape=res.shape, expected=broadcasted_shape)
 
     def exact_cross(a, b):
         assert a.shape == b.shape == (3,), "Invalid cross() stack shapes. This indicates a bug in the test suite."
@@ -800,7 +801,6 @@ def test_vecdot(x1, x2, data):
 
     ph.assert_dtype("vecdot", in_dtype=[x1.dtype, x2.dtype],
                     out_dtype=res.dtype)
-    # TODO: assert shape and elements
     ph.assert_shape("vecdot", out_shape=res.shape, expected=expected_shape)
 
     if x1.dtype in dh.int_dtypes:
