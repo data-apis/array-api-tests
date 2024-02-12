@@ -146,7 +146,7 @@ def assert_s_axes_shape(
 
 
 @given(
-    x=hh.arrays(dtype=hh.all_floating_dtypes(), shape=fft_shapes_strat),
+    x=hh.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
     data=st.data(),
 )
 def test_fft(x, data):
@@ -159,7 +159,7 @@ def test_fft(x, data):
 
 
 @given(
-    x=hh.arrays(dtype=hh.all_floating_dtypes(), shape=fft_shapes_strat),
+    x=hh.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
     data=st.data(),
 )
 def test_ifft(x, data):
@@ -172,7 +172,7 @@ def test_ifft(x, data):
 
 
 @given(
-    x=hh.arrays(dtype=hh.all_floating_dtypes(), shape=fft_shapes_strat),
+    x=hh.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
     data=st.data(),
 )
 def test_fftn(x, data):
@@ -185,7 +185,7 @@ def test_fftn(x, data):
 
 
 @given(
-    x=hh.arrays(dtype=hh.all_floating_dtypes(), shape=fft_shapes_strat),
+    x=hh.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
     data=st.data(),
 )
 def test_ifftn(x, data):
@@ -259,7 +259,7 @@ def test_irfftn(x, data):
 
 
 @given(
-    x=hh.arrays(dtype=hh.all_floating_dtypes(), shape=fft_shapes_strat),
+    x=hh.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat),
     data=st.data(),
 )
 def test_hfft(x, data):
