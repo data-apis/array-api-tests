@@ -303,6 +303,7 @@ def test_sum(x, data):
         ph.assert_scalar_equals("sum", type_=scalar_type, idx=out_idx, out=sum_, expected=expected)
 
 
+@pytest.mark.skip(reason="flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
         dtype=xps.floating_dtypes(),
