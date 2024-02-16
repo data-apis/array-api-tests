@@ -11,7 +11,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps, api_version
+from . import xps
 from ._array_module import _UndefinedStub
 from .typing import DataType
 
