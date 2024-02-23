@@ -331,10 +331,9 @@ def test_inv(x):
 
     # TODO: Test that the result is actually the inverse
 
-@given(
-    *two_mutual_arrays(dh.real_dtypes)
-)
-def test_matmul(x1, x2):
+def _test_matmul(namespace, x1, x2):
+    matmul = namespace.matmul
+
     # TODO: Make this also test the @ operator
     if (x1.shape == () or x2.shape == ()
         or len(x1.shape) == len(x2.shape) == 1 and x1.shape != x2.shape
@@ -347,7 +346,7 @@ def test_matmul(x1, x2):
                "matmul did not raise an exception for invalid shapes")
         return
     else:
-        res = _array_module.matmul(x1, x2)
+        res = matmul(x1, x2)
 
     ph.assert_dtype("matmul", in_dtype=[x1.dtype, x2.dtype], out_dtype=res.dtype)
 
@@ -358,19 +357,32 @@ def test_matmul(x1, x2):
         ph.assert_result_shape("matmul", in_shapes=[x1.shape, x2.shape],
                                out_shape=res.shape,
                                expected=x2.shape[:-2] + x2.shape[-1:])
-        _test_stacks(_array_module.matmul, x1, x2, res=res, dims=1,
+        _test_stacks(matmul, x1, x2, res=res, dims=1,
                      matrix_axes=[(0,), (-2, -1)], res_axes=[-1])
     elif len(x2.shape) == 1:
         ph.assert_result_shape("matmul", in_shapes=[x1.shape, x2.shape],
                                out_shape=res.shape, expected=x1.shape[:-1])
-        _test_stacks(_array_module.matmul, x1, x2, res=res, dims=1,
+        _test_stacks(matmul, x1, x2, res=res, dims=1,
                      matrix_axes=[(-2, -1), (0,)], res_axes=[-1])
     else:
         stack_shape = sh.broadcast_shapes(x1.shape[:-2], x2.shape[:-2])
         ph.assert_result_shape("matmul", in_shapes=[x1.shape, x2.shape],
                                out_shape=res.shape,
                                expected=stack_shape + (x1.shape[-2], x2.shape[-1]))
-        _test_stacks(_array_module.matmul, x1, x2, res=res)
+        _test_stacks(matmul, x1, x2, res=res)
+
+@pytest.mark.xp_extension('linalg')
+@given(
+    *two_mutual_arrays(dh.real_dtypes)
+)
+def test_linalg_matmul(x1, x2):
+    return _test_matmul(linalg, x1, x2)
+
+@given(
+    *two_mutual_arrays(dh.real_dtypes)
+)
+def test_matmul(x1, x2):
+    return _test_matmul(_array_module, x1, x2)
 
 @pytest.mark.xp_extension('linalg')
 @given(
@@ -428,11 +440,9 @@ def test_matrix_power(x, n):
 def test_matrix_rank(x, kw):
     linalg.matrix_rank(x, **kw)
 
-@given(
-    x=arrays(dtype=xps.scalar_dtypes(), shape=matrix_shapes()),
-)
-def test_matrix_transpose(x):
-    res = _array_module.matrix_transpose(x)
+def _test_matrix_transpose(namespace, x):
+    matrix_transpose = namespace.matrix_transpose
+    res = matrix_transpose(x)
     true_val = lambda a: _array_module.asarray([[a[i, j] for i in
                                                 range(a.shape[0])] for j in
                                                 range(a.shape[1])],
@@ -444,7 +454,20 @@ def test_matrix_transpose(x):
     ph.assert_result_shape("matrix_transpose", in_shapes=[x.shape],
                            out_shape=res.shape, expected=shape)
 
-    _test_stacks(_array_module.matrix_transpose, x, res=res, true_val=true_val)
+    _test_stacks(matrix_transpose, x, res=res, true_val=true_val)
+
+@pytest.mark.xp_extension('linalg')
+@given(
+    x=arrays(dtype=xps.scalar_dtypes(), shape=matrix_shapes()),
+)
+def test_linalg_matrix_transpose(x):
+    return _test_matrix_transpose(linalg, x)
+
+@given(
+    x=arrays(dtype=xps.scalar_dtypes(), shape=matrix_shapes()),
+)
+def test_matrix_transpose(x):
+    return _test_matrix_transpose(_array_module, x)
 
 @pytest.mark.xp_extension('linalg')
 @given(
@@ -759,12 +782,9 @@ def _test_tensordot_stacks(x1, x2, kw, res):
         decomp_res_stack = xp.tensordot(x1_stack, x2_stack, axes=res_axes)
         assert_equal(res_stack, decomp_res_stack)
 
-@given(
-    *two_mutual_arrays(dh.numeric_dtypes, two_shapes=tensordot_shapes()),
-    tensordot_kw,
-)
-def test_tensordot(x1, x2, kw):
-    res = xp.tensordot(x1, x2, **kw)
+def _test_tensordot(namespace, x1, x2, kw):
+    tensordot = namespace.tensordot
+    res = tensordot(x1, x2, **kw)
 
     ph.assert_dtype("tensordot", in_dtype=[x1.dtype, x2.dtype],
                     out_dtype=res.dtype)
@@ -784,6 +804,21 @@ def test_tensordot(x1, x2, kw):
     ph.assert_result_shape('tensordot', [x1.shape, x2.shape], res.shape,
                            expected=result_shape)
     _test_tensordot_stacks(x1, x2, kw, res)
+
+@pytest.mark.xp_extension('linalg')
+@given(
+    *two_mutual_arrays(dh.numeric_dtypes, two_shapes=tensordot_shapes()),
+    tensordot_kw,
+)
+def test_linalg_tensordot(x1, x2, kw):
+    _test_tensordot(linalg, x1, x2, kw)
+
+@given(
+    *two_mutual_arrays(dh.numeric_dtypes, two_shapes=tensordot_shapes()),
+    tensordot_kw,
+)
+def test_tensordot(x1, x2, kw):
+    _test_tensordot(_array_module, x1, x2, kw)
 
 @pytest.mark.xp_extension('linalg')
 @given(
@@ -828,12 +863,8 @@ def test_trace(x, kw):
 
     _test_stacks(linalg.trace, x, **kw, res=res, dims=0, true_val=true_trace)
 
-
-@given(
-    *two_mutual_arrays(dh.numeric_dtypes, mutually_broadcastable_shapes(2, min_dims=1)),
-    data(),
-)
-def test_vecdot(x1, x2, data):
+def _test_vecdot(namespace, x1, x2, data):
+    vecdot = namespace.vecdot
     broadcasted_shape = sh.broadcast_shapes(x1.shape, x2.shape)
     min_ndim = min(x1.ndim, x2.ndim)
     ndim = len(broadcasted_shape)
@@ -842,14 +873,14 @@ def test_vecdot(x1, x2, data):
     x1_shape = (1,)*(ndim - x1.ndim) + tuple(x1.shape)
     x2_shape = (1,)*(ndim - x2.ndim) + tuple(x2.shape)
     if x1_shape[axis] != x2_shape[axis]:
-        ph.raises(Exception, lambda: xp.vecdot(x1, x2, **kw),
+        ph.raises(Exception, lambda: vecdot(x1, x2, **kw),
                   "vecdot did not raise an exception for invalid shapes")
         return
     expected_shape = list(broadcasted_shape)
     expected_shape.pop(axis)
     expected_shape = tuple(expected_shape)
 
-    res = xp.vecdot(x1, x2, **kw)
+    res = vecdot(x1, x2, **kw)
 
     ph.assert_dtype("vecdot", in_dtype=[x1.dtype, x2.dtype],
                     out_dtype=res.dtype)
@@ -862,8 +893,24 @@ def test_vecdot(x1, x2, data):
     else:
         true_val = None
 
-    _test_stacks(linalg.vecdot, x1, x2, res=res, dims=0,
+    _test_stacks(vecdot, x1, x2, res=res, dims=0,
                  matrix_axes=(axis,), true_val=true_val)
+
+
+@pytest.mark.xp_extension('linalg')
+@given(
+    *two_mutual_arrays(dh.numeric_dtypes, mutually_broadcastable_shapes(2, min_dims=1)),
+    data(),
+)
+def test_linalg_vecdot(x1, x2, data):
+    _test_vecdot(linalg, x1, x2, data)
+
+@given(
+    *two_mutual_arrays(dh.numeric_dtypes, mutually_broadcastable_shapes(2, min_dims=1)),
+    data(),
+)
+def test_vecdot(x1, x2, data):
+    _test_vecdot(_array_module, x1, x2, data)
 
 # Insanely large orders might not work. There isn't a limit specified in the
 # spec, so we just limit to reasonable values here.
