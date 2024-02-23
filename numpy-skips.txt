@@ -14,6 +14,8 @@ array_api_tests/test_constants.py::test_newaxis
 
 # linalg.solve issue in numpy.array_api as of v1.26.2 (see numpy#25146)
 array_api_tests/test_linalg.py::test_solve
+# numpy.array_api needs updating... or replaced on CI
+array_api_tests/test_linalg.py::test_cross
 
 # https://github.com/numpy/numpy/issues/21373
 array_api_tests/test_array_object.py::test_getitem
