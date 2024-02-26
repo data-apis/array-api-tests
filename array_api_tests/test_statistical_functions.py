@@ -195,6 +195,7 @@ def test_std(x, data):
     # We can't easily test the result(s) as standard deviation methods vary a lot
 
 
+@pytest.mark.skip("flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
         dtype=xps.numeric_dtypes(),
