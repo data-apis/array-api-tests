@@ -485,7 +485,7 @@ def assert_array_elements(
         >>> assert xp.all(out == x)
 
     """
-    __tracebackhide__ = True
+    # __tracebackhide__ = True
     dh.result_type(out.dtype, expected.dtype)  # sanity check
     assert_shape(func_name, out_shape=out.shape, expected=expected.shape, kw=kw)  # sanity check
     f_func = f"[{func_name}({fmt_kw(kw)})]"
@@ -495,8 +495,8 @@ def assert_array_elements(
         if _real_float_strict_equals(out, expected):
             return
     elif out.dtype in dh.complex_dtypes:
-        real_match = _real_float_strict_equals(out.real, expected.real)
-        imag_match = _real_float_strict_equals(out.imag, expected.imag)
+        real_match = _real_float_strict_equals(xp.real(out), xp.real(expected))
+        imag_match = _real_float_strict_equals(xp.imag(out), xp.imag(expected))
         if real_match and imag_match:
             return
     else:
