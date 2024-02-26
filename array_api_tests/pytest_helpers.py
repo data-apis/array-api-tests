@@ -422,25 +422,30 @@ def assert_fill(
 
 
 def _real_float_strict_equals(out: Array, expected: Array) -> bool:
-    assert hasattr(_xp, "signbit")  # sanity check
-
     nan_mask = xp.isnan(out)
     if not xp.all(nan_mask == xp.isnan(expected)):
         return False
+    ignore_mask = nan_mask
 
-    out_zero_mask = out == 0
-    out_sign_mask = xp.signbit(out)
-    out_pos_zero_mask = out_zero_mask & out_sign_mask
-    out_neg_zero_mask = out_zero_mask & ~out_sign_mask
-    expected_zero_mask = expected == 0
-    expected_sign_mask = xp.signbit(expected)
-    expected_pos_zero_mask = expected_zero_mask & expected_sign_mask
-    expected_neg_zero_mask = expected_zero_mask & ~expected_sign_mask
-    if not (xp.all(out_pos_zero_mask == expected_pos_zero_mask) and xp.all(out_neg_zero_mask == expected_neg_zero_mask)):
-        return False
+    # Test sign of zeroes if xp.signbit() available, otherwise ignore as it's
+    # not that big of a deal for the perf costs.
+    if api_version >= "2023.12" and hasattr(_xp, "signbit"):
+        out_zero_mask = out == 0
+        out_sign_mask = xp.signbit(out)
+        out_pos_zero_mask = out_zero_mask & out_sign_mask
+        out_neg_zero_mask = out_zero_mask & ~out_sign_mask
+        expected_zero_mask = expected == 0
+        expected_sign_mask = xp.signbit(expected)
+        expected_pos_zero_mask = expected_zero_mask & expected_sign_mask
+        expected_neg_zero_mask = expected_zero_mask & ~expected_sign_mask
+        pos_zero_match = out_pos_zero_mask == expected_pos_zero_mask
+        neg_zero_match = out_neg_zero_mask == expected_neg_zero_mask
+        if not (xp.all(pos_zero_match) and xp.all(neg_zero_match)):
+            return False
+        ignore_mask |= out_zero_mask
 
-    ignore_mask = nan_mask | out_zero_mask
     replacement = xp.asarray(42, dtype=out.dtype)  # i.e. an arbitrary non-zero value that equals itself
+    assert replacement == replacement  # sanity check
     match = xp.where(ignore_mask, replacement, out) == xp.where(ignore_mask, replacement, expected)
     return xp.all(match)
 
@@ -486,10 +491,10 @@ def assert_array_elements(
     f_func = f"[{func_name}({fmt_kw(kw)})]"
 
     # First we try short-circuit for a successful assertion by using vectorised checks.
-    if out.dtype in dh.real_float_dtypes and api_version >= "2023.12":
+    if out.dtype in dh.real_float_dtypes:
         if _real_float_strict_equals(out, expected):
             return
-    elif out.dtype in dh.complex_dtypes and api_version >= "2023.12":
+    elif out.dtype in dh.complex_dtypes:
         real_match = _real_float_strict_equals(out.real, expected.real)
         imag_match = _real_float_strict_equals(out.imag, expected.imag)
         if real_match and imag_match:
