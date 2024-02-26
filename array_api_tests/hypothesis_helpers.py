@@ -313,12 +313,18 @@ def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes(
     # For now, just generate stacks of diagonal matrices.
     n = draw(integers(0, SQRT_MAX_ARRAY_SIZE),)
     stack_shape = draw(stack_shapes)
-    d = draw(arrays(dtypes, shape=(*stack_shape, 1, n),
-                        elements=dict(allow_nan=False, allow_infinity=False)))
+    dtype = draw(dtypes)
+    elements = one_of(
+        from_dtype(dtype, min_value=0.5, allow_nan=False, allow_infinity=False),
+        from_dtype(dtype, max_value=-0.5, allow_nan=False, allow_infinity=False),
+    )
+    d = draw(arrays(dtype, shape=(*stack_shape, 1, n), elements=elements))
+
     # Functions that require invertible matrices may do anything when it is
     # singular, including raising an exception, so we make sure the diagonals
     # are sufficiently nonzero to avoid any numerical issues.
-    assume(xp.all(xp.abs(d) > 0.5))
+    assert xp.all(xp.abs(d) >= 0.5)
+
     diag_mask = xp.arange(n) == xp.reshape(xp.arange(n), (n, 1))
     return xp.where(diag_mask, d, xp.zeros_like(d))
 
