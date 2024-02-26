@@ -7,8 +7,8 @@ from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
 # These are exported here so that they can be included in the special cases
 # tests from this file.
 from ._array_module import logical_not, subtract, floor, ceil, where
+from . import _array_module as xp
 from . import dtype_helpers as dh
-
 
 __all__ = ['all', 'any', 'logical_and', 'logical_or', 'logical_not', 'less',
            'less_equal', 'greater', 'subtract', 'negative', 'floor', 'ceil',
@@ -164,7 +164,7 @@ def notequal(x, y):
 
     return not_equal(x, y)
 
-def assert_exactly_equal(x, y):
+def assert_exactly_equal(x, y, msg_extra=None):
     """
     Test that the arrays x and y are exactly equal.
 
@@ -172,11 +172,13 @@ def assert_exactly_equal(x, y):
     equal.
 
     """
-    assert x.shape == y.shape, f"The input arrays do not have the same shapes ({x.shape} != {y.shape})"
+    extra = '' if not msg_extra else f' ({msg_extra})'
 
-    assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype})"
+    assert x.shape == y.shape, f"The input arrays do not have the same shapes ({x.shape} != {y.shape}){extra}"
 
-    assert all(exactly_equal(x, y)), "The input arrays have different values"
+    assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype}){extra}"
+
+    assert all(exactly_equal(x, y)), f"The input arrays have different values ({x!r} != {y!r}){extra}"
 
 def assert_finite(x):
     """
@@ -306,3 +308,13 @@ def same_sign(x, y):
 def assert_same_sign(x, y):
     assert all(same_sign(x, y)), "The input arrays do not have the same sign"
 
+def _matrix_transpose(x):
+    if not isinstance(xp.matrix_transpose, xp._UndefinedStub):
+        return xp.matrix_transpose(x)
+    if hasattr(x, 'mT'):
+        return x.mT
+    if not isinstance(xp.permute_dims, xp._UndefinedStub):
+        perm = list(range(x.ndim))
+        perm[-1], perm[-2] = perm[-2], perm[-1]
+        return xp.permute_dims(x, axes=tuple(perm))
+    raise NotImplementedError("No way to compute matrix transpose")

@@ -231,6 +231,57 @@ dtype_components = _make_dtype_mapping_from_names(
     {"complex64": xp.float32, "complex128": xp.float64}
 )
 
+def as_real_dtype(dtype):
+    """
+    Return the corresponding real dtype for a given floating-point dtype.
+    """
+    if dtype in real_float_dtypes:
+        return dtype
+    elif dtype_to_name[dtype] in complex_names:
+        return dtype_components[dtype]
+    else:
+        raise ValueError("as_real_dtype requires a floating-point dtype")
+
+def accumulation_result_dtype(x_dtype, dtype_kwarg):
+    """
+    Result dtype logic for sum(), prod(), and trace()
+
+    Note: may return None if a default uint cannot exist (e.g., for pytorch
+    which doesn't support uint32 or uint64). See https://github.com/data-apis/array-api-tests/issues/106
+
+    """
+    if dtype_kwarg is None:
+        if is_int_dtype(x_dtype):
+            if x_dtype in uint_dtypes:
+                default_dtype = default_uint
+            else:
+                default_dtype = default_int
+            if default_dtype is None:
+                _dtype = None
+            else:
+                m, M = dtype_ranges[x_dtype]
+                d_m, d_M = dtype_ranges[default_dtype]
+                if m < d_m or M > d_M:
+                    _dtype = x_dtype
+                else:
+                    _dtype = default_dtype
+        elif is_float_dtype(x_dtype, include_complex=False):
+            if dtype_nbits[x_dtype] > dtype_nbits[default_float]:
+                _dtype = x_dtype
+            else:
+                _dtype = default_float
+        elif api_version > "2021.12":
+            # Complex dtype
+            if dtype_nbits[x_dtype] > dtype_nbits[default_complex]:
+                _dtype = x_dtype
+            else:
+                _dtype = default_complex
+        else:
+            raise RuntimeError("Unexpected dtype. This indicates a bug in the test suite.")
+    else:
+        _dtype = dtype_kwarg
+
+    return _dtype
 
 if not hasattr(xp, "asarray"):
     default_int = xp.int32

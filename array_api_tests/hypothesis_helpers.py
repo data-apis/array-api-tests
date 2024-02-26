@@ -12,6 +12,7 @@ from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    sampled_from, shared, builds)
 
 from . import _array_module as xp, api_version
+from . import array_helpers as ah
 from . import dtype_helpers as dh
 from . import shape_helpers as sh
 from . import xps
@@ -211,6 +212,7 @@ def tuples(elements, *, min_size=0, max_size=None, unique_by=None, unique=False)
 
 # Use this to avoid memory errors with NumPy.
 # See https://github.com/numpy/numpy/issues/15753
+# Note, the hypothesis default for max_dims is min_dims + 2 (i.e., 0 + 2)
 def shapes(**kw):
     kw.setdefault('min_dims', 0)
     kw.setdefault('min_side', 0)
@@ -280,16 +282,19 @@ two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(2)
 
 # Note: This should become hermitian_matrices when complex dtypes are added
 @composite
-def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True):
+def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True, bound=10.):
     shape = draw(square_matrix_shapes)
     dtype = draw(dtypes)
     if not isinstance(finite, bool):
         finite = draw(finite)
     elements = {'allow_nan': False, 'allow_infinity': False} if finite else None
     a = draw(arrays(dtype=dtype, shape=shape, elements=elements))
-    upper = xp.triu(a)
-    lower = xp.triu(a, k=1).mT
-    return upper + lower
+    at = ah._matrix_transpose(a)
+    H = (a + at)*0.5
+    if finite:
+        assume(not xp.any(xp.isinf(H)))
+    assume(xp.all((H == 0.) | ((1/bound <= xp.abs(H)) & (xp.abs(H) <= bound))))
+    return H
 
 @composite
 def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
@@ -297,8 +302,9 @@ def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
     # TODO: Generate arbitrary positive definite matrices, for instance, by
     # using something like
     # https://github.com/scikit-learn/scikit-learn/blob/844b4be24/sklearn/datasets/_samples_generator.py#L1351.
-    n = draw(integers(0))
-    shape = draw(shapes()) + (n, n)
+    base_shape = draw(shapes())
+    n = draw(integers(0, 8))  # 8 is an arbitrary small but interesting-enough value
+    shape = base_shape + (n, n)
     assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
     dtype = draw(dtypes)
     return broadcast_to(eye(n, dtype=dtype), shape)
@@ -308,12 +314,18 @@ def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes(
     # For now, just generate stacks of diagonal matrices.
     n = draw(integers(0, SQRT_MAX_ARRAY_SIZE),)
     stack_shape = draw(stack_shapes)
-    d = draw(arrays(dtypes, shape=(*stack_shape, 1, n),
-                        elements=dict(allow_nan=False, allow_infinity=False)))
+    dtype = draw(dtypes)
+    elements = one_of(
+        from_dtype(dtype, min_value=0.5, allow_nan=False, allow_infinity=False),
+        from_dtype(dtype, max_value=-0.5, allow_nan=False, allow_infinity=False),
+    )
+    d = draw(arrays(dtype, shape=(*stack_shape, 1, n), elements=elements))
+
     # Functions that require invertible matrices may do anything when it is
     # singular, including raising an exception, so we make sure the diagonals
     # are sufficiently nonzero to avoid any numerical issues.
-    assume(xp.all(xp.abs(d) > 0.5))
+    assert xp.all(xp.abs(d) >= 0.5)
+
     diag_mask = xp.arange(n) == xp.reshape(xp.arange(n), (n, 1))
     return xp.where(diag_mask, d, xp.zeros_like(d))
 

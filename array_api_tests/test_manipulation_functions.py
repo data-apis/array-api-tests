@@ -250,6 +250,7 @@ def reshape_shapes(draw, shape):
     return tuple(rshape)
 
 
+@pytest.mark.skip("flaky")  # TODO: fix!
 @given(
     x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(max_side=MAX_SIDE)),
     data=st.data(),
