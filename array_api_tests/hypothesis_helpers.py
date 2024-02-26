@@ -302,8 +302,9 @@ def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
     # TODO: Generate arbitrary positive definite matrices, for instance, by
     # using something like
     # https://github.com/scikit-learn/scikit-learn/blob/844b4be24/sklearn/datasets/_samples_generator.py#L1351.
-    n = draw(integers(0))
-    shape = draw(shapes()) + (n, n)
+    base_shape = draw(shapes())
+    n = draw(integers(0, 8))  # 8 is an arbitrary small but interesting-enough value
+    shape = base_shape + (n, n)
     assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
     dtype = draw(dtypes)
     return broadcast_to(eye(n, dtype=dtype), shape)
