@@ -6,7 +6,8 @@ from typing import Any, Dict, Optional, Sequence, Tuple, Union
 from . import _array_module as xp
 from . import dtype_helpers as dh
 from . import shape_helpers as sh
-from . import stubs
+from . import stubs, api_version
+from . import xp as _xp
 from .typing import Array, DataType, Scalar, ScalarType, Shape
 
 __all__ = [
@@ -420,6 +421,30 @@ def assert_fill(
         assert xp.all(xp.equal(out, xp.asarray(fill_value, dtype=dtype))), msg
 
 
+def _real_float_strict_equals(out: Array, expected: Array) -> bool:
+    assert hasattr(_xp, "signbit")  # sanity check
+
+    nan_mask = xp.isnan(out)
+    if not xp.all(nan_mask == xp.isnan(expected)):
+        return False
+
+    out_zero_mask = out == 0
+    out_sign_mask = xp.signbit(out)
+    out_pos_zero_mask = out_zero_mask & out_sign_mask
+    out_neg_zero_mask = out_zero_mask & ~out_sign_mask
+    expected_zero_mask = expected == 0
+    expected_sign_mask = xp.signbit(expected)
+    expected_pos_zero_mask = expected_zero_mask & expected_sign_mask
+    expected_neg_zero_mask = expected_zero_mask & ~expected_sign_mask
+    if not (xp.all(out_pos_zero_mask == expected_pos_zero_mask) and xp.all(out_neg_zero_mask == expected_neg_zero_mask)):
+        return False
+
+    ignore_mask = nan_mask | out_zero_mask
+    replacement = xp.asarray(42, dtype=out.dtype)  # i.e. an arbitrary non-zero value that equals itself
+    match = xp.where(ignore_mask, replacement, out) == xp.where(ignore_mask, replacement, expected)
+    return xp.all(match)
+
+
 def _assert_float_element(at_out: Array, at_expected: Array, msg: str):
     if xp.isnan(at_expected):
         assert xp.isnan(at_out), msg
@@ -460,31 +485,40 @@ def assert_array_elements(
     assert_shape(func_name, out_shape=out.shape, expected=expected.shape, kw=kw)  # sanity check
     f_func = f"[{func_name}({fmt_kw(kw)})]"
 
-    match = (out == expected)
-    if xp.all(match):
-        return
+    # First we try short-circuit for a successful assertion by using vectorised checks.
+    if out.dtype in dh.real_float_dtypes and api_version >= "2023.12":
+        if _real_float_strict_equals(out, expected):
+            return
+    elif out.dtype in dh.complex_dtypes and api_version >= "2023.12":
+        real_match = _real_float_strict_equals(out.real, expected.real)
+        imag_match = _real_float_strict_equals(out.imag, expected.imag)
+        if real_match and imag_match:
+            return
+    else:
+        match = out == expected
+        if xp.all(match):
+            return
 
     # In case of mismatch, generate a more helpful error. Cycling through all indices is
     # costly in some array api implementations, so we only do this in the case of a failure.
+    msg_template = "{}={}, but should be {} " + f_func
     if out.dtype in dh.real_float_dtypes:
         for idx in sh.ndindex(out.shape):
             at_out = out[idx]
             at_expected = expected[idx]
-            msg = (
-                f"{sh.fmt_idx(out_repr, idx)}={at_out}, should be {at_expected} "
-                f"{f_func}"
-            )
+            msg = msg_template.format(sh.fmt_idx(out_repr, idx), at_out, at_expected)
             _assert_float_element(at_out, at_expected, msg)
     elif out.dtype in dh.complex_dtypes:
         assert (out.dtype in dh.complex_dtypes) == (expected.dtype in dh.complex_dtypes)
         for idx in sh.ndindex(out.shape):
             at_out = out[idx]
             at_expected = expected[idx]
-            msg = (
-                f"{sh.fmt_idx(out_repr, idx)}={at_out}, should be {at_expected} "
-                f"{f_func}"
-            )
+            msg = msg_template.format(sh.fmt_idx(out_repr, idx), at_out, at_expected)
             _assert_float_element(xp.real(at_out), xp.real(at_expected), msg)
             _assert_float_element(xp.imag(at_out), xp.imag(at_expected), msg)
     else:
-        assert xp.all(match), f"{out_repr} not as expected {f_func}\n{out_repr}={out!r}\n{expected=}"
+        for idx in sh.ndindex(out.shape):
+            at_out = out[idx]
+            at_expected = expected[idx]
+            msg = msg_template.format(sh.fmt_idx(out_repr, idx), at_out, at_expected)
+            assert at_out == at_expected, msg
