@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional, Sequence, Tuple, Union
 from . import _array_module as xp
 from . import dtype_helpers as dh
 from . import shape_helpers as sh
-from . import stubs, api_version
+from . import stubs
 from . import xp as _xp
 from .typing import Array, DataType, Scalar, ScalarType, Shape
 
@@ -429,13 +429,13 @@ def _real_float_strict_equals(out: Array, expected: Array) -> bool:
 
     # Test sign of zeroes if xp.signbit() available, otherwise ignore as it's
     # not that big of a deal for the perf costs.
-    if api_version >= "2023.12" and hasattr(_xp, "signbit"):
+    if hasattr(_xp, "signbit"):
         out_zero_mask = out == 0
-        out_sign_mask = xp.signbit(out)
+        out_sign_mask = _xp.signbit(out)
         out_pos_zero_mask = out_zero_mask & out_sign_mask
         out_neg_zero_mask = out_zero_mask & ~out_sign_mask
         expected_zero_mask = expected == 0
-        expected_sign_mask = xp.signbit(expected)
+        expected_sign_mask = _xp.signbit(expected)
         expected_pos_zero_mask = expected_zero_mask & expected_sign_mask
         expected_neg_zero_mask = expected_zero_mask & ~expected_sign_mask
         pos_zero_match = out_pos_zero_mask == expected_pos_zero_mask
