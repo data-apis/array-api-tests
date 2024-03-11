@@ -19,6 +19,7 @@ from hypothesis.strategies import (booleans, composite, tuples, floats,
                                    data)
 from ndindex import iter_indices
 
+import math
 import itertools
 from typing import Tuple
 
@@ -610,8 +611,9 @@ def solve_args() -> Tuple[SearchStrategy[Array], SearchStrategy[Array]]:
 
     @composite
     def _x2_shapes(draw):
-        end = draw(integers(0, SQRT_MAX_ARRAY_SIZE))
-        return draw(stack_shapes)[1] + draw(x1).shape[-1:] + (end,)
+        base_shape = draw(stack_shapes)[1] + draw(x1).shape[-1:]
+        end = draw(integers(0, SQRT_MAX_ARRAY_SIZE // max(math.prod(base_shape), 1)))
+        return base_shape + (end,)
 
     x2_shapes = one_of(x1.map(lambda x: (x.shape[-1],)), _x2_shapes())
     x2 = arrays(shape=x2_shapes, dtype=mutual_dtypes.map(lambda pair: pair[1]))
