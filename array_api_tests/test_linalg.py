@@ -20,11 +20,12 @@ from hypothesis.strategies import (booleans, composite, tuples, floats,
 from ndindex import iter_indices
 
 import itertools
+from typing import Tuple
 
 from .array_helpers import assert_exactly_equal, asarray
 from .hypothesis_helpers import (arrays, all_floating_dtypes, xps, shapes,
                                  kwargs, matrix_shapes, square_matrix_shapes,
-                                 symmetric_matrices,
+                                 symmetric_matrices, SearchStrategy,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
                                  invertible_matrices, two_mutual_arrays,
                                  mutually_promotable_dtypes, one_d_shapes,
@@ -35,6 +36,7 @@ from .hypothesis_helpers import (arrays, all_floating_dtypes, xps, shapes,
 from . import dtype_helpers as dh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
+from .typing import Array
 
 from . import _array_module
 from . import _array_module as xp
@@ -589,7 +591,7 @@ def test_slogdet(x):
     # TODO: Test this when we have tests for floating-point values.
     # assert all(abs(linalg.det(x) - sign*exp(logabsdet)) < eps)
 
-def solve_args():
+def solve_args() -> Tuple[SearchStrategy[Array], SearchStrategy[Array]]:
     """
     Strategy for the x1 and x2 arguments to test_solve()
 
