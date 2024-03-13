@@ -312,8 +312,8 @@ def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
 @composite
 def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes()):
     # For now, just generate stacks of diagonal matrices.
-    n = draw(integers(0, SQRT_MAX_ARRAY_SIZE),)
     stack_shape = draw(stack_shapes)
+    n = draw(integers(0, SQRT_MAX_ARRAY_SIZE // max(math.prod(stack_shape), 1)),)
     dtype = draw(dtypes)
     elements = one_of(
         from_dtype(dtype, min_value=0.5, allow_nan=False, allow_infinity=False),
