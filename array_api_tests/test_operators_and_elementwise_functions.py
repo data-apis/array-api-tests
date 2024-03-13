@@ -457,7 +457,7 @@ class UnaryParamContext(NamedTuple):
 
     @property
     def id(self) -> str:
-        return f"{self.func_name}"
+        return self.func_name
 
     def __repr__(self):
         return f"UnaryParamContext(<{self.id}>)"
