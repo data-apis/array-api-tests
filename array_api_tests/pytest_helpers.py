@@ -485,7 +485,7 @@ def assert_array_elements(
         >>> assert xp.all(out == x)
 
     """
-    # __tracebackhide__ = True
+    __tracebackhide__ = True
     dh.result_type(out.dtype, expected.dtype)  # sanity check
     assert_shape(func_name, out_shape=out.shape, expected=expected.shape, kw=kw)  # sanity check
     f_func = f"[{func_name}({fmt_kw(kw)})]"
