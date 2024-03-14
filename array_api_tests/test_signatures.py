@@ -33,8 +33,6 @@ from . import dtype_helpers as dh
 from . import xp
 from .stubs import array_methods, category_to_funcs, extension_to_funcs, name_to_func
 
-pytestmark = pytest.mark.ci
-
 ParameterKind = Literal[
     Parameter.POSITIONAL_ONLY,
     Parameter.VAR_POSITIONAL,

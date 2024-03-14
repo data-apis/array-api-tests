@@ -21,8 +21,6 @@ from . import shape_helpers as sh
 from . import xps
 from .typing import Array, DataType, Param, Scalar, ScalarType, Shape
 
-pytestmark = pytest.mark.ci
-
 
 def all_integer_dtypes() -> st.SearchStrategy[DataType]:
     """Returns a strategy for signed and unsigned integer dtype objects."""

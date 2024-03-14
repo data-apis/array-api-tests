@@ -15,8 +15,6 @@ from . import xps
 from ._array_module import _UndefinedStub
 from .typing import DataType
 
-pytestmark = pytest.mark.ci
-
 
 def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
     dtypes = [d2 for d1, d2 in dh.promotion_table if d1 == dtype]

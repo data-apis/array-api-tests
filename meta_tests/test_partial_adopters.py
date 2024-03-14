@@ -1,10 +1,10 @@
 import pytest
 from hypothesis import given
 
-from .. import dtype_helpers as dh
-from .. import hypothesis_helpers as hh
-from .. import _array_module as xp
-from .._array_module import _UndefinedStub
+from array_api_tests import dtype_helpers as dh
+from array_api_tests import hypothesis_helpers as hh
+from array_api_tests import _array_module as xp
+from array_api_tests ._array_module import _UndefinedStub
 
 
 # e.g. PyTorch only supports uint8 currently

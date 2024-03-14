@@ -35,8 +35,6 @@ from . import shape_helpers as sh
 from . import xp, xps
 from .stubs import category_to_funcs
 
-pytestmark = pytest.mark.ci
-
 UnaryCheck = Callable[[float], bool]
 BinaryCheck = Callable[[float, float], bool]
 

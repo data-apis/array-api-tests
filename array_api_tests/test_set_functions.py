@@ -13,7 +13,7 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 
-pytestmark = [pytest.mark.ci, pytest.mark.data_dependent_shapes]
+pytestmark = pytest.mark.data_dependent_shapes
 
 
 @given(hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))

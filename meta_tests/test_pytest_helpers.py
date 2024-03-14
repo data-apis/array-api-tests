@@ -1,7 +1,7 @@
 from pytest import raises
 
-from .. import _array_module as xp
-from .. import pytest_helpers as ph
+from array_api_tests import _array_module as xp
+from array_api_tests import pytest_helpers as ph
 
 
 def test_assert_dtype():

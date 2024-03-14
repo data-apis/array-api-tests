@@ -14,8 +14,6 @@ from . import shape_helpers as sh
 from . import xps
 from .typing import Array, Shape
 
-pytestmark = pytest.mark.ci
-
 MAX_SIDE = hh.MAX_ARRAY_SIZE // 64
 MAX_DIMS = min(hh.MAX_ARRAY_SIZE // MAX_SIDE, 32)  # NumPy only supports up to 32 dims
 

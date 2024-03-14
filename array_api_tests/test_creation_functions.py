@@ -3,7 +3,6 @@ import math
 from itertools import count
 from typing import Iterator, NamedTuple, Union
 
-import pytest
 from hypothesis import assume, given, note
 from hypothesis import strategies as st
 
@@ -14,8 +13,6 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 from .typing import DataType, Scalar
-
-pytestmark = pytest.mark.ci
 
 
 class frange(NamedTuple):
