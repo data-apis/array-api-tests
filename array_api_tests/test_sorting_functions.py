@@ -1,7 +1,6 @@
 import cmath
 from typing import Set
 
-import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.control import assume
@@ -13,8 +12,6 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 from .typing import Scalar, Shape
-
-pytestmark = pytest.mark.ci
 
 
 def assert_scalar_in_set(

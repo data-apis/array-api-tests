@@ -16,8 +16,6 @@ from . import xps
 from . import xp as _xp
 from .typing import DataType, Index, Param, Scalar, ScalarType, Shape
 
-pytestmark = pytest.mark.ci
-
 
 def scalar_objects(
     dtype: DataType, shape: Shape

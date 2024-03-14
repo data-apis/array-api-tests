@@ -1,6 +1,6 @@
 import math
 
-from ..test_special_cases import parse_result
+from array_api_tests .test_special_cases import parse_result
 
 
 def test_parse_result():

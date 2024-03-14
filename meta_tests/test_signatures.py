@@ -2,7 +2,7 @@ from inspect import Parameter, Signature, signature
 
 import pytest
 
-from ..test_signatures import _test_inspectable_func
+from array_api_tests .test_signatures import _test_inspectable_func
 
 
 def stub(foo, /, bar=None, *, baz=None):

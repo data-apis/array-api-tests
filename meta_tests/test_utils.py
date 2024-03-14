@@ -2,14 +2,14 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from .. import _array_module as xp
-from .. import dtype_helpers as dh
-from .. import hypothesis_helpers as hh
-from .. import shape_helpers as sh
-from .. import xps
-from ..test_creation_functions import frange
-from ..test_manipulation_functions import roll_ndindex
-from ..test_operators_and_elementwise_functions import mock_int_dtype
+from array_api_tests import _array_module as xp
+from array_api_tests import dtype_helpers as dh
+from array_api_tests import hypothesis_helpers as hh
+from array_api_tests import shape_helpers as sh
+from array_api_tests import xps
+from array_api_tests .test_creation_functions import frange
+from array_api_tests .test_manipulation_functions import roll_ndindex
+from array_api_tests .test_operators_and_elementwise_functions import mock_int_dtype
 
 
 @pytest.mark.parametrize(

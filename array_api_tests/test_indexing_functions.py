@@ -9,8 +9,6 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 
-pytestmark = pytest.mark.ci
-
 
 @pytest.mark.min_version("2022.12")
 @given(

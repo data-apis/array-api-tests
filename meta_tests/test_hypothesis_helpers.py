@@ -6,13 +6,13 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.errors import Unsatisfiable
 
-from .. import _array_module as xp
-from .. import array_helpers as ah
-from .. import dtype_helpers as dh
-from .. import hypothesis_helpers as hh
-from .. import shape_helpers as sh
-from .. import xps
-from .._array_module import _UndefinedStub
+from array_api_tests import _array_module as xp
+from array_api_tests import array_helpers as ah
+from array_api_tests import dtype_helpers as dh
+from array_api_tests import hypothesis_helpers as hh
+from array_api_tests import shape_helpers as sh
+from array_api_tests import xps
+from array_api_tests ._array_module import _UndefinedStub
 
 UNDEFINED_DTYPES = any(isinstance(d, _UndefinedStub) for d in dh.all_dtypes)
 pytestmark = [pytest.mark.skipif(UNDEFINED_DTYPES, reason="undefined dtypes")]

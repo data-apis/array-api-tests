@@ -55,11 +55,6 @@ def pytest_addoption(parser):
     )
     # CI
     parser.addoption(
-        "--ci",
-        action="store_true",
-        help="run just the tests appropriate for CI",
-    )
-    parser.addoption(
         "--skips-file",
         action="store",
         help="file with tests to skip. Defaults to skips.txt"
@@ -78,7 +73,6 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "data_dependent_shapes: output shapes are dependent on inputs"
     )
-    config.addinivalue_line("markers", "ci: primary test")
     config.addinivalue_line(
         "markers",
         "min_version(api_version): run when greater or equal to api_version",
@@ -144,7 +138,6 @@ def pytest_collection_modifyitems(config, items):
 
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
-    ci = config.getoption("--ci")
 
     for item in items:
         markers = list(item.iter_markers())
@@ -178,11 +171,6 @@ def pytest_collection_modifyitems(config, items):
                         mark.skip(reason="disabled via --disable-data-dependent-shapes")
                     )
                     break
-        # skip if test not appropriate for CI
-        if ci:
-            ci_mark = next((m for m in markers if m.name == "ci"), None)
-            if ci_mark is None:
-                item.add_marker(mark.skip(reason="disabled via --ci"))
         # skip if test is for greater api_version
         ver_mark = next((m for m in markers if m.name == "min_version"), None)
         if ver_mark is not None:

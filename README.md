@@ -161,12 +161,6 @@ You can specify the API version to use when testing via the
 array module's `__array_api_version__` value, and if that attribute doesn't
 exist then we fallback to `"2021.12"`.
 
-#### CI flag
-
-Use the `--ci` flag to run only the primary and special cases tests. You can
-ignore the other test cases as they are redundant for the purposes of checking
-compliance.
-
 #### Data-dependent shapes
 
 Use the `--disable-data-dependent-shapes` flag to skip testing functions which have

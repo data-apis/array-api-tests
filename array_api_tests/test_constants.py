@@ -7,8 +7,6 @@ from . import dtype_helpers as dh
 from . import xp
 from .typing import Array
 
-pytestmark = pytest.mark.ci
-
 
 def assert_scalar_float(name: str, c: Any):
     assert isinstance(c, SupportsFloat), f"{name}={c!r} does not look like a float"

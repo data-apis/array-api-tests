@@ -14,8 +14,6 @@ from . import xps
 from . import xp as _xp
 from .typing import DataType
 
-pytestmark = pytest.mark.ci
-
 
 # TODO: test with complex dtypes
 def non_complex_dtypes():
