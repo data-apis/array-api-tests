@@ -1,5 +1,6 @@
 from pytest import raises
 
+from array_api_tests import xp as _xp
 from array_api_tests import _array_module as xp
 from array_api_tests import pytest_helpers as ph
 
@@ -16,10 +17,12 @@ def test_assert_dtype():
 def test_assert_array_elements():
     ph.assert_array_elements("int zeros", out=xp.asarray(0), expected=xp.asarray(0))
     ph.assert_array_elements("pos zeros", out=xp.asarray(0.0), expected=xp.asarray(0.0))
-    with raises(AssertionError):
-        ph.assert_array_elements("mixed sign zeros", out=xp.asarray(0.0), expected=xp.asarray(-0.0))
-    with raises(AssertionError):
-        ph.assert_array_elements("mixed sign zeros", out=xp.asarray(-0.0), expected=xp.asarray(0.0))
+    ph.assert_array_elements("neg zeros", out=xp.asarray(-0.0), expected=xp.asarray(-0.0))
+    if hasattr(_xp, "signbit"):
+        with raises(AssertionError):
+            ph.assert_array_elements("mixed sign zeros", out=xp.asarray(0.0), expected=xp.asarray(-0.0))
+        with raises(AssertionError):
+            ph.assert_array_elements("mixed sign zeros", out=xp.asarray(-0.0), expected=xp.asarray(0.0))
 
     ph.assert_array_elements("nans", out=xp.asarray(float("nan")), expected=xp.asarray(float("nan")))
     with raises(AssertionError):
