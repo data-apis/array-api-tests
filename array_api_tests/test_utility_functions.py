@@ -1,3 +1,4 @@
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -9,6 +10,7 @@ from . import shape_helpers as sh
 from . import xps
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)),
     data=st.data(),
@@ -36,6 +38,7 @@ def test_all(x, data):
                                 out=result, expected=expected, kw=kw)
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
     data=st.data(),

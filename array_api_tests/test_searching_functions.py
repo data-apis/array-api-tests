@@ -12,6 +12,9 @@ from . import shape_helpers as sh
 from . import xps
 
 
+pytestmark = pytest.mark.unvectorized
+
+
 @given(
     x=hh.arrays(
         dtype=xps.real_dtypes(),

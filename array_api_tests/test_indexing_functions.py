@@ -10,6 +10,7 @@ from . import shape_helpers as sh
 from . import xps
 
 
+@pytest.mark.unvectorized
 @pytest.mark.min_version("2022.12")
 @given(
     x=hh.arrays(xps.scalar_dtypes(), hh.shapes(min_dims=1, min_side=1)),

@@ -1,6 +1,7 @@
 import cmath
 from typing import Set
 
+import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.control import assume
@@ -29,6 +30,7 @@ def assert_scalar_in_set(
 
 
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(
         dtype=xps.real_dtypes(),
@@ -88,6 +90,7 @@ def test_argsort(x, data):
                     )
 
 
+@pytest.mark.unvectorized
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
 @given(
     x=hh.arrays(

@@ -119,6 +119,7 @@ def test_concat(dtypes, base_shape, data):
                     )
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
     axis=shared_shapes().flatmap(
@@ -147,6 +148,7 @@ def test_expand_dims(x, axis):
     )
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(
         dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1).filter(lambda s: 1 in s)
@@ -184,6 +186,7 @@ def test_squeeze(x, data):
     assert_array_ndindex("squeeze", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=sh.ndindex(out.shape))
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
     data=st.data(),
@@ -208,6 +211,7 @@ def test_flip(x, data):
                              out_indices=reverse_indices, kw=kw)
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes(min_dims=1)),
     axes=shared_shapes(min_dims=1).flatmap(
@@ -248,6 +252,7 @@ def reshape_shapes(draw, shape):
     return tuple(rshape)
 
 
+@pytest.mark.unvectorized
 @pytest.mark.skip("flaky")  # TODO: fix!
 @given(
     x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(max_side=MAX_SIDE)),
@@ -280,6 +285,7 @@ def roll_ndindex(shape: Shape, shifts: Tuple[int], axes: Tuple[int]) -> Iterator
         yield tuple((i + sh) % si for i, sh, si in zip(idx, all_shifts, shape))
 
 
+@pytest.mark.unvectorized
 @given(hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()), st.data())
 def test_roll(x, data):
     shift_strat = st.integers(-hh.MAX_ARRAY_SIZE, hh.MAX_ARRAY_SIZE)
@@ -319,6 +325,7 @@ def test_roll(x, data):
         assert_array_ndindex("roll", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=shifted_indices, kw=kw)
 
 
+@pytest.mark.unvectorized
 @given(
     shape=shared_shapes(min_dims=1),
     dtypes=hh.mutually_promotable_dtypes(None),

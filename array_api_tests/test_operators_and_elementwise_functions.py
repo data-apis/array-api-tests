@@ -22,6 +22,9 @@ from . import xps
 from .typing import Array, DataType, Param, Scalar, ScalarType, Shape
 
 
+pytestmark = pytest.mark.unvectorized
+
+
 def all_integer_dtypes() -> st.SearchStrategy[DataType]:
     """Returns a strategy for signed and unsigned integer dtype objects."""
     return xps.unsigned_integer_dtypes() | xps.integer_dtypes()

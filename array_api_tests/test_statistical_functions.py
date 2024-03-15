@@ -23,6 +23,7 @@ def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
     return st.none() | st.sampled_from(dtypes)
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(
         dtype=xps.real_dtypes(),
@@ -75,6 +76,7 @@ def test_mean(x, data):
     # Values testing mean is too finicky
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(
         dtype=xps.real_dtypes(),
@@ -105,6 +107,7 @@ def test_min(x, data):
         ph.assert_scalar_equals("min", type_=scalar_type, idx=out_idx, out=min_, expected=expected)
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(
         dtype=xps.numeric_dtypes(),
@@ -193,6 +196,7 @@ def test_std(x, data):
     # We can't easily test the result(s) as standard deviation methods vary a lot
 
 
+@pytest.mark.unvectorized
 @pytest.mark.skip("flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
@@ -245,6 +249,7 @@ def test_sum(x, data):
         ph.assert_scalar_equals("sum", type_=scalar_type, idx=out_idx, out=sum_, expected=expected)
 
 
+@pytest.mark.unvectorized
 @pytest.mark.skip(reason="flaky")  # TODO: fix!
 @given(
     x=hh.arrays(

@@ -77,6 +77,10 @@ def pytest_configure(config):
         "markers",
         "min_version(api_version): run when greater or equal to api_version",
     )
+    config.addinivalue_line(
+        "markers",
+        "unvectorized: asserts against values via element-wise iteration (not performative!)",
+    )
     # Hypothesis
     hypothesis_max_examples = config.getoption("--hypothesis-max-examples")
     disable_deadline = config.getoption("--hypothesis-disable-deadline")
@@ -104,6 +108,9 @@ def xp_has_ext(ext: str) -> bool:
 
 
 def pytest_collection_modifyitems(config, items):
+    # 1. Prepare for iterating over items
+    # -----------------------------------
+
     skips_file = skips_path = config.getoption('--skips-file')
     if skips_file is None:
         skips_file = Path(__file__).parent / "skips.txt"
@@ -138,6 +145,9 @@ def pytest_collection_modifyitems(config, items):
 
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
+
+    # 2. Iterate through items and apply markers accordingly
+    # ------------------------------------------------------
 
     for item in items:
         markers = list(item.iter_markers())
@@ -181,6 +191,9 @@ def pytest_collection_modifyitems(config, items):
                         reason=f"requires ARRAY_API_TESTS_VERSION=>{min_version}"
                     )
                 )
+
+    # 3. Warn on bad skipped/xfailed ids
+    # ----------------------------------
 
     bad_ids_end_msg = (
         "Note the relevant tests might not of been collected by pytest, or "
