@@ -28,4 +28,6 @@ jobs:
       env:
         ARRAY_API_TESTS_MODULE: array_api_strict
       run: |
-        pytest -v -rxXfE --skips-file numpy-skips.txt
+        pytest -v -rxXfE --skips-file numpy-skips.txt array_api_tests/
+        # We also have internal tests that isn't really necessary for adopters
+        pytest -v -rxXfE meta_tests/
