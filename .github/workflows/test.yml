@@ -1,4 +1,4 @@
-name: NumPy Array API
+name: Test Array API Strict
 
 on: [push, pull_request]
 
