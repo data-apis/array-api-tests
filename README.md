@@ -138,9 +138,9 @@ issues](https://github.com/data-apis/array-api-tests/issues/) to us.
 
 ## Running on CI
 
-See our existing [GitHub Actions workflow for
-Numpy](https://github.com/data-apis/array-api-tests/blob/master/.github/workflows/numpy.yml)
-for an example of using the test suite on CI.
+See our existing [GitHub Actions workflow for `array-api-strict`](https://github.com/data-apis/array-api-tests/blob/master/.github/workflows/test.yml)
+for an example of using the test suite on CI. Note [`array-api-strict`](https://github.com/data-apis/array-api-strict)
+is an implementation of the array API that uses NumPy under the hood.
 
 ### Releases
 
