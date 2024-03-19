@@ -6,6 +6,7 @@ import warnings
 import os
 
 from hypothesis import settings
+from hypothesis.errors import InvalidArgument
 from pytest import mark
 
 from array_api_tests import _array_module as xp
@@ -205,7 +206,13 @@ def pytest_collection_modifyitems(config, items):
         if any(m.name == "unvectorized" for m in markers):
             # TODO: limit generated examples when settings already applied
             if not hasattr(item.obj, "_hypothesis_internal_settings_applied"):
-                item.obj = settings(max_examples=unvectorized_max_examples)(item.obj)
+                try:
+                    item.obj = settings(max_examples=unvectorized_max_examples)(item.obj)
+                except InvalidArgument as e:
+                    warnings.warn(
+                        f"Tried decorating {item.name} with settings() but got "
+                        f"hypothesis.errors.InvalidArgument: {e}"
+                    )
 
 
     # 3. Warn on bad skipped/xfailed ids
