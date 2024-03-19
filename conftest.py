@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+import argparse
 import math
 import warnings
 import os
@@ -55,6 +56,7 @@ def pytest_addoption(parser):
         help="disable testing functions with output shapes dependent on input",
     )
     # CI
+    parser.addoption("--ci", action="store_true", help=argparse.SUPPRESS )  # deprecated
     parser.addoption(
         "--skips-file",
         action="store",
@@ -98,6 +100,12 @@ def pytest_configure(config):
         settings.load_profile("xp_override")
     else:
         settings.load_profile("xp_default")
+    # CI
+    if config.getoption("--ci"):
+        warnings.warn(
+            "Custom pytest option --ci is deprecated as any tests not for CI "
+            "are now located in meta_tests/"
+        )
 
 
 @lru_cache
