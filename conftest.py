@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+import math
 import warnings
 import os
 
@@ -145,6 +146,7 @@ def pytest_collection_modifyitems(config, items):
 
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
+    unvectorized_max_examples = math.ceil(math.log(config.getoption("--hypothesis-max-examples") or 50))
 
     # 2. Iterate through items and apply markers accordingly
     # ------------------------------------------------------
@@ -191,6 +193,12 @@ def pytest_collection_modifyitems(config, items):
                         reason=f"requires ARRAY_API_TESTS_VERSION=>{min_version}"
                     )
                 )
+        # reduce max generated Hypothesis example for unvectorized tests
+        if any(m.name == "unvectorized" for m in markers):
+            # TODO: limit generated examples when settings already applied
+            if not hasattr(item.obj, "_hypothesis_internal_settings_applied"):
+                item.obj = settings(max_examples=unvectorized_max_examples)(item.obj)
+
 
     # 3. Warn on bad skipped/xfailed ids
     # ----------------------------------
