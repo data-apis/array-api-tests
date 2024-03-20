@@ -9,9 +9,8 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 
-pytestmark = pytest.mark.ci
 
-
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)),
     data=st.data(),
@@ -39,6 +38,7 @@ def test_all(x, data):
                                 out=result, expected=expected, kw=kw)
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
     data=st.data(),

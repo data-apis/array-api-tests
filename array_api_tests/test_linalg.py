@@ -43,8 +43,6 @@ from . import _array_module
 from . import _array_module as xp
 from ._array_module import linalg
 
-pytestmark = pytest.mark.ci
-
 def assert_equal(x, y, msg_extra=None):
     extra = '' if not msg_extra else f' ({msg_extra})'
     if x.dtype in dh.all_float_dtypes:

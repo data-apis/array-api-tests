@@ -1,6 +1,6 @@
 import pytest
 
-from ..dtype_helpers import EqualityMapping
+from array_api_tests .dtype_helpers import EqualityMapping
 
 
 def test_raises_on_distinct_eq_key():

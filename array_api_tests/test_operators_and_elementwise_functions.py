@@ -21,7 +21,8 @@ from . import shape_helpers as sh
 from . import xps
 from .typing import Array, DataType, Param, Scalar, ScalarType, Shape
 
-pytestmark = pytest.mark.ci
+
+pytestmark = pytest.mark.unvectorized
 
 
 def all_integer_dtypes() -> st.SearchStrategy[DataType]:
@@ -457,7 +458,7 @@ class UnaryParamContext(NamedTuple):
 
     @property
     def id(self) -> str:
-        return f"{self.func_name}"
+        return self.func_name
 
     def __repr__(self):
         return f"UnaryParamContext(<{self.id}>)"

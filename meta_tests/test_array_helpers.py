@@ -1,5 +1,5 @@
-from .. import _array_module as xp
-from ..array_helpers import exactly_equal, notequal
+from array_api_tests import _array_module as xp
+from array_api_tests .array_helpers import exactly_equal, notequal
 
 # TODO: These meta-tests currently only work with NumPy
 

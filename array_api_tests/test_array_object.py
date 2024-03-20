@@ -16,8 +16,6 @@ from . import xps
 from . import xp as _xp
 from .typing import DataType, Index, Param, Scalar, ScalarType, Shape
 
-pytestmark = pytest.mark.ci
-
 
 def scalar_objects(
     dtype: DataType, shape: Shape
@@ -107,6 +105,7 @@ def test_getitem(shape, dtype, data):
         ph.assert_array_elements("__getitem__", out=out, expected=expected)
 
 
+@pytest.mark.unvectorized
 @given(
     shape=hh.shapes(),
     dtypes=hh.oneway_promotable_dtypes(dh.all_dtypes),
@@ -154,6 +153,7 @@ def test_setitem(shape, dtypes, data):
         )
 
 
+@pytest.mark.unvectorized
 @pytest.mark.data_dependent_shapes
 @given(hh.shapes(), st.data())
 def test_getitem_masking(shape, data):
@@ -199,6 +199,7 @@ def test_getitem_masking(shape, data):
                 )
 
 
+@pytest.mark.unvectorized
 @given(hh.shapes(), st.data())
 def test_setitem_masking(shape, data):
     x = data.draw(hh.arrays(xps.scalar_dtypes(), shape=shape), label="x")

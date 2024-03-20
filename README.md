@@ -138,9 +138,9 @@ issues](https://github.com/data-apis/array-api-tests/issues/) to us.
 
 ## Running on CI
 
-See our existing [GitHub Actions workflow for
-Numpy](https://github.com/data-apis/array-api-tests/blob/master/.github/workflows/numpy.yml)
-for an example of using the test suite on CI.
+See our existing [GitHub Actions workflow for `array-api-strict`](https://github.com/data-apis/array-api-tests/blob/master/.github/workflows/test.yml)
+for an example of using the test suite on CI. Note [`array-api-strict`](https://github.com/data-apis/array-api-strict)
+is an implementation of the array API that uses NumPy under the hood.
 
 ### Releases
 
@@ -160,12 +160,6 @@ You can specify the API version to use when testing via the
 `ARRAY_API_TESTS_VERSION` environment variable. Currently this defaults to the
 array module's `__array_api_version__` value, and if that attribute doesn't
 exist then we fallback to `"2021.12"`.
-
-#### CI flag
-
-Use the `--ci` flag to run only the primary and special cases tests. You can
-ignore the other test cases as they are redundant for the purposes of checking
-compliance.
 
 #### Data-dependent shapes
 

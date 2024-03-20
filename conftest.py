@@ -1,9 +1,12 @@
 from functools import lru_cache
 from pathlib import Path
+import argparse
+import math
 import warnings
 import os
 
 from hypothesis import settings
+from hypothesis.errors import InvalidArgument
 from pytest import mark
 
 from array_api_tests import _array_module as xp
@@ -54,11 +57,7 @@ def pytest_addoption(parser):
         help="disable testing functions with output shapes dependent on input",
     )
     # CI
-    parser.addoption(
-        "--ci",
-        action="store_true",
-        help="run just the tests appropriate for CI",
-    )
+    parser.addoption("--ci", action="store_true", help=argparse.SUPPRESS )  # deprecated
     parser.addoption(
         "--skips-file",
         action="store",
@@ -78,10 +77,13 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "data_dependent_shapes: output shapes are dependent on inputs"
     )
-    config.addinivalue_line("markers", "ci: primary test")
     config.addinivalue_line(
         "markers",
         "min_version(api_version): run when greater or equal to api_version",
+    )
+    config.addinivalue_line(
+        "markers",
+        "unvectorized: asserts against values via element-wise iteration (not performative!)",
     )
     # Hypothesis
     hypothesis_max_examples = config.getoption("--hypothesis-max-examples")
@@ -99,6 +101,12 @@ def pytest_configure(config):
         settings.load_profile("xp_override")
     else:
         settings.load_profile("xp_default")
+    # CI
+    if config.getoption("--ci"):
+        warnings.warn(
+            "Custom pytest option --ci is deprecated as any tests not for CI "
+            "are now located in meta_tests/"
+        )
 
 
 @lru_cache
@@ -110,6 +118,9 @@ def xp_has_ext(ext: str) -> bool:
 
 
 def pytest_collection_modifyitems(config, items):
+    # 1. Prepare for iterating over items
+    # -----------------------------------
+
     skips_file = skips_path = config.getoption('--skips-file')
     if skips_file is None:
         skips_file = Path(__file__).parent / "skips.txt"
@@ -144,7 +155,10 @@ def pytest_collection_modifyitems(config, items):
 
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
-    ci = config.getoption("--ci")
+    unvectorized_max_examples = math.ceil(math.log(config.getoption("--hypothesis-max-examples") or 50))
+
+    # 2. Iterate through items and apply markers accordingly
+    # ------------------------------------------------------
 
     for item in items:
         markers = list(item.iter_markers())
@@ -178,11 +192,6 @@ def pytest_collection_modifyitems(config, items):
                         mark.skip(reason="disabled via --disable-data-dependent-shapes")
                     )
                     break
-        # skip if test not appropriate for CI
-        if ci:
-            ci_mark = next((m for m in markers if m.name == "ci"), None)
-            if ci_mark is None:
-                item.add_marker(mark.skip(reason="disabled via --ci"))
         # skip if test is for greater api_version
         ver_mark = next((m for m in markers if m.name == "min_version"), None)
         if ver_mark is not None:
@@ -193,6 +202,21 @@ def pytest_collection_modifyitems(config, items):
                         reason=f"requires ARRAY_API_TESTS_VERSION=>{min_version}"
                     )
                 )
+        # reduce max generated Hypothesis example for unvectorized tests
+        if any(m.name == "unvectorized" for m in markers):
+            # TODO: limit generated examples when settings already applied
+            if not hasattr(item.obj, "_hypothesis_internal_settings_applied"):
+                try:
+                    item.obj = settings(max_examples=unvectorized_max_examples)(item.obj)
+                except InvalidArgument as e:
+                    warnings.warn(
+                        f"Tried decorating {item.name} with settings() but got "
+                        f"hypothesis.errors.InvalidArgument: {e}"
+                    )
+
+
+    # 3. Warn on bad skipped/xfailed ids
+    # ----------------------------------
 
     bad_ids_end_msg = (
         "Note the relevant tests might not of been collected by pytest, or "

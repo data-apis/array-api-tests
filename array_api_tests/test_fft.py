@@ -17,7 +17,6 @@ from . import xps
 from . import xp
 
 pytestmark = [
-    pytest.mark.ci,
     pytest.mark.xp_extension("fft"),
     pytest.mark.min_version("2022.12"),
 ]

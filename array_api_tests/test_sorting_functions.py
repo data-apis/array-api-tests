@@ -14,8 +14,6 @@ from . import shape_helpers as sh
 from . import xps
 from .typing import Scalar, Shape
 
-pytestmark = pytest.mark.ci
-
 
 def assert_scalar_in_set(
     func_name: str,
@@ -32,6 +30,7 @@ def assert_scalar_in_set(
 
 
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(
         dtype=xps.real_dtypes(),
@@ -91,6 +90,7 @@ def test_argsort(x, data):
                     )
 
 
+@pytest.mark.unvectorized
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
 @given(
     x=hh.arrays(

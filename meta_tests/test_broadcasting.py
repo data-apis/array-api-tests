@@ -4,7 +4,7 @@ https://github.com/data-apis/array-api/blob/master/spec/API_specification/broadc
 
 import pytest
 
-from .. import shape_helpers as sh
+from array_api_tests import shape_helpers as sh
 
 
 @pytest.mark.parametrize(

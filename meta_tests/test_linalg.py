@@ -2,9 +2,9 @@ import pytest
 
 from hypothesis import given
 
-from ..hypothesis_helpers import symmetric_matrices
-from .. import array_helpers as ah
-from .. import _array_module as xp
+from array_api_tests .hypothesis_helpers import symmetric_matrices
+from array_api_tests import array_helpers as ah
+from array_api_tests import _array_module as xp
 
 @pytest.mark.xp_extension('linalg')
 @given(x=symmetric_matrices(finite=True))

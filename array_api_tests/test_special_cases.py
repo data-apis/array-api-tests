@@ -35,8 +35,6 @@ from . import shape_helpers as sh
 from . import xp, xps
 from .stubs import category_to_funcs
 
-pytestmark = pytest.mark.ci
-
 UnaryCheck = Callable[[float], bool]
 BinaryCheck = Callable[[float, float], bool]
 
@@ -1212,6 +1210,7 @@ assert len(binary_params) != 0
 assert len(iop_params) != 0
 
 
+@pytest.mark.unvectorized
 @pytest.mark.parametrize("func_name, func, case", unary_params)
 @given(
     x=hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
@@ -1250,6 +1249,7 @@ x1_strat, x2_strat = hh.two_mutual_arrays(
 )
 
 
+@pytest.mark.unvectorized
 @pytest.mark.parametrize("func_name, func, case", binary_params)
 @given(x1=x1_strat, x2=x2_strat, data=st.data())
 def test_binary(func_name, func, case, x1, x2, data):
@@ -1294,6 +1294,7 @@ def test_binary(func_name, func, case, x1, x2, data):
     assume(good_example)
 
 
+@pytest.mark.unvectorized
 @pytest.mark.parametrize("iop_name, iop, case", iop_params)
 @given(
     oneway_dtypes=hh.oneway_promotable_dtypes(dh.real_float_dtypes),
