@@ -155,7 +155,7 @@ def pytest_collection_modifyitems(config, items):
 
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
-    unvectorized_max_examples = math.ceil(math.log(config.getoption("--hypothesis-max-examples") or 50))
+    unvectorized_max_examples = math.ceil(math.log(int(config.getoption("--hypothesis-max-examples")) or 50))
 
     # 2. Iterate through items and apply markers accordingly
     # ------------------------------------------------------
