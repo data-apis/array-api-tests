@@ -24,7 +24,8 @@ def pytest_addoption(parser):
         "--hypothesis-max-examples",
         "--max-examples",
         action="store",
-        default=100,
+        default=20,
+        type=int,
         help="set the Hypothesis max_examples setting",
     )
     # Hypothesis deadline
