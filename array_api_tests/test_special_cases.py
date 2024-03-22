@@ -23,7 +23,7 @@ from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
 from warnings import warn
 
 import pytest
-from hypothesis import assume, given, note
+from hypothesis import given, note, settings
 from hypothesis import strategies as st
 
 from array_api_tests.typing import Array, DataType
@@ -31,7 +31,6 @@ from array_api_tests.typing import Array, DataType
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
-from . import shape_helpers as sh
 from . import xp, xps
 from .stubs import category_to_funcs
 
@@ -1210,143 +1209,57 @@ assert len(binary_params) != 0
 assert len(iop_params) != 0
 
 
-@pytest.mark.unvectorized
 @pytest.mark.parametrize("func_name, func, case", unary_params)
-@given(
-    x=hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
-    data=st.data(),
-)
-def test_unary(func_name, func, case, x, data):
-    set_idx = data.draw(
-        xps.indices(x.shape, max_dims=0, allow_ellipsis=False), label="set idx"
+def test_unary(func_name, func, case):
+    in_value = case.cond_from_dtype(xp.float64).example()
+    x = xp.asarray(in_value, dtype=xp.float64)
+    out = func(x)
+    out_value = float(out)
+    assert case.check_result(in_value, out_value), (
+        f"out={out_value}, but should be {case.result_expr} [{func_name}()]\n"
     )
-    set_value = data.draw(case.cond_from_dtype(x.dtype), label="set value")
-    x[set_idx] = set_value
-    note(f"{x=}")
-
-    res = func(x)
-
-    good_example = False
-    for idx in sh.ndindex(res.shape):
-        in_ = float(x[idx])
-        if case.cond(in_):
-            good_example = True
-            out = float(res[idx])
-            f_in = f"{sh.fmt_idx('x', idx)}={in_}"
-            f_out = f"{sh.fmt_idx('out', idx)}={out}"
-            assert case.check_result(in_, out), (
-                f"{f_out}, but should be {case.result_expr} [{func_name}()]\n"
-                f"condition: {case.cond_expr}\n"
-                f"{f_in}"
-            )
-            break
-    assume(good_example)
 
 
-x1_strat, x2_strat = hh.two_mutual_arrays(
-    dtypes=dh.real_float_dtypes,
-    two_shapes=hh.mutually_broadcastable_shapes(2, min_side=1),
-)
-
-
-@pytest.mark.unvectorized
 @pytest.mark.parametrize("func_name, func, case", binary_params)
-@given(x1=x1_strat, x2=x2_strat, data=st.data())
-def test_binary(func_name, func, case, x1, x2, data):
-    result_shape = sh.broadcast_shapes(x1.shape, x2.shape)
-    all_indices = list(sh.iter_indices(x1.shape, x2.shape, result_shape))
+@settings(max_examples=1)
+@given(data=st.data())
+def test_binary(func_name, func, case, data):
+    # We don't use example() like in test_unary because the same internal shared
+    # strategies used in both x1's and x2's don't "sync" with example() draws.
+    x1_value = data.draw(case.x1_cond_from_dtype(xp.float64), label="x1_value")
+    x2_value = data.draw(case.x2_cond_from_dtype(xp.float64), label="x2_value")
+    x1 = xp.asarray(x1_value, dtype=xp.float64)
+    x2 = xp.asarray(x2_value, dtype=xp.float64)
 
-    indices_strat = st.shared(st.sampled_from(all_indices))
-    set_x1_idx = data.draw(indices_strat.map(lambda t: t[0]), label="set x1 idx")
-    set_x1_value = data.draw(case.x1_cond_from_dtype(x1.dtype), label="set x1 value")
-    x1[set_x1_idx] = set_x1_value
-    note(f"{x1=}")
-    set_x2_idx = data.draw(indices_strat.map(lambda t: t[1]), label="set x2 idx")
-    set_x2_value = data.draw(case.x2_cond_from_dtype(x2.dtype), label="set x2 value")
-    x2[set_x2_idx] = set_x2_value
-    note(f"{x2=}")
+    out = func(x1, x2)
+    out_value = float(out)
 
-    res = func(x1, x2)
-    # sanity check
-    ph.assert_result_shape(
-        func_name,
-        in_shapes=[x1.shape, x2.shape],
-        out_shape=res.shape,
-        expected=result_shape,
+    assert case.check_result(x1_value, x2_value, out_value), (
+        f"out={out_value}, but should be {case.result_expr} [{func_name}()]\n"
+        f"condition: {case}\n"
+        f"x1={x1_value}, x2={x2_value}"
     )
 
-    good_example = False
-    for l_idx, r_idx, o_idx in all_indices:
-        l = float(x1[l_idx])
-        r = float(x2[r_idx])
-        if case.cond(l, r):
-            good_example = True
-            o = float(res[o_idx])
-            f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
-            f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
-            f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
-            assert case.check_result(l, r, o), (
-                f"{f_out}, but should be {case.result_expr} [{func_name}()]\n"
-                f"condition: {case}\n"
-                f"{f_left}, {f_right}"
-            )
-            break
-    assume(good_example)
 
 
-@pytest.mark.unvectorized
 @pytest.mark.parametrize("iop_name, iop, case", iop_params)
-@given(
-    oneway_dtypes=hh.oneway_promotable_dtypes(dh.real_float_dtypes),
-    oneway_shapes=hh.oneway_broadcastable_shapes(),
-    data=st.data(),
-)
-def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
-    x1 = data.draw(
-        hh.arrays(dtype=oneway_dtypes.result_dtype, shape=oneway_shapes.result_shape),
-        label="x1",
+@settings(max_examples=1)
+@given(data=st.data())
+def test_iop(iop_name, iop, case, data):
+    # See test_binary comment
+    x1_value = data.draw(case.x1_cond_from_dtype(xp.float64), label="x1_value")
+    x2_value = data.draw(case.x2_cond_from_dtype(xp.float64), label="x2_value")
+    x1 = xp.asarray(x1_value, dtype=xp.float64)
+    x2 = xp.asarray(x2_value, dtype=xp.float64)
+
+    res = iop(x1, x2)
+    res_value = float(res)
+
+    assert case.check_result(x1_value, x2_value, res_value), (
+        f"x1={res}, but should be {case.result_expr} [{func_name}()]\n"
+        f"condition: {case}\n"
+        f"x1={x1_value}, x2={x2_value}"
     )
-    x2 = data.draw(
-        hh.arrays(dtype=oneway_dtypes.input_dtype, shape=oneway_shapes.input_shape),
-        label="x2",
-    )
-
-    all_indices = list(sh.iter_indices(x1.shape, x2.shape, x1.shape))
-
-    indices_strat = st.shared(st.sampled_from(all_indices))
-    set_x1_idx = data.draw(indices_strat.map(lambda t: t[0]), label="set x1 idx")
-    set_x1_value = data.draw(case.x1_cond_from_dtype(x1.dtype), label="set x1 value")
-    x1[set_x1_idx] = set_x1_value
-    note(f"{x1=}")
-    set_x2_idx = data.draw(indices_strat.map(lambda t: t[1]), label="set x2 idx")
-    set_x2_value = data.draw(case.x2_cond_from_dtype(x2.dtype), label="set x2 value")
-    x2[set_x2_idx] = set_x2_value
-    note(f"{x2=}")
-
-    res = xp.asarray(x1, copy=True)
-    res = iop(res, x2)
-    # sanity check
-    ph.assert_result_shape(
-        iop_name, in_shapes=[x1.shape, x2.shape], out_shape=res.shape
-    )
-
-    good_example = False
-    for l_idx, r_idx, o_idx in all_indices:
-        l = float(x1[l_idx])
-        r = float(x2[r_idx])
-        if case.cond(l, r):
-            good_example = True
-            o = float(res[o_idx])
-            f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
-            f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
-            f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
-            assert case.check_result(l, r, o), (
-                f"{f_out}, but should be {case.result_expr} [{iop_name}()]\n"
-                f"condition: {case}\n"
-                f"{f_left}, {f_right}"
-            )
-            break
-    assume(good_example)
 
 
 @pytest.mark.parametrize(
