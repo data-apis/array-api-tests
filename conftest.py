@@ -15,7 +15,6 @@ from array_api_tests._array_module import _UndefinedStub
 
 from reporting import pytest_metadata, pytest_json_modifyreport, add_extra_json_metadata # noqa
 
-settings.register_profile("xp_default", deadline=800)
 
 def pytest_addoption(parser):
     # Hypothesis max examples
@@ -87,21 +86,14 @@ def pytest_configure(config):
         "unvectorized: asserts against values via element-wise iteration (not performative!)",
     )
     # Hypothesis
-    hypothesis_max_examples = config.getoption("--hypothesis-max-examples")
-    disable_deadline = config.getoption("--hypothesis-disable-deadline")
-    derandomize = config.getoption("--hypothesis-derandomize")
-    profile_settings = {}
-    if hypothesis_max_examples is not None:
-        profile_settings["max_examples"] = int(hypothesis_max_examples)
-    if disable_deadline:
+    profile_settings = {
+        "max_examples": config.getoption("--hypothesis-max-examples"),
+        "derandomize": config.getoption("--hypothesis-derandomize"),
+    }
+    if config.getoption("--hypothesis-disable-deadline"):
         profile_settings["deadline"] = None
-    if derandomize:
-        profile_settings["derandomize"] = True
-    if profile_settings:
-        settings.register_profile("xp_override", **profile_settings)
-        settings.load_profile("xp_override")
-    else:
-        settings.load_profile("xp_default")
+    settings.register_profile("array-api-tests", **profile_settings)
+    settings.load_profile("array-api-tests")
     # CI
     if config.getoption("--ci"):
         warnings.warn(
@@ -156,7 +148,7 @@ def pytest_collection_modifyitems(config, items):
 
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
-    unvectorized_max_examples = math.ceil(math.log(int(config.getoption("--hypothesis-max-examples")) or 50))
+    unvectorized_max_examples = math.ceil(math.log(config.getoption("--hypothesis-max-examples")))
 
     # 2. Iterate through items and apply markers accordingly
     # ------------------------------------------------------
