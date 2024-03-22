@@ -28,6 +28,6 @@ jobs:
       env:
         ARRAY_API_TESTS_MODULE: array_api_strict
       run: |
-        pytest -v -rxXfE --skips-file array-api-strict-skips.txt array_api_tests/
+        pytest -v -rxXfE --skips-file array-api-strict-skips.txt array_api_tests/ --hypothesis-disable-deadline
         # We also have internal tests that isn't really necessary for adopters
         pytest -v -rxXfE meta_tests/
