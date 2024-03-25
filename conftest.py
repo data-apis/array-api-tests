@@ -86,13 +86,13 @@ def pytest_configure(config):
         "unvectorized: asserts against values via element-wise iteration (not performative!)",
     )
     # Hypothesis
-    profile_settings = {
-        "max_examples": config.getoption("--hypothesis-max-examples"),
-        "derandomize": config.getoption("--hypothesis-derandomize"),
-    }
-    if config.getoption("--hypothesis-disable-deadline"):
-        profile_settings["deadline"] = None
-    settings.register_profile("array-api-tests", **profile_settings)
+    deadline = None if config.getoption("--hypothesis-disable-deadline") else 800
+    settings.register_profile(
+        "array-api-tests",
+        max_examples=config.getoption("--hypothesis-max-examples"),
+        derandomize=config.getoption("--hypothesis-derandomize"),
+        deadline=deadline,
+    )
     settings.load_profile("array-api-tests")
     # CI
     if config.getoption("--ci"):
