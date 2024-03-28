@@ -494,6 +494,7 @@ def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
 class Case(Protocol):
     cond_expr: str
     result_expr: str
+    raw_case: Optional[str]
 
     def cond(self, *args) -> bool:
         ...
@@ -532,6 +533,7 @@ class UnaryCase(Case):
     cond_from_dtype: FromDtypeFunc
     cond: UnaryCheck
     check_result: UnaryResultCheck
+    raw_case: Optional[str] = field(default=None)
 
 
 r_unary_case = re.compile("If ``x_i`` is (.+), the result is (.+)")
@@ -674,6 +676,7 @@ def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
                 cond_from_dtype=cond_from_dtype,
                 result_expr=result_expr,
                 check_result=check_result,
+                raw_case=case_str,
             )
             cases.append(case)
         else:
@@ -700,6 +703,7 @@ class BinaryCase(Case):
     x2_cond_from_dtype: FromDtypeFunc
     cond: BinaryCond
     check_result: BinaryResultCheck
+    raw_case: Optional[str] = field(default=None)
 
 
 r_binary_case = re.compile("If (.+), the result (.+)")
@@ -1058,6 +1062,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
         x2_cond_from_dtype=x2_cond_from_dtype,
         result_expr=result_expr,
         check_result=check_result,
+        raw_case=case_str,
     )
 
 
