@@ -941,11 +941,17 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                 def partial_cond(i1: float, i2: float) -> bool:
                     return math.copysign(1, i1) == math.copysign(1, i2)
 
+                x1_cond_from_dtypes.append(BoundFromDtype(kwargs={"min_value": 1}))
+                x2_cond_from_dtypes.append(BoundFromDtype(kwargs={"min_value": 1}))
+
             elif value_str == "different mathematical signs":
                 partial_expr = "copysign(1, x1_i) != copysign(1, x2_i)"
 
                 def partial_cond(i1: float, i2: float) -> bool:
                     return math.copysign(1, i1) != math.copysign(1, i2)
+
+                x1_cond_from_dtypes.append(BoundFromDtype(kwargs={"min_value": 1}))
+                x2_cond_from_dtypes.append(BoundFromDtype(kwargs={"max_value": -1}))
 
             else:
                 unary_cond, expr_template, cond_from_dtype = parse_cond(value_str)
