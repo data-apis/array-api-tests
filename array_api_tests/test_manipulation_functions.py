@@ -46,6 +46,7 @@ def assert_array_ndindex(
             assert out[out_idx] == x[x_idx], msg
 
 
+@pytest.mark.unvectorized
 @given(
     dtypes=hh.mutually_promotable_dtypes(None, dtypes=dh.numeric_dtypes),
     base_shape=hh.shapes(),
