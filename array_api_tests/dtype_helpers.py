@@ -125,6 +125,11 @@ def _make_dtype_tuple_from_names(names: List[str]) -> Tuple[DataType]:
         dtypes.append(dtype)
     return tuple(dtypes)
 
+# Numpy deprecated np.bool starting from version 1.20.0
+if xp.__name__ == "numpy" and xp.__version__ >="1.20.0":
+    array_mod_bool = xp.bool_
+else:
+    array_mod_bool = xp.bool
 
 uint_dtypes = _make_dtype_tuple_from_names(uint_names)
 int_dtypes = _make_dtype_tuple_from_names(int_names)
@@ -135,15 +140,15 @@ complex_dtypes = _make_dtype_tuple_from_names(complex_names)
 numeric_dtypes = real_dtypes
 if api_version > "2021.12":
     numeric_dtypes += complex_dtypes
-all_dtypes = (xp.bool,) + numeric_dtypes
+all_dtypes = (array_mod_bool,) + numeric_dtypes
 all_float_dtypes = real_float_dtypes
 if api_version > "2021.12":
     all_float_dtypes += complex_dtypes
-bool_and_all_int_dtypes = (xp.bool,) + all_int_dtypes
+bool_and_all_int_dtypes = (array_mod_bool,) + all_int_dtypes
 
 
 kind_to_dtypes = {
-    "bool": [xp.bool],
+    "bool": [array_mod_bool],
     "signed integer": int_dtypes,
     "unsigned integer": uint_dtypes,
     "integral": all_int_dtypes,
@@ -400,7 +405,7 @@ r_int_note = re.compile(
     "the result is implementation-dependent"
 )
 category_to_dtypes = {
-    "boolean": (xp.bool,),
+    "boolean": (array_mod_bool,),
     "integer": all_int_dtypes,
     "floating-point": real_float_dtypes,
     "real-valued": real_float_dtypes,
@@ -554,7 +559,7 @@ for op, symbol in binary_op_to_symbol.items():
     inplace_op_to_symbol[iop] = f"{symbol}="
     func_in_dtypes[iop] = func_in_dtypes[op]
     func_returns_bool[iop] = func_returns_bool[op]
-func_in_dtypes["__bool__"] = (xp.bool,)
+func_in_dtypes["__bool__"] = (array_mod_bool,)
 func_in_dtypes["__int__"] = all_int_dtypes
 func_in_dtypes["__index__"] = all_int_dtypes
 func_in_dtypes["__float__"] = real_float_dtypes
