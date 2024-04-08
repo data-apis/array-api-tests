@@ -9,6 +9,7 @@ from . import _version
 
 __all__ = ["xp", "api_version", "xps"]
 
+os.environ["ARRAY_API_TESTS_MODULE"] = "numpy"
 
 # You can comment the following out and instead import the specific array module
 # you want to test, e.g. `import numpy.array_api as xp`.
