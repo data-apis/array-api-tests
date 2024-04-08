@@ -17,6 +17,8 @@ from . import xp as _xp
 from .typing import DataType, Index, Param, Scalar, ScalarType, Shape
 
 
+array_mod_bool = dh.get_array_module_bool()
+
 def scalar_objects(
     dtype: DataType, shape: Shape
 ) -> st.SearchStrategy[Union[Scalar, List[Scalar]]]:
@@ -165,7 +167,7 @@ def test_getitem_masking(shape, data):
         ),
         hh.shapes(),
     )
-    key = data.draw(hh.arrays(dtype=xp.bool, shape=mask_shapes), label="key")
+    key = data.draw(hh.arrays(dtype=array_mod_bool, shape=mask_shapes), label="key")
 
     if key.ndim > x.ndim or not all(
         ks in (xs, 0) for xs, ks in zip(x.shape, key.shape)
@@ -203,7 +205,7 @@ def test_getitem_masking(shape, data):
 @given(hh.shapes(), st.data())
 def test_setitem_masking(shape, data):
     x = data.draw(hh.arrays(xps.scalar_dtypes(), shape=shape), label="x")
-    key = data.draw(hh.arrays(dtype=xp.bool, shape=shape), label="key")
+    key = data.draw(hh.arrays(dtype=array_mod_bool, shape=shape), label="key")
     value = data.draw(
         hh.from_dtype(x.dtype) | hh.arrays(dtype=x.dtype, shape=()), label="value"
     )

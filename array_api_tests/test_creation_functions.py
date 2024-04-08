@@ -75,6 +75,8 @@ def reals(min_value=None, max_value=None) -> st.SearchStrategy[Union[int, float]
         ),
     )
 
+array_mod_bool = dh.get_array_module_bool()
+
 
 # TODO: support testing complex dtypes
 @given(dtype=st.none() | xps.real_dtypes(), data=st.data())
@@ -204,7 +206,7 @@ def test_asarray_scalars(shape, data):
     if dtype is None:
         dtype_family = data.draw(
             st.sampled_from(
-                [(xp.bool,), (xp.int32, xp.int64), (xp.float32, xp.float64)]
+                [(array_mod_bool,), (xp.int32, xp.int64), (xp.float32, xp.float64)]
             ),
             label="expected out dtypes",
         )
@@ -393,7 +395,7 @@ def test_full(shape, fill_value, kw):
     if kw.get("dtype", None):
         dtype = kw["dtype"]
     elif isinstance(fill_value, bool):
-        dtype = xp.bool
+        dtype = array_mod_bool
     elif isinstance(fill_value, int):
         dtype = dh.default_int
     elif isinstance(fill_value, float):
@@ -410,7 +412,7 @@ def test_full(shape, fill_value, kw):
         assume(all(abs(c) < math.sqrt(M) for c in [fill_value.real, fill_value.imag]))
     if kw.get("dtype", None) is None:
         if isinstance(fill_value, bool):
-            assert out.dtype == xp.bool, f"{out.dtype=}, but should be bool [full()]"
+            assert out.dtype == array_mod_bool, f"{out.dtype=}, but should be bool [full()]"
         elif isinstance(fill_value, int):
             ph.assert_default_int("full", out.dtype)
         elif isinstance(fill_value, float):

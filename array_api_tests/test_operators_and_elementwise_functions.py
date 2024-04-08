@@ -47,6 +47,8 @@ def mock_int_dtype(n: int, dtype: DataType) -> int:
     return n
 
 
+array_mod_bool = dh.get_array_module_bool()
+
 def isclose(
     a: float,
     b: float,
@@ -136,7 +138,7 @@ def unary_assert_against_refimpl(
 
         Array dtypes      | Python builtin type
         ----------------- | ---------------------
-        xp.bool           | bool
+        xp.bool, xp.bool_ | bool
         xp.int*, xp.uint* | int
         xp.float*         | float
         xp.complex*       | complex
@@ -238,7 +240,7 @@ def unary_assert_against_refimpl(
     in_stype = dh.get_scalar_type(in_.dtype)
     if res_stype is None:
         res_stype = dh.get_scalar_type(res.dtype)
-    if res.dtype == xp.bool:
+    if res.dtype == array_mod_bool:
         m, M = (None, None)
     elif res.dtype in dh.complex_dtypes:
         m, M = dh.dtype_ranges[dh.dtype_components[res.dtype]]
@@ -255,7 +257,7 @@ def unary_assert_against_refimpl(
             expected = refimpl(scalar_i)
         except Exception:
             continue
-        if res.dtype != xp.bool:
+        if res.dtype != array_mod_bool:
             if res.dtype in dh.complex_dtypes:
                 if expected.real <= m or expected.real >= M:
                     continue
@@ -312,7 +314,7 @@ def binary_assert_against_refimpl(
         res_stype = dh.get_scalar_type(left.dtype)
     if res_stype is None:
         res_stype = in_stype
-    if res.dtype == xp.bool:
+    if res.dtype == array_mod_bool:
         m, M = (None, None)
     elif res.dtype in dh.complex_dtypes:
         m, M = dh.dtype_ranges[dh.dtype_components[res.dtype]]
@@ -330,7 +332,7 @@ def binary_assert_against_refimpl(
             expected = refimpl(scalar_l, scalar_r)
         except Exception:
             continue
-        if res.dtype != xp.bool:
+        if res.dtype != array_mod_bool:
             if res.dtype in dh.complex_dtypes:
                 if expected.real <= m or expected.real >= M:
                     continue
@@ -389,7 +391,7 @@ def right_scalar_assert_against_refimpl(
         res_stype = dh.get_scalar_type(left.dtype)
     if res_stype is None:
         res_stype = in_stype
-    if res.dtype == xp.bool:
+    if res.dtype == array_mod_bool:
         m, M = (None, None)
     elif left.dtype in dh.complex_dtypes:
         m, M = dh.dtype_ranges[dh.dtype_components[left.dtype]]
@@ -403,7 +405,7 @@ def right_scalar_assert_against_refimpl(
             expected = refimpl(scalar_l, right)
         except Exception:
             continue
-        if left.dtype != xp.bool:
+        if left.dtype != array_mod_bool:
             if res.dtype in dh.complex_dtypes:
                 if expected.real <= m or expected.real >= M:
                     continue
@@ -819,7 +821,7 @@ def test_bitwise_and(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    if left.dtype == xp.bool:
+    if left.dtype == array_mod_bool:
         refimpl = operator.and_
     else:
         refimpl = lambda l, r: mock_int_dtype(l & r, res.dtype)
@@ -859,7 +861,7 @@ def test_bitwise_invert(ctx, data):
 
     ph.assert_dtype(ctx.func_name, in_dtype=x.dtype, out_dtype=out.dtype)
     ph.assert_shape(ctx.func_name, out_shape=out.shape, expected=x.shape)
-    if x.dtype == xp.bool:
+    if x.dtype == array_mod_bool:
         refimpl = operator.not_
     else:
         refimpl = lambda s: mock_int_dtype(~s, x.dtype)
@@ -878,7 +880,7 @@ def test_bitwise_or(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    if left.dtype == xp.bool:
+    if left.dtype == array_mod_bool:
         refimpl = operator.or_
     else:
         refimpl = lambda l, r: mock_int_dtype(l | r, res.dtype)
@@ -918,7 +920,7 @@ def test_bitwise_xor(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    if left.dtype == xp.bool:
+    if left.dtype == array_mod_bool:
         refimpl = operator.xor
     else:
         refimpl = lambda l, r: mock_int_dtype(l ^ r, res.dtype)
@@ -992,7 +994,7 @@ def test_equal(ctx, data):
 
     out = ctx.func(left, right)
 
-    binary_param_assert_dtype(ctx, left, right, out, xp.bool)
+    binary_param_assert_dtype(ctx, left, right, out, array_mod_bool)
     binary_param_assert_shape(ctx, left, right, out)
     if not ctx.right_is_scalar:
         # We manually promote the dtypes as incorrect internal type promotion
@@ -1063,7 +1065,7 @@ def test_greater(ctx, data):
 
     out = ctx.func(left, right)
 
-    binary_param_assert_dtype(ctx, left, right, out, xp.bool)
+    binary_param_assert_dtype(ctx, left, right, out, array_mod_bool)
     binary_param_assert_shape(ctx, left, right, out)
     if not ctx.right_is_scalar:
         # See test_equal note
@@ -1083,7 +1085,7 @@ def test_greater_equal(ctx, data):
 
     out = ctx.func(left, right)
 
-    binary_param_assert_dtype(ctx, left, right, out, xp.bool)
+    binary_param_assert_dtype(ctx, left, right, out, array_mod_bool)
     binary_param_assert_shape(ctx, left, right, out)
     if not ctx.right_is_scalar:
         # See test_equal note
@@ -1108,7 +1110,7 @@ if api_version >= "2022.12":
 @given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isfinite(x):
     out = xp.isfinite(x)
-    ph.assert_dtype("isfinite", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
+    ph.assert_dtype("isfinite", in_dtype=x.dtype, out_dtype=out.dtype, expected=array_mod_bool)
     ph.assert_shape("isfinite", out_shape=out.shape, expected=x.shape)
     unary_assert_against_refimpl("isfinite", x, out, math.isfinite, res_stype=bool)
 
@@ -1116,7 +1118,7 @@ def test_isfinite(x):
 @given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isinf(x):
     out = xp.isinf(x)
-    ph.assert_dtype("isfinite", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
+    ph.assert_dtype("isfinite", in_dtype=x.dtype, out_dtype=out.dtype, expected=array_mod_bool)
     ph.assert_shape("isinf", out_shape=out.shape, expected=x.shape)
     unary_assert_against_refimpl("isinf", x, out, math.isinf, res_stype=bool)
 
@@ -1124,7 +1126,7 @@ def test_isinf(x):
 @given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
 def test_isnan(x):
     out = xp.isnan(x)
-    ph.assert_dtype("isnan", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
+    ph.assert_dtype("isnan", in_dtype=x.dtype, out_dtype=out.dtype, expected=array_mod_bool)
     ph.assert_shape("isnan", out_shape=out.shape, expected=x.shape)
     unary_assert_against_refimpl("isnan", x, out, math.isnan, res_stype=bool)
 
@@ -1137,7 +1139,7 @@ def test_less(ctx, data):
 
     out = ctx.func(left, right)
 
-    binary_param_assert_dtype(ctx, left, right, out, xp.bool)
+    binary_param_assert_dtype(ctx, left, right, out, array_mod_bool)
     binary_param_assert_shape(ctx, left, right, out)
     if not ctx.right_is_scalar:
         # See test_equal note
@@ -1157,7 +1159,7 @@ def test_less_equal(ctx, data):
 
     out = ctx.func(left, right)
 
-    binary_param_assert_dtype(ctx, left, right, out, xp.bool)
+    binary_param_assert_dtype(ctx, left, right, out, array_mod_bool)
     binary_param_assert_shape(ctx, left, right, out)
     if not ctx.right_is_scalar:
         # See test_equal note
@@ -1221,7 +1223,7 @@ def test_logaddexp(x1, x2):
     binary_assert_against_refimpl("logaddexp", x1, x2, out, logaddexp)
 
 
-@given(*hh.two_mutual_arrays([xp.bool]))
+@given(*hh.two_mutual_arrays([array_mod_bool]))
 def test_logical_and(x1, x2):
     out = xp.logical_and(x1, x2)
     ph.assert_dtype("logical_and", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
@@ -1231,7 +1233,7 @@ def test_logical_and(x1, x2):
     )
 
 
-@given(hh.arrays(dtype=xp.bool, shape=hh.shapes()))
+@given(hh.arrays(dtype=array_mod_bool, shape=hh.shapes()))
 def test_logical_not(x):
     out = xp.logical_not(x)
     ph.assert_dtype("logical_not", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1241,7 +1243,7 @@ def test_logical_not(x):
     )
 
 
-@given(*hh.two_mutual_arrays([xp.bool]))
+@given(*hh.two_mutual_arrays([array_mod_bool]))
 def test_logical_or(x1, x2):
     out = xp.logical_or(x1, x2)
     ph.assert_dtype("logical_or", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
@@ -1251,7 +1253,7 @@ def test_logical_or(x1, x2):
     )
 
 
-@given(*hh.two_mutual_arrays([xp.bool]))
+@given(*hh.two_mutual_arrays([array_mod_bool]))
 def test_logical_xor(x1, x2):
     out = xp.logical_xor(x1, x2)
     ph.assert_dtype("logical_xor", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
@@ -1300,7 +1302,7 @@ def test_not_equal(ctx, data):
 
     out = ctx.func(left, right)
 
-    binary_param_assert_dtype(ctx, left, right, out, xp.bool)
+    binary_param_assert_dtype(ctx, left, right, out, array_mod_bool)
     binary_param_assert_shape(ctx, left, right, out)
     if not ctx.right_is_scalar:
         # See test_equal note

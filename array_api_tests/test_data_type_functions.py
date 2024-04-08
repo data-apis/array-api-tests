@@ -23,6 +23,7 @@ def non_complex_dtypes():
 def float32(n: Union[int, float]) -> float:
     return struct.unpack("!f", struct.pack("!f", float(n)))[0]
 
+array_mod_bool = dh.get_array_module_bool()
 
 @given(
     x_dtype=non_complex_dtypes(),
@@ -31,7 +32,7 @@ def float32(n: Union[int, float]) -> float:
     data=st.data(),
 )
 def test_astype(x_dtype, dtype, kw, data):
-    if xp.bool in (x_dtype, dtype):
+    if array_mod_bool in (x_dtype, dtype):
         elements_strat = hh.from_dtype(x_dtype)
     else:
         m1, M1 = dh.dtype_ranges[x_dtype]
@@ -118,8 +119,8 @@ def test_can_cast(_from, to, data):
 
     f_func = f"[can_cast({dh.dtype_to_name[_from]}, {dh.dtype_to_name[to]})]"
     assert isinstance(out, bool), f"{type(out)=}, but should be bool {f_func}"
-    if _from == xp.bool:
-        expected = to == xp.bool
+    if _from == array_mod_bool:
+        expected = to == array_mod_bool
     else:
         same_family = None
         for dtypes in [dh.all_int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]:

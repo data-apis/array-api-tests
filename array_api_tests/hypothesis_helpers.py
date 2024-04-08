@@ -29,10 +29,13 @@ def _float32ify(n: Union[int, float]) -> float:
     return struct.unpack("!f", struct.pack("!f", n))[0]
 
 
+array_mod_bool = dh.get_array_module_bool()
+
+
 @wraps(xps.from_dtype)
 def from_dtype(dtype, **kwargs) -> SearchStrategy[Scalar]:
     """xps.from_dtype() without the crazy large numbers."""
-    if dtype == xp.bool:
+    if dtype == array_mod_bool:
         return xps.from_dtype(dtype, **kwargs)
 
     if dtype in dh.complex_dtypes:
@@ -76,7 +79,7 @@ def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
     return xps.arrays(dtype, *args, elements=elements, **kwargs)
 
 
-_dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]
+_dtype_categories = [(array_mod_bool,), dh.uint_dtypes, dh.int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]
 _sorted_dtypes = [d for category in _dtype_categories for d in category]
 
 def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):

@@ -10,6 +10,9 @@ from . import shape_helpers as sh
 from . import xps
 
 
+array_mod_bool = dh.get_array_module_bool()
+
+
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)),
@@ -21,7 +24,7 @@ def test_all(x, data):
 
     out = xp.all(x, **kw)
 
-    ph.assert_dtype("all", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
+    ph.assert_dtype("all", in_dtype=x.dtype, out_dtype=out.dtype, expected=array_mod_bool)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "all", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
@@ -49,7 +52,7 @@ def test_any(x, data):
 
     out = xp.any(x, **kw)
 
-    ph.assert_dtype("any", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
+    ph.assert_dtype("any", in_dtype=x.dtype, out_dtype=out.dtype, expected=array_mod_bool)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "any", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw,

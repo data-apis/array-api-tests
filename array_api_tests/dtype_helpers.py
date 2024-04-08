@@ -125,11 +125,16 @@ def _make_dtype_tuple_from_names(names: List[str]) -> Tuple[DataType]:
         dtypes.append(dtype)
     return tuple(dtypes)
 
-# Numpy deprecated np.bool starting from version 1.20.0
-if xp.__name__ == "numpy" and xp.__version__ >="1.20.0":
-    array_mod_bool = xp.bool_
-else:
-    array_mod_bool = xp.bool
+
+def get_array_module_bool():
+    # Numpy deprecated np.bool starting from version 1.20.0
+    if xp.__name__ == "numpy" and xp.__version__ >="1.20.0":
+        return xp.bool_
+    else:
+        return xp.bool
+
+
+array_mod_bool = get_array_module_bool()
 
 uint_dtypes = _make_dtype_tuple_from_names(uint_names)
 int_dtypes = _make_dtype_tuple_from_names(int_names)

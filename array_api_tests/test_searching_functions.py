@@ -14,6 +14,7 @@ from . import xps
 
 pytestmark = pytest.mark.unvectorized
 
+array_mod_bool = dh.get_array_module_bool()
 
 @given(
     x=hh.arrays(
@@ -109,7 +110,7 @@ def test_nonzero(x):
         )
         ph.assert_default_index("nonzero", out[i].dtype, repr_name=f"out[{i}].dtype")
     indices = []
-    if x.dtype == xp.bool:
+    if x.dtype == array_mod_bool:
         for idx in sh.ndindex(x.shape):
             if x[idx]:
                 indices.append(idx)
@@ -138,7 +139,7 @@ def test_nonzero(x):
     data=st.data(),
 )
 def test_where(shapes, dtypes, data):
-    cond = data.draw(hh.arrays(dtype=xp.bool, shape=shapes[0]), label="condition")
+    cond = data.draw(hh.arrays(dtype=array_mod_bool, shape=shapes[0]), label="condition")
     x1 = data.draw(hh.arrays(dtype=dtypes[0], shape=shapes[1]), label="x1")
     x2 = data.draw(hh.arrays(dtype=dtypes[1], shape=shapes[2]), label="x2")
 
