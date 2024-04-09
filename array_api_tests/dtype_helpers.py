@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from functools import lru_cache
 from typing import Any, DefaultDict, Dict, List, NamedTuple, Sequence, Tuple, Union
 from warnings import warn
+from packaging import version
 
 from . import api_version
 from . import xp
@@ -128,10 +129,11 @@ def _make_dtype_tuple_from_names(names: List[str]) -> Tuple[DataType]:
 
 def get_array_module_bool():
     # Numpy deprecated np.bool starting from version 1.20.0
-    if xp.__name__ == "numpy" and xp.__version__ >="1.20.0":
-        return xp.bool_
-    else:
-        return xp.bool
+    if xp.__name__ == "numpy":
+        xp_version = version.parse(xp.__version__)
+        if xp_version >= version.parse("1.20.0") and xp_version < version.parse("2.0.0"):
+            return xp.bool_
+    return xp.bool
 
 
 array_mod_bool = get_array_module_bool()
