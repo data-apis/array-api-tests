@@ -15,7 +15,6 @@ from array_api_tests._array_module import _UndefinedStub
 
 from reporting import pytest_metadata, pytest_json_modifyreport, add_extra_json_metadata # noqa
 
-os.environ["ARRAY_API_TESTS_MODULE"]="numpy"
 
 def pytest_addoption(parser):
     # Hypothesis max examples
