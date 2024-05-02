@@ -12,9 +12,18 @@ from pytest import mark
 from array_api_tests import _array_module as xp
 from array_api_tests import api_version
 from array_api_tests._array_module import _UndefinedStub
+from array_api_tests.stubs import EXTENSIONS
+from array_api_tests import xp_name
 
 from reporting import pytest_metadata, pytest_json_modifyreport, add_extra_json_metadata # noqa
 
+def pytest_report_header(config):
+    disabled_extensions = config.getoption("--disable-extension")
+    enabled_extensions = sorted({
+        ext for ext in EXTENSIONS + ['fft'] if ext not in disabled_extensions and xp_has_ext(ext)
+    })
+
+    return f"Array API Tests Module: {xp_name}. API Version: {api_version}. Enabled Extensions: {', '.join(enabled_extensions)}"
 
 def pytest_addoption(parser):
     # Hypothesis max examples
