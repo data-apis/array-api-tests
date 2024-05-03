@@ -1,7 +1,7 @@
 import math
 
 import pytest
-from hypothesis import given
+from hypothesis import given, note
 from hypothesis import strategies as st
 
 from . import _array_module as xp
@@ -167,3 +167,39 @@ def test_where(shapes, dtypes, data):
                 out_repr=f"out[{idx}]",
                 out_val=out[idx]
             )
+
+
+@pytest.mark.min_version("2023.12")
+@given(data=st.data())
+def test_searchsorted(data):
+    # TODO: test side="right"
+    _x1 = data.draw(
+        st.lists(xps.from_dtype(dh.default_float), min_size=1, unique=True),
+        label="_x1",
+    )
+    x1 = xp.asarray(_x1, dtype=dh.default_float)
+    if data.draw(st.booleans(), label="use sorter?"):
+        sorter = data.draw(
+            st.permutations(_x1).map(lambda o: xp.asarray(o, dtype=dh.default_float)),
+            label="sorter",
+        )
+    else:
+        sorter = None
+        x1 = xp.sort(x1)
+    note(f"{x1=}")
+    x2 = data.draw(
+        st.lists(st.sampled_from(_x1), unique=True, min_size=1).map(
+            lambda o: xp.asarray(o, dtype=dh.default_float)
+        ),
+        label="x2",
+    )
+
+    out = xp.searchsorted(x1, x2, sorter=sorter)
+
+    ph.assert_dtype(
+        "searchsorted",
+        in_dtype=[x1.dtype, x2.dtype],
+        out_dtype=out.dtype,
+        expected=xp.__array_namespace_info__().default_dtypes()["indexing"],
+    )
+    # TODO: shapes and values testing

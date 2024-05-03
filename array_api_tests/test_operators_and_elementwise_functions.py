@@ -933,6 +933,16 @@ def test_ceil(x):
     unary_assert_against_refimpl("ceil", x, out, math.ceil, strict_check=True)
 
 
+@pytest.mark.min_version("2023.12")
+@given(hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
+def test_clip(x):
+    # TODO: test min/max kwargs, adjust values testing accordingly
+    out = xp.clip(x)
+    ph.assert_dtype("clip", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_shape("clip", out_shape=out.shape, expected=x.shape)
+    ph.assert_array_elements("clip", out=out, expected=x)
+
+
 if api_version >= "2022.12":
 
     @given(hh.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
@@ -941,6 +951,15 @@ if api_version >= "2022.12":
         ph.assert_dtype("conj", in_dtype=x.dtype, out_dtype=out.dtype)
         ph.assert_shape("conj", out_shape=out.shape, expected=x.shape)
         unary_assert_against_refimpl("conj", x, out, operator.methodcaller("conjugate"))
+
+
+@pytest.mark.min_version("2023.12")
+@given(*hh.two_mutual_arrays(dh.real_float_dtypes))
+def test_copysign(x1, x2):
+    out = xp.copysign(x1, x2)
+    ph.assert_dtype("copysign", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
+    ph.assert_result_shape("copysign", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
+    # TODO: values testing
 
 
 @given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
@@ -1093,6 +1112,15 @@ def test_greater_equal(ctx, data):
     binary_param_assert_against_refimpl(
         ctx, left, right, out, ">=", operator.ge, res_stype=bool
     )
+
+
+@pytest.mark.min_version("2023.12")
+@given(*hh.two_mutual_arrays(dh.real_float_dtypes))
+def test_hypot(x1, x2):
+    out = xp.hypot(x1, x2)
+    ph.assert_dtype("hypot", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
+    ph.assert_result_shape("hypot", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
+    binary_assert_against_refimpl("hypot", x1, x2, out, math.hypot)
 
 
 if api_version >= "2022.12":
@@ -1261,6 +1289,24 @@ def test_logical_xor(x1, x2):
     )
 
 
+@pytest.mark.min_version("2023.12")
+@given(*hh.two_mutual_arrays(dh.real_float_dtypes))
+def test_maximum(x1, x2):
+    out = xp.maximum(x1, x2)
+    ph.assert_dtype("maximum", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
+    ph.assert_result_shape("maximum", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
+    binary_assert_against_refimpl("maximum", x1, x2, out, max, strict_check=True)
+
+
+@pytest.mark.min_version("2023.12")
+@given(*hh.two_mutual_arrays(dh.real_float_dtypes))
+def test_minimum(x1, x2):
+    out = xp.minimum(x1, x2)
+    ph.assert_dtype("minimum", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
+    ph.assert_result_shape("minimum", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
+    binary_assert_against_refimpl("minimum", x1, x2, out, min, strict_check=True)
+
+
 @pytest.mark.parametrize("ctx", make_binary_params("multiply", dh.numeric_dtypes))
 @given(data=st.data())
 def test_multiply(ctx, data):
@@ -1378,6 +1424,15 @@ def test_round(x):
     ph.assert_dtype("round", in_dtype=x.dtype, out_dtype=out.dtype)
     ph.assert_shape("round", out_shape=out.shape, expected=x.shape)
     unary_assert_against_refimpl("round", x, out, round, strict_check=True)
+
+
+@pytest.mark.min_version("2023.12")
+@given(hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
+def test_signbit(x):
+    out = xp.signbit(x)
+    ph.assert_dtype("signbit", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
+    ph.assert_shape("signbit", out_shape=out.shape, expected=x.shape)
+    # TODO: values testing
 
 
 @given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(), elements=finite_kw))

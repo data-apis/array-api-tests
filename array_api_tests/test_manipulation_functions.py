@@ -149,6 +149,31 @@ def test_expand_dims(x, axis):
     )
 
 
+@pytest.mark.min_version("2023.12")
+@given(x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1)), data=st.data())
+def test_moveaxis(x, data):
+    source = data.draw(
+        st.integers(-x.ndim, x.ndim - 1) | xps.valid_tuple_axes(x.ndim), label="source"
+    )
+    if isinstance(source, int):
+        destination = data.draw(st.integers(-x.ndim, x.ndim - 1), label="destination")
+    else:
+        assert isinstance(source, tuple)  # sanity check
+        destination = data.draw(
+            st.lists(
+                st.integers(-x.ndim, x.ndim - 1),
+                min_size=len(source),
+                max_size=len(source),
+                unique_by=lambda n: n if n >= 0 else x.ndim + n,
+            ).map(tuple),
+            label="destination"
+        )
+
+    out = xp.moveaxis(x, source, destination)
+
+    ph.assert_dtype("moveaxis", in_dtype=x.dtype, out_dtype=out.dtype)
+    # TODO: shape and values testing
+
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
@@ -251,6 +276,20 @@ def reshape_shapes(draw, shape):
         index = draw(st.integers(0, len(rshape) - 1))
         rshape[index] = -1
     return tuple(rshape)
+
+
+@pytest.mark.min_version("2023.12")
+@given(
+    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1)),
+    repeats=st.integers(1, 4),
+)
+def test_repeat(x, repeats):
+    # TODO: test array repeats and non-None axis, adjust shape and value testing accordingly
+    out = xp.repeat(x, repeats)
+    ph.assert_dtype("repeat", in_dtype=x.dtype, out_dtype=out.dtype)
+    expected_shape = (math.prod(x.shape) * repeats,)
+    ph.assert_shape("repeat", out_shape=out.shape, expected=expected_shape)
+    # TODO: values testing
 
 
 @pytest.mark.unvectorized
@@ -371,3 +410,22 @@ def test_stack(shape, dtypes, kw, data):
                     out_val=out[out_idx],
                     kw=kw,
                 )
+
+
+@pytest.mark.min_version("2023.12")
+@given(x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()), data=st.data())
+def test_tile(x, data):
+    repetitions = data.draw(st.lists(st.integers(1, 4), min_size=1, max_size=x.ndim + 1).map(tuple), label="repetitions")
+    out = xp.tile(x, repetitions)
+    ph.assert_dtype("tile", in_dtype=x.dtype, out_dtype=out.dtype)
+    # TODO: shapes and values testing
+
+
+@pytest.mark.min_version("2023.12")
+@given(x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1)), data=st.data())
+def test_unstack(x, data):
+    axis = data.draw(st.integers(min_value=-x.ndim, max_value=x.ndim - 1), label="axis")
+    kw = data.draw(hh.specified_kwargs(("axis", axis, 0)), label="kw")
+    out = xp.asarray(xp.unstack(x, **kw), dtype=x.dtype)
+    ph.assert_dtype("unstack", in_dtype=x.dtype, out_dtype=out.dtype)
+    # TODO: shapes and values testing

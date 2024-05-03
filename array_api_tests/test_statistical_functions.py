@@ -16,6 +16,16 @@ from ._array_module import _UndefinedStub
 from .typing import DataType
 
 
+@pytest.mark.min_version("2023.12")
+@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(min_dims=1, max_dims=1)))
+def test_cumulative_sum(x):
+    # TODO: test kwargs + diff shapes, adjust shape and values testing accordingly
+    out = xp.cumulative_sum(x)
+    # TODO: assert dtype
+    ph.assert_shape("cumulative_sum", out_shape=out.shape, expected=x.shape)
+    # TODO: assert values
+
+
 def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
     dtypes = [d2 for d1, d2 in dh.promotion_table if d1 == dtype]
     dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
