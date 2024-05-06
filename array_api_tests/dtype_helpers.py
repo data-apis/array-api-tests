@@ -265,6 +265,9 @@ def accumulation_result_dtype(x_dtype, dtype_kwarg):
                     _dtype = x_dtype
                 else:
                     _dtype = default_dtype
+        elif api_version >= '2023.12':
+            # Starting in 2023.12, floats should not promote with dtype=None
+            _dtype = x_dtype
         elif is_float_dtype(x_dtype, include_complex=False):
             if dtype_nbits[x_dtype] > dtype_nbits[default_float]:
                 _dtype = x_dtype
