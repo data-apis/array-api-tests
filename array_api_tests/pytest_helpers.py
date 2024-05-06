@@ -421,7 +421,8 @@ def assert_fill(
         assert xp.all(xp.equal(out, xp.asarray(fill_value, dtype=dtype))), msg
 
 
-def _has_signbit() -> bool:
+def _has_functional_signbit() -> bool:
+    # signbit can be available but not implemented (e.g., in array-api-strict)
     if not hasattr(_xp, "signbit"):
         return False
     try:
@@ -438,7 +439,7 @@ def _real_float_strict_equals(out: Array, expected: Array) -> bool:
 
     # Test sign of zeroes if xp.signbit() available, otherwise ignore as it's
     # not that big of a deal for the perf costs.
-    if _has_signbit():
+    if _has_functional_signbit():
         out_zero_mask = out == 0
         out_sign_mask = _xp.signbit(out)
         out_pos_zero_mask = out_zero_mask & out_sign_mask
