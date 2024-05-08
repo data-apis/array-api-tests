@@ -44,7 +44,7 @@ array_attributes = [
 
 category_to_funcs: Dict[str, List[FunctionType]] = {}
 for name, mod in name_to_mod.items():
-    if name.endswith("_functions"):
+    if name.endswith("_functions") or name == "info":  # info functions file just named info.py
         category = name.replace("_functions", "")
         objects = [getattr(mod, name) for name in mod.__all__]
         assert all(isinstance(o, FunctionType) for o in objects)  # sanity check
