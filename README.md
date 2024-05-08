@@ -3,8 +3,8 @@
 This is the test suite for array libraries adopting the [Python Array API
 standard](https://data-apis.org/array-api/latest).
 
-Note the suite is still a **work in progress**. Feedback and contributions are
-welcome!
+Keeping full coverage of the spec is an on-going priority as the Array API evolves. 
+Feedback and contributions are welcome!
 
 ## Quickstart
 
@@ -348,26 +348,6 @@ GitHub](https://github.com/data-apis/array-api-tests/tags) and convert the tag
 into a release. If you want, you can add release notes, which GitHub can
 generate for you.
 
-
-## Future plans
-
-Keeping full coverage of the spec is an on-going priority as the Array API
-evolves.
-
-Additionally, we have features and general improvements planned. Work on such
-functionality is guided primarily by the concerete needs of developers
-implementing and using the Array API—be sure to [let us
-know](https://github.com/data-apis/array-api-tests/issues) any limitations you
-come across.
-
-* A dependency graph for every test case, which could be used to modify pytest's
-  collection so that low-dependency tests are run first, and tests with faulty
-  dependencies would skip/xfail.
-
-* In some tests we've found it difficult to find appropaite assertion parameters
-  for output values (particularly epsilons for floating-point outputs), so we
-  need to review these and either implement assertions or properly note the lack
-  thereof.
 
 ---
 
