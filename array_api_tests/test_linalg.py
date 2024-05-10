@@ -37,6 +37,7 @@ from .hypothesis_helpers import (arrays, all_floating_dtypes, xps, shapes,
 from . import dtype_helpers as dh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
+from . import api_version
 from .typing import Array
 
 from . import _array_module
@@ -873,7 +874,7 @@ def test_trace(x, kw):
         # See https://github.com/data-apis/array-api-tests/issues/160
         if x.dtype in dh.uint_dtypes:
             assert dh.is_int_dtype(res.dtype)  # sanity check
-    else:
+    elif api_version < "2023.12":  # TODO: update dtype assertion for >2023.12 - see #234
         ph.assert_dtype("trace", in_dtype=x.dtype, out_dtype=res.dtype, expected=expected_dtype)
 
     n, m = x.shape[-2:]
