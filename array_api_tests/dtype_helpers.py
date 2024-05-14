@@ -315,6 +315,7 @@ else:
             )
     else:
         default_complex = None
+
 if dtype_nbits[default_int] == 32:
     default_uint = getattr(xp, "uint32", None)
 else:
