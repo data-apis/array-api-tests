@@ -11,7 +11,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps
+from . import api_version, xps
 from ._array_module import _UndefinedStub
 from .typing import DataType
 
@@ -148,7 +148,7 @@ def test_prod(x, data):
         # See https://github.com/data-apis/array-api-tests/issues/106
         if x.dtype in dh.uint_dtypes:
             assert dh.is_int_dtype(out.dtype)  # sanity check
-    else:
+    elif api_version < "2023.12":  # TODO: update dtype assertion for >2023.12 - see #234
         ph.assert_dtype("prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
@@ -207,7 +207,6 @@ def test_std(x, data):
 
 
 @pytest.mark.unvectorized
-@pytest.mark.skip("flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
         dtype=xps.numeric_dtypes(),
@@ -238,7 +237,7 @@ def test_sum(x, data):
         # See https://github.com/data-apis/array-api-tests/issues/160
         if x.dtype in dh.uint_dtypes:
             assert dh.is_int_dtype(out.dtype)  # sanity check
-    else:
+    elif api_version < "2023.12":  # TODO: update dtype assertion for >2023.12 - see #234
         ph.assert_dtype("sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
