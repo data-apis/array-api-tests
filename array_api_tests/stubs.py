@@ -44,7 +44,7 @@ array_attributes = [
 
 category_to_funcs: Dict[str, List[FunctionType]] = {}
 for name, mod in name_to_mod.items():
-    if name.endswith("_functions") or name == "info":  # info functions file just named info.py
+    if name.endswith("_functions"):
         category = name.replace("_functions", "")
         objects = [getattr(mod, name) for name in mod.__all__]
         assert all(isinstance(o, FunctionType) for o in objects)  # sanity check
@@ -54,6 +54,23 @@ all_funcs = []
 for funcs in [array_methods, *category_to_funcs.values()]:
     all_funcs.extend(funcs)
 name_to_func: Dict[str, FunctionType] = {f.__name__: f for f in all_funcs}
+
+info_funcs = []
+if api_version >= "2023.12":
+    # The info functions in the stubs are in info.py, but this is not a name
+    # in the standard.
+    info_mod = name_to_mod["info"]
+
+    # Note that __array_namespace_info__ is in info.__all__ but it is in the
+    # top-level namespace, not the info namespace.
+    info_funcs = [getattr(info_mod, name) for name in info_mod.__all__
+                  if name != '__array_namespace_info__']
+    assert all(isinstance(f, FunctionType) for f in info_funcs)
+    name_to_func.update({f.__name__: f for f in info_funcs})
+
+    all_funcs.append(info_mod.__array_namespace_info__)
+    name_to_func['__array_namespace_info__'] = info_mod.__array_namespace_info__
+    category_to_funcs['info'] = [info_mod.__array_namespace_info__]
 
 EXTENSIONS: List[str] = ["linalg"]
 if api_version >= "2022.12":
