@@ -55,7 +55,9 @@ for funcs in [array_methods, *category_to_funcs.values()]:
     all_funcs.extend(funcs)
 name_to_func: Dict[str, FunctionType] = {f.__name__: f for f in all_funcs}
 
-EXTENSIONS: List[str] = ["linalg"]  # TODO: add "fft" once stubs available
+EXTENSIONS: List[str] = ["linalg"]
+if api_version >= "2022.12":
+    EXTENSIONS.append("fft")
 extension_to_funcs: Dict[str, List[FunctionType]] = {}
 for ext in EXTENSIONS:
     mod = name_to_mod[ext]
