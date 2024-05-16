@@ -148,7 +148,7 @@ def test_prod(x, data):
         # See https://github.com/data-apis/array-api-tests/issues/106
         if x.dtype in dh.uint_dtypes:
             assert dh.is_int_dtype(out.dtype)  # sanity check
-    elif api_version < "2023.12":  # TODO: update dtype assertion for >2023.12 - see #234
+    else:
         ph.assert_dtype("prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
@@ -237,7 +237,7 @@ def test_sum(x, data):
         # See https://github.com/data-apis/array-api-tests/issues/160
         if x.dtype in dh.uint_dtypes:
             assert dh.is_int_dtype(out.dtype)  # sanity check
-    elif api_version < "2023.12":  # TODO: update dtype assertion for >2023.12 - see #234
+    else:
         ph.assert_dtype("sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
     _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
