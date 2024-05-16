@@ -629,7 +629,7 @@ def make_unary_check_result(check_just_result: UnaryCheck) -> UnaryResultCheck:
     return check_result
 
 
-def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
+def parse_unary_case_block(case_block: str, func_name: str) -> List[UnaryCase]:
     """
     Parses a Sphinx-formatted docstring of a unary function to return a list of
     codified unary cases, e.g.
@@ -660,7 +660,7 @@ def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
         ...     '''
         ...
         >>> case_block = r_case_block.search(sqrt.__doc__).group(1)
-        >>> unary_cases = parse_unary_case_block(case_block)
+        >>> unary_cases = parse_unary_case_block(case_block, 'sqrt')
         >>> for case in unary_cases:
         ...     print(repr(case))
         UnaryCase(<x_i < 0 -> NaN>)
@@ -691,7 +691,7 @@ def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
                 cond, cond_expr_template, cond_from_dtype = parse_cond(m.group(1))
                 _check_result, result_expr = parse_result(m.group(2))
             except ParseError as e:
-                warn(f"not machine-readable: '{e.value}'")
+                warn(f"case for {func_name} not machine-readable: '{e.value}'")
                 continue
             cond_expr = cond_expr_template.replace("{}", "x_i")
             # Do not define check_result in this function's body - see
@@ -708,7 +708,7 @@ def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
             cases.append(case)
         else:
             if not r_remaining_case.search(case_str):
-                warn(f"case not machine-readable: '{case_str}'")
+                warn(f"case for {func_name} not machine-readable: '{case_str}'")
     return cases
 
 
@@ -1102,7 +1102,7 @@ def parse_binary_case(case_str: str) -> BinaryCase:
 r_redundant_case = re.compile("result.+determined by the rule already stated above")
 
 
-def parse_binary_case_block(case_block: str) -> List[BinaryCase]:
+def parse_binary_case_block(case_block: str, func_name: str) -> List[BinaryCase]:
     """
     Parses a Sphinx-formatted docstring of a binary function to return a list of
     codified binary cases, e.g.
@@ -1133,7 +1133,7 @@ def parse_binary_case_block(case_block: str) -> List[BinaryCase]:
         ...     '''
         ...
         >>> case_block = r_case_block.search(logaddexp.__doc__).group(1)
-        >>> binary_cases = parse_binary_case_block(case_block)
+        >>> binary_cases = parse_binary_case_block(case_block, 'logaddexp')
         >>> for case in binary_cases:
         ...     print(repr(case))
         BinaryCase(<x1_i == NaN or x2_i == NaN -> NaN>)
@@ -1151,10 +1151,10 @@ def parse_binary_case_block(case_block: str) -> List[BinaryCase]:
                 case = parse_binary_case(case_str)
                 cases.append(case)
             except ParseError as e:
-                warn(f"not machine-readable: '{e.value}'")
+                warn(f"case for {func_name} not machine-readable: '{e.value}'")
         else:
             if not r_remaining_case.match(case_str):
-                warn(f"case not machine-readable: '{case_str}'")
+                warn(f"case for {func_name} not machine-readable: '{case_str}'")
     return cases
 
 
@@ -1163,8 +1163,9 @@ binary_params = []
 iop_params = []
 func_to_op: Dict[str, str] = {v: k for k, v in dh.op_to_func.items()}
 for stub in category_to_funcs["elementwise"]:
+    func_name = stub.__name__
     if stub.__doc__ is None:
-        warn(f"{stub.__name__}() stub has no docstring")
+        warn(f"{func_name}() stub has no docstring")
         continue
     if m := r_case_block.search(stub.__doc__):
         case_block = m.group(1)
@@ -1172,10 +1173,10 @@ for stub in category_to_funcs["elementwise"]:
         continue
     marks = []
     try:
-        func = getattr(xp, stub.__name__)
+        func = getattr(xp, func_name)
     except AttributeError:
         marks.append(
-            pytest.mark.skip(reason=f"{stub.__name__} not found in array module")
+            pytest.mark.skip(reason=f"{func_name} not found in array module")
         )
         func = None
     sig = inspect.signature(stub)
@@ -1184,10 +1185,10 @@ for stub in category_to_funcs["elementwise"]:
         warn(f"{func=} has no parameters")
         continue
     if param_names[0] == "x":
-        if cases := parse_unary_case_block(case_block):
-            name_to_func = {stub.__name__: func}
-            if stub.__name__ in func_to_op.keys():
-                op_name = func_to_op[stub.__name__]
+        if cases := parse_unary_case_block(case_block, func_name):
+            name_to_func = {func_name: func}
+            if func_name in func_to_op.keys():
+                op_name = func_to_op[func_name]
                 op = getattr(operator, op_name)
                 name_to_func[op_name] = op
             for func_name, func in name_to_func.items():
@@ -1196,20 +1197,20 @@ for stub in category_to_funcs["elementwise"]:
                     p = pytest.param(func_name, func, case, id=id_)
                     unary_params.append(p)
         else:
-            warn(f"Special cases found for {stub.__name__} but none were parsed")
+            warn(f"Special cases found for {func_name} but none were parsed")
         continue
     if len(sig.parameters) == 1:
         warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
         continue
     if param_names[0] == "x1" and param_names[1] == "x2":
-        if cases := parse_binary_case_block(case_block):
-            name_to_func = {stub.__name__: func}
-            if stub.__name__ in func_to_op.keys():
-                op_name = func_to_op[stub.__name__]
+        if cases := parse_binary_case_block(case_block, func_name):
+            name_to_func = {func_name: func}
+            if func_name in func_to_op.keys():
+                op_name = func_to_op[func_name]
                 op = getattr(operator, op_name)
                 name_to_func[op_name] = op
                 # We collect inplace operator test cases seperately
-                if "equal" in stub.__name__:
+                if "equal" in func_name:
                     continue
                 iop_name = "__i" + op_name[2:]
                 iop = getattr(operator, iop_name)
@@ -1223,7 +1224,7 @@ for stub in category_to_funcs["elementwise"]:
                     p = pytest.param(func_name, func, case, id=id_)
                     binary_params.append(p)
         else:
-            warn(f"Special cases found for {stub.__name__} but none were parsed")
+            warn(f"Special cases found for {func_name} but none were parsed")
         continue
     else:
         warn(
