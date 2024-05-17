@@ -5,6 +5,7 @@ from typing import Optional
 import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
+from ndindex import iter_indices
 
 from . import _array_module as xp
 from . import dtype_helpers as dh
@@ -17,13 +18,72 @@ from .typing import DataType
 
 
 @pytest.mark.min_version("2023.12")
-@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(min_dims=1, max_dims=1)))
-def test_cumulative_sum(x):
-    # TODO: test kwargs + diff shapes, adjust shape and values testing accordingly
-    out = xp.cumulative_sum(x)
-    # TODO: assert dtype
-    ph.assert_shape("cumulative_sum", out_shape=out.shape, expected=x.shape)
-    # TODO: assert values
+@given(
+    x=hh.arrays(
+        dtype=xps.numeric_dtypes(),
+        shape=hh.shapes(min_dims=1)),
+    data=st.data(),
+)
+def test_cumulative_sum(x, data):
+    axes = st.integers(-x.ndim, x.ndim - 1)
+    if x.ndim == 1:
+        axes = axes | st.none()
+    axis = data.draw(axes, label='axis')
+    _axis, = sh.normalise_axis(axis, x.ndim)
+    dtype = data.draw(kwarg_dtypes(x.dtype))
+    include_initial = data.draw(st.booleans(), label="include_initial")
+
+    kw = data.draw(
+        hh.specified_kwargs(
+            ("axis", axis, None),
+            ("dtype", dtype, None),
+            ("include_initial", include_initial, False),
+        ),
+        label="kw",
+    )
+
+    out = xp.cumulative_sum(x, **kw)
+
+    expected_shape = list(x.shape)
+    if include_initial:
+        expected_shape[_axis] += 1
+    expected_shape = tuple(expected_shape)
+    ph.assert_shape("cumulative_sum", out_shape=out.shape, expected=expected_shape)
+
+    expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
+    if expected_dtype is None:
+        # If a default uint cannot exist (i.e. in PyTorch which doesn't support
+        # uint32 or uint64), we skip testing the output dtype.
+        # See https://github.com/data-apis/array-api-tests/issues/106
+        if x.dtype in dh.uint_dtypes:
+            assert dh.is_int_dtype(out.dtype)  # sanity check
+    else:
+        ph.assert_dtype("cumulative_sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
+
+    scalar_type = dh.get_scalar_type(out.dtype)
+
+    for x_idx, out_idx, in iter_indices(x.shape, expected_shape, skip_axes=_axis):
+        x_arr = x[x_idx.raw]
+        out_arr = out[out_idx.raw]
+
+        if include_initial:
+            ph.assert_scalar_equals("cumulative_sum", type_=scalar_type, idx=out_idx.raw, out=out_arr[0], expected=0)
+
+        for n in range(x.shape[_axis]):
+            start = 1 if include_initial else 0
+            out_val = out_arr[n + start]
+            assume(cmath.isfinite(out_val))
+            elements = []
+            for idx in range(n + 1):
+                s = scalar_type(x_arr[idx])
+                elements.append(s)
+            expected = sum(elements)
+            if dh.is_int_dtype(out.dtype):
+                m, M = dh.dtype_ranges[out.dtype]
+                assume(m <= expected <= M)
+            ph.assert_scalar_equals("cumulative_sum", type_=scalar_type,
+                                    idx=out_idx.raw, out=out_val,
+                                    expected=expected)
 
 
 def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
