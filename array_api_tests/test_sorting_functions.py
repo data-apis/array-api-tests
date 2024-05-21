@@ -33,7 +33,7 @@ def assert_scalar_in_set(
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
@@ -94,7 +94,7 @@ def test_argsort(x, data):
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),

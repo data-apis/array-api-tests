@@ -77,7 +77,7 @@ def reals(min_value=None, max_value=None) -> st.SearchStrategy[Union[int, float]
 
 
 # TODO: support testing complex dtypes
-@given(dtype=st.none() | xps.real_dtypes(), data=st.data())
+@given(dtype=st.none() | hh.real_dtypes, data=st.data())
 def test_arange(dtype, data):
     if dtype is None or dh.is_float_dtype(dtype):
         start = data.draw(reals(), label="start")
@@ -198,7 +198,7 @@ def test_arange(dtype, data):
 @given(shape=hh.shapes(min_side=1), data=st.data())
 def test_asarray_scalars(shape, data):
     kw = data.draw(
-        hh.kwargs(dtype=st.none() | xps.scalar_dtypes(), copy=st.none()), label="kw"
+        hh.kwargs(dtype=st.none() | hh.all_dtypes, copy=st.none()), label="kw"
     )
     dtype = kw.get("dtype", None)
     if dtype is None:
@@ -312,7 +312,7 @@ def test_asarray_arrays(shape, dtypes, data):
             ), f"{f_out}, but should be {value} after x was mutated"
 
 
-@given(hh.shapes(), hh.kwargs(dtype=st.none() | xps.scalar_dtypes()))
+@given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.all_dtypes))
 def test_empty(shape, kw):
     out = xp.empty(shape, **kw)
     if kw.get("dtype", None) is None:
@@ -323,8 +323,8 @@ def test_empty(shape, kw):
 
 
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
-    kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes()),
+    kw=hh.kwargs(dtype=st.none() | hh.all_dtypes),
 )
 def test_empty_like(x, kw):
     out = xp.empty_like(x, **kw)
@@ -340,7 +340,7 @@ def test_empty_like(x, kw):
     n_cols=st.none() | hh.sqrt_sizes,
     kw=hh.kwargs(
         k=st.integers(),
-        dtype=xps.numeric_dtypes(),
+        dtype=hh.numeric_dtypes,
     ),
 )
 def test_eye(n_rows, n_cols, kw):
@@ -368,7 +368,7 @@ if dh.default_float == xp.float32:
     default_unsafe_dtypes.append(xp.float64)
 if dh.default_complex == xp.complex64:
     default_unsafe_dtypes.append(xp.complex64)
-default_safe_dtypes: st.SearchStrategy = xps.scalar_dtypes().filter(
+default_safe_dtypes: st.SearchStrategy = hh.all_dtypes.filter(
     lambda d: d not in default_unsafe_dtypes
 )
 
@@ -376,7 +376,7 @@ default_safe_dtypes: st.SearchStrategy = xps.scalar_dtypes().filter(
 @st.composite
 def full_fill_values(draw) -> Union[bool, int, float, complex]:
     kw = draw(
-        st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_kw")
+        st.shared(hh.kwargs(dtype=st.none() | hh.all_dtypes), key="full_kw")
     )
     dtype = kw.get("dtype", None) or draw(default_safe_dtypes)
     return draw(hh.from_dtype(dtype))
@@ -385,7 +385,7 @@ def full_fill_values(draw) -> Union[bool, int, float, complex]:
 @given(
     shape=hh.shapes(),
     fill_value=full_fill_values(),
-    kw=st.shared(hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), key="full_kw"),
+    kw=st.shared(hh.kwargs(dtype=st.none() | hh.all_dtypes), key="full_kw"),
 )
 def test_full(shape, fill_value, kw):
     with hh.reject_overflow():
@@ -424,9 +424,9 @@ def test_full(shape, fill_value, kw):
     ph.assert_fill("full", fill_value=fill_value, dtype=dtype, out=out, kw=dict(fill_value=fill_value))
 
 
-@given(kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()), data=st.data())
+@given(kw=hh.kwargs(dtype=st.none() | hh.all_dtypes), data=st.data())
 def test_full_like(kw, data):
-    dtype = kw.get("dtype", None) or data.draw(xps.scalar_dtypes(), label="dtype")
+    dtype = kw.get("dtype", None) or data.draw(hh.all_dtypes, label="dtype")
     x = data.draw(hh.arrays(dtype=dtype, shape=hh.shapes()), label="x")
     fill_value = data.draw(hh.from_dtype(dtype), label="fill_value")
     out = xp.full_like(x, fill_value, **kw)
@@ -444,7 +444,7 @@ finite_kw = {"allow_nan": False, "allow_infinity": False}
 
 @given(
     num=hh.sizes,
-    dtype=st.none() | xps.floating_dtypes(),
+    dtype=st.none() | hh.real_floating_dtypes,
     endpoint=st.booleans(),
     data=st.data(),
 )
@@ -492,7 +492,7 @@ def test_linspace(num, dtype, endpoint, data):
         ph.assert_array_elements("linspace", out=out, expected=expected)
 
 
-@given(dtype=xps.numeric_dtypes(), data=st.data())
+@given(dtype=hh.numeric_dtypes, data=st.data())
 def test_meshgrid(dtype, data):
     # The number and size of generated arrays is arbitrarily limited to prevent
     # meshgrid() running out of memory.
@@ -524,7 +524,7 @@ def make_one(dtype: DataType) -> Scalar:
         return True
 
 
-@given(hh.shapes(), hh.kwargs(dtype=st.none() | xps.scalar_dtypes()))
+@given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.all_dtypes))
 def test_ones(shape, kw):
     out = xp.ones(shape, **kw)
     if kw.get("dtype", None) is None:
@@ -538,8 +538,8 @@ def test_ones(shape, kw):
 
 
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
-    kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes()),
+    kw=hh.kwargs(dtype=st.none() | hh.all_dtypes),
 )
 def test_ones_like(x, kw):
     out = xp.ones_like(x, **kw)
@@ -562,7 +562,7 @@ def make_zero(dtype: DataType) -> Scalar:
         return False
 
 
-@given(hh.shapes(), hh.kwargs(dtype=st.none() | xps.scalar_dtypes()))
+@given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.all_dtypes))
 def test_zeros(shape, kw):
     out = xp.zeros(shape, **kw)
     if kw.get("dtype", None) is None:
@@ -576,8 +576,8 @@ def test_zeros(shape, kw):
 
 
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
-    kw=hh.kwargs(dtype=st.none() | xps.scalar_dtypes()),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes()),
+    kw=hh.kwargs(dtype=st.none() | hh.all_dtypes),
 )
 def test_zeros_like(x, kw):
     out = xp.zeros_like(x, **kw)

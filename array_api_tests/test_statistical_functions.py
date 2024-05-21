@@ -17,7 +17,7 @@ from .typing import DataType
 
 
 @pytest.mark.min_version("2023.12")
-@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(min_dims=1, max_dims=1)))
+@given(hh.arrays(dtype=hh.numeric_dtypes, shape=hh.shapes(min_dims=1, max_dims=1)))
 def test_cumulative_sum(x):
     # TODO: test kwargs + diff shapes, adjust shape and values testing accordingly
     out = xp.cumulative_sum(x)
@@ -36,7 +36,7 @@ def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -66,7 +66,7 @@ def test_max(x, data):
 
 @given(
     x=hh.arrays(
-        dtype=xps.floating_dtypes(),
+        dtype=hh.real_floating_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -89,7 +89,7 @@ def test_mean(x, data):
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -120,7 +120,7 @@ def test_min(x, data):
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.numeric_dtypes(),
+        dtype=hh.numeric_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -172,7 +172,7 @@ def test_prod(x, data):
 @pytest.mark.skip(reason="flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
-        dtype=xps.floating_dtypes(),
+        dtype=hh.real_floating_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ).filter(lambda x: math.prod(x.shape) >= 2),
@@ -209,7 +209,7 @@ def test_std(x, data):
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.numeric_dtypes(),
+        dtype=hh.numeric_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -262,7 +262,7 @@ def test_sum(x, data):
 @pytest.mark.skip(reason="flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
-        dtype=xps.floating_dtypes(),
+        dtype=hh.real_floating_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ).filter(lambda x: math.prod(x.shape) >= 2),

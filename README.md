@@ -3,7 +3,7 @@
 This is the test suite for array libraries adopting the [Python Array API
 standard](https://data-apis.org/array-api/latest).
 
-Keeping full coverage of the spec is an on-going priority as the Array API evolves. 
+Keeping full coverage of the spec is an on-going priority as the Array API evolves.
 Feedback and contributions are welcome!
 
 ## Quickstart
@@ -285,6 +285,19 @@ values should result in more rigorous runs. For example, `--max-examples
 10_000` may find bugs where default runs don't but will take much longer to
 run.
 
+#### Skipping Dtypes
+
+The test suite will automatically skip testing of inessential dtypes if they
+are not present on the array module namespace, but dtypes can also be skipped
+manually by setting the environment variable `ARRAY_API_TESTS_SKIP_DTYPES` to
+a comma separated list of dtypes to skip. For example
+
+```
+ARRAY_API_TESTS_SKIP_DTYPES=uint16,uint32,uint64 pytest array_api_tests/
+```
+
+Note that skipping certain essential dtypes such as `bool` and the default
+floating-point dtype is not supported.
 
 ## Contributing
 

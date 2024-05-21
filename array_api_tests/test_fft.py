@@ -1,31 +1,22 @@
 import math
 from typing import List, Optional
-from unittest.mock import MagicMock
 
 import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
-from array_api_tests.typing import Array, DataType
+from array_api_tests.typing import Array
 
-from . import api_version
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps
 from . import xp
 
 pytestmark = [
     pytest.mark.xp_extension("fft"),
     pytest.mark.min_version("2022.12"),
 ]
-
-
-# Using xps.complex_dtypes() raises an AttributeError for 2021.12 instances of
-# xps, hence this hack. TODO: figure out a better way to manage this!
-if api_version < "2022.12":
-    xps = MagicMock(xps)
 
 fft_shapes_strat = hh.shapes(min_dims=1).filter(lambda s: math.prod(s) > 1)
 
@@ -78,19 +69,6 @@ def draw_s_axes_norm_kwargs(x: Array, data: st.DataObject, *, size_gt_1=False) -
     return s, axes, norm, kwargs
 
 
-def assert_float_to_complex_dtype(
-    func_name: str, *, in_dtype: DataType, out_dtype: DataType
-):
-    if in_dtype == xp.float32:
-        expected = xp.complex64
-    else:
-        assert in_dtype == xp.float64  # sanity check
-        expected = xp.complex128
-    ph.assert_dtype(
-        func_name, in_dtype=in_dtype, out_dtype=out_dtype, expected=expected
-    )
-
-
 def assert_n_axis_shape(
     func_name: str,
     *,
@@ -128,7 +106,7 @@ def assert_s_axes_shape(
     ph.assert_shape(func_name, out_shape=out.shape, expected=tuple(expected))
 
 
-@given(x=hh.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat), data=st.data())
+@given(x=hh.arrays(dtype=hh.complex_dtypes, shape=fft_shapes_strat), data=st.data())
 def test_fft(x, data):
     n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data)
 
@@ -138,7 +116,7 @@ def test_fft(x, data):
     assert_n_axis_shape("fft", x=x, n=n, axis=axis, out=out)
 
 
-@given(x=hh.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat), data=st.data())
+@given(x=hh.arrays(dtype=hh.complex_dtypes, shape=fft_shapes_strat), data=st.data())
 def test_ifft(x, data):
     n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data)
 
@@ -148,7 +126,7 @@ def test_ifft(x, data):
     assert_n_axis_shape("ifft", x=x, n=n, axis=axis, out=out)
 
 
-@given(x=hh.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat), data=st.data())
+@given(x=hh.arrays(dtype=hh.complex_dtypes, shape=fft_shapes_strat), data=st.data())
 def test_fftn(x, data):
     s, axes, norm, kwargs = draw_s_axes_norm_kwargs(x, data)
 
@@ -158,7 +136,7 @@ def test_fftn(x, data):
     assert_s_axes_shape("fftn", x=x, s=s, axes=axes, out=out)
 
 
-@given(x=hh.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat), data=st.data())
+@given(x=hh.arrays(dtype=hh.complex_dtypes, shape=fft_shapes_strat), data=st.data())
 def test_ifftn(x, data):
     s, axes, norm, kwargs = draw_s_axes_norm_kwargs(x, data)
 
@@ -168,13 +146,13 @@ def test_ifftn(x, data):
     assert_s_axes_shape("ifftn", x=x, s=s, axes=axes, out=out)
 
 
-@given(x=hh.arrays(dtype=xps.floating_dtypes(), shape=fft_shapes_strat), data=st.data())
+@given(x=hh.arrays(dtype=hh.real_floating_dtypes, shape=fft_shapes_strat), data=st.data())
 def test_rfft(x, data):
     n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data)
 
     out = xp.fft.rfft(x, **kwargs)
 
-    assert_float_to_complex_dtype("rfft", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_float_to_complex_dtype("rfft", in_dtype=x.dtype, out_dtype=out.dtype)
 
     _axis = x.ndim - 1 if axis == -1 else axis
     if n is None:
@@ -185,7 +163,7 @@ def test_rfft(x, data):
     ph.assert_shape("rfft", out_shape=out.shape, expected=expected_shape)
 
 
-@given(x=hh.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat), data=st.data())
+@given(x=hh.arrays(dtype=hh.complex_dtypes, shape=fft_shapes_strat), data=st.data())
 def test_irfft(x, data):
     n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data, size_gt_1=True)
 
@@ -207,13 +185,13 @@ def test_irfft(x, data):
     ph.assert_shape("irfft", out_shape=out.shape, expected=expected_shape)
 
 
-@given(x=hh.arrays(dtype=xps.floating_dtypes(), shape=fft_shapes_strat), data=st.data())
+@given(x=hh.arrays(dtype=hh.real_floating_dtypes, shape=fft_shapes_strat), data=st.data())
 def test_rfftn(x, data):
     s, axes, norm, kwargs = draw_s_axes_norm_kwargs(x, data)
 
     out = xp.fft.rfftn(x, **kwargs)
 
-    assert_float_to_complex_dtype("rfftn", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_float_to_complex_dtype("rfftn", in_dtype=x.dtype, out_dtype=out.dtype)
 
     _axes = sh.normalise_axis(axes, x.ndim)
     _s = x.shape if s is None else s
@@ -230,7 +208,7 @@ def test_rfftn(x, data):
 
 @given(
     x=hh.arrays(
-        dtype=xps.complex_dtypes(), shape=fft_shapes_strat.filter(lambda s: s[-1] > 1)
+        dtype=hh.complex_dtypes, shape=fft_shapes_strat.filter(lambda s: s[-1] > 1)
     ),
     data=st.data(),
 )
@@ -261,7 +239,7 @@ def test_irfftn(x, data):
     # ph.assert_shape("irfftn", out_shape=out.shape, expected=tuple(expected))
 
 
-@given(x=hh.arrays(dtype=xps.complex_dtypes(), shape=fft_shapes_strat), data=st.data())
+@given(x=hh.arrays(dtype=hh.complex_dtypes, shape=fft_shapes_strat), data=st.data())
 def test_hfft(x, data):
     n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data, size_gt_1=True)
 
@@ -283,13 +261,13 @@ def test_hfft(x, data):
     ph.assert_shape("hfft", out_shape=out.shape, expected=expected_shape)
 
 
-@given(x=hh.arrays(dtype=xps.floating_dtypes(), shape=fft_shapes_strat), data=st.data())
+@given(x=hh.arrays(dtype=hh.real_floating_dtypes, shape=fft_shapes_strat), data=st.data())
 def test_ihfft(x, data):
     n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data)
 
     out = xp.fft.ihfft(x, **kwargs)
 
-    assert_float_to_complex_dtype("ihfft", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_float_to_complex_dtype("ihfft", in_dtype=x.dtype, out_dtype=out.dtype)
 
     _axis = x.ndim - 1 if axis == -1 else axis
     if n is None:
@@ -315,7 +293,7 @@ def test_rfftfreq(n, kw):
 
 
 @pytest.mark.parametrize("func_name", ["fftshift", "ifftshift"])
-@given(x=hh.arrays(xps.floating_dtypes(), fft_shapes_strat), data=st.data())
+@given(x=hh.arrays(hh.floating_dtypes, fft_shapes_strat), data=st.data())
 def test_shift_func(func_name, x, data):
     func = getattr(xp.fft, func_name)
     axes = data.draw(

@@ -1,3 +1,4 @@
+import os
 import re
 from collections import defaultdict
 from collections.abc import Mapping
@@ -104,9 +105,18 @@ complex_names = ("complex64", "complex128")
 numeric_names = real_names + complex_names
 dtype_names = ("bool",) + numeric_names
 
+_skip_dtypes = os.getenv("ARRAY_API_TESTS_SKIP_DTYPES", '')
+_skip_dtypes = _skip_dtypes.split(',')
+skip_dtypes = []
+for dtype in _skip_dtypes:
+    if dtype and dtype not in dtype_names:
+        raise ValueError(f"Invalid dtype name in ARRAY_API_TESTS_SKIP_DTYPES: {dtype}")
+    skip_dtypes.append(dtype)
 
 _name_to_dtype = {}
 for name in dtype_names:
+    if name in skip_dtypes:
+        continue
     try:
         dtype = getattr(xp, name)
     except AttributeError:
@@ -184,9 +194,9 @@ def _make_dtype_mapping_from_names(mapping: Dict[str, Any]) -> EqualityMapping:
     dtype_value_pairs = []
     for name, value in mapping.items():
         assert isinstance(name, str) and name in dtype_names  # sanity check
-        try:
-            dtype = getattr(xp, name)
-        except AttributeError:
+        if name in _name_to_dtype:
+            dtype = _name_to_dtype[name]
+        else:
             continue
         dtype_value_pairs.append((dtype, value))
     return EqualityMapping(dtype_value_pairs)
@@ -313,9 +323,9 @@ else:
     else:
         default_complex = None
 if dtype_nbits[default_int] == 32:
-    default_uint = getattr(xp, "uint32", None)
+    default_uint = _name_to_dtype.get("uint32")
 else:
-    default_uint = getattr(xp, "uint64", None)
+    default_uint = _name_to_dtype.get("uint64")
 
 _promotion_table: Dict[Tuple[str, str], str] = {
     ("bool", "bool"): "bool",
@@ -366,18 +376,12 @@ _promotion_table: Dict[Tuple[str, str], str] = {
 _promotion_table.update({(d2, d1): res for (d1, d2), res in _promotion_table.items()})
 _promotion_table_pairs: List[Tuple[Tuple[DataType, DataType], DataType]] = []
 for (in_name1, in_name2), res_name in _promotion_table.items():
-    try:
-        in_dtype1 = getattr(xp, in_name1)
-    except AttributeError:
+    if in_name1 not in _name_to_dtype or in_name2 not in _name_to_dtype or res_name not in _name_to_dtype:
         continue
-    try:
-        in_dtype2 = getattr(xp, in_name2)
-    except AttributeError:
-        continue
-    try:
-        res_dtype = getattr(xp, res_name)
-    except AttributeError:
-        continue
+    in_dtype1 = _name_to_dtype[in_name1]
+    in_dtype2 = _name_to_dtype[in_name2]
+    res_dtype = _name_to_dtype[res_name]
+
     _promotion_table_pairs.append(((in_dtype1, in_dtype2), res_dtype))
 promotion_table = EqualityMapping(_promotion_table_pairs)
 
