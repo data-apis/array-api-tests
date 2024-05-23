@@ -7,12 +7,11 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps
 
 
 @pytest.mark.unvectorized
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_side=1)),
     data=st.data(),
 )
 def test_all(x, data):
@@ -40,7 +39,7 @@ def test_all(x, data):
 
 @pytest.mark.unvectorized
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes()),
     data=st.data(),
 )
 def test_any(x, data):

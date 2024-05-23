@@ -25,16 +25,6 @@ from .typing import Array, DataType, Param, Scalar, ScalarType, Shape
 pytestmark = pytest.mark.unvectorized
 
 
-def all_integer_dtypes() -> st.SearchStrategy[DataType]:
-    """Returns a strategy for signed and unsigned integer dtype objects."""
-    return xps.unsigned_integer_dtypes() | xps.integer_dtypes()
-
-
-def boolean_and_all_integer_dtypes() -> st.SearchStrategy[DataType]:
-    """Returns a strategy for boolean and all integer dtype objects."""
-    return xps.boolean_dtypes() | all_integer_dtypes()
-
-
 def mock_int_dtype(n: int, dtype: DataType) -> int:
     """Returns equivalent of `n` that mocks `dtype` behaviour."""
     nbits = dh.dtype_nbits[dtype]
@@ -925,7 +915,7 @@ def test_bitwise_xor(ctx, data):
     binary_param_assert_against_refimpl(ctx, left, right, res, "^", refimpl)
 
 
-@given(hh.arrays(dtype=xps.real_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.real_dtypes, shape=hh.shapes()))
 def test_ceil(x):
     out = xp.ceil(x)
     ph.assert_dtype("ceil", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -934,7 +924,7 @@ def test_ceil(x):
 
 
 @pytest.mark.min_version("2023.12")
-@given(hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.real_floating_dtypes, shape=hh.shapes()))
 def test_clip(x):
     # TODO: test min/max kwargs, adjust values testing accordingly
     out = xp.clip(x)
@@ -945,7 +935,7 @@ def test_clip(x):
 
 if api_version >= "2022.12":
 
-    @given(hh.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+    @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
     def test_conj(x):
         out = xp.conj(x)
         ph.assert_dtype("conj", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1047,7 +1037,7 @@ def test_expm1(x):
     unary_assert_against_refimpl("expm1", x, out, math.expm1)
 
 
-@given(hh.arrays(dtype=xps.real_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.real_dtypes, shape=hh.shapes()))
 def test_floor(x):
     out = xp.floor(x)
     ph.assert_dtype("floor", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1125,7 +1115,7 @@ def test_hypot(x1, x2):
 
 if api_version >= "2022.12":
 
-    @given(hh.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+    @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
     def test_imag(x):
         out = xp.imag(x)
         ph.assert_dtype("imag", in_dtype=x.dtype, out_dtype=out.dtype, expected=dh.dtype_components[x.dtype])
@@ -1133,7 +1123,7 @@ if api_version >= "2022.12":
         unary_assert_against_refimpl("imag", x, out, operator.attrgetter("imag"))
 
 
-@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.numeric_dtypes, shape=hh.shapes()))
 def test_isfinite(x):
     out = xp.isfinite(x)
     ph.assert_dtype("isfinite", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
@@ -1141,7 +1131,7 @@ def test_isfinite(x):
     unary_assert_against_refimpl("isfinite", x, out, math.isfinite, res_stype=bool)
 
 
-@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.numeric_dtypes, shape=hh.shapes()))
 def test_isinf(x):
     out = xp.isinf(x)
     ph.assert_dtype("isfinite", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
@@ -1149,7 +1139,7 @@ def test_isinf(x):
     unary_assert_against_refimpl("isinf", x, out, math.isinf, res_stype=bool)
 
 
-@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.numeric_dtypes, shape=hh.shapes()))
 def test_isnan(x):
     out = xp.isnan(x)
     ph.assert_dtype("isnan", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
@@ -1392,7 +1382,7 @@ def test_pow(ctx, data):
 
 if api_version >= "2022.12":
 
-    @given(hh.arrays(dtype=xps.complex_dtypes(), shape=hh.shapes()))
+    @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
     def test_real(x):
         out = xp.real(x)
         ph.assert_dtype("real", in_dtype=x.dtype, out_dtype=out.dtype, expected=dh.dtype_components[x.dtype])
@@ -1418,7 +1408,7 @@ def test_remainder(ctx, data):
     binary_param_assert_against_refimpl(ctx, left, right, res, "%", operator.mod)
 
 
-@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.numeric_dtypes, shape=hh.shapes()))
 def test_round(x):
     out = xp.round(x)
     ph.assert_dtype("round", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1427,7 +1417,7 @@ def test_round(x):
 
 
 @pytest.mark.min_version("2023.12")
-@given(hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.real_floating_dtypes, shape=hh.shapes()))
 def test_signbit(x):
     out = xp.signbit(x)
     ph.assert_dtype("signbit", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
@@ -1435,7 +1425,7 @@ def test_signbit(x):
     # TODO: values testing
 
 
-@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes(), elements=finite_kw))
+@given(hh.arrays(dtype=hh.numeric_dtypes, shape=hh.shapes(), elements=finite_kw))
 def test_sign(x):
     out = xp.sign(x)
     ph.assert_dtype("sign", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1467,7 +1457,7 @@ def test_sinh(x):
     unary_assert_against_refimpl("sinh", x, out, math.sinh)
 
 
-@given(hh.arrays(dtype=xps.numeric_dtypes(), shape=hh.shapes()))
+@given(hh.arrays(dtype=hh.numeric_dtypes, shape=hh.shapes()))
 def test_square(x):
     out = xp.square(x)
     ph.assert_dtype("square", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -1517,7 +1507,7 @@ def test_tanh(x):
     unary_assert_against_refimpl("tanh", x, out, math.tanh)
 
 
-@given(hh.arrays(dtype=xps.real_dtypes(), shape=xps.array_shapes()))
+@given(hh.arrays(dtype=hh.real_dtypes, shape=xps.array_shapes()))
 def test_trunc(x):
     out = xp.trunc(x)
     ph.assert_dtype("trunc", in_dtype=x.dtype, out_dtype=out.dtype)

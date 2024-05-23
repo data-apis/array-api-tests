@@ -7,13 +7,12 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps
 
 
 @pytest.mark.unvectorized
 @pytest.mark.min_version("2022.12")
 @given(
-    x=hh.arrays(xps.scalar_dtypes(), hh.shapes(min_dims=1, min_side=1)),
+    x=hh.arrays(hh.all_dtypes, hh.shapes(min_dims=1, min_side=1)),
     data=st.data(),
 )
 def test_take(x, data):

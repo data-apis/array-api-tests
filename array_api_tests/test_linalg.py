@@ -24,8 +24,9 @@ import itertools
 from typing import Tuple
 
 from .array_helpers import assert_exactly_equal, asarray
-from .hypothesis_helpers import (arrays, all_floating_dtypes, xps, shapes,
-                                 kwargs, matrix_shapes, square_matrix_shapes,
+from .hypothesis_helpers import (arrays, all_floating_dtypes, all_dtypes,
+                                 numeric_dtypes, xps, shapes, kwargs,
+                                 matrix_shapes, square_matrix_shapes,
                                  symmetric_matrices, SearchStrategy,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
                                  invertible_matrices, two_mutual_arrays,
@@ -231,7 +232,7 @@ def test_det(x):
 @pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.scalar_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=all_dtypes, shape=matrix_shapes()),
     # offset may produce an overflow if it is too large. Supporting offsets
     # that are way larger than the array shape isn't very important.
     kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
@@ -413,7 +414,8 @@ def test_matrix_norm(x, kw):
         expected_shape = x.shape[:-2] + (1, 1)
     else:
         expected_shape = x.shape[:-2]
-    ph.assert_dtype("matrix_norm", in_dtype=x.dtype, out_dtype=res.dtype)
+    ph.assert_complex_to_float_dtype("matrix_norm", in_dtype=x.dtype,
+                                     out_dtype=res.dtype)
     ph.assert_result_shape("matrix_norm", in_shapes=[x.shape],
                            out_shape=res.shape, expected=expected_shape)
 
@@ -473,14 +475,14 @@ def _test_matrix_transpose(namespace, x):
 @pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.scalar_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=all_dtypes, shape=matrix_shapes()),
 )
 def test_linalg_matrix_transpose(x):
     return _test_matrix_transpose(linalg, x)
 
 @pytest.mark.unvectorized
 @given(
-    x=arrays(dtype=xps.scalar_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=all_dtypes, shape=matrix_shapes()),
 )
 def test_matrix_transpose(x):
     return _test_matrix_transpose(_array_module, x)
@@ -672,8 +674,8 @@ def test_svd(x, kw):
 
     ph.assert_dtype("svd", in_dtype=x.dtype, out_dtype=U.dtype,
                     expected=x.dtype, repr_name="U.dtype")
-    ph.assert_dtype("svd", in_dtype=x.dtype, out_dtype=S.dtype,
-                    expected=x.dtype, repr_name="S.dtype")
+    ph.assert_complex_to_float_dtype("svd", in_dtype=x.dtype,
+                                      out_dtype=S.dtype, repr_name="S.dtype")
     ph.assert_dtype("svd", in_dtype=x.dtype, out_dtype=Vh.dtype,
                     expected=x.dtype, repr_name="Vh.dtype")
 
@@ -715,8 +717,8 @@ def test_svdvals(x):
     *stack, M, N = x.shape
     K = min(M, N)
 
-    ph.assert_dtype("svdvals", in_dtype=x.dtype, out_dtype=res.dtype,
-                    expected=x.dtype)
+    ph.assert_complex_to_float_dtype("svdvals", in_dtype=x.dtype,
+                                     out_dtype=res.dtype)
     ph.assert_result_shape("svdvals", in_shapes=[x.shape],
                            out_shape=res.shape,
                            expected=(*stack, K))
@@ -858,7 +860,7 @@ def test_tensordot(x1, x2, kw):
 @pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.numeric_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=numeric_dtypes, shape=matrix_shapes()),
     # offset may produce an overflow if it is too large. Supporting offsets
     # that are way larger than the array shape isn't very important.
     kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))

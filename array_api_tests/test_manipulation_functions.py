@@ -122,7 +122,7 @@ def test_concat(dtypes, base_shape, data):
 
 @pytest.mark.unvectorized
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=shared_shapes()),
     axis=shared_shapes().flatmap(
         # Generate both valid and invalid axis
         lambda s: st.integers(2 * (-len(s) - 1), 2 * len(s))
@@ -150,7 +150,7 @@ def test_expand_dims(x, axis):
 
 
 @pytest.mark.min_version("2023.12")
-@given(x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1)), data=st.data())
+@given(x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_dims=1)), data=st.data())
 def test_moveaxis(x, data):
     source = data.draw(
         st.integers(-x.ndim, x.ndim - 1) | xps.valid_tuple_axes(x.ndim), label="source"
@@ -177,7 +177,7 @@ def test_moveaxis(x, data):
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1).filter(lambda s: 1 in s)
+        dtype=hh.all_dtypes, shape=hh.shapes(min_side=1).filter(lambda s: 1 in s)
     ),
     data=st.data(),
 )
@@ -214,7 +214,7 @@ def test_squeeze(x, data):
 
 @pytest.mark.unvectorized
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes()),
     data=st.data(),
 )
 def test_flip(x, data):
@@ -239,7 +239,7 @@ def test_flip(x, data):
 
 @pytest.mark.unvectorized
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes(min_dims=1)),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=shared_shapes(min_dims=1)),
     axes=shared_shapes(min_dims=1).flatmap(
         lambda s: st.lists(
             st.integers(0, len(s) - 1),
@@ -280,7 +280,7 @@ def reshape_shapes(draw, shape):
 
 @pytest.mark.min_version("2023.12")
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1)),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_dims=1)),
     repeats=st.integers(1, 4),
 )
 def test_repeat(x, repeats):
@@ -295,7 +295,7 @@ def test_repeat(x, repeats):
 @pytest.mark.unvectorized
 @pytest.mark.skip("flaky")  # TODO: fix!
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(max_side=MAX_SIDE)),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(max_side=MAX_SIDE)),
     data=st.data(),
 )
 def test_reshape(x, data):
@@ -326,7 +326,7 @@ def roll_ndindex(shape: Shape, shifts: Tuple[int], axes: Tuple[int]) -> Iterator
 
 
 @pytest.mark.unvectorized
-@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()), st.data())
+@given(hh.arrays(dtype=hh.all_dtypes, shape=shared_shapes()), st.data())
 def test_roll(x, data):
     shift_strat = st.integers(-hh.MAX_ARRAY_SIZE, hh.MAX_ARRAY_SIZE)
     if x.ndim > 0:
@@ -413,7 +413,7 @@ def test_stack(shape, dtypes, kw, data):
 
 
 @pytest.mark.min_version("2023.12")
-@given(x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()), data=st.data())
+@given(x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes()), data=st.data())
 def test_tile(x, data):
     repetitions = data.draw(st.lists(st.integers(1, 4), min_size=1, max_size=x.ndim + 1).map(tuple), label="repetitions")
     out = xp.tile(x, repetitions)
@@ -422,7 +422,7 @@ def test_tile(x, data):
 
 
 @pytest.mark.min_version("2023.12")
-@given(x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1)), data=st.data())
+@given(x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_dims=1)), data=st.data())
 def test_unstack(x, data):
     axis = data.draw(st.integers(min_value=-x.ndim, max_value=x.ndim - 1), label="axis")
     kw = data.draw(hh.specified_kwargs(("axis", axis, 0)), label="kw")

@@ -11,13 +11,12 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from . import xp as _xp
 from .typing import DataType
 
 
 # TODO: test with complex dtypes
 def non_complex_dtypes():
-    return xps.boolean_dtypes() | xps.real_dtypes()
+    return xps.boolean_dtypes() | hh.real_dtypes
 
 
 def float32(n: Union[int, float]) -> float:
@@ -69,7 +68,7 @@ def test_astype(x_dtype, dtype, kw, data):
 def test_broadcast_arrays(shapes, data):
     arrays = []
     for c, shape in enumerate(shapes, 1):
-        x = data.draw(hh.arrays(dtype=xps.scalar_dtypes(), shape=shape), label=f"x{c}")
+        x = data.draw(hh.arrays(dtype=hh.all_dtypes, shape=shape), label=f"x{c}")
         arrays.append(x)
 
     out = xp.broadcast_arrays(*arrays)
@@ -92,7 +91,7 @@ def test_broadcast_arrays(shapes, data):
     # TODO: test values
 
 
-@given(x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()), data=st.data())
+@given(x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes()), data=st.data())
 def test_broadcast_to(x, data):
     shape = data.draw(
         hh.mutually_broadcastable_shapes(1, base_shape=x.shape)
@@ -140,12 +139,8 @@ def test_can_cast(_from, to, data):
         assert out == expected, f"{out=}, but should be {expected} {f_func}"
 
 
-@pytest.mark.parametrize("dtype_name", dh.real_float_names)
-def test_finfo(dtype_name):
-    try:
-        dtype = getattr(_xp, dtype_name)
-    except AttributeError as e:
-        pytest.skip(str(e))
+@pytest.mark.parametrize("dtype", dh.real_float_dtypes)
+def test_finfo(dtype):
     out = xp.finfo(dtype)
     f_func = f"[finfo({dh.dtype_to_name[dtype]})]"
     for attr, stype in [
@@ -164,12 +159,8 @@ def test_finfo(dtype_name):
     # TODO: test values
 
 
-@pytest.mark.parametrize("dtype_name", dh.all_int_names)
-def test_iinfo(dtype_name):
-    try:
-        dtype = getattr(_xp, dtype_name)
-    except AttributeError as e:
-        pytest.skip(str(e))
+@pytest.mark.parametrize("dtype", dh.int_dtypes)
+def test_iinfo(dtype):
     out = xp.iinfo(dtype)
     f_func = f"[iinfo({dh.dtype_to_name[dtype]})]"
     for attr in ["bits", "max", "min"]:
@@ -183,12 +174,12 @@ def test_iinfo(dtype_name):
 
 
 def atomic_kinds() -> st.SearchStrategy[Union[DataType, str]]:
-    return xps.scalar_dtypes() | st.sampled_from(list(dh.kind_to_dtypes.keys()))
+    return hh.all_dtypes | st.sampled_from(list(dh.kind_to_dtypes.keys()))
 
 
 @pytest.mark.min_version("2022.12")
 @given(
-    dtype=xps.scalar_dtypes(),
+    dtype=hh.all_dtypes,
     kind=atomic_kinds() | st.lists(atomic_kinds(), min_size=1).map(tuple),
 )
 def test_isdtype(dtype, kind):
