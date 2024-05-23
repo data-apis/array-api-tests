@@ -17,7 +17,7 @@ pytestmark = pytest.mark.unvectorized
 
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
@@ -54,7 +54,7 @@ def test_argmax(x, data):
 
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
@@ -88,14 +88,14 @@ def test_argmin(x, data):
         ph.assert_scalar_equals("argmin", type_=int, idx=out_idx, out=min_i, expected=expected)
 
 
-@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=()))
+@given(hh.arrays(dtype=hh.all_dtypes, shape=()))
 def test_nonzero_zerodim_error(x):
     with pytest.raises(Exception):
         xp.nonzero(x)
 
 
 @pytest.mark.data_dependent_shapes
-@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1, min_side=1)))
+@given(hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_dims=1, min_side=1)))
 def test_nonzero(x):
     out = xp.nonzero(x)
     assert len(out) == x.ndim, f"{len(out)=}, but should be {x.ndim=}"

@@ -137,6 +137,34 @@ def assert_dtype(
     assert out_dtype == expected, msg
 
 
+def assert_float_to_complex_dtype(
+    func_name: str, *, in_dtype: DataType, out_dtype: DataType
+):
+    if in_dtype == xp.float32:
+        expected = xp.complex64
+    else:
+        assert in_dtype == xp.float64  # sanity check
+        expected = xp.complex128
+    assert_dtype(
+        func_name, in_dtype=in_dtype, out_dtype=out_dtype, expected=expected
+    )
+
+
+def assert_complex_to_float_dtype(
+    func_name: str, *, in_dtype: DataType, out_dtype: DataType, repr_name: str = "out.dtype"
+):
+    if in_dtype == xp.complex64:
+        expected = xp.float32
+    elif in_dtype == xp.complex128:
+        expected = xp.float64
+    else:
+        assert in_dtype in (xp.float32, xp.float64)  # sanity check
+        expected = in_dtype
+    assert_dtype(
+        func_name, in_dtype=in_dtype, out_dtype=out_dtype, expected=expected, repr_name=repr_name
+    )
+
+
 def assert_kw_dtype(
     func_name: str,
     *,

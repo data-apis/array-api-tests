@@ -1328,7 +1328,7 @@ def test_empty_arrays(func_name, expected):  # TODO: parse docstrings to get exp
                   if f.__name__ != 'cumulative_sum']
 )
 @given(
-    x=hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
+    x=hh.arrays(dtype=hh.real_floating_dtypes, shape=hh.shapes(min_side=1)),
     data=st.data(),
 )
 def test_nan_propagation(func_name, x, data):

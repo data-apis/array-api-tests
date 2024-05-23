@@ -174,10 +174,24 @@ def oneway_broadcastable_shapes(draw) -> OnewayBroadcastableShapes:
     return OnewayBroadcastableShapes(input_shape, result_shape)
 
 
+# Use these instead of xps.scalar_dtypes, etc. because it skips dtypes from
+# ARRAY_API_TESTS_SKIP_DTYPES
+all_dtypes = sampled_from(_sorted_dtypes)
+int_dtypes = sampled_from(dh.int_dtypes)
+uint_dtypes = sampled_from(dh.uint_dtypes)
+real_dtypes = sampled_from(dh.real_dtypes)
+# Warning: The hypothesis "floating_dtypes" is what we call
+# "real_floating_dtypes"
+floating_dtypes = sampled_from(dh.all_float_dtypes)
+real_floating_dtypes = sampled_from(dh.real_float_dtypes)
+numeric_dtypes = sampled_from(dh.numeric_dtypes)
+# Note: this always returns complex dtypes, even if api_version < 2022.12
+complex_dtypes = sampled_from(dh.complex_dtypes)
+
 def all_floating_dtypes() -> SearchStrategy[DataType]:
-    strat = xps.floating_dtypes()
+    strat = floating_dtypes
     if api_version >= "2022.12":
-        strat |= xps.complex_dtypes()
+        strat |= complex_dtypes
     return strat
 
 
@@ -236,7 +250,7 @@ square_matrix_shapes = matrix_shapes().filter(lambda shape: shape[-1] == shape[-
 
 @composite
 def finite_matrices(draw, shape=matrix_shapes()):
-    return draw(arrays(dtype=xps.floating_dtypes(),
+    return draw(arrays(dtype=floating_dtypes,
                            shape=shape,
                            elements=dict(allow_nan=False,
                                          allow_infinity=False)))
@@ -245,7 +259,7 @@ rtol_shared_matrix_shapes = shared(matrix_shapes())
 # Should we set a max_value here?
 _rtol_float_kw = dict(allow_nan=False, allow_infinity=False, min_value=0)
 rtols = one_of(floats(**_rtol_float_kw),
-               arrays(dtype=xps.floating_dtypes(),
+               arrays(dtype=real_floating_dtypes,
                           shape=rtol_shared_matrix_shapes.map(lambda shape:  shape[:-2]),
                           elements=_rtol_float_kw))
 
@@ -280,9 +294,9 @@ def mutually_broadcastable_shapes(
 
 two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(2)
 
-# Note: This should become hermitian_matrices when complex dtypes are added
+# TODO: Add support for complex Hermitian matrices
 @composite
-def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True, bound=10.):
+def symmetric_matrices(draw, dtypes=real_floating_dtypes, finite=True, bound=10.):
     shape = draw(square_matrix_shapes)
     dtype = draw(dtypes)
     if not isinstance(finite, bool):
@@ -297,7 +311,7 @@ def symmetric_matrices(draw, dtypes=xps.floating_dtypes(), finite=True, bound=10
     return H
 
 @composite
-def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
+def positive_definite_matrices(draw, dtypes=floating_dtypes):
     # For now just generate stacks of identity matrices
     # TODO: Generate arbitrary positive definite matrices, for instance, by
     # using something like
@@ -310,7 +324,7 @@ def positive_definite_matrices(draw, dtypes=xps.floating_dtypes()):
     return broadcast_to(eye(n, dtype=dtype), shape)
 
 @composite
-def invertible_matrices(draw, dtypes=xps.floating_dtypes(), stack_shapes=shapes()):
+def invertible_matrices(draw, dtypes=floating_dtypes, stack_shapes=shapes()):
     # For now, just generate stacks of diagonal matrices.
     stack_shape = draw(stack_shapes)
     n = draw(integers(0, SQRT_MAX_ARRAY_SIZE // max(math.prod(stack_shape), 1)),)
@@ -344,7 +358,7 @@ sizes = integers(0, MAX_ARRAY_SIZE)
 sqrt_sizes = integers(0, SQRT_MAX_ARRAY_SIZE)
 
 numeric_arrays = arrays(
-    dtype=shared(xps.floating_dtypes(), key='dtypes'),
+    dtype=shared(floating_dtypes, key='dtypes'),
     shape=shared(xps.array_shapes(), key='shapes'),
 )
 
@@ -388,7 +402,7 @@ def python_integer_indices(draw, sizes):
 def integer_indices(draw, sizes):
     # Return either a Python integer or a 0-D array with some integer dtype
     idx = draw(python_integer_indices(sizes))
-    dtype = draw(xps.integer_dtypes() | xps.unsigned_integer_dtypes())
+    dtype = draw(int_dtypes | uint_dtypes)
     m, M = dh.dtype_ranges[dtype]
     if m <= idx <= M:
         return draw(one_of(just(idx),

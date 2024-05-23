@@ -12,7 +12,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import api_version, xps
+from . import api_version
 from ._array_module import _UndefinedStub
 from .typing import DataType
 
@@ -20,7 +20,7 @@ from .typing import DataType
 @pytest.mark.min_version("2023.12")
 @given(
     x=hh.arrays(
-        dtype=xps.numeric_dtypes(),
+        dtype=hh.numeric_dtypes(),
         shape=hh.shapes(min_dims=1)),
     data=st.data(),
 )
@@ -96,7 +96,7 @@ def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -126,7 +126,7 @@ def test_max(x, data):
 
 @given(
     x=hh.arrays(
-        dtype=xps.floating_dtypes(),
+        dtype=hh.real_floating_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -149,7 +149,7 @@ def test_mean(x, data):
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -180,7 +180,7 @@ def test_min(x, data):
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.numeric_dtypes(),
+        dtype=hh.numeric_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -232,7 +232,7 @@ def test_prod(x, data):
 @pytest.mark.skip(reason="flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
-        dtype=xps.floating_dtypes(),
+        dtype=hh.real_floating_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ).filter(lambda x: math.prod(x.shape) >= 2),
@@ -269,7 +269,7 @@ def test_std(x, data):
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.numeric_dtypes(),
+        dtype=hh.numeric_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -322,7 +322,7 @@ def test_sum(x, data):
 @pytest.mark.skip(reason="flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
-        dtype=xps.floating_dtypes(),
+        dtype=hh.real_floating_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ).filter(lambda x: math.prod(x.shape) >= 2),
