@@ -12,7 +12,6 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import api_version
 from ._array_module import _UndefinedStub
 from .typing import DataType
 
