@@ -19,7 +19,7 @@ from .typing import DataType
 @pytest.mark.min_version("2023.12")
 @given(
     x=hh.arrays(
-        dtype=hh.numeric_dtypes(),
+        dtype=hh.numeric_dtypes,
         shape=hh.shapes(min_dims=1)),
     data=st.data(),
 )
