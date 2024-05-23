@@ -135,6 +135,7 @@ func_to_specified_arg_exprs = defaultdict(
         "solve": {
             a: "xp.asarray([[1, 2], [3, 4]], dtype=xp.float64)" for a in ["x1", "x2"]
         },
+        "outer": {"x1": "xp.ones((5,))", "x2": "xp.ones((5,))"},
     },
 )
 # We default most array arguments heuristically. As functions/methods work only
