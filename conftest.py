@@ -221,7 +221,7 @@ def pytest_collection_modifyitems(config, items):
     # ----------------------------------
 
     bad_ids_end_msg = (
-        "Note the relevant tests might not of been collected by pytest, or "
+        "Note the relevant tests might not have been collected by pytest, or "
         "another specified id might have already matched a test."
     )
     bad_skip_ids = [id_ for id_, matched in skip_id_matched.items() if not matched]
