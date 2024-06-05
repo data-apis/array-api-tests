@@ -424,7 +424,7 @@ def right_scalar_assert_against_refimpl(
             )
 
 
-# When appropiate, this module tests operators alongside their respective
+# When appropriate, this module tests operators alongside their respective
 # elementwise methods. We do this by parametrizing a generalised test method
 # with every relevant method and operator.
 #
@@ -434,8 +434,8 @@ def right_scalar_assert_against_refimpl(
 # - The argument strategies, which can be used to draw arguments for the test
 #   case. They may require additional filtering for certain test cases.
 # - right_is_scalar (binary parameters only), which denotes if the right
-#   argument is a scalar in a test case. This can be used to appropiately adjust
-#   draw filtering and test logic.
+#   argument is a scalar in a test case. This can be used to appropriately
+#   adjust draw filtering and test logic.
 
 
 func_to_op = {v: k for k, v in dh.op_to_func.items()}
