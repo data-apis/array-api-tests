@@ -947,13 +947,76 @@ def test_clip(x, data):
         hh.arrays(dtype=dtypes, shape=shape2),
     ))
 
+    # min > max is undefined (but allow nans)
+    assume(min is None or max is None or not xp.any(xp.asarray(min > max)))
+
     kw = data.draw(hh.specified_kwargs(("min", min, None), ("max", max, None)))
 
     out = xp.clip(x, **kw)
-    ph.assert_dtype("clip", in_dtype=x.dtype, out_dtype=out.dtype)
-    ph.assert_shape("clip", out_shape=out.shape, expected=x.shape)
-    ph.assert_array_elements("clip", out=out, expected=x)
 
+    # min and max do not participate in type promotion
+    ph.assert_dtype("clip", in_dtype=x.dtype, out_dtype=out.dtype)
+
+    shapes = [x.shape]
+    if min is not None and not dh.is_scalar(min):
+        shapes.append(min.shape)
+    if max is not None and not dh.is_scalar(max):
+        shapes.append(max.shape)
+    expected_shape = sh.broadcast_shapes(*shapes)
+    ph.assert_shape("clip", out_shape=out.shape, expected=expected_shape)
+
+    if min is max is None:
+        ph.assert_array_elements("clip", out=out, expected=x)
+    elif min is not None:
+        # If one operand is nan, the result is nan. See
+        # https://github.com/data-apis/array-api/pull/813.
+        def refimpl(_x, _min):
+            if math.isnan(_x) or math.isnan(_min):
+                return math.nan
+            return max(_x, _min)
+        if dh.is_scalar(min):
+            right_scalar_assert_against_refimpl(
+                "clip", x, min, out, refimpl,
+                left_sym="x",
+                expr_template="clip({}, min={})",
+            )
+        else:
+            binary_assert_against_refimpl(
+                "clip", x, min, out, refimpl,
+                left_sym="x", right_sym="min",
+                expr_template="clip({}, min={})",
+            )
+    elif max is not None:
+        def refimpl(_x, _max):
+            if math.isnan(_x) or math.isnan(_max):
+                return math.nan
+            return min(_x, _max)
+        if dh.is_scalar(max):
+            right_scalar_assert_against_refimpl(
+                "clip", x, max, out, refimpl,
+                left_sym="x",
+                expr_template="clip({}, max={})",
+            )
+        else:
+            binary_assert_against_refimpl(
+                "clip", x, max, out, refimpl,
+                left_sym="x", right_sym="max",
+                expr_template="clip({}, max={})",
+            )
+    else:
+        def refimpl(_x, _min, _max):
+            if math.isnan(_x) or math.isnan(_min) or math.isnan(_max):
+                return math.nan
+            return min(max(_x, _min), _max)
+
+        # This is based on right_scalar_assert_against_refimpl and
+        # binary_assert_against_refimpl. clip() is currently the only ternary
+        # elementwise function and the only function that supports arrays and
+        # scalars. However, where() (in test_searching_functions) is similar
+        # and if scalar support is added to it, we may want to factor out and
+        # reuse this logic.
+
+        # TODO
 
 if api_version >= "2022.12":
 
