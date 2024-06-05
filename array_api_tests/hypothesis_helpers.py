@@ -370,7 +370,7 @@ def scalars(draw, dtypes, finite=False):
     dtypes should be one of the shared_* dtypes strategies.
     """
     dtype = draw(dtypes)
-    if dtype in dh.dtype_ranges:
+    if dh.is_int_dtype(dtype):
         m, M = dh.dtype_ranges[dtype]
         return draw(integers(m, M))
     elif dtype == bool_dtype:
