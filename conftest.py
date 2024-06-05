@@ -201,7 +201,7 @@ def pytest_collection_modifyitems(config, items):
             if api_version < min_version:
                 item.add_marker(
                     mark.skip(
-                        reason=f"requires ARRAY_API_TESTS_VERSION=>{min_version}"
+                        reason=f"requires ARRAY_API_TESTS_VERSION >= {min_version}"
                     )
                 )
         # reduce max generated Hypothesis example for unvectorized tests

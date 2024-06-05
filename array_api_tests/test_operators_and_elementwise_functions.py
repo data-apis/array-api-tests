@@ -475,7 +475,7 @@ def make_unary_params(
     )
     if api_version < min_version:
         marks = pytest.mark.skip(
-            reason=f"requires ARRAY_API_TESTS_VERSION=>{min_version}"
+            reason=f"requires ARRAY_API_TESTS_VERSION >= {min_version}"
         )
     else:
         marks = ()
