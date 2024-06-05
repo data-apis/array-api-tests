@@ -34,6 +34,7 @@ __all__ = [
     "is_int_dtype",
     "is_float_dtype",
     "get_scalar_type",
+    "is_scalar",
     "dtype_ranges",
     "default_int",
     "default_uint",
@@ -189,6 +190,8 @@ def get_scalar_type(dtype: DataType) -> ScalarType:
     else:
         return bool
 
+def is_scalar(x):
+    return isinstance(x, (int, float, complex, bool))
 
 def _make_dtype_mapping_from_names(mapping: Dict[str, Any]) -> EqualityMapping:
     dtype_value_pairs = []
