@@ -924,10 +924,30 @@ def test_ceil(x):
 
 
 @pytest.mark.min_version("2023.12")
-@given(hh.arrays(dtype=hh.real_floating_dtypes, shape=hh.shapes()))
-def test_clip(x):
+@given(x=hh.arrays(dtype=hh.real_floating_dtypes, shape=hh.shapes()), data=st.data())
+def test_clip(x, data):
     # TODO: test min/max kwargs, adjust values testing accordingly
-    out = xp.clip(x)
+
+    # Ensure that if both min and max are arrays that all three of x, min, max
+    # are broadcast compatible.
+    shape1, shape2 = data.draw(hh.mutually_broadcastable_shapes(2, base_shape=x.shape))
+
+    dtypes = hh.real_floating_dtypes if dh.is_float_dtype(x.dtype) else hh.int_dtypes
+
+    min = data.draw(st.one_of(
+        st.none(),
+        hh.scalars(dtypes=st.just(x.dtype)),
+        hh.arrays(dtype=dtypes, shape=shape1),
+    ))
+    max = data.draw(st.one_of(
+        st.none(),
+        hh.scalars(dtypes=st.just(x.dtype)),
+        hh.arrays(dtype=dtypes, shape=shape2),
+    ))
+
+    kw = data.draw(hh.specified_kwargs(("min", min, None), ("max", max, None)))
+
+    out = xp.clip(x, **kw)
     ph.assert_dtype("clip", in_dtype=x.dtype, out_dtype=out.dtype)
     ph.assert_shape("clip", out_shape=out.shape, expected=x.shape)
     ph.assert_array_elements("clip", out=out, expected=x)
