@@ -369,6 +369,8 @@ def right_scalar_assert_against_refimpl(
 
     See unary_assert_against_refimpl for more information.
     """
+    if expr_template is None:
+        expr_template = func_name + "({}, {})={}"
     if left.dtype in dh.complex_dtypes:
         component_filter = copy(filter_)
         filter_ = lambda s: component_filter(s.real) and component_filter(s.imag)
