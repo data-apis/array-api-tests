@@ -4,6 +4,7 @@ Test element-wise functions/operators against reference implementations.
 import cmath
 import math
 import operator
+import builtins
 from copy import copy
 from enum import Enum, auto
 from typing import Callable, List, NamedTuple, Optional, Sequence, TypeVar, Union
@@ -932,7 +933,9 @@ def test_clip(x, data):
 
     # Ensure that if both min and max are arrays that all three of x, min, max
     # are broadcast compatible.
-    shape1, shape2 = data.draw(hh.mutually_broadcastable_shapes(2, base_shape=x.shape))
+    shape1, shape2 = data.draw(hh.mutually_broadcastable_shapes(2,
+                                                                base_shape=x.shape),
+                                label="min.shape, max.shape")
 
     dtypes = hh.real_floating_dtypes if dh.is_float_dtype(x.dtype) else hh.int_dtypes
 
@@ -940,17 +943,21 @@ def test_clip(x, data):
         st.none(),
         hh.scalars(dtypes=st.just(x.dtype)),
         hh.arrays(dtype=dtypes, shape=shape1),
-    ))
+    ), label="min")
     max = data.draw(st.one_of(
         st.none(),
         hh.scalars(dtypes=st.just(x.dtype)),
         hh.arrays(dtype=dtypes, shape=shape2),
-    ))
+    ), label="max")
 
     # min > max is undefined (but allow nans)
     assume(min is None or max is None or not xp.any(xp.asarray(min > max)))
 
-    kw = data.draw(hh.specified_kwargs(("min", min, None), ("max", max, None)))
+    kw = data.draw(
+        hh.specified_kwargs(
+            ("min", min, None),
+            ("max", max, None)),
+        label="kwargs")
 
     out = xp.clip(x, **kw)
 
@@ -967,13 +974,13 @@ def test_clip(x, data):
 
     if min is max is None:
         ph.assert_array_elements("clip", out=out, expected=x)
-    elif min is not None:
+    elif max is None:
         # If one operand is nan, the result is nan. See
         # https://github.com/data-apis/array-api/pull/813.
         def refimpl(_x, _min):
             if math.isnan(_x) or math.isnan(_min):
                 return math.nan
-            return max(_x, _min)
+            return builtins.max(_x, _min)
         if dh.is_scalar(min):
             right_scalar_assert_against_refimpl(
                 "clip", x, min, out, refimpl,
@@ -986,11 +993,11 @@ def test_clip(x, data):
                 left_sym="x", right_sym="min",
                 expr_template="clip({}, min={})",
             )
-    elif max is not None:
+    elif min is None:
         def refimpl(_x, _max):
             if math.isnan(_x) or math.isnan(_max):
                 return math.nan
-            return min(_x, _max)
+            return builtins.min(_x, _max)
         if dh.is_scalar(max):
             right_scalar_assert_against_refimpl(
                 "clip", x, max, out, refimpl,
@@ -1007,7 +1014,7 @@ def test_clip(x, data):
         def refimpl(_x, _min, _max):
             if math.isnan(_x) or math.isnan(_min) or math.isnan(_max):
                 return math.nan
-            return min(max(_x, _min), _max)
+            return builtins.min(builtins.max(_x, _min), _max)
 
         # This is based on right_scalar_assert_against_refimpl and
         # binary_assert_against_refimpl. clip() is currently the only ternary
@@ -1016,8 +1023,28 @@ def test_clip(x, data):
         # and if scalar support is added to it, we may want to factor out and
         # reuse this logic.
 
-        # TODO
+        stype = dh.get_scalar_type(x.dtype)
+        min_shape = () if dh.is_scalar(min) else min.shape
+        max_shape = () if dh.is_scalar(max) else max.shape
 
+        for x_idx, min_idx, max_idx, o_idx in sh.iter_indices(
+                x.shape, min_shape, max_shape, out.shape):
+            x_val = stype(x[x_idx])
+            min_val = min if dh.is_scalar(min) else min[min_idx]
+            min_val = stype(min_val)
+            max_val = max if dh.is_scalar(max) else max[max_idx]
+            max_val = stype(max_val)
+            expected = refimpl(x_val, min_val, max_val)
+            if math.isnan(expected):
+                assert math.isnan(out[o_idx]), (
+                    f"out[{o_idx}]={out[o_idx]} but should be nan [clip()]\n"
+                    f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
+                )
+            else:
+                assert out[o_idx] == expected, (
+                    f"out[{o_idx}]={out[o_idx]} but should be {expected} [clip()]\n"
+                    f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
+)
 if api_version >= "2022.12":
 
     @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
