@@ -243,10 +243,11 @@ def test_setitem_masking(shape, data):
 
 
 def make_scalar_casting_param(
-    method_name: str, dtype_name: DataType, stype: ScalarType
+    method_name: str, dtype: DataType, stype: ScalarType
 ) -> Param:
+    dtype_name = dh.dtype_to_name[dtype]
     return pytest.param(
-        method_name, dtype_name, stype, id=f"{method_name}({dtype_name})"
+        method_name, dtype, stype, id=f"{method_name}({dtype_name})"
     )
 
 

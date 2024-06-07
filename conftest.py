@@ -1,7 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
 import argparse
-import math
 import warnings
 import os
 
@@ -37,7 +36,7 @@ def pytest_addoption(parser):
         "--hypothesis-max-examples",
         "--max-examples",
         action="store",
-        default=20,
+        default=100,
         type=int,
         help="set the Hypothesis max_examples setting",
     )
@@ -162,7 +161,7 @@ def pytest_collection_modifyitems(config, items):
 
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
-    unvectorized_max_examples = math.ceil(math.log(config.getoption("--hypothesis-max-examples")))
+    unvectorized_max_examples = config.getoption("--hypothesis-max-examples")//10
 
     # 2. Iterate through items and apply markers accordingly
     # ------------------------------------------------------
@@ -226,7 +225,7 @@ def pytest_collection_modifyitems(config, items):
     # ----------------------------------
 
     bad_ids_end_msg = (
-        "Note the relevant tests might not of been collected by pytest, or "
+        "Note the relevant tests might not have been collected by pytest, or "
         "another specified id might have already matched a test."
     )
     bad_skip_ids = [id_ for id_, matched in skip_id_matched.items() if not matched]

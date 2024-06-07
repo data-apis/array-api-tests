@@ -23,7 +23,7 @@ from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Literal
 from warnings import warn
 
 import pytest
-from hypothesis import given, note, settings
+from hypothesis import given, note, settings, assume
 from hypothesis import strategies as st
 
 from array_api_tests.typing import Array, DataType
@@ -1333,10 +1333,11 @@ def test_empty_arrays(func_name, expected):  # TODO: parse docstrings to get exp
 )
 def test_nan_propagation(func_name, x, data):
     func = getattr(xp, func_name)
-    set_idx = data.draw(
-        xps.indices(x.shape, max_dims=0, allow_ellipsis=False), label="set idx"
+    nan_positions = data.draw(
+        hh.arrays(dtype=hh.bool_dtype, shape=x.shape), label="nan_positions"
     )
-    x[set_idx] = float("nan")
+    assume(xp.any(nan_positions))
+    x = xp.where(nan_positions, xp.asarray(float("nan")), x)
     note(f"{x=}")
 
     out = func(x)
