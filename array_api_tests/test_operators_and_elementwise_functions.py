@@ -927,7 +927,7 @@ def test_ceil(x):
 
 
 @pytest.mark.min_version("2023.12")
-@given(x=hh.arrays(dtype=hh.real_floating_dtypes, shape=hh.shapes()), data=st.data())
+@given(x=hh.arrays(dtype=hh.int_dtypes, shape=hh.shapes()), data=st.data())
 def test_clip(x, data):
     # TODO: test min/max kwargs, adjust values testing accordingly
 
@@ -951,7 +951,7 @@ def test_clip(x, data):
     ), label="max")
 
     # min > max is undefined (but allow nans)
-    assume(min is None or max is None or not xp.any(xp.asarray(min > max)))
+    assume(min is None or max is None or not xp.any(xp.asarray(min) > xp.asarray(max)))
 
     kw = data.draw(
         hh.specified_kwargs(
@@ -1035,13 +1035,14 @@ def test_clip(x, data):
             max_val = max if dh.is_scalar(max) else max[max_idx]
             max_val = stype(max_val)
             expected = refimpl(x_val, min_val, max_val)
+            out_val = stype(out[o_idx])
             if math.isnan(expected):
-                assert math.isnan(out[o_idx]), (
+                assert math.isnan(out_val), (
                     f"out[{o_idx}]={out[o_idx]} but should be nan [clip()]\n"
                     f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
                 )
             else:
-                assert out[o_idx] == expected, (
+                assert out_val == expected, (
                     f"out[{o_idx}]={out[o_idx]} but should be {expected} [clip()]\n"
                     f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
 )
