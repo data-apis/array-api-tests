@@ -118,6 +118,25 @@ def xp_has_ext(ext: str) -> bool:
         return False
 
 
+def check_id_match(id_, pattern):
+    if id_ == pattern:
+        return True
+    
+    if id_.startswith(pattern.removesuffix("/") + "/"):
+        return True
+    
+    if pattern.endswith(".py") and id_.startswith(pattern):
+        return True
+    
+    if id_.split("::", maxsplit=2)[0] == pattern:
+        return True
+    
+    if id_.split("[", maxsplit=2)[0] == pattern:
+        return True
+
+    return False
+
+
 def pytest_collection_modifyitems(config, items):
     # 1. Prepare for iterating over items
     # -----------------------------------
@@ -165,13 +184,13 @@ def pytest_collection_modifyitems(config, items):
         markers = list(item.iter_markers())
         # skip if specified in skips file
         for id_ in skip_ids:
-            if id_ in item.nodeid:
+            if check_id_match(item.nodeid, id_):
                 item.add_marker(mark.skip(reason=f"--skips-file ({skips_file})"))
                 skip_id_matched[id_] = True
                 break
         # xfail if specified in xfails file
         for id_ in xfail_ids:
-            if id_ in item.nodeid:
+            if check_id_match(item.nodeid, id_):
                 item.add_marker(mark.xfail(reason=f"--xfails-file ({xfails_file})"))
                 xfail_id_matched[id_] = True
                 break
