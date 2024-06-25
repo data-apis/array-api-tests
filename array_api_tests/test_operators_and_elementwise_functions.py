@@ -1535,7 +1535,8 @@ def test_signbit(x):
     out = xp.signbit(x)
     ph.assert_dtype("signbit", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
     ph.assert_shape("signbit", out_shape=out.shape, expected=x.shape)
-    # TODO: values testing
+    refimpl = lambda x: math.copysign(1.0, x) < 0
+    unary_assert_against_refimpl("round", x, out, refimpl, strict_check=True)
 
 
 @given(hh.arrays(dtype=hh.numeric_dtypes, shape=hh.shapes(), elements=finite_kw))
