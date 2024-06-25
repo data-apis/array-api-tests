@@ -929,8 +929,6 @@ def test_ceil(x):
 @pytest.mark.min_version("2023.12")
 @given(x=hh.arrays(dtype=hh.real_dtypes, shape=hh.shapes()), data=st.data())
 def test_clip(x, data):
-    # TODO: test min/max kwargs, adjust values testing accordingly
-
     # Ensure that if both min and max are arrays that all three of x, min, max
     # are broadcast compatible.
     shape1, shape2 = data.draw(hh.mutually_broadcastable_shapes(2,
