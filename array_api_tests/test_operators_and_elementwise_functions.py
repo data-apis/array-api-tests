@@ -4,6 +4,7 @@ Test element-wise functions/operators against reference implementations.
 import cmath
 import math
 import operator
+import builtins
 from copy import copy
 from enum import Enum, auto
 from typing import Callable, List, NamedTuple, Optional, Sequence, TypeVar, Union
@@ -369,6 +370,8 @@ def right_scalar_assert_against_refimpl(
 
     See unary_assert_against_refimpl for more information.
     """
+    if expr_template is None:
+        expr_template = func_name + "({}, {})={}"
     if left.dtype in dh.complex_dtypes:
         component_filter = copy(filter_)
         filter_ = lambda s: component_filter(s.real) and component_filter(s.imag)
@@ -422,7 +425,7 @@ def right_scalar_assert_against_refimpl(
             )
 
 
-# When appropiate, this module tests operators alongside their respective
+# When appropriate, this module tests operators alongside their respective
 # elementwise methods. We do this by parametrizing a generalised test method
 # with every relevant method and operator.
 #
@@ -432,8 +435,8 @@ def right_scalar_assert_against_refimpl(
 # - The argument strategies, which can be used to draw arguments for the test
 #   case. They may require additional filtering for certain test cases.
 # - right_is_scalar (binary parameters only), which denotes if the right
-#   argument is a scalar in a test case. This can be used to appropiately adjust
-#   draw filtering and test logic.
+#   argument is a scalar in a test case. This can be used to appropriately
+#   adjust draw filtering and test logic.
 
 
 func_to_op = {v: k for k, v in dh.op_to_func.items()}
@@ -475,7 +478,7 @@ def make_unary_params(
     )
     if api_version < min_version:
         marks = pytest.mark.skip(
-            reason=f"requires ARRAY_API_TESTS_VERSION=>{min_version}"
+            reason=f"requires ARRAY_API_TESTS_VERSION >= {min_version}"
         )
     else:
         marks = ()
@@ -924,15 +927,125 @@ def test_ceil(x):
 
 
 @pytest.mark.min_version("2023.12")
-@given(hh.arrays(dtype=hh.real_floating_dtypes, shape=hh.shapes()))
-def test_clip(x):
+@given(x=hh.arrays(dtype=hh.real_dtypes, shape=hh.shapes()), data=st.data())
+def test_clip(x, data):
     # TODO: test min/max kwargs, adjust values testing accordingly
-    out = xp.clip(x)
+
+    # Ensure that if both min and max are arrays that all three of x, min, max
+    # are broadcast compatible.
+    shape1, shape2 = data.draw(hh.mutually_broadcastable_shapes(2,
+                                                                base_shape=x.shape),
+                                label="min.shape, max.shape")
+
+    dtypes = hh.real_floating_dtypes if dh.is_float_dtype(x.dtype) else hh.int_dtypes
+
+    min = data.draw(st.one_of(
+        st.none(),
+        hh.scalars(dtypes=st.just(x.dtype)),
+        hh.arrays(dtype=dtypes, shape=shape1),
+    ), label="min")
+    max = data.draw(st.one_of(
+        st.none(),
+        hh.scalars(dtypes=st.just(x.dtype)),
+        hh.arrays(dtype=dtypes, shape=shape2),
+    ), label="max")
+
+    # min > max is undefined (but allow nans)
+    assume(min is None or max is None or not xp.any(xp.asarray(min) > xp.asarray(max)))
+
+    kw = data.draw(
+        hh.specified_kwargs(
+            ("min", min, None),
+            ("max", max, None)),
+        label="kwargs")
+
+    out = xp.clip(x, **kw)
+
+    # min and max do not participate in type promotion
     ph.assert_dtype("clip", in_dtype=x.dtype, out_dtype=out.dtype)
-    ph.assert_shape("clip", out_shape=out.shape, expected=x.shape)
-    ph.assert_array_elements("clip", out=out, expected=x)
 
+    shapes = [x.shape]
+    if min is not None and not dh.is_scalar(min):
+        shapes.append(min.shape)
+    if max is not None and not dh.is_scalar(max):
+        shapes.append(max.shape)
+    expected_shape = sh.broadcast_shapes(*shapes)
+    ph.assert_shape("clip", out_shape=out.shape, expected=expected_shape)
 
+    if min is max is None:
+        ph.assert_array_elements("clip", out=out, expected=x)
+    elif max is None:
+        # If one operand is nan, the result is nan. See
+        # https://github.com/data-apis/array-api/pull/813.
+        def refimpl(_x, _min):
+            if math.isnan(_x) or math.isnan(_min):
+                return math.nan
+            return builtins.max(_x, _min)
+        if dh.is_scalar(min):
+            right_scalar_assert_against_refimpl(
+                "clip", x, min, out, refimpl,
+                left_sym="x",
+                expr_template="clip({}, min={})",
+            )
+        else:
+            binary_assert_against_refimpl(
+                "clip", x, min, out, refimpl,
+                left_sym="x", right_sym="min",
+                expr_template="clip({}, min={})",
+            )
+    elif min is None:
+        def refimpl(_x, _max):
+            if math.isnan(_x) or math.isnan(_max):
+                return math.nan
+            return builtins.min(_x, _max)
+        if dh.is_scalar(max):
+            right_scalar_assert_against_refimpl(
+                "clip", x, max, out, refimpl,
+                left_sym="x",
+                expr_template="clip({}, max={})",
+            )
+        else:
+            binary_assert_against_refimpl(
+                "clip", x, max, out, refimpl,
+                left_sym="x", right_sym="max",
+                expr_template="clip({}, max={})",
+            )
+    else:
+        def refimpl(_x, _min, _max):
+            if math.isnan(_x) or math.isnan(_min) or math.isnan(_max):
+                return math.nan
+            return builtins.min(builtins.max(_x, _min), _max)
+
+        # This is based on right_scalar_assert_against_refimpl and
+        # binary_assert_against_refimpl. clip() is currently the only ternary
+        # elementwise function and the only function that supports arrays and
+        # scalars. However, where() (in test_searching_functions) is similar
+        # and if scalar support is added to it, we may want to factor out and
+        # reuse this logic.
+
+        stype = dh.get_scalar_type(x.dtype)
+        min_shape = () if dh.is_scalar(min) else min.shape
+        max_shape = () if dh.is_scalar(max) else max.shape
+
+        for x_idx, min_idx, max_idx, o_idx in sh.iter_indices(
+                x.shape, min_shape, max_shape, out.shape):
+            x_val = stype(x[x_idx])
+            min_val = min if dh.is_scalar(min) else min[min_idx]
+            min_val = stype(min_val)
+            max_val = max if dh.is_scalar(max) else max[max_idx]
+            max_val = stype(max_val)
+            expected = refimpl(x_val, min_val, max_val)
+            out_val = stype(out[o_idx])
+            if math.isnan(expected):
+                assert math.isnan(out_val), (
+                    f"out[{o_idx}]={out[o_idx]} but should be nan [clip()]\n"
+                    f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
+                )
+            else:
+                assert out_val == expected, (
+                    f"out[{o_idx}]={out[o_idx]} but should be {expected} [clip()]\n"
+                    f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
+)
 if api_version >= "2022.12":
 
     @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))

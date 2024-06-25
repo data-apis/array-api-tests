@@ -173,16 +173,14 @@ def test_where(shapes, dtypes, data):
 @given(data=st.data())
 def test_searchsorted(data):
     # TODO: test side="right"
+    # TODO: Allow different dtypes for x1 and x2
     _x1 = data.draw(
         st.lists(xps.from_dtype(dh.default_float), min_size=1, unique=True),
         label="_x1",
     )
     x1 = xp.asarray(_x1, dtype=dh.default_float)
     if data.draw(st.booleans(), label="use sorter?"):
-        sorter = data.draw(
-            st.permutations(_x1).map(lambda o: xp.asarray(o, dtype=dh.default_float)),
-            label="sorter",
-        )
+        sorter = xp.argsort(x1)
     else:
         sorter = None
         x1 = xp.sort(x1)
