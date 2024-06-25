@@ -1060,7 +1060,7 @@ def test_copysign(x1, x2):
     out = xp.copysign(x1, x2)
     ph.assert_dtype("copysign", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
     ph.assert_result_shape("copysign", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
-    # TODO: values testing
+    binary_assert_against_refimpl("copysign", x1, x2, out, math.copysign)
 
 
 @given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
