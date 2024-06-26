@@ -173,7 +173,7 @@ def test_moveaxis(x, data):
 
     ph.assert_dtype("moveaxis", in_dtype=x.dtype, out_dtype=out.dtype)
 
-    # Shape testing
+
     _source = sh.normalize_axis(source, x.ndim)
     _destination = sh.normalize_axis(destination, x.ndim)
 
@@ -187,6 +187,12 @@ def test_moveaxis(x, data):
     ph.assert_result_shape("moveaxis", in_shapes=[x.shape],
                            out_shape=out.shape, expected=expected_shape,
                            kw={"source": source, "destination": destination})
+
+    indices = list(sh.ndindex(x.shape))
+    permuted_indices = [tuple(idx[axis] for axis in new_axes) for idx in indices]
+    assert_array_ndindex(
+        "moveaxis", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=permuted_indices
+    )
 
 @pytest.mark.unvectorized
 @given(
