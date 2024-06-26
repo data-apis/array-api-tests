@@ -172,7 +172,21 @@ def test_moveaxis(x, data):
     out = xp.moveaxis(x, source, destination)
 
     ph.assert_dtype("moveaxis", in_dtype=x.dtype, out_dtype=out.dtype)
-    # TODO: shape and values testing
+
+    # Shape testing
+    _source = sh.normalize_axis(source, x.ndim)
+    _destination = sh.normalize_axis(destination, x.ndim)
+
+    new_axes = [n for n in range(x.ndim) if n not in _source]
+
+    for dest, src in sorted(zip(_destination, _source)):
+        new_axes.insert(dest, src)
+
+    expected_shape = tuple(x.shape[i] for i in new_axes)
+
+    ph.assert_result_shape("moveaxis", in_shapes=[x.shape],
+                           out_shape=out.shape, expected=expected_shape,
+                           kw={"source": source, "destination": destination})
 
 @pytest.mark.unvectorized
 @given(
