@@ -94,7 +94,7 @@ def assert_s_axes_shape(
     axes: Optional[List[int]],
     out: Array,
 ):
-    _axes = sh.normalise_axis(axes, x.ndim)
+    _axes = sh.normalize_axis(axes, x.ndim)
     _s = x.shape if s is None else s
     expected = []
     for i in range(x.ndim):
@@ -193,7 +193,7 @@ def test_rfftn(x, data):
 
     ph.assert_float_to_complex_dtype("rfftn", in_dtype=x.dtype, out_dtype=out.dtype)
 
-    _axes = sh.normalise_axis(axes, x.ndim)
+    _axes = sh.normalize_axis(axes, x.ndim)
     _s = x.shape if s is None else s
     expected = []
     for i in range(x.ndim):
@@ -225,7 +225,7 @@ def test_irfftn(x, data):
     )
 
     # TODO: assert shape correctly
-    # _axes = sh.normalise_axis(axes, x.ndim)
+    # _axes = sh.normalize_axis(axes, x.ndim)
     # _s = x.shape if s is None else s
     # expected = []
     # for i in range(x.ndim):

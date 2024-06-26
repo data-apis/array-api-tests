@@ -56,7 +56,7 @@ def test_argsort(x, data):
     ph.assert_default_index("argsort", out.dtype)
     ph.assert_shape("argsort", out_shape=out.shape, expected=x.shape, kw=kw)
     axis = kw.get("axis", -1)
-    axes = sh.normalise_axis(axis, x.ndim)
+    axes = sh.normalize_axis(axis, x.ndim)
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices in sh.axes_ndindex(x.shape, axes):
         elements = [scalar_type(x[idx]) for idx in indices]
@@ -117,7 +117,7 @@ def test_sort(x, data):
     ph.assert_dtype("sort", out_dtype=out.dtype, in_dtype=x.dtype)
     ph.assert_shape("sort", out_shape=out.shape, expected=x.shape, kw=kw)
     axis = kw.get("axis", -1)
-    axes = sh.normalise_axis(axis, x.ndim)
+    axes = sh.normalize_axis(axis, x.ndim)
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices in sh.axes_ndindex(x.shape, axes):
         elements = [scalar_type(x[idx]) for idx in indices]

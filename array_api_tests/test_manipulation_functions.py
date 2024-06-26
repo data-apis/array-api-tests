@@ -190,7 +190,7 @@ def test_squeeze(x, data):
     )
 
     axes = (axis,) if isinstance(axis, int) else axis
-    axes = sh.normalise_axis(axes, x.ndim)
+    axes = sh.normalize_axis(axes, x.ndim)
 
     squeezable_axes = [i for i, side in enumerate(x.shape) if side == 1]
     if any(i not in squeezable_axes for i in axes):
@@ -230,7 +230,7 @@ def test_flip(x, data):
 
     ph.assert_dtype("flip", in_dtype=x.dtype, out_dtype=out.dtype)
 
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     for indices in sh.axes_ndindex(x.shape, _axes):
         reverse_indices = indices[::-1]
         assert_array_ndindex("flip", x, x_indices=indices, out=out,
@@ -360,7 +360,7 @@ def test_roll(x, data):
         assert_array_ndindex("roll", x, x_indices=indices, out=out, out_indices=shifted_indices, kw=kw)
     else:
         shifts = (shift,) if isinstance(shift, int) else shift
-        axes = sh.normalise_axis(kw["axis"], x.ndim)
+        axes = sh.normalize_axis(kw["axis"], x.ndim)
         shifted_indices = roll_ndindex(x.shape, shifts, axes)
         assert_array_ndindex("roll", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=shifted_indices, kw=kw)
 
