@@ -36,7 +36,7 @@ def test_argmax(x, data):
     out = xp.argmax(x, **kw)
 
     ph.assert_default_index("argmax", out.dtype)
-    axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "argmax", in_shape=x.shape, out_shape=out.shape, axes=axes, keepdims=keepdims, kw=kw
     )
@@ -73,7 +73,7 @@ def test_argmin(x, data):
     out = xp.argmin(x, **kw)
 
     ph.assert_default_index("argmin", out.dtype)
-    axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "argmin", in_shape=x.shape, out_shape=out.shape, axes=axes, keepdims=keepdims, kw=kw
     )

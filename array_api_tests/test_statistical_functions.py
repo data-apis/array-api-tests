@@ -28,7 +28,7 @@ def test_cumulative_sum(x, data):
     if x.ndim == 1:
         axes = axes | st.none()
     axis = data.draw(axes, label='axis')
-    _axis, = sh.normalise_axis(axis, x.ndim)
+    _axis, = sh.normalize_axis(axis, x.ndim)
     dtype = data.draw(kwarg_dtypes(x.dtype))
     include_initial = data.draw(st.booleans(), label="include_initial")
 
@@ -108,7 +108,7 @@ def test_max(x, data):
     out = xp.max(x, **kw)
 
     ph.assert_dtype("max", in_dtype=x.dtype, out_dtype=out.dtype)
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "max", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
     )
@@ -138,7 +138,7 @@ def test_mean(x, data):
     out = xp.mean(x, **kw)
 
     ph.assert_dtype("mean", in_dtype=x.dtype, out_dtype=out.dtype)
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "mean", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
     )
@@ -161,7 +161,7 @@ def test_min(x, data):
     out = xp.min(x, **kw)
 
     ph.assert_dtype("min", in_dtype=x.dtype, out_dtype=out.dtype)
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "min", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
     )
@@ -209,7 +209,7 @@ def test_prod(x, data):
             assert dh.is_int_dtype(out.dtype)  # sanity check
     else:
         ph.assert_dtype("prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "prod", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
     )
@@ -239,7 +239,7 @@ def test_prod(x, data):
 )
 def test_std(x, data):
     axis = data.draw(hh.axes(x.ndim), label="axis")
-    _axes = sh.normalise_axis(axis, x.ndim)
+    _axes = sh.normalize_axis(axis, x.ndim)
     N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
     correction = data.draw(
         st.floats(0.0, N, allow_infinity=False, allow_nan=False) | st.integers(0, N),
@@ -298,7 +298,7 @@ def test_sum(x, data):
             assert dh.is_int_dtype(out.dtype)  # sanity check
     else:
         ph.assert_dtype("sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "sum", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
     )
@@ -329,7 +329,7 @@ def test_sum(x, data):
 )
 def test_var(x, data):
     axis = data.draw(hh.axes(x.ndim), label="axis")
-    _axes = sh.normalise_axis(axis, x.ndim)
+    _axes = sh.normalize_axis(axis, x.ndim)
     N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
     correction = data.draw(
         st.floats(0.0, N, allow_infinity=False, allow_nan=False) | st.integers(0, N),

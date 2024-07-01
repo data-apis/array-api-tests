@@ -929,8 +929,6 @@ def test_ceil(x):
 @pytest.mark.min_version("2023.12")
 @given(x=hh.arrays(dtype=hh.real_dtypes, shape=hh.shapes()), data=st.data())
 def test_clip(x, data):
-    # TODO: test min/max kwargs, adjust values testing accordingly
-
     # Ensure that if both min and max are arrays that all three of x, min, max
     # are broadcast compatible.
     shape1, shape2 = data.draw(hh.mutually_broadcastable_shapes(2,
@@ -1062,7 +1060,7 @@ def test_copysign(x1, x2):
     out = xp.copysign(x1, x2)
     ph.assert_dtype("copysign", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
     ph.assert_result_shape("copysign", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
-    # TODO: values testing
+    binary_assert_against_refimpl("copysign", x1, x2, out, math.copysign)
 
 
 @given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
@@ -1535,7 +1533,8 @@ def test_signbit(x):
     out = xp.signbit(x)
     ph.assert_dtype("signbit", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
     ph.assert_shape("signbit", out_shape=out.shape, expected=x.shape)
-    # TODO: values testing
+    refimpl = lambda x: math.copysign(1.0, x) < 0
+    unary_assert_against_refimpl("round", x, out, refimpl, strict_check=True)
 
 
 @given(hh.arrays(dtype=hh.numeric_dtypes, shape=hh.shapes(), elements=finite_kw))

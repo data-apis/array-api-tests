@@ -8,7 +8,7 @@ from .typing import AtomicIndex, Index, Scalar, Shape
 
 __all__ = [
     "broadcast_shapes",
-    "normalise_axis",
+    "normalize_axis",
     "ndindex",
     "axis_ndindex",
     "axes_ndindex",
@@ -65,7 +65,7 @@ def broadcast_shapes(*shapes: Shape):
     return result
 
 
-def normalise_axis(
+def normalize_axis(
     axis: Optional[Union[int, Sequence[int]]], ndim: int
 ) -> Tuple[int, ...]:
     if axis is None:
