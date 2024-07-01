@@ -4,7 +4,7 @@ import argparse
 import warnings
 import os
 
-from hypothesis import settings, HealthCheck
+from hypothesis import settings
 from hypothesis.errors import InvalidArgument
 from pytest import mark
 
@@ -105,10 +105,6 @@ def pytest_configure(config):
         max_examples=config.getoption("--hypothesis-max-examples"),
         derandomize=config.getoption("--hypothesis-derandomize"),
         deadline=deadline,
-        # TEMP FIX: Tests are randomly failing the data_too_large health
-        # check. Just suppress it for now. See
-        # https://github.com/data-apis/array-api-tests/issues/277
-        suppress_health_check=(HealthCheck.data_too_large,),
     )
     settings.load_profile("array-api-tests")
     # CI
