@@ -209,6 +209,9 @@ class MinMax(NamedTuple):
     min: Union[int, float]
     max: Union[int, float]
 
+    def __contains__(self, other):
+        assert isinstance(other, (int, float))
+        return self.min <= other <= self.max
 
 dtype_ranges = _make_dtype_mapping_from_names(
     {
