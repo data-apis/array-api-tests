@@ -986,6 +986,27 @@ def test_clip(x, data):
             if _max is not None and _max not in dh.dtype_ranges[x.dtype]:
                 return None
 
+        # If min or max are float64 and x is float32, they will need to be
+        # downcast to float32. This could result in a round in the wrong
+        # direction meaning the resulting clipped value might not actually be
+        # between min and max. This behavior is unspecified, so skip any cases
+        # where x is within the rounding error of downcasting min or max.
+        if x.dtype == xp.float32:
+            if min is not None and not dh.is_scalar(min) and min.dtype == xp.float64 and math.isfinite(_min):
+                _min_float32 = float(xp.asarray(_min, dtype=xp.float32))
+                if math.isinf(_min_float32):
+                    return None
+                tol = abs(_min - _min_float32)
+                if math.isclose(_min, _min_float32, abs_tol=tol):
+                    return None
+            if max is not None and not dh.is_scalar(max) and max.dtype == xp.float64 and math.isfinite(_max):
+                _max_float32 = float(xp.asarray(_max, dtype=xp.float32))
+                if math.isinf(_max_float32):
+                    return None
+                tol = abs(_max - _max_float32)
+                if math.isclose(_max, _max_float32, abs_tol=tol):
+                    return None
+
         if (math.isnan(_x)
             or (_min is not None and math.isnan(_min))
             or (_max is not None and math.isnan(_max))):
