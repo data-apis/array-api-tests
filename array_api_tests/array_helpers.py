@@ -1,5 +1,5 @@
 from ._array_module import (isnan, all, any, equal, not_equal, logical_and,
-                            logical_or, isfinite, greater, less, less_equal,
+                            logical_or, isfinite, greater, less_equal,
                             zeros, ones, full, bool, int8, int16, int32,
                             int64, uint8, uint16, uint32, uint64, float32,
                             float64, nan, inf, pi, remainder, divide, isinf,
@@ -163,6 +163,16 @@ def notequal(x, y):
         return logical_and(logical_not(both_nan), not_equal(x, y))
 
     return not_equal(x, y)
+
+def less(x, y):
+    """
+    Same as less(x, y) except it allows comparing uint64 with signed int dtypes
+    """
+    if x.dtype == uint64 and dh.dtype_signed[y.dtype]:
+        return xp.where(y < 0, xp.asarray(False), xp.less(x, xp.astype(y, uint64)))
+    if y.dtype == uint64 and dh.dtype_signed[x.dtype]:
+        return xp.where(x < 0, xp.asarray(True), xp.less(xp.astype(x, uint64), y))
+    return xp.less(x, y)
 
 def assert_exactly_equal(x, y, msg_extra=None):
     """
