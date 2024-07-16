@@ -949,7 +949,7 @@ def test_clip(x, data):
     ), label="max")
 
     # min > max is undefined (but allow nans)
-    assume(min is None or max is None or not xp.any(xp.asarray(min) > xp.asarray(max)))
+    assume(min is None or max is None or not xp.any(ah.less(xp.asarray(max), xp.asarray(min))))
 
     kw = data.draw(
         hh.specified_kwargs(
