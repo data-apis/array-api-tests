@@ -1,8 +1,9 @@
 from hypothesis import given
+from hypothesis import strategies as st
 
 from array_api_tests import _array_module as xp
-from array_api_tests.hypothesis_helpers import two_mutual_arrays
-from array_api_tests.dtype_helpers import int_dtypes
+from array_api_tests.hypothesis_helpers import (int_dtypes, arrays,
+                                                two_mutually_broadcastable_shapes)
 from array_api_tests.shape_helpers import iter_indices, broadcast_shapes
 from array_api_tests .array_helpers import exactly_equal, notequal, less
 
@@ -23,8 +24,11 @@ def test_notequal():
     assert xp.all(xp.equal(notequal(a, b), res))
 
 
-@given(*two_mutual_arrays(dtypes=int_dtypes))
-def test_less(x, y):
+@given(two_mutually_broadcastable_shapes, int_dtypes, int_dtypes, st.data())
+def test_less(shapes, dtype1, dtype2, data):
+    x = data.draw(arrays(shape=shapes[0], dtype=dtype1))
+    y = data.draw(arrays(shape=shapes[1], dtype=dtype2))
+
     res = less(x, y)
 
     for i, j, k in iter_indices(x.shape, y.shape, broadcast_shapes(x.shape, y.shape)):
