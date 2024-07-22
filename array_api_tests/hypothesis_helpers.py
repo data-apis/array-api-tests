@@ -177,7 +177,7 @@ def oneway_broadcastable_shapes(draw) -> OnewayBroadcastableShapes:
 # Use these instead of xps.scalar_dtypes, etc. because it skips dtypes from
 # ARRAY_API_TESTS_SKIP_DTYPES
 all_dtypes = sampled_from(_sorted_dtypes)
-int_dtypes = sampled_from(dh.int_dtypes)
+int_dtypes = sampled_from(dh.all_int_dtypes)
 uint_dtypes = sampled_from(dh.uint_dtypes)
 real_dtypes = sampled_from(dh.real_dtypes)
 # Warning: The hypothesis "floating_dtypes" is what we call

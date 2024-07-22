@@ -26,9 +26,9 @@ def scalar_objects(
     )
 
 
-def normalise_key(key: Index, shape: Shape) -> Tuple[Union[int, slice], ...]:
+def normalize_key(key: Index, shape: Shape) -> Tuple[Union[int, slice], ...]:
     """
-    Normalise an indexing key.
+    Normalize an indexing key.
 
     * If a non-tuple index, wrap as a tuple.
     * Represent ellipsis as equivalent slices.
@@ -48,7 +48,7 @@ def get_indexed_axes_and_out_shape(
     key: Tuple[Union[int, slice, None], ...], shape: Shape
 ) -> Tuple[Tuple[Sequence[int], ...], Shape]:
     """
-    From the (normalised) key and input shape, calculates:
+    From the (normalized) key and input shape, calculates:
 
     * indexed_axes: For each dimension, the axes which the key indexes.
     * out_shape: The resulting shape of indexing an array (of the input shape)
@@ -88,7 +88,7 @@ def test_getitem(shape, dtype, data):
     out = x[key]
 
     ph.assert_dtype("__getitem__", in_dtype=x.dtype, out_dtype=out.dtype)
-    _key = normalise_key(key, shape)
+    _key = normalize_key(key, shape)
     axes_indices, expected_shape = get_indexed_axes_and_out_shape(_key, shape)
     ph.assert_shape("__getitem__", out_shape=out.shape, expected=expected_shape)
     out_zero_sided = any(side == 0 for side in expected_shape)
@@ -119,7 +119,7 @@ def test_setitem(shape, dtypes, data):
         x = xp.asarray(obj, dtype=dtypes.result_dtype)
     note(f"{x=}")
     key = data.draw(xps.indices(shape=shape), label="key")
-    _key = normalise_key(key, shape)
+    _key = normalize_key(key, shape)
     axes_indices, out_shape = get_indexed_axes_and_out_shape(_key, shape)
     value_strat = hh.arrays(dtype=dtypes.result_dtype, shape=out_shape)
     if out_shape == ():

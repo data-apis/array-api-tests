@@ -929,8 +929,6 @@ def test_ceil(x):
 @pytest.mark.min_version("2023.12")
 @given(x=hh.arrays(dtype=hh.real_dtypes, shape=hh.shapes()), data=st.data())
 def test_clip(x, data):
-    # TODO: test min/max kwargs, adjust values testing accordingly
-
     # Ensure that if both min and max are arrays that all three of x, min, max
     # are broadcast compatible.
     shape1, shape2 = data.draw(hh.mutually_broadcastable_shapes(2,
@@ -951,7 +949,7 @@ def test_clip(x, data):
     ), label="max")
 
     # min > max is undefined (but allow nans)
-    assume(min is None or max is None or not xp.any(xp.asarray(min) > xp.asarray(max)))
+    assume(min is None or max is None or not xp.any(ah.less(xp.asarray(max), xp.asarray(min))))
 
     kw = data.draw(
         hh.specified_kwargs(
@@ -972,80 +970,86 @@ def test_clip(x, data):
     expected_shape = sh.broadcast_shapes(*shapes)
     ph.assert_shape("clip", out_shape=out.shape, expected=expected_shape)
 
-    if min is max is None:
-        ph.assert_array_elements("clip", out=out, expected=x)
-    elif max is None:
-        # If one operand is nan, the result is nan. See
-        # https://github.com/data-apis/array-api/pull/813.
-        def refimpl(_x, _min):
-            if math.isnan(_x) or math.isnan(_min):
-                return math.nan
+    # This is based on right_scalar_assert_against_refimpl and
+    # binary_assert_against_refimpl. clip() is currently the only ternary
+    # elementwise function and the only function that supports arrays and
+    # scalars. However, where() (in test_searching_functions) is similar
+    # and if scalar support is added to it, we may want to factor out and
+    # reuse this logic.
+
+    def refimpl(_x, _min, _max):
+        # Skip cases where _min and _max are integers whose values do not
+        # fit in the dtype of _x, since this behavior is unspecified.
+        if dh.is_int_dtype(x.dtype):
+            if _min is not None and _min not in dh.dtype_ranges[x.dtype]:
+                return None
+            if _max is not None and _max not in dh.dtype_ranges[x.dtype]:
+                return None
+
+        # If min or max are float64 and x is float32, they will need to be
+        # downcast to float32. This could result in a round in the wrong
+        # direction meaning the resulting clipped value might not actually be
+        # between min and max. This behavior is unspecified, so skip any cases
+        # where x is within the rounding error of downcasting min or max.
+        if x.dtype == xp.float32:
+            if min is not None and not dh.is_scalar(min) and min.dtype == xp.float64 and math.isfinite(_min):
+                _min_float32 = float(xp.asarray(_min, dtype=xp.float32))
+                if math.isinf(_min_float32):
+                    return None
+                tol = abs(_min - _min_float32)
+                if math.isclose(_min, _min_float32, abs_tol=tol):
+                    return None
+            if max is not None and not dh.is_scalar(max) and max.dtype == xp.float64 and math.isfinite(_max):
+                _max_float32 = float(xp.asarray(_max, dtype=xp.float32))
+                if math.isinf(_max_float32):
+                    return None
+                tol = abs(_max - _max_float32)
+                if math.isclose(_max, _max_float32, abs_tol=tol):
+                    return None
+
+        if (math.isnan(_x)
+            or (_min is not None and math.isnan(_min))
+            or (_max is not None and math.isnan(_max))):
+            return math.nan
+        if _min is _max is None:
+            return _x
+        if _max is None:
             return builtins.max(_x, _min)
-        if dh.is_scalar(min):
-            right_scalar_assert_against_refimpl(
-                "clip", x, min, out, refimpl,
-                left_sym="x",
-                expr_template="clip({}, min={})",
-            )
-        else:
-            binary_assert_against_refimpl(
-                "clip", x, min, out, refimpl,
-                left_sym="x", right_sym="min",
-                expr_template="clip({}, min={})",
-            )
-    elif min is None:
-        def refimpl(_x, _max):
-            if math.isnan(_x) or math.isnan(_max):
-                return math.nan
+        if _min is None:
             return builtins.min(_x, _max)
-        if dh.is_scalar(max):
-            right_scalar_assert_against_refimpl(
-                "clip", x, max, out, refimpl,
-                left_sym="x",
-                expr_template="clip({}, max={})",
+        return builtins.min(builtins.max(_x, _min), _max)
+
+    stype = dh.get_scalar_type(x.dtype)
+    min_shape = () if min is None or dh.is_scalar(min) else min.shape
+    max_shape = () if max is None or dh.is_scalar(max) else max.shape
+
+    for x_idx, min_idx, max_idx, o_idx in sh.iter_indices(
+            x.shape, min_shape, max_shape, out.shape):
+        x_val = stype(x[x_idx])
+        if min is None or dh.is_scalar(min):
+            min_val = min
+        else:
+            min_val = stype(min[min_idx])
+        if max is None or dh.is_scalar(max):
+            max_val = max
+        else:
+            max_val = stype(max[max_idx])
+        expected = refimpl(x_val, min_val, max_val)
+        if expected is None:
+            continue
+        out_val = stype(out[o_idx])
+        if math.isnan(expected):
+            assert math.isnan(out_val), (
+                f"out[{o_idx}]={out[o_idx]} but should be nan [clip()]\n"
+                f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
             )
         else:
-            binary_assert_against_refimpl(
-                "clip", x, max, out, refimpl,
-                left_sym="x", right_sym="max",
-                expr_template="clip({}, max={})",
+            assert out_val == expected, (
+                f"out[{o_idx}]={out[o_idx]} but should be {expected} [clip()]\n"
+                f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
             )
-    else:
-        def refimpl(_x, _min, _max):
-            if math.isnan(_x) or math.isnan(_min) or math.isnan(_max):
-                return math.nan
-            return builtins.min(builtins.max(_x, _min), _max)
 
-        # This is based on right_scalar_assert_against_refimpl and
-        # binary_assert_against_refimpl. clip() is currently the only ternary
-        # elementwise function and the only function that supports arrays and
-        # scalars. However, where() (in test_searching_functions) is similar
-        # and if scalar support is added to it, we may want to factor out and
-        # reuse this logic.
 
-        stype = dh.get_scalar_type(x.dtype)
-        min_shape = () if dh.is_scalar(min) else min.shape
-        max_shape = () if dh.is_scalar(max) else max.shape
-
-        for x_idx, min_idx, max_idx, o_idx in sh.iter_indices(
-                x.shape, min_shape, max_shape, out.shape):
-            x_val = stype(x[x_idx])
-            min_val = min if dh.is_scalar(min) else min[min_idx]
-            min_val = stype(min_val)
-            max_val = max if dh.is_scalar(max) else max[max_idx]
-            max_val = stype(max_val)
-            expected = refimpl(x_val, min_val, max_val)
-            out_val = stype(out[o_idx])
-            if math.isnan(expected):
-                assert math.isnan(out_val), (
-                    f"out[{o_idx}]={out[o_idx]} but should be nan [clip()]\n"
-                    f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
-                )
-            else:
-                assert out_val == expected, (
-                    f"out[{o_idx}]={out[o_idx]} but should be {expected} [clip()]\n"
-                    f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
-)
 if api_version >= "2022.12":
 
     @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
@@ -1062,7 +1066,7 @@ def test_copysign(x1, x2):
     out = xp.copysign(x1, x2)
     ph.assert_dtype("copysign", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
     ph.assert_result_shape("copysign", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
-    # TODO: values testing
+    binary_assert_against_refimpl("copysign", x1, x2, out, math.copysign)
 
 
 @given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
@@ -1535,7 +1539,8 @@ def test_signbit(x):
     out = xp.signbit(x)
     ph.assert_dtype("signbit", in_dtype=x.dtype, out_dtype=out.dtype, expected=xp.bool)
     ph.assert_shape("signbit", out_shape=out.shape, expected=x.shape)
-    # TODO: values testing
+    refimpl = lambda x: math.copysign(1.0, x) < 0
+    unary_assert_against_refimpl("round", x, out, refimpl, strict_check=True)
 
 
 @given(hh.arrays(dtype=hh.numeric_dtypes, shape=hh.shapes(), elements=finite_kw))

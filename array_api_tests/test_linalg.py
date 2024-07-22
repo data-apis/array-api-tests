@@ -980,7 +980,7 @@ def test_vector_norm(x, data):
     # TODO: Check that the ord values give the correct norms.
     # ord = kw.get('ord', 2)
 
-    _axes = sh.normalise_axis(axis, x.ndim)
+    _axes = sh.normalize_axis(axis, x.ndim)
 
     ph.assert_keepdimable_shape('linalg.vector_norm', out_shape=res.shape,
                                 in_shape=x.shape, axes=_axes,
