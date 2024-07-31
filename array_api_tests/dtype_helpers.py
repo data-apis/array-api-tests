@@ -322,16 +322,15 @@ else:
     default_float = xp.asarray(float()).dtype
     if default_float not in real_float_dtypes:
         warn(f"inferred default float is {default_float!r}, which is not a float")
-
-    if not (hasattr(xp, "complex32") or hasattr(xp, "complex64")):
-        default_complex = None
-    else:
+    if api_version > "2021.12" and ({'complex64', 'complex128'} - set(skip_dtypes)):
         default_complex = xp.asarray(complex()).dtype
         if default_complex not in complex_dtypes:
             warn(
                 f"inferred default complex is {default_complex!r}, "
                 "which is not a complex"
             )
+    else:
+        default_complex = None
 
 if dtype_nbits[default_int] == 32:
     default_uint = _name_to_dtype.get("uint32")
