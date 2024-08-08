@@ -124,6 +124,8 @@ def xp_has_ext(ext: str) -> bool:
 
 
 def check_id_match(id_, pattern):
+    id_ = id_.removeprefix('array-api-tests/')
+
     if id_ == pattern:
         return True
     
