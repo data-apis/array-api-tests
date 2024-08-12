@@ -124,6 +124,8 @@ def xp_has_ext(ext: str) -> bool:
 
 
 def check_id_match(id_, pattern):
+    id_ = id_.removeprefix('array-api-tests/')
+
     if id_ == pattern:
         return True
     
@@ -180,7 +182,7 @@ def pytest_collection_modifyitems(config, items):
 
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
-    unvectorized_max_examples = config.getoption("--hypothesis-max-examples")//10
+    unvectorized_max_examples = max(1, config.getoption("--hypothesis-max-examples")//10)
 
     # 2. Iterate through items and apply markers accordingly
     # ------------------------------------------------------
