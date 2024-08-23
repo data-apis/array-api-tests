@@ -186,11 +186,11 @@ floating_dtypes = sampled_from(dh.all_float_dtypes)
 real_floating_dtypes = sampled_from(dh.real_float_dtypes)
 numeric_dtypes = sampled_from(dh.numeric_dtypes)
 # Note: this always returns complex dtypes, even if api_version < 2022.12
-complex_dtypes = sampled_from(dh.complex_dtypes)
+complex_dtypes: SearchStrategy[Any] | None = sampled_from(dh.complex_dtypes) if dh.complex_dtypes else None
 
 def all_floating_dtypes() -> SearchStrategy[DataType]:
     strat = floating_dtypes
-    if api_version >= "2022.12":
+    if api_version >= "2022.12" and complex_dtypes is not None:
         strat |= complex_dtypes
     return strat
 
