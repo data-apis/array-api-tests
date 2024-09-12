@@ -453,7 +453,7 @@ def assert_scalar_isclose(
     f_func = f"{func_name}({fmt_kw(kw)})"
     msg = f"{repr_name}={out}, but should be roughly {expected} [{f_func}]"
     assert type_ in [float, complex] # Sanity check
-    assert cmath.isclose(out, expected, rel_tol=0.25, abs_tol=1), msg
+    assert cmath.isclose(out, expected, rel_tol=rel_tol, abs_tol=abs_tol), msg
 
 
 def assert_fill(
