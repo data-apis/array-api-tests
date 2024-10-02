@@ -397,7 +397,7 @@ def assert_scalar_equals(
     kw: dict = {},
 ):
     """
-    Assert a 0d array, convered to a scalar, is as expected, e.g.
+    Assert a 0d array, converted to a scalar, is as expected, e.g.
 
         >>> x = xp.ones(5, dtype=xp.uint8)
         >>> out = xp.sum(x)
@@ -407,6 +407,8 @@ def assert_scalar_equals(
 
         >>> assert int(out) == 5
 
+    NOTE: This function does *exact* comparison, even for floats. For
+    approximate float comparisons use assert_scalar_isclose
     """
     __tracebackhide__ = True
     repr_name = repr_name if idx == () else f"{repr_name}[{idx}]"
@@ -418,8 +420,40 @@ def assert_scalar_equals(
         msg = f"{repr_name}={out}, but should be {expected} [{f_func}]"
         assert cmath.isnan(out), msg
     else:
-        msg = f"{repr_name}={out}, but should be roughly {expected} [{f_func}]"
-        assert cmath.isclose(out, expected, rel_tol=0.25, abs_tol=1), msg
+        msg = f"{repr_name}={out}, but should be {expected} [{f_func}]"
+        assert out == expected, msg
+
+
+def assert_scalar_isclose(
+    func_name: str,
+    *,
+    rel_tol: float = 0.25,
+    abs_tol: float = 1,
+    type_: ScalarType,
+    idx: Shape,
+    out: Scalar,
+    expected: Scalar,
+    repr_name: str = "out",
+    kw: dict = {},
+):
+    """
+    Assert a 0d array, converted to a scalar, is close to the expected value, e.g.
+
+        >>> x = xp.ones(5., dtype=xp.float64)
+        >>> out = xp.sum(x)
+        >>> assert_scalar_isclose('sum', type_int, out=(), out=int(out), expected=5.)
+
+        is equivalent to
+
+        >>> assert math.isclose(float(out) == 5.)
+
+    """
+    __tracebackhide__ = True
+    repr_name = repr_name if idx == () else f"{repr_name}[{idx}]"
+    f_func = f"{func_name}({fmt_kw(kw)})"
+    msg = f"{repr_name}={out}, but should be roughly {expected} [{f_func}]"
+    assert type_ in [float, complex] # Sanity check
+    assert cmath.isclose(out, expected, rel_tol=rel_tol, abs_tol=abs_tol), msg
 
 
 def assert_fill(
