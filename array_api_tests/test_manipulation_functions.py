@@ -301,7 +301,7 @@ def test_repeat(x, kw, data):
     shape = x.shape
     axis = kw.get("axis", None)
     size = math.prod(shape) if axis is None else shape[axis]
-    repeat_strat = st.integers(1, 4)
+    repeat_strat = st.integers(1, 10)
     repeats = data.draw(repeat_strat
                         | hh.arrays(dtype=hh.int_dtypes, elements=repeat_strat,
                                     shape=st.sampled_from([(1,), (size,)])),
@@ -313,6 +313,8 @@ def test_repeat(x, kw, data):
             n_repititions = size*int(repeats[0])
         else:
             n_repititions = int(xp.sum(repeats))
+
+    assume(n_repititions <= hh.SQRT_MAX_ARRAY_SIZE)
 
     out = xp.repeat(x, repeats, **kw)
     ph.assert_dtype("repeat", in_dtype=x.dtype, out_dtype=out.dtype)
