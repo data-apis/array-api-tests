@@ -307,20 +307,20 @@ def test_repeat(x, kw, data):
                                     shape=st.sampled_from([(1,), (size,)])),
         label="repeats")
     if isinstance(repeats, int):
-        n_repitions = size*repeats
+        n_repititions = size*repeats
     else:
         if repeats.shape == (1,):
-            n_repitions = size*int(repeats[0])
+            n_repititions = size*int(repeats[0])
         else:
-            n_repitions = int(xp.sum(repeats))
+            n_repititions = int(xp.sum(repeats))
 
     out = xp.repeat(x, repeats, **kw)
     ph.assert_dtype("repeat", in_dtype=x.dtype, out_dtype=out.dtype)
     if axis is None:
-        expected_shape = (n_repitions,)
+        expected_shape = (n_repititions,)
     else:
         expected_shape = list(shape)
-        expected_shape[axis] = n_repitions
+        expected_shape[axis] = n_repititions
         expected_shape = tuple(expected_shape)
     ph.assert_shape("repeat", out_shape=out.shape, expected=expected_shape)
     # TODO: values testing
