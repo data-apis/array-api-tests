@@ -325,8 +325,28 @@ def test_repeat(x, kw, data):
         expected_shape[axis] = n_repititions
         expected_shape = tuple(expected_shape)
     ph.assert_shape("repeat", out_shape=out.shape, expected=expected_shape)
-    # TODO: values testing
 
+    # Test values
+
+    if isinstance(repeats, int):
+        repeats_array = xp.full(size, repeats, dtype=xp.int32)
+    else:
+        repeats_array = repeats
+
+    if kw.get("axis") is None:
+        x = xp.reshape(x, (-1,))
+        axis = 0
+
+    for idx, in sh.iter_indices(x.shape, skip_axes=axis):
+        x_slice = x[idx]
+        out_slice = out[idx]
+        start = 0
+        for i, count in enumerate(repeats_array):
+            end = start + count
+            ph.assert_array_elements("repeat", out=out_slice[start:end],
+                                     expected=xp.full((count,), x_slice[i], dtype=x.dtype),
+                                     kw=kw)
+            start = end
 
 @st.composite
 def reshape_shapes(draw, shape):
