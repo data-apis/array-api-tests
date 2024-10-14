@@ -310,7 +310,7 @@ def test_repeat(x, kw, data):
         n_repitions = size*repeats
     else:
         if repeats.shape == (1,):
-            n_repitions = size*repeats[0]
+            n_repitions = size*int(repeats[0])
         else:
             n_repitions = int(xp.sum(repeats))
 
