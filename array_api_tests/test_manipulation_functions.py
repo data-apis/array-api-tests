@@ -300,17 +300,17 @@ def test_permute_dims(x, axes):
 def test_repeat(x, kw, data):
     shape = x.shape
     axis = kw.get("axis", None)
-    dim = math.prod(shape) if axis is None else shape[axis]
+    size = math.prod(shape) if axis is None else shape[axis]
     repeat_strat = st.integers(1, 4)
     repeats = data.draw(repeat_strat
                         | hh.arrays(dtype=hh.int_dtypes, elements=repeat_strat,
-                                    shape=st.sampled_from([(1,), (dim,)])),
+                                    shape=st.sampled_from([(1,), (size,)])),
         label="repeats")
     if isinstance(repeats, int):
-        n_repitions = dim*repeats
+        n_repitions = size*repeats
     else:
         if repeats.shape == (1,):
-            n_repitions = dim*repeats[0]
+            n_repitions = size*repeats[0]
         else:
             n_repitions = int(xp.sum(repeats))
 
