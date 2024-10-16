@@ -242,10 +242,7 @@ def unary_assert_against_refimpl(
         scalar_i = in_stype(in_[idx])
         if not filter_(scalar_i):
             continue
-        try:
-            expected = refimpl(scalar_i)
-        except Exception:
-            continue
+        expected = refimpl(scalar_i)
         if res.dtype != xp.bool:
             if res.dtype in dh.complex_dtypes:
                 if expected.real <= m or expected.real >= M:
@@ -317,10 +314,7 @@ def binary_assert_against_refimpl(
         scalar_r = in_stype(right[r_idx])
         if not (filter_(scalar_l) and filter_(scalar_r)):
             continue
-        try:
-            expected = refimpl(scalar_l, scalar_r)
-        except Exception:
-            continue
+        expected = refimpl(scalar_l, scalar_r)
         if res.dtype != xp.bool:
             if res.dtype in dh.complex_dtypes:
                 if expected.real <= m or expected.real >= M:
@@ -392,10 +386,7 @@ def right_scalar_assert_against_refimpl(
         scalar_l = in_stype(left[idx])
         if not (filter_(scalar_l) and filter_(right)):
             continue
-        try:
-            expected = refimpl(scalar_l, right)
-        except Exception:
-            continue
+        expected = refimpl(scalar_l, right)
         if left.dtype != xp.bool:
             if res.dtype in dh.complex_dtypes:
                 if expected.real <= m or expected.real >= M:
