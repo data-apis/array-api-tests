@@ -846,7 +846,7 @@ def test_bitwise_left_shift(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    nbits = res.dtype
+    nbits = dh.dtype_nbits[res.dtype]
     binary_param_assert_against_refimpl(
         ctx, left, right, res, "<<", lambda l, r: l << r if r < nbits else 0
     )
