@@ -1406,7 +1406,10 @@ def test_log10(x):
 
 
 def logaddexp_refimpl(l: float, r: float) -> float:
-    return math.log(math.exp(l) + math.exp(r))
+    try:
+        return math.log(math.exp(l) + math.exp(r))
+    except ValueError: # raised for log(0.)
+        raise OverflowError
 
 
 @given(*hh.two_mutual_arrays(dh.real_float_dtypes))
