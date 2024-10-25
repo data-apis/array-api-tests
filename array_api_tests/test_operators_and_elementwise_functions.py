@@ -72,9 +72,9 @@ def isclose_complex(
     if cmath.isnan(a) or cmath.isnan(b):
         raise ValueError(f"{a=} and {b=}, but input must be non-NaN")
     if cmath.isinf(a):
-        return cmath.isinf(b) or abs(b) > math.log(maximum)
+        return cmath.isinf(b) or abs(b) > 2**(math.log2(maximum)//2)
     elif cmath.isinf(b):
-        return cmath.isinf(a) or abs(a) > math.log(maximum)
+        return cmath.isinf(a) or abs(a) > 2**(math.log2(maximum)//2)
     return cmath.isclose(a, b, rel_tol=rel_tol, abs_tol=abs_tol)
 
 
