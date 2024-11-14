@@ -57,6 +57,9 @@ def draw_s_axes_norm_kwargs(x: Array, data: st.DataObject, *, size_gt_1=False) -
         s_strat = st.none() | s_strat
     s = data.draw(s_strat, label="s")
 
+    # Using `axes is None and s is not None` is disallowed by the spec
+    assume(axes is not None or s is None)
+
     norm = data.draw(st.sampled_from(["backward", "ortho", "forward"]), label="norm")
     kwargs = data.draw(
         hh.specified_kwargs(
