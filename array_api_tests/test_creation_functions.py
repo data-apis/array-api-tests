@@ -76,7 +76,6 @@ def reals(min_value=None, max_value=None) -> st.SearchStrategy[Union[int, float]
     )
 
 
-# TODO: support testing complex dtypes
 @given(dtype=st.none() | hh.real_dtypes, data=st.data())
 def test_arange(dtype, data):
     if dtype is None or dh.is_float_dtype(dtype):
