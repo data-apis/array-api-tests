@@ -1110,8 +1110,6 @@ def test_divide(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    if res.dtype in dh.complex_dtypes:
-        return  # TOOD: handle complex division
     binary_param_assert_against_refimpl(
         ctx,
         left,
