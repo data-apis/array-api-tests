@@ -286,6 +286,7 @@ def test_std(x, data):
     )
     # We can't easily test the result(s) as standard deviation methods vary a lot
 
+
 def _sum_condition_number(elements):
     sum_abs = sum([abs(i) for i in elements])
     abs_sum = abs(sum(elements))

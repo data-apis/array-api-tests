@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import re
 from contextlib import contextmanager
-from functools import reduce, wraps
+from functools import wraps
 import math
-from operator import mul
 import struct
 from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Union
 
@@ -217,9 +216,6 @@ MAX_ARRAY_SIZE = 10000
 # Size to use for 2-dim arrays
 SQRT_MAX_ARRAY_SIZE = int(math.sqrt(MAX_ARRAY_SIZE))
 
-# np.prod and others have overflow and math.prod is Python 3.8+ only
-def prod(seq):
-    return reduce(mul, seq, 1)
 
 # hypotheses.strategies.tuples only generates tuples of a fixed size
 def tuples(elements, *, min_size=0, max_size=None, unique_by=None, unique=False):
@@ -233,7 +229,7 @@ def shapes(**kw):
     kw.setdefault('min_dims', 0)
     kw.setdefault('min_side', 0)
     return xps.array_shapes(**kw).filter(
-        lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
+        lambda shape: math.prod(i for i in shape if i) < MAX_ARRAY_SIZE
     )
 
 
@@ -245,7 +241,7 @@ def matrix_shapes(draw, stack_shapes=shapes()):
     stack_shape = draw(stack_shapes)
     mat_shape = draw(xps.array_shapes(max_dims=2, min_dims=2))
     shape = stack_shape + mat_shape
-    assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
+    assume(math.prod(i for i in shape if i) < MAX_ARRAY_SIZE)
     return shape
 
 square_matrix_shapes = matrix_shapes().filter(lambda shape: shape[-1] == shape[-2])
@@ -290,7 +286,7 @@ def mutually_broadcastable_shapes(
         )
         .map(lambda BS: BS.input_shapes)
         .filter(lambda shapes: all(
-            prod(i for i in s if i > 0) < MAX_ARRAY_SIZE for s in shapes
+            math.prod(i for i in s if i > 0) < MAX_ARRAY_SIZE for s in shapes
         ))
     )
 
@@ -321,7 +317,7 @@ def positive_definite_matrices(draw, dtypes=floating_dtypes):
     base_shape = draw(shapes())
     n = draw(integers(0, 8))  # 8 is an arbitrary small but interesting-enough value
     shape = base_shape + (n, n)
-    assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
+    assume(math.prod(i for i in shape if i) < MAX_ARRAY_SIZE)
     dtype = draw(dtypes)
     return broadcast_to(eye(n, dtype=dtype), shape)
 
