@@ -19,13 +19,21 @@ def non_complex_dtypes():
     return xps.boolean_dtypes() | hh.real_dtypes
 
 
+def numeric_dtypes():
+    return xps.boolean_dtypes() | hh.real_dtypes | hh.complex_dtypes
+
+
 def float32(n: Union[int, float]) -> float:
     return struct.unpack("!f", struct.pack("!f", float(n)))[0]
 
 
+def _float_match_complex(complex_dtype):
+    return xp.float32 if complex_dtype == xp.complex64 else xp.float64
+
+
 @given(
-    x_dtype=non_complex_dtypes(),
-    dtype=non_complex_dtypes(),
+    x_dtype=numeric_dtypes(),
+    dtype=numeric_dtypes(),
     kw=hh.kwargs(copy=st.booleans()),
     data=st.data(),
 )
@@ -33,16 +41,27 @@ def test_astype(x_dtype, dtype, kw, data):
     if xp.bool in (x_dtype, dtype):
         elements_strat = hh.from_dtype(x_dtype)
     else:
-        m1, M1 = dh.dtype_ranges[x_dtype]
-        m2, M2 = dh.dtype_ranges[dtype]
+
         if dh.is_int_dtype(x_dtype):
             cast = int
-        elif x_dtype == xp.float32:
+        elif x_dtype in (xp.float32, xp.complex64):
             cast = float32
         else:
             cast = float
+
+        real_dtype = x_dtype
+        if x_dtype in (xp.complex64, xp.complex128):
+            real_dtype = _float_match_complex(x_dtype)
+        m1, M1 = dh.dtype_ranges[real_dtype]
+
+        real_dtype = dtype
+        if dtype in (xp.complex64, xp.complex128):
+            real_dtype = _float_match_complex(x_dtype)
+        m2, M2 = dh.dtype_ranges[real_dtype]
+
         min_value = cast(max(m1, m2))
         max_value = cast(min(M1, M2))
+
         elements_strat = hh.from_dtype(
             x_dtype,
             min_value=min_value,
