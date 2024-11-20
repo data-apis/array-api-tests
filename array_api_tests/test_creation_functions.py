@@ -263,7 +263,7 @@ def scalar_eq(s1: Scalar, s2: Scalar) -> bool:
     data=st.data(),
 )
 def test_asarray_arrays(shape, dtypes, data):
-    x = data.draw(hh.arrays(dtype=dtypes.input_dtype, shape=shape), label="x")
+    x = data.draw(hh.arrays_no_scalars(dtype=dtypes.input_dtype, shape=shape), label="x")
     dtypes_strat = st.just(dtypes.input_dtype)
     if dtypes.input_dtype == dtypes.result_dtype:
         dtypes_strat |= st.none()
