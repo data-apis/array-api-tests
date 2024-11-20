@@ -30,6 +30,8 @@ jobs:
         elif [[ ${{ matrix.array-api-module }} == *"jax.numpy"* ]]
         then
           python -m pip install "jax[cpu]"
+        elif [[ ${{ matrix.array-api-module }} == *"numpy"* ]]
+          python -m pip install numpy
         else
           python -m pip install ${{ matrix.array-api-module }}
         fi
