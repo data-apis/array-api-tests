@@ -1252,6 +1252,10 @@ assert len(iop_params) != 0
 @pytest.mark.parametrize("func_name, func, case", unary_params)
 def test_unary(func_name, func, case):
     with catch_warnings():
+        # XXX: We are using example here to generate one example draw, but
+        # hypothesis issues a warning from this. We should consider either
+        # drawing multiple examples like a normal test, or just hard-coding a
+        # single example test case without using hypothesis.
         filterwarnings('ignore', category=NonInteractiveExampleWarning)
         in_value = case.cond_from_dtype(xp.float64).example()
     x = xp.asarray(in_value, dtype=xp.float64)
