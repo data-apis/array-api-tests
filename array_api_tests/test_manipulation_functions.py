@@ -349,7 +349,8 @@ def test_repeat(x, kw, data):
             start = end
 
 @st.composite
-def reshape_shapes(draw, shape):
+def reshape_shapes(draw, shapes):
+    shape = draw(shapes)
     size = 1 if len(shape) == 0 else math.prod(shape)
     rshape = draw(st.lists(st.integers(0)).filter(lambda s: math.prod(s) == size))
     assume(all(side <= MAX_SIDE for side in rshape))
@@ -359,15 +360,14 @@ def reshape_shapes(draw, shape):
     return tuple(rshape)
 
 
-@pytest.mark.unvectorized
-@pytest.mark.skip("flaky")  # TODO: fix!
-@given(
-    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(max_side=MAX_SIDE)),
-    data=st.data(),
-)
-def test_reshape(x, data):
-    shape = data.draw(reshape_shapes(x.shape))
+reshape_shape = st.shared(hh.shapes(max_side=MAX_SIDE), key="reshape_shape")
 
+@pytest.mark.unvectorized
+@given(
+    x=hh.arrays(dtype=hh.all_dtypes, shape=reshape_shape),
+    shape=reshape_shapes(reshape_shape),
+)
+def test_reshape(x, shape):
     out = xp.reshape(x, shape)
 
     ph.assert_dtype("reshape", in_dtype=x.dtype, out_dtype=out.dtype)
