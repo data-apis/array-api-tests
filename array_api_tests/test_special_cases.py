@@ -20,11 +20,12 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_EVEN, Decimal
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Literal
-from warnings import warn
+from warnings import warn, filterwarnings, catch_warnings
 
 import pytest
 from hypothesis import given, note, settings, assume
 from hypothesis import strategies as st
+from hypothesis.errors import NonInteractiveExampleWarning
 
 from array_api_tests.typing import Array, DataType
 
@@ -1250,7 +1251,9 @@ assert len(iop_params) != 0
 
 @pytest.mark.parametrize("func_name, func, case", unary_params)
 def test_unary(func_name, func, case):
-    in_value = case.cond_from_dtype(xp.float64).example()
+    with catch_warnings():
+        filterwarnings('ignore', category=NonInteractiveExampleWarning)
+        in_value = case.cond_from_dtype(xp.float64).example()
     x = xp.asarray(in_value, dtype=xp.float64)
     out = func(x)
     out_value = float(out)
