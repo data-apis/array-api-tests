@@ -263,6 +263,7 @@ def scalar_eq(s1: Scalar, s2: Scalar) -> bool:
     data=st.data(),
 )
 def test_asarray_arrays(shape, dtypes, data):
+    # generate arrays only since we draw the copy= kwd below (and np.asarray(scalar, copy=False) error out)
     x = data.draw(hh.arrays_no_scalars(dtype=dtypes.input_dtype, shape=shape), label="x")
     dtypes_strat = st.just(dtypes.input_dtype)
     if dtypes.input_dtype == dtypes.result_dtype:
