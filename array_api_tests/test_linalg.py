@@ -907,8 +907,8 @@ def test_trace(x, kw):
 
 
 def _conj(x):
-    """Work around xp.conj rejecting floats."""
-    if xp.isdtype(x.dtype, 'complex floating'):
+    # XXX: replace with xp.dtype when all array libraries implement it 
+    if x.dtype in (xp.complex64, xp.complex128):
         return xp.conj(x)
     else:
         return x
