@@ -36,7 +36,7 @@ jobs:
           python -m pip install ${{ matrix.array-api-module }}
         fi
         python -m pip install -r requirements.txt
-        python -m pip install array-api-compat
+        python -m pip install git+https://github.com/data-apis/array-api-compat.git
     - name: Run the test suite
       env:
         ARRAY_API_TESTS_MODULE: ${{ matrix.array-api-module }}
