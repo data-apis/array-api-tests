@@ -1061,7 +1061,7 @@ def test_clip(x, data):
             )
 
 
-if api_version >= "2022.12":
+if api_version >= "2022.12" and hh.complex_dtypes:
 
     @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
     def test_conj(x):
@@ -1263,7 +1263,7 @@ def test_hypot(x1, x2):
     binary_assert_against_refimpl("hypot", x1, x2, out, math.hypot)
 
 
-if api_version >= "2022.12":
+if api_version >= "2022.12" and hh.complex_dtypes:
 
     @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
     def test_imag(x):
@@ -1559,7 +1559,7 @@ def test_pow(ctx, data):
     # Values testing pow is too finicky
 
 
-if api_version >= "2022.12":
+if api_version >= "2022.12" and hh.complex_dtypes:
 
     @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
     def test_real(x):
