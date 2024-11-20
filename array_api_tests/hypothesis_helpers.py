@@ -64,7 +64,7 @@ def from_dtype(dtype, **kwargs) -> SearchStrategy[Scalar]:
 
 
 @wraps(xps.arrays)
-def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
+def arrays_no_scalars(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
     """xps.arrays() without the crazy large numbers."""
     if isinstance(dtype, SearchStrategy):
         return dtype.flatmap(lambda d: arrays(d, *args, elements=elements, **kwargs))
@@ -75,6 +75,19 @@ def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
         elements = from_dtype(dtype, **elements)
 
     return xps.arrays(dtype, *args, elements=elements, **kwargs)
+
+
+def _f(a, flag):
+    return a[()] if a.ndim==0 and flag else a
+
+
+@wraps(xps.arrays)
+def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
+    """xps.arrays() without the crazy large numbers. Also draw 0D arrays or numpy scalars.
+
+    Is only relevant for numpy: on all other libraries, array[()] is no-op.
+    """
+    return builds(_f, arrays_no_scalars(dtype, *args, elements=elements, **kwargs), booleans())
 
 
 _dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]
