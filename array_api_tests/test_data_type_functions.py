@@ -204,3 +204,13 @@ def test_isdtype(dtype, kind):
 def test_result_type(dtypes):
     out = xp.result_type(*dtypes)
     ph.assert_dtype("result_type", in_dtype=dtypes, out_dtype=out, repr_name="out")
+
+
+@given(hh.mutually_non_promotable_dtypes(2))
+def test_result_type_false(dtypes):
+    """Test _very_ strict promotion rules according to the spec.
+       Conforming array libraries may extend the promotion rules, and
+       then they'll need to xfail this test.
+    """
+    with pytest.raises(TypeError):
+        xp.result_type(*dtypes)

@@ -10,7 +10,7 @@ from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Un
 from hypothesis import assume, reject
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    integers, just, lists, none, one_of,
-                                   sampled_from, shared, builds)
+                                   sampled_from, shared, builds, permutations)
 
 from . import _array_module as xp, api_version
 from . import array_helpers as ah
@@ -146,6 +146,25 @@ def mutually_promotable_dtypes(
                 lambda l: not (xp.uint64 in l and any(d in dh.int_dtypes for d in l))
             )
     return one_of(strats).map(tuple)
+
+
+@composite
+def mutually_non_promotable_dtypes(
+    draw,
+    max_size: Optional[int] = 2,
+) -> Sequence[Tuple[DataType, ...]]:
+    """Generate a pair of dtypes which cannot be promoted."""
+    assert max_size == 2
+
+    _categories = [
+        (xp.bool,),
+        dh.uint_dtypes + dh.int_dtypes,
+        dh.real_float_dtypes + dh.complex_dtypes
+    ]
+    cat_st = permutations(_categories).map(lambda s: s[:2])
+    cat_from, cat_to = draw(cat_st)
+    from_, to = draw(sampled_from(cat_from)), draw(sampled_from(cat_to))
+    return from_, to
 
 
 class OnewayPromotableDtypes(NamedTuple):
