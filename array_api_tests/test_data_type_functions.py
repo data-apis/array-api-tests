@@ -19,10 +19,6 @@ def non_complex_dtypes():
     return xps.boolean_dtypes() | hh.real_dtypes
 
 
-def numeric_dtypes():
-    return xps.boolean_dtypes() | hh.real_dtypes | hh.complex_dtypes
-
-
 def float32(n: Union[int, float]) -> float:
     return struct.unpack("!f", struct.pack("!f", float(n)))[0]
 
@@ -32,8 +28,8 @@ def _float_match_complex(complex_dtype):
 
 
 @given(
-    x_dtype=numeric_dtypes(),
-    dtype=numeric_dtypes(),
+    x_dtype=hh.all_dtypes,
+    dtype=hh.all_dtypes,
     kw=hh.kwargs(copy=st.booleans()),
     data=st.data(),
 )
