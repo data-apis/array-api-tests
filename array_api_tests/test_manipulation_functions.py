@@ -14,9 +14,6 @@ from . import shape_helpers as sh
 from . import xps
 from .typing import Array, Shape
 
-MAX_SIDE = hh.MAX_ARRAY_SIZE // 64
-MAX_DIMS = min(hh.MAX_ARRAY_SIZE // MAX_SIDE, 32)  # NumPy only supports up to 32 dims
-
 
 def shared_shapes(*args, **kwargs) -> st.SearchStrategy[Shape]:
     key = "shape"
@@ -66,7 +63,7 @@ def test_concat(dtypes, base_shape, data):
         shape_strat = hh.shapes()
     else:
         _axis = axis if axis >= 0 else len(base_shape) + axis
-        shape_strat = st.integers(0, MAX_SIDE).map(
+        shape_strat = st.integers(0, hh.MAX_SIDE).map(
             lambda i: base_shape[:_axis] + (i,) + base_shape[_axis + 1 :]
         )
     arrays = []
@@ -348,26 +345,14 @@ def test_repeat(x, kw, data):
                                      kw=kw)
             start = end
 
-@st.composite
-def reshape_shapes(draw, shape):
-    size = 1 if len(shape) == 0 else math.prod(shape)
-    rshape = draw(st.lists(st.integers(0)).filter(lambda s: math.prod(s) == size))
-    assume(all(side <= MAX_SIDE for side in rshape))
-    if len(rshape) != 0 and size > 0 and draw(st.booleans()):
-        index = draw(st.integers(0, len(rshape) - 1))
-        rshape[index] = -1
-    return tuple(rshape)
-
+reshape_shape = st.shared(hh.shapes(), key="reshape_shape")
 
 @pytest.mark.unvectorized
-@pytest.mark.skip("flaky")  # TODO: fix!
 @given(
-    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(max_side=MAX_SIDE)),
-    data=st.data(),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=reshape_shape),
+    shape=hh.reshape_shapes(reshape_shape),
 )
-def test_reshape(x, data):
-    shape = data.draw(reshape_shapes(x.shape))
-
+def test_reshape(x, shape):
     out = xp.reshape(x, shape)
 
     ph.assert_dtype("reshape", in_dtype=x.dtype, out_dtype=out.dtype)
