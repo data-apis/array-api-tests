@@ -120,7 +120,8 @@ def test_can_cast(_from, to):
     f_func = f"[can_cast({dh.dtype_to_name[_from]}, {dh.dtype_to_name[to]})]"
     if expected:
         # cross-kind casting is not explicitly disallowed. We can only test
-        # the cases where it should return True.
+        # the cases where it should return True. TODO: if expected=False,
+        # check that the array library actually allows such casts.
         assert out == expected, f"{out=}, but should be {expected} {f_func}"
 
 
