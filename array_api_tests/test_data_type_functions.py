@@ -2,7 +2,7 @@ import struct
 from typing import Union
 
 import pytest
-from hypothesis import given
+from hypothesis import given, assume
 from hypothesis import strategies as st
 
 from . import _array_module as xp
@@ -34,6 +34,8 @@ def _float_match_complex(complex_dtype):
     data=st.data(),
 )
 def test_astype(x_dtype, dtype, kw, data):
+    _complex_dtypes = (xp.complex64, xp.complex128)
+
     if xp.bool in (x_dtype, dtype):
         elements_strat = hh.from_dtype(x_dtype)
     else:
@@ -46,12 +48,12 @@ def test_astype(x_dtype, dtype, kw, data):
             cast = float
 
         real_dtype = x_dtype
-        if x_dtype in (xp.complex64, xp.complex128):
+        if x_dtype in _complex_dtypes:
             real_dtype = _float_match_complex(x_dtype)
         m1, M1 = dh.dtype_ranges[real_dtype]
 
         real_dtype = dtype
-        if dtype in (xp.complex64, xp.complex128):
+        if dtype in _complex_dtypes:
             real_dtype = _float_match_complex(x_dtype)
         m2, M2 = dh.dtype_ranges[real_dtype]
 
@@ -68,6 +70,11 @@ def test_astype(x_dtype, dtype, kw, data):
     x = data.draw(
         hh.arrays(dtype=x_dtype, shape=hh.shapes(), elements=elements_strat), label="x"
     )
+
+    # according to the spec, "Casting a complex floating-point array to a real-valued
+    # data type should not be permitted."
+    # https://data-apis.org/array-api/latest/API_specification/generated/array_api.astype.html#astype
+    assume(not ((x_dtype in _complex_dtypes) and (dtype not in _complex_dtypes)))
 
     out = xp.astype(x, dtype, **kw)
 
