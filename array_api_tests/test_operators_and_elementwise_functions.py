@@ -1570,6 +1570,22 @@ def test_real(x):
     unary_assert_against_refimpl("real", x, out, operator.attrgetter("real"))
 
 
+@pytest.mark.min_version("2024.12")
+@given(hh.arrays(dtype=hh.floating_dtypes, shape=hh.shapes(), elements=finite_kw))
+def test_reciprocal(x):
+    out = xp.reciprocal(x)
+    ph.assert_dtype("reciprocal", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_shape("reciprocal", out_shape=out.shape, expected=x.shape)
+    refimpl = lambda x: 1.0 / x
+    unary_assert_against_refimpl(
+        "reciprocal",
+        x,
+        out,
+        refimpl,
+        strict_check=True,
+    )
+
+
 @pytest.mark.skip(reason="flaky")
 @pytest.mark.parametrize("ctx", make_binary_params("remainder", dh.real_dtypes))
 @given(data=st.data())
