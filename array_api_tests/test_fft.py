@@ -120,6 +120,7 @@ if hh.complex_dtypes:
         assert_n_axis_shape("fft", x=x, n=n, axis=axis, out=out)
 
 
+if hh.complex_dtypes:
     @given(x=hh.arrays(dtype=hh.complex_dtypes, shape=fft_shapes_strat), data=st.data())
     def test_ifft(x, data):
         n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data)
@@ -130,6 +131,7 @@ if hh.complex_dtypes:
         assert_n_axis_shape("ifft", x=x, n=n, axis=axis, out=out)
 
 
+if hh.complex_dtypes:
     @given(x=hh.arrays(dtype=hh.complex_dtypes, shape=fft_shapes_strat), data=st.data())
     def test_fftn(x, data):
         s, axes, norm, kwargs = draw_s_axes_norm_kwargs(x, data)
@@ -140,6 +142,7 @@ if hh.complex_dtypes:
         assert_s_axes_shape("fftn", x=x, s=s, axes=axes, out=out)
 
 
+if hh.complex_dtypes:
     @given(x=hh.arrays(dtype=hh.complex_dtypes, shape=fft_shapes_strat), data=st.data())
     def test_ifftn(x, data):
         s, axes, norm, kwargs = draw_s_axes_norm_kwargs(x, data)
@@ -230,21 +233,20 @@ if hh.complex_dtypes:
             expected=dh.dtype_components[x.dtype],
         )
 
-        # TODO: assert shape correctly
-        # _axes = sh.normalize_axis(axes, x.ndim)
-        # _s = x.shape if s is None else s
-        # expected = []
-        # for i in range(x.ndim):
-        #     if i in _axes:
-        #         side = _s[_axes.index(i)]
-        #     else:
-        #         side = x.shape[i]
-        #     expected.append(side)
-        # last_axis = max(_axes)
-        # expected[last_axis] = _s[_axes.index(last_axis)] // 2 + 1
-        # ph.assert_shape("irfftn", out_shape=out.shape, expected=tuple(expected))
+        _axes = sh.normalize_axis(axes, x.ndim)
+        _s = x.shape if s is None else s
+        expected = []
+        for i in range(x.ndim):
+            if i in _axes:
+                side = _s[_axes.index(i)]
+            else:
+                side = x.shape[i]
+            expected.append(side)
+        expected[_axes[-1]] = 2*(_s[-1] - 1) if s is None else _s[-1]
+        ph.assert_shape("irfftn", out_shape=out.shape, expected=tuple(expected))
 
 
+if hh.complex_dtypes:
     @given(x=hh.arrays(dtype=hh.complex_dtypes, shape=fft_shapes_strat), data=st.data())
     def test_hfft(x, data):
         n, axis, norm, kwargs = draw_n_axis_norm_kwargs(x, data, size_gt_1=True)

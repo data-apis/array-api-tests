@@ -64,7 +64,7 @@ def from_dtype(dtype, **kwargs) -> SearchStrategy[Scalar]:
 
 
 @wraps(xps.arrays)
-def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
+def arrays_no_scalars(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
     """xps.arrays() without the crazy large numbers."""
     if isinstance(dtype, SearchStrategy):
         return dtype.flatmap(lambda d: arrays(d, *args, elements=elements, **kwargs))
@@ -75,6 +75,19 @@ def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
         elements = from_dtype(dtype, **elements)
 
     return xps.arrays(dtype, *args, elements=elements, **kwargs)
+
+
+def _f(a, flag):
+    return a[()] if a.ndim==0 and flag else a
+
+
+@wraps(xps.arrays)
+def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
+    """xps.arrays() without the crazy large numbers. Also draw 0D arrays or numpy scalars.
+
+    Is only relevant for numpy: on all other libraries, array[()] is no-op.
+    """
+    return builds(_f, arrays_no_scalars(dtype, *args, elements=elements, **kwargs), booleans())
 
 
 _dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]
@@ -232,6 +245,68 @@ def shapes(**kw):
         lambda shape: math.prod(i for i in shape if i) < MAX_ARRAY_SIZE
     )
 
+def _factorize(n: int) -> List[int]:
+    # Simple prime factorization. Only needs to handle n ~ MAX_ARRAY_SIZE
+    factors = []
+    while n % 2 == 0:
+        factors.append(2)
+        n //= 2
+
+    for i in range(3, int(math.sqrt(n)) + 1, 2):
+        while n % i == 0:
+            factors.append(i)
+            n //= i
+
+    if n > 1:  # n is a prime number greater than 2
+        factors.append(n)
+
+    return factors
+
+MAX_SIDE = MAX_ARRAY_SIZE // 64
+# NumPy only supports up to 32 dims. TODO: Get this from the new inspection APIs
+MAX_DIMS = min(MAX_ARRAY_SIZE // MAX_SIDE, 32)
+
+
+@composite
+def reshape_shapes(draw, arr_shape, ndims=integers(1, MAX_DIMS)):
+    """
+    Generate shape tuples whose product equals the product of array_shape.
+    """
+    shape = draw(arr_shape)
+
+    array_size = math.prod(shape)
+
+    n_dims = draw(ndims)
+
+    # Handle special cases
+    if array_size == 0:
+        # Generate a random tuple, and ensure at least one of the entries is 0
+        result = list(draw(shapes(min_dims=n_dims, max_dims=n_dims)))
+        pos = draw(integers(0, n_dims - 1))
+        result[pos] = 0
+        return tuple(result)
+
+    if array_size == 1:
+        return tuple(1 for _ in range(n_dims))
+
+    # Get prime factorization
+    factors = _factorize(array_size)
+
+    # Distribute prime factors randomly
+    result = [1] * n_dims
+    for factor in factors:
+        pos = draw(integers(0, n_dims - 1))
+        result[pos] *= factor
+
+    assert math.prod(result) == array_size
+
+    # An element of the reshape tuple can be -1, which means it is a stand-in
+    # for the remaining factors.
+    if draw(booleans()):
+        pos = draw(integers(0, n_dims - 1))
+        result[pos] = -1
+
+    return tuple(result)
 
 one_d_shapes = xps.array_shapes(min_dims=1, max_dims=1, min_side=0, max_side=SQRT_MAX_ARRAY_SIZE)
 
