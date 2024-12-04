@@ -370,17 +370,23 @@ two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(2)
 # TODO: Add support for complex Hermitian matrices
 @composite
 def symmetric_matrices(draw, dtypes=real_floating_dtypes, finite=True, bound=10.):
+    # for now, only generate elements from (1, bound); TODO: restore
+    # generating from (-bound, -1/bound).or.(1/bound, bound)
+    # Note that using `assume` triggers a HealthCheck for filtering too much.
     shape = draw(square_matrix_shapes)
     dtype = draw(dtypes)
     if not isinstance(finite, bool):
         finite = draw(finite)
-    elements = {'allow_nan': False, 'allow_infinity': False} if finite else None
+    if finite:
+        elements = {'allow_nan': False, 'allow_infinity': False,
+                    'min_value': 1, 'max_value': bound}
+    else:
+        elements = None
     a = draw(arrays(dtype=dtype, shape=shape, elements=elements))
     at = ah._matrix_transpose(a)
     H = (a + at)*0.5
     if finite:
         assume(not xp.any(xp.isinf(H)))
-    assume(xp.all((H == 0.) | ((1/bound <= xp.abs(H)) & (xp.abs(H) <= bound))))
     return H
 
 @composite
