@@ -1559,6 +1559,22 @@ def test_pow(ctx, data):
     # Values testing pow is too finicky
 
 
+@pytest.mark.min_version("2024.12")
+@given(hh.arrays(dtype=hh.floating_dtypes, shape=hh.shapes(), elements=finite_kw))
+def test_reciprocal(x):
+    out = xp.reciprocal(x)
+    ph.assert_dtype("reciprocal", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_shape("reciprocal", out_shape=out.shape, expected=x.shape)
+    refimpl = lambda x: 1.0 / x
+    unary_assert_against_refimpl(
+        "reciprocal",
+        x,
+        out,
+        refimpl,
+        strict_check=True,
+    )
+
+
 if api_version >= "2022.12":
 
     @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
