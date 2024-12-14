@@ -28,6 +28,7 @@ __all__ = [
     "assert_0d_equals",
     "assert_fill",
     "assert_array_elements",
+    "assert_allclose"
 ]
 
 
@@ -599,3 +600,18 @@ def assert_array_elements(
             at_expected = expected[idx]
             msg = msg_template.format(sh.fmt_idx(out_repr, idx), at_out, at_expected)
             assert at_out == at_expected, msg
+
+
+def assert_allclose(actual, desired, *, atol=1e-7, rtol=1e-7, equal_nan=True, msg_extra=""):
+    if equal_nan:
+        # XXX assert same position, mask away
+        pass
+
+        msg = f"The input arrays do not have the same shapes ({actual.shape} != {desired.shape}){msg_extra}"
+        assert actual.shape == desired.shape, msg
+
+        msg = f"The input arrays do not have the same shapes ({actual.shape} != {desired.shape}){msg_extra}"
+        assert actual.dtype == desired.dtype, msg
+
+    delta = xp.abs(actual - desired)
+    assert xp.all(delta < atol + xp.abs(actual)*rtol), msg_extra
