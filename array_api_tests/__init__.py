@@ -15,7 +15,7 @@ __all__ = ["xp", "api_version", "xps"]
 if "ARRAY_API_TESTS_MODULE" in os.environ:
     env_var = os.environ["ARRAY_API_TESTS_MODULE"]
     if env_var.startswith("exec(") and env_var.endswith(")"):
-        script = env_var[5:][:-1]
+        script = env_var[6:][:-2]
         namespace = {}
         exec(script, namespace)
         xp = namespace["xp"]
