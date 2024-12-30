@@ -21,7 +21,7 @@ if "ARRAY_API_TESTS_MODULE" in os.environ:
         xp = namespace["xp"]
         xp_name = xp.__name__
     else:
-        xp_name = os.environ["ARRAY_API_TESTS_MODULE"]
+        xp_name = env_var
         _module, _sub = xp_name, None
         if "." in xp_name:
             _module, _sub = xp_name.split(".", 1)
