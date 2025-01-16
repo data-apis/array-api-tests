@@ -81,7 +81,9 @@ def test_astype(x_dtype, dtype, kw, data):
     ph.assert_kw_dtype("astype", kw_dtype=dtype, out_dtype=out.dtype)
     ph.assert_shape("astype", out_shape=out.shape, expected=x.shape, kw=kw)
     # TODO: test values
-    # TODO: test copy
+    # Check copy is respected (only if input dtype is same as output dtype)
+    if dtype == x_dtype:
+        ph.assert_kw_copy("astype", x, out, data, kw.get("copy", None))
 
 
 @given(
