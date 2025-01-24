@@ -30,7 +30,7 @@ if "ARRAY_API_TESTS_MODULE" in os.environ:
             try:
                 xp = getattr(xp, _sub)
             except AttributeError:
-                # _sub may be a submodule that needs to be imported. WE can't
+                # _sub may be a submodule that needs to be imported. We can't
                 # do this in every case because some array modules are not
                 # submodules that can be imported (like mxnet.nd).
                 xp = import_module(xp_name)
