@@ -36,6 +36,12 @@ You need to specify the array library to test. It can be specified via the
 $ export ARRAY_API_TESTS_MODULE=array_api_strict
 ```
 
+To specify a runtime-defined module, define `xp` using the `exec('...')` syntax:
+
+```bash
+$ export ARRAY_API_TESTS_MODULE=exec('import quantity_array, numpy; xp = quantity_array.quantity_namespace(numpy)')
+```
+
 Alternately, import/define the `xp` variable in `array_api_tests/__init__.py`.
 
 ### Specifying the API version
