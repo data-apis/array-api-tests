@@ -39,7 +39,7 @@ $ export ARRAY_API_TESTS_MODULE=array_api_strict
 To specify a runtime-defined module, define `xp` using the `exec('...')` syntax:
 
 ```bash
-$ export ARRAY_API_TESTS_MODUle=exec('import pint_array, numpy; xp = pint_array.pint_namespace(numpy)')
+$ export ARRAY_API_TESTS_MODULE=exec('import quantity_array, numpy; xp = quantity_array.quantity_namespace(numpy)')
 ```
 
 Alternately, import/define the `xp` variable in `array_api_tests/__init__.py`.
