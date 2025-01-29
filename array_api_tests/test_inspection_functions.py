@@ -1,5 +1,6 @@
 import pytest
 from hypothesis import given, strategies as st
+from array_api_tests.dtype_helpers import available_kinds
 
 from . import xp
 
@@ -16,7 +17,8 @@ def test_array_namespace_info():
 
     default_dtypes = out.default_dtypes()
     assert isinstance(default_dtypes, dict)
-    assert {"real floating", "complex floating", "integral", "indexing"}.issubset(set(default_dtypes.keys()))
+    expected_subset = {"real floating", "complex floating", "integral"} & available_kinds() | {"indexing"}
+    assert expected_subset.issubset(set(default_dtypes.keys()))
 
     devices = out.devices()
     assert isinstance(devices, list)

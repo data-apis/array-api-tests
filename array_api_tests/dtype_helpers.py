@@ -164,6 +164,11 @@ kind_to_dtypes = {
 }
 
 
+def available_kinds():
+    return {
+        kind for kind, dtypes in kind_to_dtypes.items() if dtypes
+    }
+
 def is_int_dtype(dtype):
     return dtype in all_int_dtypes
 
