@@ -10,7 +10,7 @@ from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Un
 from hypothesis import assume, reject
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    integers, just, lists, none, one_of,
-                                   sampled_from, shared, builds)
+                                   sampled_from, shared, builds, nothing)
 
 from . import _array_module as xp, api_version
 from . import array_helpers as ah
@@ -200,11 +200,11 @@ floating_dtypes = sampled_from(dh.all_float_dtypes)
 real_floating_dtypes = sampled_from(dh.real_float_dtypes)
 numeric_dtypes = sampled_from(dh.numeric_dtypes)
 # Note: this always returns complex dtypes, even if api_version < 2022.12
-complex_dtypes: SearchStrategy[Any] | None = sampled_from(dh.complex_dtypes) if dh.complex_dtypes else None
+complex_dtypes: SearchStrategy[Any] = sampled_from(dh.complex_dtypes) if dh.complex_dtypes else nothing()
 
 def all_floating_dtypes() -> SearchStrategy[DataType]:
     strat = floating_dtypes
-    if api_version >= "2022.12" and complex_dtypes is not None:
+    if api_version >= "2022.12" and not complex_dtypes.is_empty:
         strat |= complex_dtypes
     return strat
 

@@ -1062,6 +1062,7 @@ def test_clip(x, data):
 
 
 @pytest.mark.min_version("2022.12")
+@pytest.mark.skipif(hh.complex_dtypes.is_empty, reason="no complex data types to draw from")
 @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
 def test_conj(x):
     out = xp.conj(x)
@@ -1264,6 +1265,7 @@ def test_hypot(x1, x2):
 
 
 @pytest.mark.min_version("2022.12")
+@pytest.mark.skipif(hh.complex_dtypes.is_empty, reason="no complex data types to draw from")
 @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
 def test_imag(x):
     out = xp.imag(x)
@@ -1559,6 +1561,7 @@ def test_pow(ctx, data):
 
 
 @pytest.mark.min_version("2022.12")
+@pytest.mark.skipif(hh.complex_dtypes.is_empty, reason="no complex data types to draw from")
 @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
 def test_real(x):
     out = xp.real(x)
