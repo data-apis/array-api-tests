@@ -287,9 +287,9 @@ def test_getitem_arrays_and_ints(shape, data):
 
     # XXX: how to properly check
     import numpy as np
-    x_np = np.asarray(x)
-    out_np = np.asarray(out)
-    key_np = tuple(k if isinstance(k, int) else np.asarray(k) for k in key)
+    x_np = np.asarray(x.get())
+    out_np = np.asarray(out.get())
+    key_np = tuple(k if isinstance(k, int) else np.asarray(k.get()) for k in key)
 
     np.testing.assert_equal(out_np, x_np[key_np])
 
