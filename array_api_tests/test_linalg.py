@@ -964,6 +964,16 @@ def test_vecdot(x1, x2, data):
     _test_vecdot(_array_module, x1, x2, data)
 
 
+@pytest.mark.xp_extension('linalg')
+def test_vecdot_conj():
+    # no-hypothesis test to check that the 1st argument is in fact conjugated
+    x1 = xp.asarray([1j, 2j, 3j])
+    x2 = xp.asarray([1, 2j, 3])
+
+    import cmath
+    assert cmath.isclose(complex(xp.linalg.vecdot(x1, x2)), 4 - 10j)
+
+
 # Insanely large orders might not work. There isn't a limit specified in the
 # spec, so we just limit to reasonable values here.
 max_ord = 100
