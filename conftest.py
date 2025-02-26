@@ -3,6 +3,7 @@ from pathlib import Path
 import argparse
 import warnings
 import os
+import re
 
 from hypothesis import settings
 from hypothesis.errors import InvalidArgument
@@ -141,7 +142,10 @@ def check_id_match(id_, pattern):
     if id_.split("[", maxsplit=2)[0] == pattern:
         return True
 
-    return False
+    try:
+        return bool(re.match(pattern, id_))
+    except re.error:  # Not a regular expression
+        return False
 
 
 def pytest_collection_modifyitems(config, items):
