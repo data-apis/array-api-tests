@@ -91,6 +91,64 @@ def test_cumulative_sum(x, data):
                                          idx=out_idx.raw, out=out_val,
                                          expected=expected)
 
+
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.unvectorized
+@given(
+    x=hh.arrays(
+        dtype=hh.numeric_dtypes,
+        shape=hh.shapes(min_dims=1)),
+    data=st.data(),
+)
+def test_cumulative_prod(x, data):
+    axes = st.integers(-x.ndim, x.ndim - 1)
+    if x.ndim == 1:
+        axes = axes | st.none()
+    axis = data.draw(axes, label='axis')
+    _axis, = sh.normalize_axis(axis, x.ndim)
+    dtype = data.draw(kwarg_dtypes(x.dtype))
+    include_initial = data.draw(st.booleans(), label="include_initial")
+
+    kw = data.draw(
+        hh.specified_kwargs(
+            ("axis", axis, None),
+            ("dtype", dtype, None),
+            ("include_initial", include_initial, False),
+        ),
+        label="kw",
+    )
+
+    out = xp.cumulative_prod(x, **kw)
+
+    expected_shape = list(x.shape)
+    if include_initial:
+        expected_shape[_axis] += 1
+    expected_shape = tuple(expected_shape)
+    ph.assert_shape("cumulative_prod", out_shape=out.shape, expected=expected_shape)
+
+    expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
+    if expected_dtype is None:
+        # If a default uint cannot exist (i.e. in PyTorch which doesn't support
+        # uint32 or uint64), we skip testing the output dtype.
+        # See https://github.com/data-apis/array-api-tests/issues/106
+        if x.dtype in dh.uint_dtypes:
+            assert dh.is_int_dtype(out.dtype)  # sanity check
+    else:
+        ph.assert_dtype("cumulative_prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
+
+    scalar_type = dh.get_scalar_type(out.dtype)
+
+    for x_idx, out_idx, in iter_indices(x.shape, expected_shape, skip_axes=_axis):
+        #x_arr = x[x_idx.raw]
+        out_arr = out[out_idx.raw]
+
+        if include_initial:
+            ph.assert_scalar_equals("cumulative_prod", type_=scalar_type, idx=out_idx.raw, out=out_arr[0], expected=1)
+
+        #TODO: add value testing of cumulative_prod
+
+
 def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
     dtypes = [d2 for d1, d2 in dh.promotion_table if d1 == dtype]
     dtypes = [d for d in dtypes if not isinstance(d, _UndefinedStub)]
