@@ -303,8 +303,6 @@ def _test_getitem_arrays_and_ints(shape, data, idx_max_dims):
             # draw an integer
             key.append(data.draw(st.integers(-shape[i], shape[i]-1)))
 
-    print(f"??? {x.shape = } {len(key) = }  {[xp.asarray(k).shape for k in key]}")
-
     key = tuple(key)
     out = x[key]
 
