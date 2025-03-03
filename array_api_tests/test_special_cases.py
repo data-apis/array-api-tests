@@ -1332,7 +1332,7 @@ def test_empty_arrays(func_name, expected):  # TODO: parse docstrings to get exp
 
 @pytest.mark.parametrize(
     "func_name", [f.__name__ for f in category_to_funcs["statistical"]
-                  if f.__name__ != 'cumulative_sum']
+                  if f.__name__ not in ['cumulative_sum', 'cumulative_prod']]
 )
 @given(
     x=hh.arrays(dtype=hh.real_floating_dtypes, shape=hh.shapes(min_side=1)),

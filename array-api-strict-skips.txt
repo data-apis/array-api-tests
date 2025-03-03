@@ -7,7 +7,7 @@ array_api_tests/test_special_cases.py::test_iop[__ipow__(x1_i is -0 and x2_i > 0
 # (https://github.com/data-apis/array-api-tests/issues/168)
 array_api_tests/test_statistical_functions.py::test_sum
 
-# 2024.12 new failures, investigate
+# Stubs have a comment: (**note**: libraries may return ``NaN`` to match Python behavior.); Apparently, all libraries do just that
 array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is +infinity and isfinite(x2_i) and x2_i > 0) -> +infinity]
 array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is +infinity and isfinite(x2_i) and x2_i < 0) -> -infinity]
 array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is -infinity and isfinite(x2_i) and x2_i > 0) -> -infinity]
@@ -26,7 +26,4 @@ array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(x1_i is -infinity 
 array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(x1_i is -infinity and isfinite(x2_i) and x2_i < 0) -> +infinity]
 array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(isfinite(x1_i) and x1_i > 0 and x2_i is -infinity) -> -0]
 array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(isfinite(x1_i) and x1_i < 0 and x2_i is +infinity) -> -0]
-
-# 2024.12 new failure, ndim=0 not allowed in cumulative_prod
-array_api_tests/test_special_cases.py::test_nan_propagation[cumulative_prod]
 
