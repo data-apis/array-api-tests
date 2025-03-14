@@ -571,6 +571,20 @@ def two_mutual_arrays(
     )
     return arrays1, arrays2
 
+
+@composite
+def array_and_py_scalar(draw, dtypes):
+    """Draw a pair: (array, scalar) or (scalar, array)."""
+    dtype = draw(sampled_from(dtypes))
+    scalar_var = draw(scalars(just(dtype), finite=True))
+    array_var = draw(arrays(dtype, shape=shapes(min_dims=1)))
+
+    if draw(booleans()):
+        return scalar_var, array_var
+    else:
+        return array_var, scalar_var
+
+
 @composite
 def kwargs(draw, **kw):
     """
