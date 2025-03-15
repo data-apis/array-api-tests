@@ -9,7 +9,7 @@ from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Un
 
 from hypothesis import assume, reject
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
-                                   integers, just, lists, none, one_of,
+                                   integers, complex_numbers, just, lists, none, one_of,
                                    sampled_from, shared, builds, nothing)
 
 from . import _array_module as xp, api_version
@@ -19,7 +19,7 @@ from . import shape_helpers as sh
 from . import xps
 from ._array_module import _UndefinedStub
 from ._array_module import bool as bool_dtype
-from ._array_module import broadcast_to, eye, float32, float64, full
+from ._array_module import broadcast_to, eye, float32, float64, full, complex64, complex128
 from .stubs import category_to_funcs
 from .pytest_helpers import nargs
 from .typing import Array, DataType, Scalar, Shape
@@ -462,6 +462,14 @@ def scalars(draw, dtypes, finite=False):
         if finite:
             return draw(floats(width=32, allow_nan=False, allow_infinity=False))
         return draw(floats(width=32))
+    elif dtype == complex64:
+        if finite:
+            return draw(complex_numbers(width=32, allow_nan=False, allow_infinity=False))
+        return draw(complex_numbers(width=32))
+    elif dtype == complex128:
+        if finite:
+            return draw(complex_numbers(allow_nan=False, allow_infinity=False))
+        return draw(complex_numbers())
     else:
         raise ValueError(f"Unrecognized dtype {dtype}")
 

@@ -715,9 +715,11 @@ def _convert_scalars_helper(x1, x2):
     return in_dtypes, in_shapes, (x1a, x2a)
 
 
-def _assert_correctness_binary(name, func, in_dtypes, in_shapes, in_arrs, out, **kwargs):
+def _assert_correctness_binary(
+    name, func, in_dtypes, in_shapes, in_arrs, out, expected_dtype=None, **kwargs
+):
     x1a, x2a = in_arrs
-    ph.assert_dtype(name, in_dtype=in_dtypes, out_dtype=out.dtype)
+    ph.assert_dtype(name, in_dtype=in_dtypes, out_dtype=out.dtype, expected=expected_dtype)
     ph.assert_result_shape(name, in_shapes=in_shapes, out_shape=out.shape)
     binary_assert_against_refimpl(name, x1a, x2a, out, func, **kwargs)
 
@@ -1781,23 +1783,35 @@ def test_trunc(x):
 
 def _check_binary_with_scalars(func_data, x1x2):
     x1, x2 = x1x2
-    func, name, refimpl, kwds = func_data
+    func, name, refimpl, kwds, expected_dtype = func_data
     out = func(x1, x2)
     in_dtypes, in_shapes, (x1a, x2a) = _convert_scalars_helper(x1, x2)
     _assert_correctness_binary(
-        name, refimpl, in_dtypes, in_shapes, (x1a, x2a), out, **kwds
+        name, refimpl, in_dtypes, in_shapes, (x1a, x2a), out, expected_dtype, **kwds
     )
 
 
 @pytest.mark.min_version("2024.12")
 @pytest.mark.parametrize('func_data',
-    # xp_func, name, refimpl, kwargs
+    # xp_func, name, refimpl, kwargs, expected_dtype
     [
-        (xp.atan2, "atan2", math.atan2, {}),
-        (xp.hypot, "hypot", math.hypot, {}),
-        (xp.logaddexp, "logaddexp", logaddexp_refimpl, {}),
-        (xp.maximum, "maximum", max, {'strict_check': True}),
-        (xp.minimum, "minimum", min, {'strict_check': True}),
+        (xp.add, "add", operator.add, {}, None),
+        (xp.atan2, "atan2", math.atan2, {}, None),
+        (xp.copysign, "copysign", math.copysign, {}, None),
+        (xp.divide, "divide", operator.truediv, {"filter_": lambda s: s != 0}, None),
+        (xp.hypot, "hypot", math.hypot, {}, None),
+        (xp.logaddexp, "logaddexp", logaddexp_refimpl, {}, None),
+        (xp.maximum, "maximum", max, {'strict_check': True}, None),
+        (xp.minimum, "minimum", min, {'strict_check': True}, None),
+        (xp.multiply, "mul", operator.mul, {}, None),
+        (xp.subtract, "sub", operator.sub, {}, None),
+
+        (xp.equal, "equal", operator.eq, {}, xp.bool),
+        (xp.not_equal, "neq", operator.ne, {}, xp.bool),
+        (xp.less, "less", operator.lt, {}, xp.bool),
+        (xp.less_equal, "les_equal", operator.le, {}, xp.bool),
+        (xp.greater, "greater", operator.gt, {}, xp.bool),
+        (xp.greater_equal, "greater_equal", operator.ge, {}, xp.bool),
     ],
     ids=lambda func_data: func_data[1]  # use names for test IDs
 )
@@ -1808,14 +1822,15 @@ def test_binary_with_scalars_real(func_data, x1x2):
 
 @pytest.mark.min_version("2024.12")
 @pytest.mark.parametrize('func_data',
-    # xp_func, name, refimpl, kwargs
+    # xp_func, name, refimpl, kwargs, expected_dtype
     [
-        (xp.logical_and, "logical_and", operator.and_, {"expr_template": "({} or {})={}"}),
-        (xp.logical_or, "logical_or", operator.or_, {"expr_template": "({} or {})={}"}),
-        (xp.logical_xor, "logical_xor", operator.xor, {"expr_template": "({} or {})={}"}),
+        (xp.logical_and, "logical_and", operator.and_, {"expr_template": "({} or {})={}"}, None),
+        (xp.logical_or, "logical_or", operator.or_, {"expr_template": "({} or {})={}"}, None),
+        (xp.logical_xor, "logical_xor", operator.xor, {"expr_template": "({} or {})={}"}, None),
     ],
     ids=lambda func_data: func_data[1]  # use names for test IDs
 )
 @given(x1x2=hh.array_and_py_scalar([xp.bool]))
 def test_binary_with_scalars_bool(func_data, x1x2):
     _check_binary_with_scalars(func_data, x1x2)
+
