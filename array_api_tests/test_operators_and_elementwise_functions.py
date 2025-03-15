@@ -1834,3 +1834,21 @@ def test_binary_with_scalars_real(func_data, x1x2):
 def test_binary_with_scalars_bool(func_data, x1x2):
     _check_binary_with_scalars(func_data, x1x2)
 
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.parametrize('func_data',
+    # xp_func, name, refimpl, kwargs, expected_dtype
+    [
+        (xp.bitwise_and, "bitwise_and", operator.and_, {}, None),
+        (xp.bitwise_or, "bitwise_or", operator.or_, {}, None),
+        (xp.bitwise_xor, "bitwise_xor", operator.xor, {}, None),
+    ],
+    ids=lambda func_data: func_data[1]  # use names for test IDs
+)
+@given(x1x2=hh.array_and_py_scalar([xp.int32]))
+def test_binary_with_scalars_bitwise(func_data, x1x2):
+    xp_func, name, refimpl, kwargs, expected = func_data
+    # repack the refimpl
+    refimpl_ = lambda l, r: mock_int_dtype(refimpl(l, r), xp.int32 )
+    _check_binary_with_scalars((xp_func, name, refimpl_, kwargs,expected), x1x2)
+
