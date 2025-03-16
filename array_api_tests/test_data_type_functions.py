@@ -208,7 +208,17 @@ def test_isdtype(dtype, kind):
     assert out == expected, f"{out=}, but should be {expected} [isdtype()]"
 
 
-@given(hh.mutually_promotable_dtypes(None))
-def test_result_type(dtypes):
-    out = xp.result_type(*dtypes)
-    ph.assert_dtype("result_type", in_dtype=dtypes, out_dtype=out, repr_name="out")
+class TestResultType:
+    @given(dtypes=hh.mutually_promotable_dtypes(None))
+    def test_result_type(self, dtypes):
+        out = xp.result_type(*dtypes)
+        ph.assert_dtype("result_type", in_dtype=dtypes, out_dtype=out, repr_name="out")
+
+    @given(pair=hh.pair_of_mutually_promotable_dtypes(None))
+    def test_shuffled(self, pair):
+        """Test that result_type is insensitive to the order of arguments."""
+        s1, s2 = pair
+        out1 = xp.result_type(*s1)
+        out2 = xp.result_type(*s2)
+        assert out1 == out2
+

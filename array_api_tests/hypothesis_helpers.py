@@ -10,7 +10,11 @@ from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Un
 from hypothesis import assume, reject
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    integers, complex_numbers, just, lists, none, one_of,
+<<<<<<< HEAD
                                    sampled_from, shared, builds, nothing)
+=======
+                                   sampled_from, shared, builds, nothing, permutations)
+>>>>>>> ENH: add a test that result_type does not depend on the order of arguments
 
 from . import _array_module as xp, api_version
 from . import array_helpers as ah
@@ -146,6 +150,13 @@ def mutually_promotable_dtypes(
                 lambda l: not (xp.uint64 in l and any(d in dh.int_dtypes for d in l))
             )
     return one_of(strats).map(tuple)
+
+
+@composite
+def pair_of_mutually_promotable_dtypes(draw, max_size=2, *, dtypes=dh.all_dtypes):
+    sample = draw(mutually_promotable_dtypes( max_size, dtypes=dtypes))
+    permuted = draw(permutations(sample))
+    return sample, permuted
 
 
 class OnewayPromotableDtypes(NamedTuple):
