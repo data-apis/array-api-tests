@@ -222,3 +222,11 @@ class TestResultType:
         out2 = xp.result_type(*s2)
         assert out1 == out2
 
+    @given(pair=hh.pair_of_mutually_promotable_dtypes(2), data=st.data())
+    def test_arrays_and_dtypes(self, pair, data):
+        s1, s2 = pair
+        a2 = tuple(xp.empty(1, dtype=dt) for dt in s2)
+        a_and_dt = data.draw(st.permutations(s1 + a2))
+        out = xp.result_type(*a_and_dt)
+        ph.assert_dtype("result_type", in_dtype=s1+s2, out_dtype=out, repr_name="out")
+

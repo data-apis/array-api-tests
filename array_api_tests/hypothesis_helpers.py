@@ -156,7 +156,7 @@ def mutually_promotable_dtypes(
 def pair_of_mutually_promotable_dtypes(draw, max_size=2, *, dtypes=dh.all_dtypes):
     sample = draw(mutually_promotable_dtypes( max_size, dtypes=dtypes))
     permuted = draw(permutations(sample))
-    return sample, permuted
+    return sample, tuple(permuted)
 
 
 class OnewayPromotableDtypes(NamedTuple):
