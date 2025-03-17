@@ -10,11 +10,7 @@ from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Un
 from hypothesis import assume, reject
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
                                    integers, complex_numbers, just, lists, none, one_of,
-<<<<<<< HEAD
-                                   sampled_from, shared, builds, nothing)
-=======
                                    sampled_from, shared, builds, nothing, permutations)
->>>>>>> ENH: add a test that result_type does not depend on the order of arguments
 
 from . import _array_module as xp, api_version
 from . import array_helpers as ah
