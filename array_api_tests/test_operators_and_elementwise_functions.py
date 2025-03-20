@@ -1794,6 +1794,13 @@ def _check_binary_with_scalars(func_data, x1x2):
 def _filter_zero(x):
     return x != 0 if dh.is_scalar(x) else (not xp.any(x == 0))
 
+# workarounds for xp.copysign etc only available in 2023.12
+# Without it, test suite fails to import with ARRAY_API_VERSION=2022.12
+_xp_copysign = getattr(xp, "copysign", None)
+_xp_hypot = getattr(xp, "hypot", None)
+_xp_maximum = getattr(xp, "maximum", None)
+_xp_minimum = getattr(xp, "minimum", None)
+
 
 @pytest.mark.min_version("2024.12")
 @pytest.mark.parametrize('func_data',
@@ -1801,12 +1808,12 @@ def _filter_zero(x):
     [
         (xp.add, "add", operator.add, {}, None),
         (xp.atan2, "atan2", math.atan2, {}, None),
-        (xp.copysign, "copysign", math.copysign, {}, None),
+        (_xp_copysign, "copysign", math.copysign, {}, None),
         (xp.divide, "divide", operator.truediv, {"filter_": lambda s: s != 0}, None),
-        (xp.hypot, "hypot", math.hypot, {}, None),
+        (_xp_hypot, "hypot", math.hypot, {}, None),
         (xp.logaddexp, "logaddexp", logaddexp_refimpl, {}, None),
-        (xp.maximum, "maximum", max, {'strict_check': True}, None),
-        (xp.minimum, "minimum", min, {'strict_check': True}, None),
+        (_xp_maximum, "maximum", max, {'strict_check': True}, None),
+        (_xp_minimum, "minimum", min, {'strict_check': True}, None),
         (xp.multiply, "mul", operator.mul, {}, None),
         (xp.subtract, "sub", operator.sub, {}, None),
 
