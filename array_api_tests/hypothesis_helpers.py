@@ -449,7 +449,7 @@ numeric_arrays = arrays(
 )
 
 @composite
-def scalars(draw, dtypes, finite=False):
+def scalars(draw, dtypes, finite=False, **kwds):
     """
     Strategy to generate a scalar that matches a dtype strategy
 
@@ -463,12 +463,12 @@ def scalars(draw, dtypes, finite=False):
         return draw(booleans())
     elif dtype == float64:
         if finite:
-            return draw(floats(allow_nan=False, allow_infinity=False))
-        return draw(floats())
+            return draw(floats(allow_nan=False, allow_infinity=False, **kwds))
+        return draw(floats(), **kwds)
     elif dtype == float32:
         if finite:
-            return draw(floats(width=32, allow_nan=False, allow_infinity=False))
-        return draw(floats(width=32))
+            return draw(floats(width=32, allow_nan=False, allow_infinity=False, **kwds))
+        return draw(floats(width=32, **kwds))
     elif dtype == complex64:
         if finite:
             return draw(complex_numbers(width=32, allow_nan=False, allow_infinity=False))
@@ -591,8 +591,16 @@ def two_mutual_arrays(
 def array_and_py_scalar(draw, dtypes):
     """Draw a pair: (array, scalar) or (scalar, array)."""
     dtype = draw(sampled_from(dtypes))
-    scalar_var = draw(scalars(just(dtype), finite=True))
-    array_var = draw(arrays(dtype, shape=shapes(min_dims=1)))
+
+    scalar_var = draw(scalars(just(dtype), finite=True,
+        **{'min_value': 1/ (2<<5), 'max_value': 2<<5}
+    ))
+
+    elements={}
+    if dtype in dh.real_float_dtypes:
+        elements = {'allow_nan': False, 'allow_infinity': False,
+                    'min_value': 1.0 / (2<<5), 'max_value': 2<<5}
+    array_var = draw(arrays(dtype, shape=shapes(min_dims=1), elements=elements))
 
     if draw(booleans()):
         return scalar_var, array_var
