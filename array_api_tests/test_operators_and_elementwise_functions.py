@@ -1823,19 +1823,11 @@ _xp_minimum = getattr(xp, "minimum", None)
         (xp.less_equal, "les_equal", operator.le, {}, xp.bool),
         (xp.greater, "greater", operator.gt, {}, xp.bool),
         (xp.greater_equal, "greater_equal", operator.ge, {}, xp.bool),
-        (xp.remainder, "remainder", operator.mod, {}, None),
-        (xp.floor_divide, "floor_divide", operator.floordiv, {}, None),
     ],
     ids=lambda func_data: func_data[1]  # use names for test IDs
 )
 @given(x1x2=hh.array_and_py_scalar(dh.real_float_dtypes))
 def test_binary_with_scalars_real(func_data, x1x2):
-
-    if func_data[1] == "remainder":
-        assume(_filter_zero(x1x2[1]))
-    if func_data[1] == "floor_divide":
-        assume(_filter_zero(x1x2[0]) and _filter_zero(x1x2[1]))
-
     _check_binary_with_scalars(func_data, x1x2)
 
 
@@ -1851,6 +1843,24 @@ def test_binary_with_scalars_real(func_data, x1x2):
 )
 @given(x1x2=hh.array_and_py_scalar([xp.bool]))
 def test_binary_with_scalars_bool(func_data, x1x2):
+    _check_binary_with_scalars(func_data, x1x2)
+
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.parametrize('func_data',
+    # xp_func, name, refimpl, kwargs, expected_dtype
+    [
+
+        (xp.floor_divide, "floor_divide", operator.floordiv, {}, None),
+        (xp.remainder, "remainder", operator.mod, {}, None),
+    ],
+    ids=lambda func_data: func_data[1]  # use names for test IDs
+)
+@given(x1x2=hh.array_and_py_scalar([xp.int64]))
+def test_binary_with_scalars_int(func_data, x1x2):
+
+    assume(_filter_zero(x1x2[1]))
+    assume(_filter_zero(x1x2[0]) and _filter_zero(x1x2[1]))
     _check_binary_with_scalars(func_data, x1x2)
 
 
