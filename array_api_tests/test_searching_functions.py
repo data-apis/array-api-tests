@@ -88,8 +88,6 @@ def test_argmin(x, data):
         ph.assert_scalar_equals("argmin", type_=int, idx=out_idx, out=min_i, expected=expected)
 
 
-# XXX: dtype= stanza below is to work around unsigned int dtypes in torch
-# (count_nonzero_cpu not implemented for uint32 etc)
 # XXX: the strategy for x is problematic on JAX unless JAX_ENABLE_X64 is on
 # the problem is tha for ints >iinfo(int32) it runs into essentially this:
 #  >>> jnp.asarray[2147483648], dtype=jnp.int64)
@@ -99,7 +97,7 @@ def test_argmin(x, data):
 @pytest.mark.min_version("2024.12")
 @given(
     x=hh.arrays(
-        dtype=st.sampled_from(dh.int_dtypes + dh.real_float_dtypes + dh.complex_dtypes + (xp.bool,)),
+        dtype=hh.all_dtypes,
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
