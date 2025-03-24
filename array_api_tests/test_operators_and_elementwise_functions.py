@@ -26,6 +26,9 @@ from .typing import Array, DataType, Param, Scalar, ScalarType, Shape
 pytestmark = pytest.mark.unvectorized
 
 
+EPS32 = xp.finfo(xp.float32).eps
+
+
 def mock_int_dtype(n: int, dtype: DataType) -> int:
     """Returns equivalent of `n` that mocks `dtype` behaviour."""
     nbits = dh.dtype_nbits[dtype]
@@ -1093,7 +1096,13 @@ def test_clip(x, data):
                 f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
             )
         else:
-            assert out_val == expected, (
+            if out.dtype == xp.float32:
+                # conversion to builtin float is prone to roundoff errors
+                close_enough = math.isclose(out_val, expected, rel_tol=EPS32)
+            else:
+                close_enough = out_val == expected
+
+            assert close_enough, (
                 f"out[{o_idx}]={out[o_idx]} but should be {expected} [clip()]\n"
                 f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
             )
