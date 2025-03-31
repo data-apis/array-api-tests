@@ -3,9 +3,12 @@ import math
 from inspect import getfullargspec
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
-from . import _array_module as xp
+from hypothesis import note
+
+from . import _array_module as xp, xps
 from . import dtype_helpers as dh
 from . import shape_helpers as sh
+from . import hypothesis_helpers as hh
 from . import stubs
 from . import xp as _xp
 from .typing import Array, DataType, Scalar, ScalarType, Shape
@@ -28,6 +31,7 @@ __all__ = [
     "assert_0d_equals",
     "assert_fill",
     "assert_array_elements",
+    "assert_kw_copy"
 ]
 
 
@@ -481,6 +485,48 @@ def assert_fill(
         assert xp.all(xp.isnan(out)), msg
     else:
         assert xp.all(xp.equal(out, xp.asarray(fill_value, dtype=dtype))), msg
+
+
+def scalar_eq(s1: Scalar, s2: Scalar) -> bool:
+    if cmath.isnan(s1):
+        return cmath.isnan(s2)
+    else:
+        return s1 == s2
+
+
+def assert_kw_copy(func_name, x, out, data, copy):
+    """
+    Assert copy=True/False functionality is respected
+
+    TODO: we're not able to check scalars with this approach
+    """
+    if copy is not None and len(x.shape) > 0:
+        stype = dh.get_scalar_type(x.dtype)
+        idx = data.draw(xps.indices(x.shape, max_dims=0), label="mutating idx")
+        old_value = stype(x[idx])
+        scalar_strat = hh.from_dtype(x.dtype).filter(
+            lambda n: not scalar_eq(n, old_value)
+        )
+        value = data.draw(
+            scalar_strat | scalar_strat.map(lambda n: xp.asarray(n, dtype=x.dtype)),
+            label="mutating value",
+        )
+        x[idx] = value
+        note(f"mutated {x=}")
+        # sanity check
+        assert_scalar_equals(
+            "__setitem__", type_=stype, idx=idx, out=stype(x[idx]), expected=value, repr_name="x"
+        )
+        new_out_value = stype(out[idx])
+        f_out = f"{sh.fmt_idx('out', idx)}={new_out_value}"
+        if copy:
+            assert scalar_eq(
+                new_out_value, old_value
+            ), f"{f_out}, but should be {old_value} even after x was mutated"
+        else:
+            assert scalar_eq(
+                new_out_value, value
+            ), f"{f_out}, but should be {value} after x was mutated"
 
 
 def _has_functional_signbit() -> bool:
