@@ -147,38 +147,62 @@ def test_can_cast(_from, to):
         assert out == expected, f"{out=}, but should be {expected} {f_func}"
 
 
-@pytest.mark.parametrize("dtype", dh.real_float_dtypes)
+@pytest.mark.parametrize("dtype", dh.real_float_dtypes + dh.complex_dtypes)
 def test_finfo(dtype):
+    for arg in (
+        dtype,
+        xp.asarray(1, dtype=dtype),
+        # np.float64 and np.asarray(1, dtype=np.float64).dtype are different
+        xp.asarray(1, dtype=dtype).dtype,
+    ):
+        out = xp.finfo(arg)
+        assert isinstance(out.bits, int)
+        assert isinstance(out.eps, float)
+        assert isinstance(out.max, float)
+        assert isinstance(out.min, float)
+        assert isinstance(out.smallest_normal, float)
+
+
+@pytest.mark.min_version("2022.12")
+@pytest.mark.parametrize("dtype", dh.real_float_dtypes + dh.complex_dtypes)
+def test_finfo_dtype(dtype):
     out = xp.finfo(dtype)
-    f_func = f"[finfo({dh.dtype_to_name[dtype]})]"
-    for attr, stype in [
-        ("bits", int),
-        ("eps", float),
-        ("max", float),
-        ("min", float),
-        ("smallest_normal", float),
-    ]:
-        assert hasattr(out, attr), f"out has no attribute '{attr}' {f_func}"
-        value = getattr(out, attr)
-        assert isinstance(
-            value, stype
-        ), f"type(out.{attr})={type(value)!r}, but should be {stype.__name__} {f_func}"
-    assert hasattr(out, "dtype"), f"out has no attribute 'dtype' {f_func}"
-    # TODO: test values
+
+    if dtype == xp.complex64:
+        assert out.dtype == xp.float32
+    elif dtype == xp.complex128:
+        assert out.dtype == xp.float64
+    else:
+        assert out.dtype == dtype
+
+    # Guard vs. numpy.dtype.__eq__ lax comparison
+    assert not isinstance(out.dtype, str)
+    assert out.dtype is not float
+    assert out.dtype is not complex
 
 
-@pytest.mark.parametrize("dtype", dh.int_dtypes)
+@pytest.mark.parametrize("dtype", dh.int_dtypes + dh.uint_dtypes)
 def test_iinfo(dtype):
+    for arg in (
+        dtype,
+        xp.asarray(1, dtype=dtype),
+        # np.int64 and np.asarray(1, dtype=np.int64).dtype are different
+        xp.asarray(1, dtype=dtype).dtype,
+    ):
+        out = xp.iinfo(arg)
+        assert isinstance(out.bits, int)
+        assert isinstance(out.max, int)
+        assert isinstance(out.min, int)
+
+
+@pytest.mark.min_version("2022.12")
+@pytest.mark.parametrize("dtype", dh.int_dtypes + dh.uint_dtypes)
+def test_iinfo_dtype(dtype):
     out = xp.iinfo(dtype)
-    f_func = f"[iinfo({dh.dtype_to_name[dtype]})]"
-    for attr in ["bits", "max", "min"]:
-        assert hasattr(out, attr), f"out has no attribute '{attr}' {f_func}"
-        value = getattr(out, attr)
-        assert isinstance(
-            value, int
-        ), f"type(out.{attr})={type(value)!r}, but should be int {f_func}"
-    assert hasattr(out, "dtype"), f"out has no attribute 'dtype' {f_func}"
-    # TODO: test values
+    assert out.dtype == dtype
+    # Guard vs. numpy.dtype.__eq__ lax comparison
+    assert not isinstance(out.dtype, str)
+    assert out.dtype is not int
 
 
 def atomic_kinds() -> st.SearchStrategy[Union[DataType, str]]:
