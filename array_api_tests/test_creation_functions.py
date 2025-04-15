@@ -282,34 +282,7 @@ def test_asarray_arrays(shape, dtypes, data):
         ph.assert_kw_dtype("asarray", kw_dtype=dtype, out_dtype=out.dtype)
     ph.assert_shape("asarray", out_shape=out.shape, expected=x.shape)
     ph.assert_array_elements("asarray", out=out, expected=x, kw=kw)
-    copy = kw.get("copy", None)
-    if copy is not None:
-        stype = dh.get_scalar_type(x.dtype)
-        idx = data.draw(xps.indices(x.shape, max_dims=0), label="mutating idx")
-        old_value = stype(x[idx])
-        scalar_strat = hh.from_dtype(dtypes.input_dtype).filter(
-            lambda n: not scalar_eq(n, old_value)
-        )
-        value = data.draw(
-            scalar_strat | scalar_strat.map(lambda n: xp.asarray(n, dtype=x.dtype)),
-            label="mutating value",
-        )
-        x[idx] = value
-        note(f"mutated {x=}")
-        # sanity check
-        ph.assert_scalar_equals(
-            "__setitem__", type_=stype, idx=idx, out=stype(x[idx]), expected=value, repr_name="x"
-        )
-        new_out_value = stype(out[idx])
-        f_out = f"{sh.fmt_idx('out', idx)}={new_out_value}"
-        if copy:
-            assert scalar_eq(
-                new_out_value, old_value
-            ), f"{f_out}, but should be {old_value} even after x was mutated"
-        else:
-            assert scalar_eq(
-                new_out_value, value
-            ), f"{f_out}, but should be {value} after x was mutated"
+    ph.assert_kw_copy("asarray", x, out, data, kw.get("copy", None))
 
 
 @given(hh.shapes(), hh.kwargs(dtype=st.none() | hh.all_dtypes))
