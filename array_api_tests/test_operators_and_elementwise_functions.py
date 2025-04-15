@@ -987,17 +987,15 @@ def test_clip(x, data):
                                                                 base_shape=x.shape),
                                 label="min.shape, max.shape")
 
-    dtypes = hh.real_floating_dtypes if dh.is_float_dtype(x.dtype) else hh.int_dtypes
-
     min = data.draw(st.one_of(
         st.none(),
         hh.scalars(dtypes=st.just(x.dtype)),
-        hh.arrays(dtype=dtypes, shape=shape1),
+        hh.arrays(dtype=st.just(x.dtype), shape=shape1),
     ), label="min")
     max = data.draw(st.one_of(
         st.none(),
         hh.scalars(dtypes=st.just(x.dtype)),
-        hh.arrays(dtype=dtypes, shape=shape2),
+        hh.arrays(dtype=st.just(x.dtype), shape=shape2),
     ), label="max")
 
     # min > max is undefined (but allow nans)
