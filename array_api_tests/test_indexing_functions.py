@@ -73,6 +73,7 @@ def test_take_along_axis(x, data):
     # TODO
     # 2. negative indices
     # 3. different dtypes for indices
+    # 4. "broadcast-compatible" indices
     axis = data.draw(
         st.integers(-x.ndim, max(x.ndim - 1, 0)) | st.none(),
         label="axis"
@@ -84,8 +85,8 @@ def test_take_along_axis(x, data):
         axis_kw = {"axis": axis}
         n_axis = axis + x.ndim if axis < 0 else axis
 
-    len_axis = data.draw(st.integers(0, 2*x.shape[n_axis]), label="len_axis")
-    idx_shape = x.shape[:n_axis] + (len_axis,) + x.shape[n_axis+1:]
+    new_len = data.draw(st.integers(0, 2*x.shape[n_axis]), label="new_len")
+    idx_shape = x.shape[:n_axis] + (new_len,) + x.shape[n_axis+1:]
     indices = data.draw(
         hh.arrays(
             shape=idx_shape,
@@ -102,7 +103,7 @@ def test_take_along_axis(x, data):
     ph.assert_shape(
         "take_along_axis",
         out_shape=out.shape,
-        expected=x.shape[:n_axis] + (len_axis,) + x.shape[n_axis+1:],
+        expected=x.shape[:n_axis] + (new_len,) + x.shape[n_axis+1:],
         kw=dict(
             x=x,
             indices=indices,
@@ -117,5 +118,5 @@ def test_take_along_axis(x, data):
             a_1d = x[ii + (slice(None),) + kk]
             i_1d = indices[ii + (slice(None),) + kk]
             o_1d = out[ii + (slice(None),) + kk]
-            for j in range(len_axis):
+            for j in range(new_len):
                 assert o_1d[j] == a_1d[i_1d[j]], f'{ii=}, {kk=}, {j=}'
