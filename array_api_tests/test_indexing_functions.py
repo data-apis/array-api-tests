@@ -73,22 +73,30 @@ def test_take_along_axis(x, data):
     # TODO
     # 2. negative indices
     # 3. different dtypes for indices
-    axis = data.draw(st.integers(-x.ndim, max(x.ndim - 1, 0)), label="axis")
-    len_axis = data.draw(st.integers(0, 2*x.shape[axis]), label="len_axis")
+    axis = data.draw(
+        st.integers(-x.ndim, max(x.ndim - 1, 0)) | st.none(),
+        label="axis"
+    )
+    if axis is None:
+        axis_kw = {}
+        n_axis = x.ndim - 1
+    else:
+        axis_kw = {"axis": axis}
+        n_axis = axis + x.ndim if axis < 0 else axis
 
-    n_axis = axis + x.ndim if axis < 0 else axis
+    len_axis = data.draw(st.integers(0, 2*x.shape[n_axis]), label="len_axis")
     idx_shape = x.shape[:n_axis] + (len_axis,) + x.shape[n_axis+1:]
     indices = data.draw(
         hh.arrays(
             shape=idx_shape,
             dtype=dh.default_int,
-            elements={"min_value": 0, "max_value": x.shape[axis]-1}
+            elements={"min_value": 0, "max_value": x.shape[n_axis]-1}
         ),
         label="indices"
     )
     note(f"{indices=}  {idx_shape=}")
 
-    out = xp.take_along_axis(x, indices, axis=axis)
+    out = xp.take_along_axis(x, indices, **axis_kw)
 
     ph.assert_dtype("take_along_axis", in_dtype=x.dtype, out_dtype=out.dtype)
     ph.assert_shape(
