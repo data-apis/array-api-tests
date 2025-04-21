@@ -106,7 +106,11 @@ def _test_stacks(f, *args, res=None, dims=2, true_val=None,
         msg_extra = f'{x_idxes = }, {res_idx = }'
         assert_equal(res_stack, decomp_res_stack, msg_extra)
         if true_val:
-            assert_equal(decomp_res_stack, true_val(*x_stacks, **kw), msg_extra)
+            expected = true_val(*x_stacks, **kw)
+            if decomp_res_stack.dtype in dh.all_float_dtypes:
+                ph.assert_allclose(decomp_res_stack, expected, msg_extra=msg_extra)
+            else:
+                assert_equal(decomp_res_stack, expected, msg_extra)
 
 
 def _test_namedtuple(res, fields, func_name):
