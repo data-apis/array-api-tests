@@ -71,13 +71,13 @@ def test_take(x, data):
 )
 def test_take_along_axis(x, data):
     # TODO
-    # 1. negative axis
     # 2. negative indices
     # 3. different dtypes for indices
-    axis = data.draw(st.integers(0, max(x.ndim - 1, 0)), label="axis")
+    axis = data.draw(st.integers(-x.ndim, max(x.ndim - 1, 0)), label="axis")
     len_axis = data.draw(st.integers(0, 2*x.shape[axis]), label="len_axis")
 
-    idx_shape = x.shape[:axis] + (len_axis,) + x.shape[axis+1:]
+    n_axis = axis + x.ndim if axis < 0 else axis
+    idx_shape = x.shape[:n_axis] + (len_axis,) + x.shape[n_axis+1:]
     indices = data.draw(
         hh.arrays(
             shape=idx_shape,
@@ -94,7 +94,7 @@ def test_take_along_axis(x, data):
     ph.assert_shape(
         "take_along_axis",
         out_shape=out.shape,
-        expected=x.shape[:axis] + (len_axis,) + x.shape[axis+1:],
+        expected=x.shape[:n_axis] + (len_axis,) + x.shape[n_axis+1:],
         kw=dict(
             x=x,
             indices=indices,
@@ -103,7 +103,7 @@ def test_take_along_axis(x, data):
     )
 
     # value test: notation is from `np.take_along_axis` docstring
-    Ni, Nk = x.shape[:axis], x.shape[axis+1:]
+    Ni, Nk = x.shape[:n_axis], x.shape[n_axis+1:]
     for ii in sh.ndindex(Ni):
         for kk in sh.ndindex(Nk):
             a_1d = x[ii + (slice(None),) + kk]
@@ -111,4 +111,3 @@ def test_take_along_axis(x, data):
             o_1d = out[ii + (slice(None),) + kk]
             for j in range(len_axis):
                 assert o_1d[j] == a_1d[i_1d[j]], f'{ii=}, {kk=}, {j=}'
-
