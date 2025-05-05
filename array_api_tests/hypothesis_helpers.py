@@ -456,8 +456,12 @@ def scalars(draw, dtypes, finite=False, **kwds):
     dtypes should be one of the shared_* dtypes strategies.
     """
     dtype = draw(dtypes)
+    mM = kwds.pop('mM', None)
     if dh.is_int_dtype(dtype):
-        m, M = dh.dtype_ranges[dtype]
+        if mM is None:
+            m, M = dh.dtype_ranges[dtype]
+        else:
+            m, M = mM
         return draw(integers(m, M))
     elif dtype == bool_dtype:
         return draw(booleans())
@@ -588,18 +592,20 @@ def two_mutual_arrays(
 
 
 @composite
-def array_and_py_scalar(draw, dtypes):
+def array_and_py_scalar(draw, dtypes, mM=None, positive=False):
     """Draw a pair: (array, scalar) or (scalar, array)."""
     dtype = draw(sampled_from(dtypes))
 
-    scalar_var = draw(scalars(just(dtype), finite=True,
-        **{'min_value': 1/ (2<<5), 'max_value': 2<<5}
-    ))
+    scalar_var = draw(scalars(just(dtype), finite=True, mM=mM))
+    if positive:
+        assume (scalar_var > 0)
 
     elements={}
     if dtype in dh.real_float_dtypes:
         elements = {'allow_nan': False, 'allow_infinity': False,
                     'min_value': 1.0 / (2<<5), 'max_value': 2<<5}
+    if positive:
+        elements = {'min_value': 0}
     array_var = draw(arrays(dtype, shape=shapes(min_dims=1), elements=elements))
 
     if draw(booleans()):

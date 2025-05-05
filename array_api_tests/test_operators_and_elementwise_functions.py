@@ -1883,3 +1883,20 @@ def test_binary_with_scalars_bitwise(func_data, x1x2):
     refimpl_ = lambda l, r: mock_int_dtype(refimpl(l, r), xp.int32 )
     _check_binary_with_scalars((func_name, refimpl_, kwargs, expected), x1x2)
 
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.parametrize('func_data',
+    # func_name, refimpl, kwargs, expected_dtype
+    [
+        ("bitwise_left_shift", operator.lshift, {}, None),
+        ("bitwise_right_shift", operator.rshift, {}, None),
+    ],
+    ids=lambda func_data: func_data[0]  # use names for test IDs
+)
+@given(x1x2=hh.array_and_py_scalar([xp.int32], positive=True, mM=(1, 3)))
+def test_binary_with_scalars_bitwise_shifts(func_data, x1x2):
+    func_name, refimpl, kwargs, expected = func_data
+    # repack the refimpl
+    refimpl_ = lambda l, r: mock_int_dtype(refimpl(l, r), xp.int32 )
+    _check_binary_with_scalars((func_name, refimpl_, kwargs, expected), x1x2)
+
