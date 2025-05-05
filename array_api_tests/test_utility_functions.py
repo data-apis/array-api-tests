@@ -65,12 +65,10 @@ def test_any(x, data):
                                 out=result, expected=expected, kw=kw)
 
 
-# NB: hh.int_dtypes instead of hh.numeric_dtypes because of
-# https://github.com/data-apis/array-api-tests/issues/368
 @pytest.mark.unvectorized
 @pytest.mark.min_version("2024.12")
 @given(
-    x=hh.arrays_no_scalars(hh.int_dtypes, hh.shapes(min_dims=1, min_side=1)),
+    x=hh.arrays(hh.numeric_dtypes, hh.shapes(min_dims=1, min_side=1)),
     data=st.data(),
 )
 def test_diff(x, data):
@@ -105,7 +103,7 @@ def test_diff(x, data):
 @pytest.mark.min_version("2024.12")
 @pytest.mark.unvectorized
 @given(
-    x=hh.arrays(hh.int_dtypes, hh.shapes(min_dims=1, min_side=1)),
+    x=hh.arrays(hh.numeric_dtypes, hh.shapes(min_dims=1, min_side=1)),
     data=st.data(),
 )
 def test_diff_append_prepend(x, data):
