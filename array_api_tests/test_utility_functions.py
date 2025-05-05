@@ -63,3 +63,40 @@ def test_any(x, data):
         expected = any(elements)
         ph.assert_scalar_equals("any", type_=scalar_type, idx=out_idx,
                                 out=result, expected=expected, kw=kw)
+
+
+@pytest.mark.unvectorized
+@pytest.mark.min_version("2024.12")
+@given(
+    x=hh.arrays(hh.numeric_dtypes, hh.shapes(min_dims=1, min_side=1)),
+    data=st.data(),
+)
+def test_diff(x, data):
+    # TODO:
+    # 1. append/prepend
+    axis = data.draw(
+        st.integers(-x.ndim, max(x.ndim - 1, 0)) | st.none(),
+        label="axis"
+    )
+    if axis is None:
+        axis_kw = {"axis": -1}
+        n_axis = x.ndim - 1
+    else:
+        axis_kw = {"axis": axis}
+        n_axis = axis + x.ndim if axis < 0 else axis
+
+    n = data.draw(st.integers(1, min(x.shape[n_axis], 3)))
+
+    out = xp.diff(x, **axis_kw, n=n)
+
+    expected_shape = list(x.shape)
+    expected_shape[n_axis] -= n
+    assert out.shape == tuple(expected_shape)
+
+    # value test
+    if n == 1:
+        for idx in sh.ndindex(out.shape):
+            l = list(idx)
+            l[n_axis] += 1
+            assert out[idx] == x[tuple(l)] - x[idx], f"diff failed with {idx = }"
+
