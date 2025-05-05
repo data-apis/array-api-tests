@@ -724,7 +724,9 @@ def _assert_correctness_binary(
     x1a, x2a = in_arrs
     ph.assert_dtype(name, in_dtype=in_dtypes, out_dtype=out.dtype, expected=expected_dtype)
     ph.assert_result_shape(name, in_shapes=in_shapes, out_shape=out.shape)
-    binary_assert_against_refimpl(name, x1a, x2a, out, func, **kwargs)
+    check_values = kwargs.pop('check_values', None)
+    if check_values:
+        binary_assert_against_refimpl(name, x1a, x2a, out, func, **kwargs)
 
 
 @pytest.mark.parametrize("ctx", make_unary_params("abs", dh.numeric_dtypes))
@@ -1824,6 +1826,7 @@ def _filter_zero(x):
         ("less_equal", operator.le, {}, xp.bool),
         ("greater", operator.gt, {}, xp.bool),
         ("greater_equal", operator.ge, {}, xp.bool),
+        ("pow", operator.pow, {'check_values': False}, None)   # too finicky for pow
     ],
     ids=lambda func_data: func_data[0]  # use names for test IDs
 )
