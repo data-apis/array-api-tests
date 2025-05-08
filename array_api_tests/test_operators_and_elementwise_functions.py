@@ -1826,7 +1826,7 @@ def _filter_zero(x):
         ("less_equal", operator.le, {}, xp.bool),
         ("greater", operator.gt, {}, xp.bool),
         ("greater_equal", operator.ge, {}, xp.bool),
-        ("pow", operator.pow, {'check_values': False}, None)   # too finicky for pow
+        ("pow", operator.pow, {'check_values': False}, None)   # value tests are too finicky for pow
     ],
     ids=lambda func_data: func_data[0]  # use names for test IDs
 )
