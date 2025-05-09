@@ -1597,6 +1597,26 @@ def test_not_equal(ctx, data):
     )
 
 
+@pytest.mark.min_version("2024.12")
+@given(
+    shapes=hh.two_mutually_broadcastable_shapes,
+    dtype=hh.real_floating_dtypes,
+    data=st.data() 
+)
+def test_nextafter(shapes, dtype, data):
+    x1 = data.draw(hh.arrays(dtype=dtype, shape=shapes[0]), label="x1")
+    x2 = data.draw(hh.arrays(dtype=dtype, shape=shapes[0]), label="x2")
+
+    out = xp.nextafter(x1, x2)
+    _assert_correctness_binary(
+        "nextafter",
+        math.nextafter,
+        in_dtypes=[x1.dtype, x2.dtype],
+        in_shapes=[x1.shape, x2.shape],
+        in_arrs=[x1, x2],
+        out=out
+    )
+
 @pytest.mark.parametrize("ctx", make_unary_params("positive", dh.numeric_dtypes))
 @given(data=st.data())
 def test_positive(ctx, data):
@@ -1815,6 +1835,7 @@ def _filter_zero(x):
         ("divide", operator.truediv, {"filter_": lambda s: s != 0}, None),
         ("hypot", math.hypot, {}, None),
         ("logaddexp", logaddexp_refimpl, {}, None),
+        ("nextafter", math.nextafter, {}, None),
         ("maximum", max, {'strict_check': True}, None),
         ("minimum", min, {'strict_check': True}, None),
         ("multiply", operator.mul, {}, None),
@@ -1899,4 +1920,35 @@ def test_binary_with_scalars_bitwise_shifts(func_data, x1x2):
     # repack the refimpl
     refimpl_ = lambda l, r: mock_int_dtype(refimpl(l, r), xp.int32 )
     _check_binary_with_scalars((func_name, refimpl_, kwargs, expected), x1x2)
+
+
+@pytest.mark.unvectorized
+@given(
+    x1x2=hh.array_and_py_scalar([xp.int32]),
+    data=st.data()
+)
+def test_where_with_scalars(x1x2, data):
+    x1, x2 = x1x2
+
+    if dh.is_scalar(x1):
+        dtype, shape = x2.dtype, x2.shape
+        x1_arr, x2_arr = xp.broadcast_to(xp.asarray(x1), shape), x2
+    else:
+        dtype, shape = x1.dtype, x1.shape
+        x1_arr, x2_arr = x1, xp.broadcast_to(xp.asarray(x2), shape)
+
+    condition = data.draw(hh.arrays(shape=shape, dtype=xp.bool))
+
+    out = xp.where(condition, x1, x2)
+
+    assert out.dtype == dtype, f"where: got {out.dtype = } for {dtype=}, {x1=} and {x2=}"
+    assert out.shape == shape, f"where: got {out.shape = } for {shape=}, {x1=} and {x2=}"
+
+    # value test
+    for idx in sh.ndindex(shape):
+        if condition[idx]:
+            assert out[idx] == x1_arr[idx]
+        else:
+            assert out[idx] == x2_arr[idx]
+
 
