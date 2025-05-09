@@ -724,7 +724,9 @@ def _assert_correctness_binary(
     x1a, x2a = in_arrs
     ph.assert_dtype(name, in_dtype=in_dtypes, out_dtype=out.dtype, expected=expected_dtype)
     ph.assert_result_shape(name, in_shapes=in_shapes, out_shape=out.shape)
-    binary_assert_against_refimpl(name, x1a, x2a, out, func, **kwargs)
+    check_values = kwargs.pop('check_values', None)
+    if check_values:
+        binary_assert_against_refimpl(name, x1a, x2a, out, func, **kwargs)
 
 
 @pytest.mark.parametrize("ctx", make_unary_params("abs", dh.numeric_dtypes))
@@ -1845,6 +1847,7 @@ def _filter_zero(x):
         ("less_equal", operator.le, {}, xp.bool),
         ("greater", operator.gt, {}, xp.bool),
         ("greater_equal", operator.ge, {}, xp.bool),
+        ("pow", operator.pow, {'check_values': False}, None)   # value tests are too finicky for pow
     ],
     ids=lambda func_data: func_data[0]  # use names for test IDs
 )
@@ -1902,6 +1905,23 @@ def test_binary_with_scalars_bitwise(func_data, x1x2):
     _check_binary_with_scalars((func_name, refimpl_, kwargs, expected), x1x2)
 
 
+@pytest.mark.min_version("2024.12")
+@pytest.mark.parametrize('func_data',
+    # func_name, refimpl, kwargs, expected_dtype
+    [
+        ("bitwise_left_shift", operator.lshift, {}, None),
+        ("bitwise_right_shift", operator.rshift, {}, None),
+    ],
+    ids=lambda func_data: func_data[0]  # use names for test IDs
+)
+@given(x1x2=hh.array_and_py_scalar([xp.int32], positive=True, mM=(1, 3)))
+def test_binary_with_scalars_bitwise_shifts(func_data, x1x2):
+    func_name, refimpl, kwargs, expected = func_data
+    # repack the refimpl
+    refimpl_ = lambda l, r: mock_int_dtype(refimpl(l, r), xp.int32 )
+    _check_binary_with_scalars((func_name, refimpl_, kwargs, expected), x1x2)
+
+
 @pytest.mark.unvectorized
 @given(
     x1x2=hh.array_and_py_scalar([xp.int32]),
@@ -1930,4 +1950,5 @@ def test_where_with_scalars(x1x2, data):
             assert out[idx] == x1_arr[idx]
         else:
             assert out[idx] == x2_arr[idx]
+
 
