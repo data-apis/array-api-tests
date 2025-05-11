@@ -144,6 +144,20 @@ def check_id_match(id_, pattern):
     return False
 
 
+def get_xfail_mark():
+    """Skip or xfail tests from the xfails-file.txt."""
+    m = os.environ.get("ARRAY_API_TESTS_XFAIL_MARK", "xfail")
+    if m == "xfail":
+        return mark.xfail
+    elif m == "skip":
+        return mark.skip
+    else:
+        raise ValueError(
+            f'ARRAY_API_TESTS_XFAIL_MARK value should be one of "skip" or "xfail" '
+            f'got {m} instead.'
+        )
+
+
 def pytest_collection_modifyitems(config, items):
     # 1. Prepare for iterating over items
     # -----------------------------------
@@ -187,6 +201,8 @@ def pytest_collection_modifyitems(config, items):
     # 2. Iterate through items and apply markers accordingly
     # ------------------------------------------------------
 
+    xfail_mark = get_xfail_mark()
+
     for item in items:
         markers = list(item.iter_markers())
         # skip if specified in skips file
@@ -198,7 +214,7 @@ def pytest_collection_modifyitems(config, items):
         # xfail if specified in xfails file
         for id_ in xfail_ids:
             if check_id_match(item.nodeid, id_):
-                item.add_marker(mark.xfail(reason=f"--xfails-file ({xfails_file})"))
+                item.add_marker(xfail_mark(reason=f"--xfails-file ({xfails_file})"))
                 xfail_id_matched[id_] = True
                 break
         # skip if disabled or non-existent extension
