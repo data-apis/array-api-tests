@@ -316,6 +316,14 @@ entries from the ``xfail.txt`` file instead of xfailing them. Anecdotally, we sa
 speed-ups by a factor of 4-5---which allowed us to use 4-5 larger values of
 ``--max-examples`` within the same time budget.
 
+#### Limiting the array sizes
+
+The test suite generates random arrays as inputs to functions it tests. "unvectorized"
+tests iterate over elements of arrays, which might be slow. If the run time becomes
+a problem, you can limit the maximum number of elements in generated arrays by
+setting the environment variable ``ARRAY_API_TESTS_MAX_ARRAY_SIZE`` to the
+desired value. By default, it is set to 1024.
+
 
 ## Contributing
 
