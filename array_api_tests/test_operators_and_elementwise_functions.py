@@ -1922,6 +1922,7 @@ def test_binary_with_scalars_bitwise_shifts(func_data, x1x2):
     _check_binary_with_scalars((func_name, refimpl_, kwargs, expected), x1x2)
 
 
+@pytest.mark.min_version("2024.12")
 @pytest.mark.unvectorized
 @given(
     x1x2=hh.array_and_py_scalar([xp.int32]),
