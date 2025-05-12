@@ -24,7 +24,12 @@ def float32(n: Union[int, float]) -> float:
 
 
 def _float_match_complex(complex_dtype):
-    return xp.float32 if complex_dtype == xp.complex64 else xp.float64
+    if complex_dtype == xp.complex64:
+        return xp.float32
+    elif complex_dtype == xp.complex128:
+        return xp.float64
+    else:
+        return dh.default_float
 
 
 @given(
