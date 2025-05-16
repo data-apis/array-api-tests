@@ -31,7 +31,10 @@ class TestInspection:
         assert hasattr(out, "default_device")
 
         assert isinstance(out.devices(), list)
-        assert out.default_device() in out.devices()
+        if out.default_device() is not None:
+            # Per https://github.com/data-apis/array-api/issues/923
+            # default_device() can return None. Otherwise, it must be a valid device.
+            assert out.default_device() in out.devices()
 
     def test_default_dtypes(self):
         out = xp.__array_namespace_info__()
@@ -40,13 +43,13 @@ class TestInspection:
             default_dtypes = out.default_dtypes(device=device)
             assert isinstance(default_dtypes, dict)
             expected_subset = (
-                  {"real floating", "complex floating", "integral"} 
-                & available_kinds() 
+                  {"real floating", "complex floating", "integral"}
+                & available_kinds()
                 | {"indexing"}
             )
             assert expected_subset.issubset(set(default_dtypes.keys()))
 
-    
+
 atomic_kinds = [
     "bool",
     "signed integer",
