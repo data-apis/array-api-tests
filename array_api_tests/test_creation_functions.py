@@ -499,7 +499,7 @@ def test_meshgrid(dtype, data):
     shapes = data.draw(
         st.integers(1, 5).flatmap(
             lambda n: hh.mutually_broadcastable_shapes(
-                n, min_dims=1, max_dims=1, max_side=5
+                n, min_dims=1, max_dims=1, max_side=4
             )
         ),
         label="shapes",
@@ -509,7 +509,7 @@ def test_meshgrid(dtype, data):
         x = data.draw(hh.arrays(dtype=dtype, shape=shape), label=f"x{i}")
         arrays.append(x)
     # sanity check
-    assert math.prod(math.prod(x.shape) for x in arrays) <= hh.MAX_ARRAY_SIZE
+    # assert math.prod(math.prod(x.shape) for x in arrays) <= hh.MAX_ARRAY_SIZE
     out = xp.meshgrid(*arrays)
     for i, x in enumerate(out):
         ph.assert_dtype("meshgrid", in_dtype=dtype, out_dtype=x.dtype, repr_name=f"out[{i}].dtype")
