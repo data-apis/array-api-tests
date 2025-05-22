@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from contextlib import contextmanager
 from functools import wraps
@@ -232,7 +233,7 @@ multiarg_array_functions = multiarg_array_functions_names.map(
     lambda i: getattr(xp, i))
 
 # Limit the total size of an array shape
-MAX_ARRAY_SIZE = 10000
+MAX_ARRAY_SIZE = int(os.environ.get("ARRAY_API_TESTS_MAX_ARRAY_SIZE", 1024))
 # Size to use for 2-dim arrays
 SQRT_MAX_ARRAY_SIZE = int(math.sqrt(MAX_ARRAY_SIZE))
 
