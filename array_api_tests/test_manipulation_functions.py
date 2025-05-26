@@ -347,6 +347,7 @@ def test_repeat(x, kw, data):
 
 reshape_shape = st.shared(hh.shapes(), key="reshape_shape")
 
+@pytest.mark.has_setup_funcs
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(dtype=hh.all_dtypes, shape=reshape_shape),
