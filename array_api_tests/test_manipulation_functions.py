@@ -313,37 +313,45 @@ def test_repeat(x, kw, data):
 
     assume(n_repititions <= hh.SQRT_MAX_ARRAY_SIZE)
 
-    out = xp.repeat(x, repeats, **kw)
-    ph.assert_dtype("repeat", in_dtype=x.dtype, out_dtype=out.dtype)
-    if axis is None:
-        expected_shape = (n_repititions,)
-    else:
-        expected_shape = list(shape)
-        expected_shape[axis] = n_repititions
-        expected_shape = tuple(expected_shape)
-    ph.assert_shape("repeat", out_shape=out.shape, expected=expected_shape)
+    repro_snippet = ph.format_snippet(f"xp.repeat({x!r},{repeats!r}, **kw) with {kw=}")
+    try:
+        out = xp.repeat(x, repeats, **kw)
 
-    # Test values
+        ph.assert_dtype("repeat", in_dtype=x.dtype, out_dtype=out.dtype)
+        if axis is None:
+            expected_shape = (n_repititions,)
+        else:
+            expected_shape = list(shape)
+            expected_shape[axis] = n_repititions
+            expected_shape = tuple(expected_shape)
+        ph.assert_shape("repeat", out_shape=out.shape, expected=expected_shape)
 
-    if isinstance(repeats, int):
-        repeats_array = xp.full(size, repeats, dtype=xp.int32)
-    else:
-        repeats_array = repeats
+        # Test values
 
-    if kw.get("axis") is None:
-        x = xp.reshape(x, (-1,))
-        axis = 0
+        if isinstance(repeats, int):
+            repeats_array = xp.full(size, repeats, dtype=xp.int32)
+        else:
+            repeats_array = repeats
 
-    for idx, in sh.iter_indices(x.shape, skip_axes=axis):
-        x_slice = x[idx]
-        out_slice = out[idx]
-        start = 0
-        for i, count in enumerate(repeats_array):
-            end = start + count
-            ph.assert_array_elements("repeat", out=out_slice[start:end],
-                                     expected=xp.full((count,), x_slice[i], dtype=x.dtype),
-                                     kw=kw)
-            start = end
+        if kw.get("axis") is None:
+            x = xp.reshape(x, (-1,))
+            axis = 0
+
+        for idx, in sh.iter_indices(x.shape, skip_axes=axis):
+            x_slice = x[idx]
+            out_slice = out[idx]
+            start = 0
+            for i, count in enumerate(repeats_array):
+                end = start + count
+                ph.assert_array_elements("repeat", out=out_slice[start:end],
+                                         expected=xp.full((count,), x_slice[i], dtype=x.dtype),
+                                         kw=kw)
+                start = end
+
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
+
 
 reshape_shape = st.shared(hh.shapes(), key="reshape_shape")
 
