@@ -27,7 +27,12 @@ def pytest_report_header(config):
     except AttributeError:
         array_module_version = "version unknown"
 
-    return f"Array API Tests Module: {xp_name} ({array_module_version}). API Version: {api_version}. Enabled Extensions: {', '.join(enabled_extensions)}"
+    # make it easier to catch typos in environment variables (ARRAY_API_*** instead of ARRAY_API_TESTS_*** etc)
+    env_vars = "\n".join([f"{k} = {v}" for k, v in os.environ.items() if 'ARRAY_API' in k])
+    env_vars = f"Environment variables:\n{'-'*22}\n{env_vars}\n\n"
+
+    header1 = f"Array API Tests Module: {xp_name} ({array_module_version}). API Version: {api_version}. Enabled Extensions: {', '.join(enabled_extensions)}"
+    return env_vars + header1
 
 def pytest_addoption(parser):
     # Hypothesis max examples
