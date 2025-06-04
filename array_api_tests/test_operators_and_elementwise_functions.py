@@ -1000,8 +1000,8 @@ def test_clip(x, data):
         hh.arrays(dtype=st.just(x.dtype), shape=shape2),
     ), label="max")
 
-    # min > max is undefined (but allow nans)
-    assume(min is None or max is None or not xp.any(ah.less(xp.asarray(max), xp.asarray(min))))
+    # Note1: min > max is undefined (but allow nans)
+    assume(min is None or max is None or not xp.any(ah.less(xp.asarray(max, dtype=x.dtype), xp.asarray(min, dtype=x.dtype))))
 
     kw = data.draw(
         hh.specified_kwargs(
