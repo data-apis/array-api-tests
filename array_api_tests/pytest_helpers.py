@@ -599,3 +599,7 @@ def assert_array_elements(
             at_expected = expected[idx]
             msg = msg_template.format(sh.fmt_idx(out_repr, idx), at_out, at_expected)
             assert at_out == at_expected, msg
+
+
+def format_snippet(s: str):
+    return f"\n{'='*10} FAILING CODE SNIPPET:\n{s}\n{'='*20}\n"
