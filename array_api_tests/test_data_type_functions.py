@@ -2,7 +2,7 @@ import struct
 from typing import Union
 
 import pytest
-from hypothesis import given
+from hypothesis import given, assume
 from hypothesis import strategies as st
 
 from . import _array_module as xp
@@ -11,41 +11,60 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from . import xp as _xp
 from .typing import DataType
-
-pytestmark = pytest.mark.ci
 
 
 # TODO: test with complex dtypes
 def non_complex_dtypes():
-    return xps.boolean_dtypes() | xps.real_dtypes()
+    return xps.boolean_dtypes() | hh.real_dtypes
 
 
 def float32(n: Union[int, float]) -> float:
     return struct.unpack("!f", struct.pack("!f", float(n)))[0]
 
 
+def _float_match_complex(complex_dtype):
+    if complex_dtype == xp.complex64:
+        return xp.float32
+    elif complex_dtype == xp.complex128:
+        return xp.float64
+    else:
+        return dh.default_float
+
+
 @given(
-    x_dtype=non_complex_dtypes(),
-    dtype=non_complex_dtypes(),
+    x_dtype=hh.all_dtypes,
+    dtype=hh.all_dtypes,
     kw=hh.kwargs(copy=st.booleans()),
     data=st.data(),
 )
 def test_astype(x_dtype, dtype, kw, data):
+    _complex_dtypes = (xp.complex64, xp.complex128)
+
     if xp.bool in (x_dtype, dtype):
         elements_strat = hh.from_dtype(x_dtype)
     else:
-        m1, M1 = dh.dtype_ranges[x_dtype]
-        m2, M2 = dh.dtype_ranges[dtype]
+
         if dh.is_int_dtype(x_dtype):
             cast = int
-        elif x_dtype == xp.float32:
+        elif x_dtype in (xp.float32, xp.complex64):
             cast = float32
         else:
             cast = float
+
+        real_dtype = x_dtype
+        if x_dtype in _complex_dtypes:
+            real_dtype = _float_match_complex(x_dtype)
+        m1, M1 = dh.dtype_ranges[real_dtype]
+
+        real_dtype = dtype
+        if dtype in _complex_dtypes:
+            real_dtype = _float_match_complex(x_dtype)
+        m2, M2 = dh.dtype_ranges[real_dtype]
+
         min_value = cast(max(m1, m2))
         max_value = cast(min(M1, M2))
+
         elements_strat = hh.from_dtype(
             x_dtype,
             min_value=min_value,
@@ -56,6 +75,11 @@ def test_astype(x_dtype, dtype, kw, data):
     x = data.draw(
         hh.arrays(dtype=x_dtype, shape=hh.shapes(), elements=elements_strat), label="x"
     )
+
+    # according to the spec, "Casting a complex floating-point array to a real-valued
+    # data type should not be permitted."
+    # https://data-apis.org/array-api/latest/API_specification/generated/array_api.astype.html#astype
+    assume(not ((x_dtype in _complex_dtypes) and (dtype not in _complex_dtypes)))
 
     out = xp.astype(x, dtype, **kw)
 
@@ -71,7 +95,7 @@ def test_astype(x_dtype, dtype, kw, data):
 def test_broadcast_arrays(shapes, data):
     arrays = []
     for c, shape in enumerate(shapes, 1):
-        x = data.draw(hh.arrays(dtype=xps.scalar_dtypes(), shape=shape), label=f"x{c}")
+        x = data.draw(hh.arrays(dtype=hh.all_dtypes, shape=shape), label=f"x{c}")
         arrays.append(x)
 
     out = xp.broadcast_arrays(*arrays)
@@ -94,7 +118,7 @@ def test_broadcast_arrays(shapes, data):
     # TODO: test values
 
 
-@given(x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()), data=st.data())
+@given(x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes()), data=st.data())
 def test_broadcast_to(x, data):
     shape = data.draw(
         hh.mutually_broadcastable_shapes(1, base_shape=x.shape)
@@ -110,31 +134,17 @@ def test_broadcast_to(x, data):
     # TODO: test values
 
 
-@given(_from=non_complex_dtypes(), to=non_complex_dtypes(), data=st.data())
-def test_can_cast(_from, to, data):
-    from_ = data.draw(
-        st.just(_from) | hh.arrays(dtype=_from, shape=hh.shapes()), label="from_"
-    )
+@given(_from=hh.all_dtypes, to=hh.all_dtypes)
+def test_can_cast(_from, to):
+    out = xp.can_cast(_from, to)
 
-    out = xp.can_cast(from_, to)
+    expected = False
+    for other in dh.all_dtypes:
+        if dh.promotion_table.get((_from, other)) == to:
+            expected = True
+            break
 
     f_func = f"[can_cast({dh.dtype_to_name[_from]}, {dh.dtype_to_name[to]})]"
-    assert isinstance(out, bool), f"{type(out)=}, but should be bool {f_func}"
-    if _from == xp.bool:
-        expected = to == xp.bool
-    else:
-        same_family = None
-        for dtypes in [dh.all_int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]:
-            if _from in dtypes:
-                same_family = to in dtypes
-                break
-        assert same_family is not None  # sanity check
-        if same_family:
-            from_min, from_max = dh.dtype_ranges[_from]
-            to_min, to_max = dh.dtype_ranges[to]
-            expected = from_min >= to_min and from_max <= to_max
-        else:
-            expected = False
     if expected:
         # cross-kind casting is not explicitly disallowed. We can only test
         # the cases where it should return True. TODO: if expected=False,
@@ -142,55 +152,71 @@ def test_can_cast(_from, to, data):
         assert out == expected, f"{out=}, but should be {expected} {f_func}"
 
 
-@pytest.mark.parametrize("dtype_name", dh.real_float_names)
-def test_finfo(dtype_name):
-    try:
-        dtype = getattr(_xp, dtype_name)
-    except AttributeError as e:
-        pytest.skip(str(e))
+@pytest.mark.parametrize("dtype", dh.real_float_dtypes + dh.complex_dtypes)
+def test_finfo(dtype):
+    for arg in (
+        dtype,
+        xp.asarray(1, dtype=dtype),
+        # np.float64 and np.asarray(1, dtype=np.float64).dtype are different
+        xp.asarray(1, dtype=dtype).dtype,
+    ):
+        out = xp.finfo(arg)
+        assert isinstance(out.bits, int)
+        assert isinstance(out.eps, float)
+        assert isinstance(out.max, float)
+        assert isinstance(out.min, float)
+        assert isinstance(out.smallest_normal, float)
+
+
+@pytest.mark.min_version("2022.12")
+@pytest.mark.parametrize("dtype", dh.real_float_dtypes + dh.complex_dtypes)
+def test_finfo_dtype(dtype):
     out = xp.finfo(dtype)
-    f_func = f"[finfo({dh.dtype_to_name[dtype]})]"
-    for attr, stype in [
-        ("bits", int),
-        ("eps", float),
-        ("max", float),
-        ("min", float),
-        ("smallest_normal", float),
-    ]:
-        assert hasattr(out, attr), f"out has no attribute '{attr}' {f_func}"
-        value = getattr(out, attr)
-        assert isinstance(
-            value, stype
-        ), f"type(out.{attr})={type(value)!r}, but should be {stype.__name__} {f_func}"
-    assert hasattr(out, "dtype"), f"out has no attribute 'dtype' {f_func}"
-    # TODO: test values
+
+    if dtype == xp.complex64:
+        assert out.dtype == xp.float32
+    elif dtype == xp.complex128:
+        assert out.dtype == xp.float64
+    else:
+        assert out.dtype == dtype
+
+    # Guard vs. numpy.dtype.__eq__ lax comparison
+    assert not isinstance(out.dtype, str)
+    assert out.dtype is not float
+    assert out.dtype is not complex
 
 
-@pytest.mark.parametrize("dtype_name", dh.all_int_names)
-def test_iinfo(dtype_name):
-    try:
-        dtype = getattr(_xp, dtype_name)
-    except AttributeError as e:
-        pytest.skip(str(e))
+@pytest.mark.parametrize("dtype", dh.int_dtypes + dh.uint_dtypes)
+def test_iinfo(dtype):
+    for arg in (
+        dtype,
+        xp.asarray(1, dtype=dtype),
+        # np.int64 and np.asarray(1, dtype=np.int64).dtype are different
+        xp.asarray(1, dtype=dtype).dtype,
+    ):
+        out = xp.iinfo(arg)
+        assert isinstance(out.bits, int)
+        assert isinstance(out.max, int)
+        assert isinstance(out.min, int)
+
+
+@pytest.mark.min_version("2022.12")
+@pytest.mark.parametrize("dtype", dh.int_dtypes + dh.uint_dtypes)
+def test_iinfo_dtype(dtype):
     out = xp.iinfo(dtype)
-    f_func = f"[iinfo({dh.dtype_to_name[dtype]})]"
-    for attr in ["bits", "max", "min"]:
-        assert hasattr(out, attr), f"out has no attribute '{attr}' {f_func}"
-        value = getattr(out, attr)
-        assert isinstance(
-            value, int
-        ), f"type(out.{attr})={type(value)!r}, but should be int {f_func}"
-    assert hasattr(out, "dtype"), f"out has no attribute 'dtype' {f_func}"
-    # TODO: test values
+    assert out.dtype == dtype
+    # Guard vs. numpy.dtype.__eq__ lax comparison
+    assert not isinstance(out.dtype, str)
+    assert out.dtype is not int
 
 
 def atomic_kinds() -> st.SearchStrategy[Union[DataType, str]]:
-    return xps.scalar_dtypes() | st.sampled_from(list(dh.kind_to_dtypes.keys()))
+    return hh.all_dtypes | st.sampled_from(list(dh.kind_to_dtypes.keys()))
 
 
 @pytest.mark.min_version("2022.12")
 @given(
-    dtype=xps.scalar_dtypes(),
+    dtype=hh.all_dtypes,
     kind=atomic_kinds() | st.lists(atomic_kinds(), min_size=1).map(tuple),
 )
 def test_isdtype(dtype, kind):
@@ -211,7 +237,53 @@ def test_isdtype(dtype, kind):
     assert out == expected, f"{out=}, but should be {expected} [isdtype()]"
 
 
-@given(hh.mutually_promotable_dtypes(None))
-def test_result_type(dtypes):
-    out = xp.result_type(*dtypes)
-    ph.assert_dtype("result_type", in_dtype=dtypes, out_dtype=out, repr_name="out")
+@pytest.mark.min_version("2024.12")
+class TestResultType:
+    @given(dtypes=hh.mutually_promotable_dtypes(None))
+    def test_result_type(self, dtypes):
+        out = xp.result_type(*dtypes)
+        ph.assert_dtype("result_type", in_dtype=dtypes, out_dtype=out, repr_name="out")
+
+    @given(pair=hh.pair_of_mutually_promotable_dtypes(None))
+    def test_shuffled(self, pair):
+        """Test that result_type is insensitive to the order of arguments."""
+        s1, s2 = pair
+        out1 = xp.result_type(*s1)
+        out2 = xp.result_type(*s2)
+        assert out1 == out2
+
+    @given(pair=hh.pair_of_mutually_promotable_dtypes(2), data=st.data())
+    def test_arrays_and_dtypes(self, pair, data):
+        s1, s2 = pair
+        a2 = tuple(xp.empty(1, dtype=dt) for dt in s2)
+        a_and_dt = data.draw(st.permutations(s1 + a2))
+        out = xp.result_type(*a_and_dt)
+        ph.assert_dtype("result_type", in_dtype=s1+s2, out_dtype=out, repr_name="out")
+
+    @given(dtypes=hh.mutually_promotable_dtypes(2), data=st.data())
+    def test_with_scalars(self, dtypes, data):
+        out = xp.result_type(*dtypes)
+
+        if out == xp.bool:
+            scalars = [True]
+        elif out in dh.all_int_dtypes:
+            scalars = [1]
+        elif out in dh.real_dtypes:
+            scalars = [1, 1.0]
+        elif out in dh.numeric_dtypes:
+            scalars = [1, 1.0, 1j]        # numeric_types - real_types == complex_types
+        else:
+            raise ValueError(f"unknown dtype {out = }.")
+
+        scalar = data.draw(st.sampled_from(scalars))
+        inputs = data.draw(st.permutations(dtypes + (scalar,)))
+
+        out_scalar = xp.result_type(*inputs)
+        assert out_scalar == out
+
+        # retry with arrays
+        arrays = tuple(xp.empty(1, dtype=dt) for dt in dtypes)
+        inputs = data.draw(st.permutations(arrays + (scalar,)))
+        out_scalar = xp.result_type(*inputs)
+        assert out_scalar == out
+

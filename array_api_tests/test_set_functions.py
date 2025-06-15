@@ -11,12 +11,11 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps
 
-pytestmark = [pytest.mark.ci, pytest.mark.data_dependent_shapes]
+pytestmark = [pytest.mark.data_dependent_shapes, pytest.mark.unvectorized]
 
 
-@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
+@given(hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_side=1)))
 def test_unique_all(x):
     out = xp.unique_all(x)
 
@@ -116,7 +115,7 @@ def test_unique_all(x):
         assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
 
 
-@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
+@given(hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_side=1)))
 def test_unique_counts(x):
     out = xp.unique_counts(x)
     assert hasattr(out, "values")
@@ -163,7 +162,7 @@ def test_unique_counts(x):
         assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
 
 
-@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
+@given(hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_side=1)))
 def test_unique_inverse(x):
     out = xp.unique_inverse(x)
     assert hasattr(out, "values")
@@ -216,7 +215,7 @@ def test_unique_inverse(x):
         assert nans == expected, f"{nans} NaNs in out.values, but should be {expected}"
 
 
-@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1)))
+@given(hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_side=1)))
 def test_unique_values(x):
     out = xp.unique_values(x)
     ph.assert_dtype("unique_values", in_dtype=x.dtype, out_dtype=out.dtype)

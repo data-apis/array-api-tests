@@ -1,7 +1,7 @@
 import math
 
 import pytest
-from hypothesis import given
+from hypothesis import given, note, assume
 from hypothesis import strategies as st
 
 from . import _array_module as xp
@@ -11,12 +11,13 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 
-pytestmark = pytest.mark.ci
+
+pytestmark = pytest.mark.unvectorized
 
 
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
@@ -35,7 +36,7 @@ def test_argmax(x, data):
     out = xp.argmax(x, **kw)
 
     ph.assert_default_index("argmax", out.dtype)
-    axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "argmax", in_shape=x.shape, out_shape=out.shape, axes=axes, keepdims=keepdims, kw=kw
     )
@@ -53,7 +54,7 @@ def test_argmax(x, data):
 
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
@@ -72,7 +73,7 @@ def test_argmin(x, data):
     out = xp.argmin(x, **kw)
 
     ph.assert_default_index("argmin", out.dtype)
-    axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "argmin", in_shape=x.shape, out_shape=out.shape, axes=axes, keepdims=keepdims, kw=kw
     )
@@ -87,14 +88,60 @@ def test_argmin(x, data):
         ph.assert_scalar_equals("argmin", type_=int, idx=out_idx, out=min_i, expected=expected)
 
 
-@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=()))
+# XXX: the strategy for x is problematic on JAX unless JAX_ENABLE_X64 is on
+# the problem is tha for ints >iinfo(int32) it runs into essentially this:
+#  >>> jnp.asarray[2147483648], dtype=jnp.int64)
+#  .... https://github.com/jax-ml/jax/pull/6047 ...
+# Explicitly limiting the range in elements(...) runs into problems with
+# hypothesis where floating-point numbers are not exactly representable.
+@pytest.mark.min_version("2024.12")
+@given(
+    x=hh.arrays(
+        dtype=hh.all_dtypes,
+        shape=hh.shapes(min_dims=1, min_side=1),
+        elements={"allow_nan": False},
+    ),
+    data=st.data(),
+)
+def test_count_nonzero(x, data):
+    kw = data.draw(
+        hh.kwargs(
+            axis=hh.axes(x.ndim),
+            keepdims=st.booleans(),
+        ),
+        label="kw",
+    )
+    keepdims = kw.get("keepdims", False)
+
+    assume(kw.get("axis", None) != ())  # TODO clarify in the spec
+
+    out = xp.count_nonzero(x, **kw)
+
+    ph.assert_default_index("count_nonzero", out.dtype)
+    axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
+    ph.assert_keepdimable_shape(
+        "count_nonzero", in_shape=x.shape, out_shape=out.shape, axes=axes, keepdims=keepdims, kw=kw
+    )
+    scalar_type = dh.get_scalar_type(x.dtype)
+
+    for indices, out_idx in zip(sh.axes_ndindex(x.shape, axes), sh.ndindex(out.shape)):
+        count = int(out[out_idx])
+        elements = []
+        for idx in indices:
+            s = scalar_type(x[idx])
+            elements.append(s)
+        expected = sum(el != 0 for el in elements)
+        ph.assert_scalar_equals("count_nonzero", type_=int, idx=out_idx, out=count, expected=expected)
+
+
+@given(hh.arrays(dtype=hh.all_dtypes, shape=()))
 def test_nonzero_zerodim_error(x):
     with pytest.raises(Exception):
         xp.nonzero(x)
 
 
 @pytest.mark.data_dependent_shapes
-@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(min_dims=1, min_side=1)))
+@given(hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_dims=1, min_side=1)))
 def test_nonzero(x):
     out = xp.nonzero(x)
     assert len(out) == x.ndim, f"{len(out)=}, but should be {x.ndim=}"
@@ -166,3 +213,37 @@ def test_where(shapes, dtypes, data):
                 out_repr=f"out[{idx}]",
                 out_val=out[idx]
             )
+
+
+@pytest.mark.min_version("2023.12")
+@given(data=st.data())
+def test_searchsorted(data):
+    # TODO: test side="right"
+    # TODO: Allow different dtypes for x1 and x2
+    _x1 = data.draw(
+        st.lists(xps.from_dtype(dh.default_float), min_size=1, unique=True),
+        label="_x1",
+    )
+    x1 = xp.asarray(_x1, dtype=dh.default_float)
+    if data.draw(st.booleans(), label="use sorter?"):
+        sorter = xp.argsort(x1)
+    else:
+        sorter = None
+        x1 = xp.sort(x1)
+    note(f"{x1=}")
+    x2 = data.draw(
+        st.lists(st.sampled_from(_x1), unique=True, min_size=1).map(
+            lambda o: xp.asarray(o, dtype=dh.default_float)
+        ),
+        label="x2",
+    )
+
+    out = xp.searchsorted(x1, x2, sorter=sorter)
+
+    ph.assert_dtype(
+        "searchsorted",
+        in_dtype=[x1.dtype, x2.dtype],
+        out_dtype=out.dtype,
+        expected=xp.__array_namespace_info__().default_dtypes()["indexing"],
+    )
+    # TODO: shapes and values testing

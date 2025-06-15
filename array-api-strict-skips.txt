@@ -1,37 +1,13 @@
-# copy not implemented
-array_api_tests/test_creation_functions.py::test_asarray_arrays
-# https://github.com/numpy/numpy/issues/20870
-array_api_tests/test_data_type_functions.py::test_can_cast
-# The return dtype for trace is not consistent in the spec
-# https://github.com/data-apis/array-api/issues/202#issuecomment-952529197
-array_api_tests/test_linalg.py::test_trace
-# waiting on NumPy to allow/revert distinct NaNs for np.unique
-# https://github.com/numpy/numpy/issues/20326#issuecomment-1012380448
-array_api_tests/test_set_functions.py
-
-# newaxis not included in numpy namespace as of v1.26.2
-array_api_tests/test_constants.py::test_newaxis
-
-# linalg.solve issue in numpy.array_api as of v1.26.2 (see numpy#25146)
-array_api_tests/test_linalg.py::test_solve
-# numpy.array_api needs updating... or replaced on CI
-array_api_tests/test_linalg.py::test_cross
-
-# https://github.com/numpy/numpy/issues/21373
-array_api_tests/test_array_object.py::test_getitem
-
-# missing copy arg
-array_api_tests/test_signatures.py::test_func_signature[reshape]
-
-# does not (yet) raise an exception for zero-dimensional inputs to nonzero
-array_api_tests/test_searching_functions.py::test_nonzero_zerodim_error
-
-# https://github.com/numpy/numpy/issues/21211
-array_api_tests/test_special_cases.py::test_iop[__iadd__(x1_i is -0 and x2_i is -0) -> -0]
+# Known special case issue in NumPy. Not worth working around here
 # https://github.com/numpy/numpy/issues/21213
 array_api_tests/test_special_cases.py::test_iop[__ipow__(x1_i is -infinity and x2_i > 0 and not (x2_i.is_integer() and x2_i % 2 == 1)) -> +infinity]
 array_api_tests/test_special_cases.py::test_iop[__ipow__(x1_i is -0 and x2_i > 0 and not (x2_i.is_integer() and x2_i % 2 == 1)) -> +0]
-# noted diversions from spec
+
+# The test suite is incorrectly checking sums that have loss of significance
+# (https://github.com/data-apis/array-api-tests/issues/168)
+array_api_tests/test_statistical_functions.py::test_sum
+
+# Stubs have a comment: (**note**: libraries may return ``NaN`` to match Python behavior.); Apparently, all libraries do just that
 array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is +infinity and isfinite(x2_i) and x2_i > 0) -> +infinity]
 array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is +infinity and isfinite(x2_i) and x2_i < 0) -> -infinity]
 array_api_tests/test_special_cases.py::test_binary[floor_divide(x1_i is -infinity and isfinite(x2_i) and x2_i > 0) -> -infinity]
@@ -50,3 +26,9 @@ array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(x1_i is -infinity 
 array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(x1_i is -infinity and isfinite(x2_i) and x2_i < 0) -> +infinity]
 array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(isfinite(x1_i) and x1_i > 0 and x2_i is -infinity) -> -0]
 array_api_tests/test_special_cases.py::test_iop[__ifloordiv__(isfinite(x1_i) and x1_i < 0 and x2_i is +infinity) -> -0]
+
+# FIXME needs array-api-strict >=2.3.2
+array_api_tests/test_data_type_functions.py::test_finfo
+array_api_tests/test_data_type_functions.py::test_finfo_dtype
+array_api_tests/test_data_type_functions.py::test_iinfo
+array_api_tests/test_data_type_functions.py::test_iinfo_dtype

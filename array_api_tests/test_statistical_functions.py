@@ -5,17 +5,148 @@ from typing import Optional
 import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
+from ndindex import iter_indices
 
 from . import _array_module as xp
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps
 from ._array_module import _UndefinedStub
 from .typing import DataType
 
-pytestmark = pytest.mark.ci
+
+@pytest.mark.min_version("2023.12")
+@pytest.mark.unvectorized
+@given(
+    x=hh.arrays(
+        dtype=hh.numeric_dtypes,
+        shape=hh.shapes(min_dims=1)),
+    data=st.data(),
+)
+def test_cumulative_sum(x, data):
+    axes = st.integers(-x.ndim, x.ndim - 1)
+    if x.ndim == 1:
+        axes = axes | st.none()
+    axis = data.draw(axes, label='axis')
+    _axis, = sh.normalize_axis(axis, x.ndim)
+    dtype = data.draw(kwarg_dtypes(x.dtype))
+    include_initial = data.draw(st.booleans(), label="include_initial")
+
+    kw = data.draw(
+        hh.specified_kwargs(
+            ("axis", axis, None),
+            ("dtype", dtype, None),
+            ("include_initial", include_initial, False),
+        ),
+        label="kw",
+    )
+
+    out = xp.cumulative_sum(x, **kw)
+
+    expected_shape = list(x.shape)
+    if include_initial:
+        expected_shape[_axis] += 1
+    expected_shape = tuple(expected_shape)
+    ph.assert_shape("cumulative_sum", out_shape=out.shape, expected=expected_shape)
+
+    expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
+    if expected_dtype is None:
+        # If a default uint cannot exist (i.e. in PyTorch which doesn't support
+        # uint32 or uint64), we skip testing the output dtype.
+        # See https://github.com/data-apis/array-api-tests/issues/106
+        if x.dtype in dh.uint_dtypes:
+            assert dh.is_int_dtype(out.dtype)  # sanity check
+    else:
+        ph.assert_dtype("cumulative_sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
+
+    scalar_type = dh.get_scalar_type(out.dtype)
+
+    for x_idx, out_idx, in iter_indices(x.shape, expected_shape, skip_axes=_axis):
+        x_arr = x[x_idx.raw]
+        out_arr = out[out_idx.raw]
+
+        if include_initial:
+            ph.assert_scalar_equals("cumulative_sum", type_=scalar_type, idx=out_idx.raw, out=out_arr[0], expected=0)
+
+        for n in range(x.shape[_axis]):
+            start = 1 if include_initial else 0
+            out_val = out_arr[n + start]
+            assume(cmath.isfinite(out_val))
+            elements = []
+            for idx in range(n + 1):
+                s = scalar_type(x_arr[idx])
+                elements.append(s)
+            expected = sum(elements)
+            if dh.is_int_dtype(out.dtype):
+                m, M = dh.dtype_ranges[out.dtype]
+                assume(m <= expected <= M)
+                ph.assert_scalar_equals("cumulative_sum", type_=scalar_type,
+                                        idx=out_idx.raw, out=out_val,
+                                        expected=expected)
+            else:
+                condition_number = _sum_condition_number(elements)
+                assume(condition_number < 1e6)
+                ph.assert_scalar_isclose("cumulative_sum", type_=scalar_type,
+                                         idx=out_idx.raw, out=out_val,
+                                         expected=expected)
+
+
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.unvectorized
+@given(
+    x=hh.arrays(
+        dtype=hh.numeric_dtypes,
+        shape=hh.shapes(min_dims=1)),
+    data=st.data(),
+)
+def test_cumulative_prod(x, data):
+    axes = st.integers(-x.ndim, x.ndim - 1)
+    if x.ndim == 1:
+        axes = axes | st.none()
+    axis = data.draw(axes, label='axis')
+    _axis, = sh.normalize_axis(axis, x.ndim)
+    dtype = data.draw(kwarg_dtypes(x.dtype))
+    include_initial = data.draw(st.booleans(), label="include_initial")
+
+    kw = data.draw(
+        hh.specified_kwargs(
+            ("axis", axis, None),
+            ("dtype", dtype, None),
+            ("include_initial", include_initial, False),
+        ),
+        label="kw",
+    )
+
+    out = xp.cumulative_prod(x, **kw)
+
+    expected_shape = list(x.shape)
+    if include_initial:
+        expected_shape[_axis] += 1
+    expected_shape = tuple(expected_shape)
+    ph.assert_shape("cumulative_prod", out_shape=out.shape, expected=expected_shape)
+
+    expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
+    if expected_dtype is None:
+        # If a default uint cannot exist (i.e. in PyTorch which doesn't support
+        # uint32 or uint64), we skip testing the output dtype.
+        # See https://github.com/data-apis/array-api-tests/issues/106
+        if x.dtype in dh.uint_dtypes:
+            assert dh.is_int_dtype(out.dtype)  # sanity check
+    else:
+        ph.assert_dtype("cumulative_prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
+
+    scalar_type = dh.get_scalar_type(out.dtype)
+
+    for x_idx, out_idx, in iter_indices(x.shape, expected_shape, skip_axes=_axis):
+        #x_arr = x[x_idx.raw]
+        out_arr = out[out_idx.raw]
+
+        if include_initial:
+            ph.assert_scalar_equals("cumulative_prod", type_=scalar_type, idx=out_idx.raw, out=out_arr[0], expected=1)
+
+        #TODO: add value testing of cumulative_prod
 
 
 def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
@@ -25,9 +156,10 @@ def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
     return st.none() | st.sampled_from(dtypes)
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -40,7 +172,7 @@ def test_max(x, data):
     out = xp.max(x, **kw)
 
     ph.assert_dtype("max", in_dtype=x.dtype, out_dtype=out.dtype)
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "max", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
     )
@@ -57,7 +189,7 @@ def test_max(x, data):
 
 @given(
     x=hh.arrays(
-        dtype=xps.floating_dtypes(),
+        dtype=hh.real_floating_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -70,16 +202,17 @@ def test_mean(x, data):
     out = xp.mean(x, **kw)
 
     ph.assert_dtype("mean", in_dtype=x.dtype, out_dtype=out.dtype)
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "mean", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
     )
     # Values testing mean is too finicky
 
 
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -92,7 +225,7 @@ def test_min(x, data):
     out = xp.min(x, **kw)
 
     ph.assert_dtype("min", in_dtype=x.dtype, out_dtype=out.dtype)
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "min", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
     )
@@ -107,9 +240,20 @@ def test_min(x, data):
         ph.assert_scalar_equals("min", type_=scalar_type, idx=out_idx, out=min_, expected=expected)
 
 
+def _prod_condition_number(elements):
+    # Relative condition number using the infinity norm
+    abs_max = max([abs(i) for i in elements])
+    abs_min = min([abs(i) for i in elements])
+
+    if abs_min == 0:
+        return float('inf')
+
+    return abs_max / abs_min
+
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.numeric_dtypes(),
+        dtype=hh.numeric_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -139,7 +283,7 @@ def test_prod(x, data):
             assert dh.is_int_dtype(out.dtype)  # sanity check
     else:
         ph.assert_dtype("prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "prod", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
     )
@@ -155,13 +299,19 @@ def test_prod(x, data):
         if dh.is_int_dtype(out.dtype):
             m, M = dh.dtype_ranges[out.dtype]
             assume(m <= expected <= M)
-        ph.assert_scalar_equals("prod", type_=scalar_type, idx=out_idx, out=prod, expected=expected)
+            ph.assert_scalar_equals("prod", type_=scalar_type, idx=out_idx,
+                                    out=prod, expected=expected)
+        else:
+            condition_number = _prod_condition_number(elements)
+            assume(condition_number < 1e15)
+            ph.assert_scalar_isclose("prod", type_=scalar_type, idx=out_idx,
+                                     out=prod, expected=expected)
 
 
 @pytest.mark.skip(reason="flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
-        dtype=xps.floating_dtypes(),
+        dtype=hh.real_floating_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ).filter(lambda x: math.prod(x.shape) >= 2),
@@ -169,7 +319,7 @@ def test_prod(x, data):
 )
 def test_std(x, data):
     axis = data.draw(hh.axes(x.ndim), label="axis")
-    _axes = sh.normalise_axis(axis, x.ndim)
+    _axes = sh.normalize_axis(axis, x.ndim)
     N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
     correction = data.draw(
         st.floats(0.0, N, allow_infinity=False, allow_nan=False) | st.integers(0, N),
@@ -195,10 +345,19 @@ def test_std(x, data):
     # We can't easily test the result(s) as standard deviation methods vary a lot
 
 
-@pytest.mark.skip("flaky")  # TODO: fix!
+def _sum_condition_number(elements):
+    sum_abs = sum([abs(i) for i in elements])
+    abs_sum = abs(sum(elements))
+
+    if abs_sum == 0:
+        return float('inf')
+
+    return sum_abs / abs_sum
+
+# @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.numeric_dtypes(),
+        dtype=hh.numeric_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ),
@@ -228,7 +387,7 @@ def test_sum(x, data):
             assert dh.is_int_dtype(out.dtype)  # sanity check
     else:
         ph.assert_dtype("sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     ph.assert_keepdimable_shape(
         "sum", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
     )
@@ -244,13 +403,22 @@ def test_sum(x, data):
         if dh.is_int_dtype(out.dtype):
             m, M = dh.dtype_ranges[out.dtype]
             assume(m <= expected <= M)
-        ph.assert_scalar_equals("sum", type_=scalar_type, idx=out_idx, out=sum_, expected=expected)
+            ph.assert_scalar_equals("sum", type_=scalar_type, idx=out_idx,
+                                    out=sum_, expected=expected)
+        else:
+            # Avoid value testing for ill conditioned summations. See
+            # https://en.wikipedia.org/wiki/Kahan_summation_algorithm#Accuracy and
+            # https://en.wikipedia.org/wiki/Condition_number.
+            condition_number = _sum_condition_number(elements)
+            assume(condition_number < 1e6)
+            ph.assert_scalar_isclose("sum", type_=scalar_type, idx=out_idx, out=sum_, expected=expected)
 
 
+@pytest.mark.unvectorized
 @pytest.mark.skip(reason="flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
-        dtype=xps.floating_dtypes(),
+        dtype=hh.real_floating_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ).filter(lambda x: math.prod(x.shape) >= 2),
@@ -258,7 +426,7 @@ def test_sum(x, data):
 )
 def test_var(x, data):
     axis = data.draw(hh.axes(x.ndim), label="axis")
-    _axes = sh.normalise_axis(axis, x.ndim)
+    _axes = sh.normalize_axis(axis, x.ndim)
     N = sum(side for axis, side in enumerate(x.shape) if axis not in _axes)
     correction = data.draw(
         st.floats(0.0, N, allow_infinity=False, allow_nan=False) | st.integers(0, N),

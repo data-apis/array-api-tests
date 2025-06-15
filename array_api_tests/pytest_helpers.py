@@ -137,6 +137,34 @@ def assert_dtype(
     assert out_dtype == expected, msg
 
 
+def assert_float_to_complex_dtype(
+    func_name: str, *, in_dtype: DataType, out_dtype: DataType
+):
+    if in_dtype == xp.float32:
+        expected = xp.complex64
+    else:
+        assert in_dtype == xp.float64  # sanity check
+        expected = xp.complex128
+    assert_dtype(
+        func_name, in_dtype=in_dtype, out_dtype=out_dtype, expected=expected
+    )
+
+
+def assert_complex_to_float_dtype(
+    func_name: str, *, in_dtype: DataType, out_dtype: DataType, repr_name: str = "out.dtype"
+):
+    if in_dtype == xp.complex64:
+        expected = xp.float32
+    elif in_dtype == xp.complex128:
+        expected = xp.float64
+    else:
+        assert in_dtype in (xp.float32, xp.float64)  # sanity check
+        expected = in_dtype
+    assert_dtype(
+        func_name, in_dtype=in_dtype, out_dtype=out_dtype, expected=expected, repr_name=repr_name
+    )
+
+
 def assert_kw_dtype(
     func_name: str,
     *,
@@ -369,7 +397,7 @@ def assert_scalar_equals(
     kw: dict = {},
 ):
     """
-    Assert a 0d array, convered to a scalar, is as expected, e.g.
+    Assert a 0d array, converted to a scalar, is as expected, e.g.
 
         >>> x = xp.ones(5, dtype=xp.uint8)
         >>> out = xp.sum(x)
@@ -379,6 +407,8 @@ def assert_scalar_equals(
 
         >>> assert int(out) == 5
 
+    NOTE: This function does *exact* comparison, even for floats. For
+    approximate float comparisons use assert_scalar_isclose
     """
     __tracebackhide__ = True
     repr_name = repr_name if idx == () else f"{repr_name}[{idx}]"
@@ -390,8 +420,40 @@ def assert_scalar_equals(
         msg = f"{repr_name}={out}, but should be {expected} [{f_func}]"
         assert cmath.isnan(out), msg
     else:
-        msg = f"{repr_name}={out}, but should be roughly {expected} [{f_func}]"
-        assert cmath.isclose(out, expected, rel_tol=0.25, abs_tol=1), msg
+        msg = f"{repr_name}={out}, but should be {expected} [{f_func}]"
+        assert out == expected, msg
+
+
+def assert_scalar_isclose(
+    func_name: str,
+    *,
+    rel_tol: float = 0.25,
+    abs_tol: float = 1,
+    type_: ScalarType,
+    idx: Shape,
+    out: Scalar,
+    expected: Scalar,
+    repr_name: str = "out",
+    kw: dict = {},
+):
+    """
+    Assert a 0d array, converted to a scalar, is close to the expected value, e.g.
+
+        >>> x = xp.ones(5., dtype=xp.float64)
+        >>> out = xp.sum(x)
+        >>> assert_scalar_isclose('sum', type_int, out=(), out=int(out), expected=5.)
+
+        is equivalent to
+
+        >>> assert math.isclose(float(out) == 5.)
+
+    """
+    __tracebackhide__ = True
+    repr_name = repr_name if idx == () else f"{repr_name}[{idx}]"
+    f_func = f"{func_name}({fmt_kw(kw)})"
+    msg = f"{repr_name}={out}, but should be roughly {expected} [{f_func}]"
+    assert type_ in [float, complex] # Sanity check
+    assert cmath.isclose(out, expected, rel_tol=rel_tol, abs_tol=abs_tol), msg
 
 
 def assert_fill(
@@ -421,6 +483,16 @@ def assert_fill(
         assert xp.all(xp.equal(out, xp.asarray(fill_value, dtype=dtype))), msg
 
 
+def _has_functional_signbit() -> bool:
+    # signbit can be available but not implemented (e.g., in array-api-strict)
+    if not hasattr(_xp, "signbit"):
+        return False
+    try:
+        assert _xp.all(_xp.signbit(_xp.asarray(0.0)) == False)
+    except:
+        return False
+    return True
+
 def _real_float_strict_equals(out: Array, expected: Array) -> bool:
     nan_mask = xp.isnan(out)
     if not xp.all(nan_mask == xp.isnan(expected)):
@@ -429,7 +501,7 @@ def _real_float_strict_equals(out: Array, expected: Array) -> bool:
 
     # Test sign of zeroes if xp.signbit() available, otherwise ignore as it's
     # not that big of a deal for the perf costs.
-    if hasattr(_xp, "signbit"):
+    if _has_functional_signbit():
         out_zero_mask = out == 0
         out_sign_mask = _xp.signbit(out)
         out_pos_zero_mask = out_zero_mask & out_sign_mask
@@ -485,7 +557,7 @@ def assert_array_elements(
         >>> assert xp.all(out == x)
 
     """
-    # __tracebackhide__ = True
+    __tracebackhide__ = True
     dh.result_type(out.dtype, expected.dtype)  # sanity check
     assert_shape(func_name, out_shape=out.shape, expected=expected.shape, kw=kw)  # sanity check
     f_func = f"[{func_name}({fmt_kw(kw)})]"

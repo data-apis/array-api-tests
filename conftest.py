@@ -1,18 +1,38 @@
 from functools import lru_cache
 from pathlib import Path
+import argparse
 import warnings
 import os
 
 from hypothesis import settings
+from hypothesis.errors import InvalidArgument
 from pytest import mark
 
 from array_api_tests import _array_module as xp
 from array_api_tests import api_version
 from array_api_tests._array_module import _UndefinedStub
+from array_api_tests.stubs import EXTENSIONS
+from array_api_tests import xp_name, xp as array_module
 
 from reporting import pytest_metadata, pytest_json_modifyreport, add_extra_json_metadata # noqa
 
-settings.register_profile("xp_default", deadline=800)
+def pytest_report_header(config):
+    disabled_extensions = config.getoption("--disable-extension")
+    enabled_extensions = sorted({
+        ext for ext in EXTENSIONS + ['fft'] if ext not in disabled_extensions and xp_has_ext(ext)
+    })
+
+    try:
+        array_module_version = array_module.__version__
+    except AttributeError:
+        array_module_version = "version unknown"
+
+    # make it easier to catch typos in environment variables (ARRAY_API_*** instead of ARRAY_API_TESTS_*** etc)
+    env_vars = "\n".join([f"{k} = {v}" for k, v in os.environ.items() if 'ARRAY_API' in k])
+    env_vars = f"Environment variables:\n{'-'*22}\n{env_vars}\n\n"
+
+    header1 = f"Array API Tests Module: {xp_name} ({array_module_version}). API Version: {api_version}. Enabled Extensions: {', '.join(enabled_extensions)}"
+    return env_vars + header1
 
 def pytest_addoption(parser):
     # Hypothesis max examples
@@ -21,7 +41,8 @@ def pytest_addoption(parser):
         "--hypothesis-max-examples",
         "--max-examples",
         action="store",
-        default=None,
+        default=100,
+        type=int,
         help="set the Hypothesis max_examples setting",
     )
     # Hypothesis deadline
@@ -54,11 +75,7 @@ def pytest_addoption(parser):
         help="disable testing functions with output shapes dependent on input",
     )
     # CI
-    parser.addoption(
-        "--ci",
-        action="store_true",
-        help="run just the tests appropriate for CI",
-    )
+    parser.addoption("--ci", action="store_true", help=argparse.SUPPRESS )  # deprecated
     parser.addoption(
         "--skips-file",
         action="store",
@@ -78,27 +95,29 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "data_dependent_shapes: output shapes are dependent on inputs"
     )
-    config.addinivalue_line("markers", "ci: primary test")
     config.addinivalue_line(
         "markers",
         "min_version(api_version): run when greater or equal to api_version",
     )
+    config.addinivalue_line(
+        "markers",
+        "unvectorized: asserts against values via element-wise iteration (not performative!)",
+    )
     # Hypothesis
-    hypothesis_max_examples = config.getoption("--hypothesis-max-examples")
-    disable_deadline = config.getoption("--hypothesis-disable-deadline")
-    derandomize = config.getoption("--hypothesis-derandomize")
-    profile_settings = {}
-    if hypothesis_max_examples is not None:
-        profile_settings["max_examples"] = int(hypothesis_max_examples)
-    if disable_deadline:
-        profile_settings["deadline"] = None
-    if derandomize:
-        profile_settings["derandomize"] = True
-    if profile_settings:
-        settings.register_profile("xp_override", **profile_settings)
-        settings.load_profile("xp_override")
-    else:
-        settings.load_profile("xp_default")
+    deadline = None if config.getoption("--hypothesis-disable-deadline") else 800
+    settings.register_profile(
+        "array-api-tests",
+        max_examples=config.getoption("--hypothesis-max-examples"),
+        derandomize=config.getoption("--hypothesis-derandomize"),
+        deadline=deadline,
+    )
+    settings.load_profile("array-api-tests")
+    # CI
+    if config.getoption("--ci"):
+        warnings.warn(
+            "Custom pytest option --ci is deprecated as any tests not for CI "
+            "are now located in meta_tests/"
+        )
 
 
 @lru_cache
@@ -109,7 +128,45 @@ def xp_has_ext(ext: str) -> bool:
         return False
 
 
+def check_id_match(id_, pattern):
+    id_ = id_.removeprefix('array-api-tests/')
+
+    if id_ == pattern:
+        return True
+    
+    if id_.startswith(pattern.removesuffix("/") + "/"):
+        return True
+    
+    if pattern.endswith(".py") and id_.startswith(pattern):
+        return True
+    
+    if id_.split("::", maxsplit=2)[0] == pattern:
+        return True
+    
+    if id_.split("[", maxsplit=2)[0] == pattern:
+        return True
+
+    return False
+
+
+def get_xfail_mark():
+    """Skip or xfail tests from the xfails-file.txt."""
+    m = os.environ.get("ARRAY_API_TESTS_XFAIL_MARK", "xfail")
+    if m == "xfail":
+        return mark.xfail
+    elif m == "skip":
+        return mark.skip
+    else:
+        raise ValueError(
+            f'ARRAY_API_TESTS_XFAIL_MARK value should be one of "skip" or "xfail" '
+            f'got {m} instead.'
+        )
+
+
 def pytest_collection_modifyitems(config, items):
+    # 1. Prepare for iterating over items
+    # -----------------------------------
+
     skips_file = skips_path = config.getoption('--skips-file')
     if skips_file is None:
         skips_file = Path(__file__).parent / "skips.txt"
@@ -144,20 +201,25 @@ def pytest_collection_modifyitems(config, items):
 
     disabled_exts = config.getoption("--disable-extension")
     disabled_dds = config.getoption("--disable-data-dependent-shapes")
-    ci = config.getoption("--ci")
+    unvectorized_max_examples = max(1, config.getoption("--hypothesis-max-examples")//10)
+
+    # 2. Iterate through items and apply markers accordingly
+    # ------------------------------------------------------
+
+    xfail_mark = get_xfail_mark()
 
     for item in items:
         markers = list(item.iter_markers())
         # skip if specified in skips file
         for id_ in skip_ids:
-            if id_ in item.nodeid:
+            if check_id_match(item.nodeid, id_):
                 item.add_marker(mark.skip(reason=f"--skips-file ({skips_file})"))
                 skip_id_matched[id_] = True
                 break
         # xfail if specified in xfails file
         for id_ in xfail_ids:
-            if id_ in item.nodeid:
-                item.add_marker(mark.xfail(reason=f"--xfails-file ({xfails_file})"))
+            if check_id_match(item.nodeid, id_):
+                item.add_marker(xfail_mark(reason=f"--xfails-file ({xfails_file})"))
                 xfail_id_matched[id_] = True
                 break
         # skip if disabled or non-existent extension
@@ -178,11 +240,6 @@ def pytest_collection_modifyitems(config, items):
                         mark.skip(reason="disabled via --disable-data-dependent-shapes")
                     )
                     break
-        # skip if test not appropriate for CI
-        if ci:
-            ci_mark = next((m for m in markers if m.name == "ci"), None)
-            if ci_mark is None:
-                item.add_marker(mark.skip(reason="disabled via --ci"))
         # skip if test is for greater api_version
         ver_mark = next((m for m in markers if m.name == "min_version"), None)
         if ver_mark is not None:
@@ -190,12 +247,27 @@ def pytest_collection_modifyitems(config, items):
             if api_version < min_version:
                 item.add_marker(
                     mark.skip(
-                        reason=f"requires ARRAY_API_TESTS_VERSION=>{min_version}"
+                        reason=f"requires ARRAY_API_TESTS_VERSION >= {min_version}"
                     )
                 )
+        # reduce max generated Hypothesis example for unvectorized tests
+        if any(m.name == "unvectorized" for m in markers):
+            # TODO: limit generated examples when settings already applied
+            if not hasattr(item.obj, "_hypothesis_internal_settings_applied"):
+                try:
+                    item.obj = settings(max_examples=unvectorized_max_examples)(item.obj)
+                except InvalidArgument as e:
+                    warnings.warn(
+                        f"Tried decorating {item.name} with settings() but got "
+                        f"hypothesis.errors.InvalidArgument: {e}"
+                    )
+
+
+    # 3. Warn on bad skipped/xfailed ids
+    # ----------------------------------
 
     bad_ids_end_msg = (
-        "Note the relevant tests might not of been collected by pytest, or "
+        "Note the relevant tests might not have been collected by pytest, or "
         "another specified id might have already matched a test."
     )
     bad_skip_ids = [id_ for id_, matched in skip_id_matched.items() if not matched]

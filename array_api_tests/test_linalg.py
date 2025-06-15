@@ -19,12 +19,15 @@ from hypothesis.strategies import (booleans, composite, tuples, floats,
                                    data)
 from ndindex import iter_indices
 
+import math
 import itertools
+from typing import Tuple
 
 from .array_helpers import assert_exactly_equal, asarray
-from .hypothesis_helpers import (arrays, all_floating_dtypes, xps, shapes,
-                                 kwargs, matrix_shapes, square_matrix_shapes,
-                                 symmetric_matrices,
+from .hypothesis_helpers import (arrays, all_floating_dtypes, all_dtypes,
+                                 numeric_dtypes, xps, shapes, kwargs,
+                                 matrix_shapes, square_matrix_shapes,
+                                 symmetric_matrices, SearchStrategy,
                                  positive_definite_matrices, MAX_ARRAY_SIZE,
                                  invertible_matrices, two_mutual_arrays,
                                  mutually_promotable_dtypes, one_d_shapes,
@@ -35,12 +38,13 @@ from .hypothesis_helpers import (arrays, all_floating_dtypes, xps, shapes,
 from . import dtype_helpers as dh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
+from . import api_version
+from .typing import Array
 
 from . import _array_module
 from . import _array_module as xp
 from ._array_module import linalg
 
-pytestmark = pytest.mark.ci
 
 def assert_equal(x, y, msg_extra=None):
     extra = '' if not msg_extra else f' ({msg_extra})'
@@ -56,6 +60,7 @@ def assert_equal(x, y, msg_extra=None):
         assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype}){extra}"
     else:
         assert_exactly_equal(x, y, msg_extra=msg_extra)
+
 
 def _test_stacks(f, *args, res=None, dims=2, true_val=None,
                  matrix_axes=(-2, -1),
@@ -103,6 +108,7 @@ def _test_stacks(f, *args, res=None, dims=2, true_val=None,
         if true_val:
             assert_equal(decomp_res_stack, true_val(*x_stacks, **kw), msg_extra)
 
+
 def _test_namedtuple(res, fields, func_name):
     """
     Test that res is a namedtuple with the correct fields.
@@ -118,6 +124,8 @@ def _test_namedtuple(res, fields, func_name):
         assert hasattr(res, field), f"{func_name}() result namedtuple doesn't have the '{field}' field"
         assert res[i] is getattr(res, field), f"{func_name}() result namedtuple '{field}' field is not in position {i}"
 
+
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     x=positive_definite_matrices(),
@@ -174,6 +182,7 @@ def cross_args(draw, dtype_objects=dh.real_dtypes):
     )
     return draw(arrays1), draw(arrays2), kw
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     cross_args()
@@ -197,17 +206,18 @@ def test_cross(x1_x2_kw):
 
     def exact_cross(a, b):
         assert a.shape == b.shape == (3,), "Invalid cross() stack shapes. This indicates a bug in the test suite."
-        return asarray([
+        return asarray(xp.stack([
             a[1]*b[2] - a[2]*b[1],
             a[2]*b[0] - a[0]*b[2],
             a[0]*b[1] - a[1]*b[0],
-        ], dtype=res.dtype)
+        ]), dtype=res.dtype)
 
     # We don't want to pass in **kw here because that would pass axis to
     # cross() on a single stack, but the axis is not meaningful on unstacked
     # vectors.
     _test_stacks(linalg.cross, x1, x2, dims=1, matrix_axes=(axis,), res=res, true_val=exact_cross)
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     x=arrays(dtype=all_floating_dtypes(), shape=square_matrix_shapes),
@@ -223,9 +233,10 @@ def test_det(x):
 
     # TODO: Test that res actually corresponds to the determinant of x
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.scalar_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=all_dtypes, shape=matrix_shapes()),
     # offset may produce an overflow if it is too large. Supporting offsets
     # that are way larger than the array shape isn't very important.
     kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
@@ -256,10 +267,11 @@ def test_diagonal(x, kw):
             x_stack_diag = [x_stack[i, i + offset] for i in range(diag_size)]
         else:
             x_stack_diag = [x_stack[i - offset, i] for i in range(diag_size)]
-        return asarray(x_stack_diag, dtype=x.dtype)
+        return asarray(xp.stack(x_stack_diag) if x_stack_diag else [], dtype=x.dtype)
 
     _test_stacks(linalg.diagonal, x, **kw, res=res, dims=1, true_val=true_diag)
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(x=symmetric_matrices(finite=True))
 def test_eigh(x):
@@ -298,6 +310,7 @@ def test_eigh(x):
     # TODO: Test that res actually corresponds to the eigenvalues and
     # eigenvectors of x
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(x=symmetric_matrices(finite=True))
 def test_eigvalsh(x):
@@ -318,6 +331,7 @@ def test_eigvalsh(x):
 
     # TODO: Test that res actually corresponds to the eigenvalues of x
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(x=invertible_matrices())
 def test_inv(x):
@@ -371,6 +385,7 @@ def _test_matmul(namespace, x1, x2):
                                expected=stack_shape + (x1.shape[-2], x2.shape[-1]))
         _test_stacks(matmul, x1, x2, res=res)
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     *two_mutual_arrays(dh.real_dtypes)
@@ -378,12 +393,14 @@ def _test_matmul(namespace, x1, x2):
 def test_linalg_matmul(x1, x2):
     return _test_matmul(linalg, x1, x2)
 
+@pytest.mark.unvectorized
 @given(
     *two_mutual_arrays(dh.real_dtypes)
 )
 def test_matmul(x1, x2):
     return _test_matmul(_array_module, x1, x2)
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     x=finite_matrices(),
@@ -401,7 +418,8 @@ def test_matrix_norm(x, kw):
         expected_shape = x.shape[:-2] + (1, 1)
     else:
         expected_shape = x.shape[:-2]
-    ph.assert_dtype("matrix_norm", in_dtype=x.dtype, out_dtype=res.dtype)
+    ph.assert_complex_to_float_dtype("matrix_norm", in_dtype=x.dtype,
+                                     out_dtype=res.dtype)
     ph.assert_result_shape("matrix_norm", in_shapes=[x.shape],
                            out_shape=res.shape, expected=expected_shape)
 
@@ -409,6 +427,7 @@ def test_matrix_norm(x, kw):
                  res=res)
 
 matrix_power_n = shared(integers(-100, 100), key='matrix_power n')
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     # Generate any square matrix if n >= 0 but only invertible matrices if n < 0
@@ -432,6 +451,7 @@ def test_matrix_power(x, n):
     func = lambda x: linalg.matrix_power(x, n)
     _test_stacks(func, x, res=res, true_val=true_val)
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     x=finite_matrices(shape=rtol_shared_matrix_shapes),
@@ -456,15 +476,17 @@ def _test_matrix_transpose(namespace, x):
 
     _test_stacks(matrix_transpose, x, res=res, true_val=true_val)
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.scalar_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=all_dtypes, shape=matrix_shapes()),
 )
 def test_linalg_matrix_transpose(x):
     return _test_matrix_transpose(linalg, x)
 
+@pytest.mark.unvectorized
 @given(
-    x=arrays(dtype=xps.scalar_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=all_dtypes, shape=matrix_shapes()),
 )
 def test_matrix_transpose(x):
     return _test_matrix_transpose(_array_module, x)
@@ -502,6 +524,7 @@ def test_outer(x1, x2):
 def test_pinv(x, kw):
     linalg.pinv(x, **kw)
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     x=arrays(dtype=all_floating_dtypes(), shape=matrix_shapes()),
@@ -544,6 +567,7 @@ def test_qr(x, kw):
     # Check that R is upper-triangular.
     assert_exactly_equal(R, _array_module.triu(R))
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     x=arrays(dtype=all_floating_dtypes(), shape=square_matrix_shapes),
@@ -589,7 +613,7 @@ def test_slogdet(x):
     # TODO: Test this when we have tests for floating-point values.
     # assert all(abs(linalg.det(x) - sign*exp(logabsdet)) < eps)
 
-def solve_args():
+def solve_args() -> Tuple[SearchStrategy[Array], SearchStrategy[Array]]:
     """
     Strategy for the x1 and x2 arguments to test_solve()
 
@@ -597,32 +621,45 @@ def solve_args():
     of shape (..., M, M), and x2 is either shape (M,) or (..., M, K),
     where the ... parts of x1 and x2 are broadcast compatible.
     """
+    mutual_dtypes = shared(mutually_promotable_dtypes(dtypes=dh.all_float_dtypes))
+
     stack_shapes = shared(two_mutually_broadcastable_shapes)
     # Don't worry about dtypes since all floating dtypes are type promotable
     # with each other.
-    x1 = shared(invertible_matrices(stack_shapes=stack_shapes.map(lambda pair:
-                                                                  pair[0])))
+    x1 = shared(invertible_matrices(
+        stack_shapes=stack_shapes.map(lambda pair: pair[0]),
+        dtypes=mutual_dtypes.map(lambda pair: pair[0])))
 
     @composite
     def _x2_shapes(draw):
-        end = draw(integers(0, SQRT_MAX_ARRAY_SIZE))
-        return draw(stack_shapes)[1] + draw(x1).shape[-1:] + (end,)
+        base_shape = draw(stack_shapes)[1] + draw(x1).shape[-1:]
+        end = draw(integers(0, SQRT_MAX_ARRAY_SIZE // max(math.prod(base_shape), 1)))
+        return base_shape + (end,)
 
     x2_shapes = one_of(x1.map(lambda x: (x.shape[-1],)), _x2_shapes())
-    x2 = arrays(dtype=all_floating_dtypes(), shape=x2_shapes)
+    x2 = arrays(shape=x2_shapes, dtype=mutual_dtypes.map(lambda pair: pair[1]))
     return x1, x2
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(*solve_args())
 def test_solve(x1, x2):
     res = linalg.solve(x1, x2)
 
+    ph.assert_dtype("solve", in_dtype=[x1.dtype, x2.dtype], out_dtype=res.dtype)
     if x2.ndim == 1:
+        expected_shape = x1.shape[:-2] + x2.shape[-1:]
         _test_stacks(linalg.solve, x1, x2, res=res, dims=1,
                      matrix_axes=[(-2, -1), (0,)], res_axes=[-1])
     else:
+        stack_shape = sh.broadcast_shapes(x1.shape[:-2], x2.shape[:-2])
+        expected_shape = stack_shape + x2.shape[-2:]
         _test_stacks(linalg.solve, x1, x2, res=res, dims=2)
 
+    ph.assert_result_shape("solve", in_shapes=[x1.shape, x2.shape],
+                           out_shape=res.shape, expected=expected_shape)
+
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     x=finite_matrices(),
@@ -641,8 +678,8 @@ def test_svd(x, kw):
 
     ph.assert_dtype("svd", in_dtype=x.dtype, out_dtype=U.dtype,
                     expected=x.dtype, repr_name="U.dtype")
-    ph.assert_dtype("svd", in_dtype=x.dtype, out_dtype=S.dtype,
-                    expected=x.dtype, repr_name="S.dtype")
+    ph.assert_complex_to_float_dtype("svd", in_dtype=x.dtype,
+                                      out_dtype=S.dtype, repr_name="S.dtype")
     ph.assert_dtype("svd", in_dtype=x.dtype, out_dtype=Vh.dtype,
                     expected=x.dtype, repr_name="Vh.dtype")
 
@@ -673,6 +710,7 @@ def test_svd(x, kw):
     _test_stacks(lambda x: linalg.svd(x, **kw).S, x, dims=1, res=S)
     _test_stacks(lambda x: linalg.svd(x, **kw).Vh, x, res=Vh)
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     x=finite_matrices(),
@@ -683,8 +721,8 @@ def test_svdvals(x):
     *stack, M, N = x.shape
     K = min(M, N)
 
-    ph.assert_dtype("svdvals", in_dtype=x.dtype, out_dtype=res.dtype,
-                    expected=x.dtype)
+    ph.assert_complex_to_float_dtype("svdvals", in_dtype=x.dtype,
+                                     out_dtype=res.dtype)
     ph.assert_result_shape("svdvals", in_shapes=[x.shape],
                            out_shape=res.shape,
                            expected=(*stack, K))
@@ -806,6 +844,7 @@ def _test_tensordot(namespace, x1, x2, kw):
                            expected=result_shape)
     _test_tensordot_stacks(x1, x2, kw, res)
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     *two_mutual_arrays(dh.numeric_dtypes, two_shapes=tensordot_shapes()),
@@ -814,6 +853,7 @@ def _test_tensordot(namespace, x1, x2, kw):
 def test_linalg_tensordot(x1, x2, kw):
     _test_tensordot(linalg, x1, x2, kw)
 
+@pytest.mark.unvectorized
 @given(
     *two_mutual_arrays(dh.numeric_dtypes, two_shapes=tensordot_shapes()),
     tensordot_kw,
@@ -821,9 +861,10 @@ def test_linalg_tensordot(x1, x2, kw):
 def test_tensordot(x1, x2, kw):
     _test_tensordot(_array_module, x1, x2, kw)
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
-    x=arrays(dtype=xps.numeric_dtypes(), shape=matrix_shapes()),
+    x=arrays(dtype=numeric_dtypes, shape=matrix_shapes()),
     # offset may produce an overflow if it is too large. Supporting offsets
     # that are way larger than the array shape isn't very important.
     kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
@@ -839,7 +880,7 @@ def test_trace(x, kw):
         # See https://github.com/data-apis/array-api-tests/issues/160
         if x.dtype in dh.uint_dtypes:
             assert dh.is_int_dtype(res.dtype)  # sanity check
-    else:
+    elif api_version < "2023.12":  # TODO: update dtype assertion for >2023.12 - see #234
         ph.assert_dtype("trace", in_dtype=x.dtype, out_dtype=res.dtype, expected=expected_dtype)
 
     n, m = x.shape[-2:]
@@ -860,9 +901,20 @@ def test_trace(x, kw):
             x_stack_diag = [x_stack[i, i + offset] for i in range(diag_size)]
         else:
             x_stack_diag = [x_stack[i - offset, i] for i in range(diag_size)]
-        return _array_module.sum(asarray(x_stack_diag, dtype=x.dtype))
+        result = xp.asarray(xp.stack(x_stack_diag) if x_stack_diag else [], dtype=x.dtype)
+        return _array_module.sum(result)
+
 
     _test_stacks(linalg.trace, x, **kw, res=res, dims=0, true_val=true_trace)
+
+
+def _conj(x):
+    # XXX: replace with xp.dtype when all array libraries implement it 
+    if x.dtype in (xp.complex64, xp.complex128):
+        return xp.conj(x)
+    else:
+        return x
+
 
 def _test_vecdot(namespace, x1, x2, data):
     vecdot = namespace.vecdot
@@ -888,16 +940,14 @@ def _test_vecdot(namespace, x1, x2, data):
     ph.assert_result_shape("vecdot", in_shapes=[x1.shape, x2.shape],
                            out_shape=res.shape, expected=expected_shape)
 
-    if x1.dtype in dh.int_dtypes:
-        def true_val(x, y, axis=-1):
-            return xp.sum(xp.multiply(x, y), dtype=res.dtype)
-    else:
-        true_val = None
+    def true_val(x, y, axis=-1):
+        return xp.sum(xp.multiply(_conj(x), y), dtype=res.dtype)
 
     _test_stacks(vecdot, x1, x2, res=res, dims=0,
                  matrix_axes=(axis,), true_val=true_val)
 
 
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     *two_mutual_arrays(dh.numeric_dtypes, mutually_broadcastable_shapes(2, min_dims=1)),
@@ -906,6 +956,8 @@ def _test_vecdot(namespace, x1, x2, data):
 def test_linalg_vecdot(x1, x2, data):
     _test_vecdot(linalg, x1, x2, data)
 
+
+@pytest.mark.unvectorized
 @given(
     *two_mutual_arrays(dh.numeric_dtypes, mutually_broadcastable_shapes(2, min_dims=1)),
     data(),
@@ -913,10 +965,23 @@ def test_linalg_vecdot(x1, x2, data):
 def test_vecdot(x1, x2, data):
     _test_vecdot(_array_module, x1, x2, data)
 
+
+@pytest.mark.xp_extension('linalg')
+def test_vecdot_conj():
+    # no-hypothesis test to check that the 1st argument is in fact conjugated
+    x1 = xp.asarray([1j, 2j, 3j])
+    x2 = xp.asarray([1, 2j, 3])
+
+    import cmath
+    assert cmath.isclose(complex(xp.linalg.vecdot(x1, x2)), 4 - 10j)
+
+
 # Insanely large orders might not work. There isn't a limit specified in the
 # spec, so we just limit to reasonable values here.
 max_ord = 100
 
+
+@pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(
     x=arrays(dtype=all_floating_dtypes(), shape=shapes(min_side=1)),
@@ -940,7 +1005,7 @@ def test_vector_norm(x, data):
     # TODO: Check that the ord values give the correct norms.
     # ord = kw.get('ord', 2)
 
-    _axes = sh.normalise_axis(axis, x.ndim)
+    _axes = sh.normalize_axis(axis, x.ndim)
 
     ph.assert_keepdimable_shape('linalg.vector_norm', out_shape=res.shape,
                                 in_shape=x.shape, axes=_axes,

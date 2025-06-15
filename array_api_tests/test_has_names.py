@@ -9,8 +9,6 @@ from . import xp
 from .stubs import (array_attributes, array_methods, category_to_funcs,
                     extension_to_funcs, EXTENSIONS)
 
-pytestmark = pytest.mark.ci
-
 has_name_params = []
 for ext, stubs in extension_to_funcs.items():
     for stub in stubs:

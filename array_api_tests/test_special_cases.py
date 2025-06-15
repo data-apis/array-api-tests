@@ -19,23 +19,21 @@ import re
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_EVEN, Decimal
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple
-from warnings import warn
+from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Literal
+from warnings import warn, filterwarnings, catch_warnings
 
 import pytest
-from hypothesis import assume, given, note
+from hypothesis import given, note, settings, assume
 from hypothesis import strategies as st
+from hypothesis.errors import NonInteractiveExampleWarning
 
 from array_api_tests.typing import Array, DataType
 
 from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
-from . import shape_helpers as sh
 from . import xp, xps
 from .stubs import category_to_funcs
-
-pytestmark = pytest.mark.ci
 
 UnaryCheck = Callable[[float], bool]
 BinaryCheck = Callable[[float, float], bool]
@@ -497,6 +495,7 @@ def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
 class Case(Protocol):
     cond_expr: str
     result_expr: str
+    raw_case: Optional[str]
 
     def cond(self, *args) -> bool:
         ...
@@ -535,6 +534,7 @@ class UnaryCase(Case):
     cond_from_dtype: FromDtypeFunc
     cond: UnaryCheck
     check_result: UnaryResultCheck
+    raw_case: Optional[str] = field(default=None)
 
 
 r_unary_case = re.compile("If ``x_i`` is (.+), the result is (.+)")
@@ -544,6 +544,10 @@ r_already_int_case = re.compile(
 r_even_round_halves_case = re.compile(
     "If two integers are equally close to ``x_i``, "
     "the result is the even integer closest to ``x_i``"
+)
+r_nan_signbit = re.compile(
+    "If ``x_i`` is ``NaN`` and the sign bit of ``x_i`` is ``(.+)``, "
+    "the result is ``(.+)``"
 )
 
 
@@ -600,6 +604,25 @@ even_round_halves_case = UnaryCase(
 )
 
 
+def make_nan_signbit_case(signbit: Literal[0, 1], expected: bool) -> UnaryCase:
+    if signbit:
+        sign = -1
+        nan_expr = "-NaN"
+        float_arg = "-nan"
+    else:
+        sign = 1
+        nan_expr = "+NaN"
+        float_arg = "nan"
+
+    return UnaryCase(
+        cond_expr=f"x_i is {nan_expr}",
+        cond=lambda i: math.isnan(i) and math.copysign(1, i) == sign,
+        cond_from_dtype=lambda _: st.just(float(float_arg)),
+        result_expr=str(expected),
+        check_result=lambda _, result: result == float(expected),
+    )
+
+
 def make_unary_check_result(check_just_result: UnaryCheck) -> UnaryResultCheck:
     def check_result(i: float, result: float) -> bool:
         return check_just_result(result)
@@ -607,7 +630,7 @@ def make_unary_check_result(check_just_result: UnaryCheck) -> UnaryResultCheck:
     return check_result
 
 
-def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
+def parse_unary_case_block(case_block: str, func_name: str) -> List[UnaryCase]:
     """
     Parses a Sphinx-formatted docstring of a unary function to return a list of
     codified unary cases, e.g.
@@ -638,7 +661,7 @@ def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
         ...     '''
         ...
         >>> case_block = r_case_block.search(sqrt.__doc__).group(1)
-        >>> unary_cases = parse_unary_case_block(case_block)
+        >>> unary_cases = parse_unary_case_block(case_block, 'sqrt')
         >>> for case in unary_cases:
         ...     print(repr(case))
         UnaryCase(<x_i < 0 -> NaN>)
@@ -656,16 +679,20 @@ def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
     cases = []
     for case_m in r_case.finditer(case_block):
         case_str = case_m.group(1)
-        if m := r_already_int_case.search(case_str):
+        if r_already_int_case.search(case_str):
             cases.append(already_int_case)
-        elif m := r_even_round_halves_case.search(case_str):
+        elif r_even_round_halves_case.search(case_str):
             cases.append(even_round_halves_case)
+        elif m := r_nan_signbit.search(case_str):
+            signbit = parse_value(m.group(1))
+            expected = bool(parse_value(m.group(2)))
+            cases.append(make_nan_signbit_case(signbit, expected))
         elif m := r_unary_case.search(case_str):
             try:
                 cond, cond_expr_template, cond_from_dtype = parse_cond(m.group(1))
                 _check_result, result_expr = parse_result(m.group(2))
             except ParseError as e:
-                warn(f"not machine-readable: '{e.value}'")
+                warn(f"case for {func_name} not machine-readable: '{e.value}'")
                 continue
             cond_expr = cond_expr_template.replace("{}", "x_i")
             # Do not define check_result in this function's body - see
@@ -677,11 +704,12 @@ def parse_unary_case_block(case_block: str) -> List[UnaryCase]:
                 cond_from_dtype=cond_from_dtype,
                 result_expr=result_expr,
                 check_result=check_result,
+                raw_case=case_str,
             )
             cases.append(case)
         else:
             if not r_remaining_case.search(case_str):
-                warn(f"case not machine-readable: '{case_str}'")
+                warn(f"case for {func_name} not machine-readable: '{case_str}'")
     return cases
 
 
@@ -703,6 +731,7 @@ class BinaryCase(Case):
     x2_cond_from_dtype: FromDtypeFunc
     cond: BinaryCond
     check_result: BinaryResultCheck
+    raw_case: Optional[str] = field(default=None)
 
 
 r_binary_case = re.compile("If (.+), the result (.+)")
@@ -940,11 +969,17 @@ def parse_binary_case(case_str: str) -> BinaryCase:
                 def partial_cond(i1: float, i2: float) -> bool:
                     return math.copysign(1, i1) == math.copysign(1, i2)
 
+                x1_cond_from_dtypes.append(BoundFromDtype(kwargs={"min_value": 1}))
+                x2_cond_from_dtypes.append(BoundFromDtype(kwargs={"min_value": 1}))
+
             elif value_str == "different mathematical signs":
                 partial_expr = "copysign(1, x1_i) != copysign(1, x2_i)"
 
                 def partial_cond(i1: float, i2: float) -> bool:
                     return math.copysign(1, i1) != math.copysign(1, i2)
+
+                x1_cond_from_dtypes.append(BoundFromDtype(kwargs={"min_value": 1}))
+                x2_cond_from_dtypes.append(BoundFromDtype(kwargs={"max_value": -1}))
 
             else:
                 unary_cond, expr_template, cond_from_dtype = parse_cond(value_str)
@@ -1061,13 +1096,14 @@ def parse_binary_case(case_str: str) -> BinaryCase:
         x2_cond_from_dtype=x2_cond_from_dtype,
         result_expr=result_expr,
         check_result=check_result,
+        raw_case=case_str,
     )
 
 
 r_redundant_case = re.compile("result.+determined by the rule already stated above")
 
 
-def parse_binary_case_block(case_block: str) -> List[BinaryCase]:
+def parse_binary_case_block(case_block: str, func_name: str) -> List[BinaryCase]:
     """
     Parses a Sphinx-formatted docstring of a binary function to return a list of
     codified binary cases, e.g.
@@ -1098,7 +1134,7 @@ def parse_binary_case_block(case_block: str) -> List[BinaryCase]:
         ...     '''
         ...
         >>> case_block = r_case_block.search(logaddexp.__doc__).group(1)
-        >>> binary_cases = parse_binary_case_block(case_block)
+        >>> binary_cases = parse_binary_case_block(case_block, 'logaddexp')
         >>> for case in binary_cases:
         ...     print(repr(case))
         BinaryCase(<x1_i == NaN or x2_i == NaN -> NaN>)
@@ -1116,10 +1152,10 @@ def parse_binary_case_block(case_block: str) -> List[BinaryCase]:
                 case = parse_binary_case(case_str)
                 cases.append(case)
             except ParseError as e:
-                warn(f"not machine-readable: '{e.value}'")
+                warn(f"case for {func_name} not machine-readable: '{e.value}'")
         else:
             if not r_remaining_case.match(case_str):
-                warn(f"case not machine-readable: '{case_str}'")
+                warn(f"case for {func_name} not machine-readable: '{case_str}'")
     return cases
 
 
@@ -1128,8 +1164,9 @@ binary_params = []
 iop_params = []
 func_to_op: Dict[str, str] = {v: k for k, v in dh.op_to_func.items()}
 for stub in category_to_funcs["elementwise"]:
+    func_name = stub.__name__
     if stub.__doc__ is None:
-        warn(f"{stub.__name__}() stub has no docstring")
+        warn(f"{func_name}() stub has no docstring")
         continue
     if m := r_case_block.search(stub.__doc__):
         case_block = m.group(1)
@@ -1137,10 +1174,10 @@ for stub in category_to_funcs["elementwise"]:
         continue
     marks = []
     try:
-        func = getattr(xp, stub.__name__)
+        func = getattr(xp, func_name)
     except AttributeError:
         marks.append(
-            pytest.mark.skip(reason=f"{stub.__name__} not found in array module")
+            pytest.mark.skip(reason=f"{func_name} not found in array module")
         )
         func = None
     sig = inspect.signature(stub)
@@ -1149,10 +1186,10 @@ for stub in category_to_funcs["elementwise"]:
         warn(f"{func=} has no parameters")
         continue
     if param_names[0] == "x":
-        if cases := parse_unary_case_block(case_block):
-            name_to_func = {stub.__name__: func}
-            if stub.__name__ in func_to_op.keys():
-                op_name = func_to_op[stub.__name__]
+        if cases := parse_unary_case_block(case_block, func_name):
+            name_to_func = {func_name: func}
+            if func_name in func_to_op.keys():
+                op_name = func_to_op[func_name]
                 op = getattr(operator, op_name)
                 name_to_func[op_name] = op
             for func_name, func in name_to_func.items():
@@ -1161,20 +1198,20 @@ for stub in category_to_funcs["elementwise"]:
                     p = pytest.param(func_name, func, case, id=id_)
                     unary_params.append(p)
         else:
-            warn(f"Special cases found for {stub.__name__} but none were parsed")
+            warn(f"Special cases found for {func_name} but none were parsed")
         continue
     if len(sig.parameters) == 1:
         warn(f"{func=} has one parameter '{param_names[0]}' which is not named 'x'")
         continue
     if param_names[0] == "x1" and param_names[1] == "x2":
-        if cases := parse_binary_case_block(case_block):
-            name_to_func = {stub.__name__: func}
-            if stub.__name__ in func_to_op.keys():
-                op_name = func_to_op[stub.__name__]
+        if cases := parse_binary_case_block(case_block, func_name):
+            name_to_func = {func_name: func}
+            if func_name in func_to_op.keys():
+                op_name = func_to_op[func_name]
                 op = getattr(operator, op_name)
                 name_to_func[op_name] = op
                 # We collect inplace operator test cases seperately
-                if "equal" in stub.__name__:
+                if "equal" in func_name:
                     continue
                 iop_name = "__i" + op_name[2:]
                 iop = getattr(operator, iop_name)
@@ -1188,7 +1225,7 @@ for stub in category_to_funcs["elementwise"]:
                     p = pytest.param(func_name, func, case, id=id_)
                     binary_params.append(p)
         else:
-            warn(f"Special cases found for {stub.__name__} but none were parsed")
+            warn(f"Special cases found for {func_name} but none were parsed")
         continue
     else:
         warn(
@@ -1213,139 +1250,62 @@ assert len(iop_params) != 0
 
 
 @pytest.mark.parametrize("func_name, func, case", unary_params)
-@given(
-    x=hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
-    data=st.data(),
-)
-def test_unary(func_name, func, case, x, data):
-    set_idx = data.draw(
-        xps.indices(x.shape, max_dims=0, allow_ellipsis=False), label="set idx"
+def test_unary(func_name, func, case):
+    with catch_warnings():
+        # XXX: We are using example here to generate one example draw, but
+        # hypothesis issues a warning from this. We should consider either
+        # drawing multiple examples like a normal test, or just hard-coding a
+        # single example test case without using hypothesis.
+        filterwarnings('ignore', category=NonInteractiveExampleWarning)
+        in_value = case.cond_from_dtype(xp.float64).example()
+    x = xp.asarray(in_value, dtype=xp.float64)
+    out = func(x)
+    out_value = float(out)
+    assert case.check_result(in_value, out_value), (
+        f"out={out_value}, but should be {case.result_expr} [{func_name}()]\n"
     )
-    set_value = data.draw(case.cond_from_dtype(x.dtype), label="set value")
-    x[set_idx] = set_value
-    note(f"{x=}")
-
-    res = func(x)
-
-    good_example = False
-    for idx in sh.ndindex(res.shape):
-        in_ = float(x[idx])
-        if case.cond(in_):
-            good_example = True
-            out = float(res[idx])
-            f_in = f"{sh.fmt_idx('x', idx)}={in_}"
-            f_out = f"{sh.fmt_idx('out', idx)}={out}"
-            assert case.check_result(in_, out), (
-                f"{f_out}, but should be {case.result_expr} [{func_name}()]\n"
-                f"condition: {case.cond_expr}\n"
-                f"{f_in}"
-            )
-            break
-    assume(good_example)
-
-
-x1_strat, x2_strat = hh.two_mutual_arrays(
-    dtypes=dh.real_float_dtypes,
-    two_shapes=hh.mutually_broadcastable_shapes(2, min_side=1),
-)
 
 
 @pytest.mark.parametrize("func_name, func, case", binary_params)
-@given(x1=x1_strat, x2=x2_strat, data=st.data())
-def test_binary(func_name, func, case, x1, x2, data):
-    result_shape = sh.broadcast_shapes(x1.shape, x2.shape)
-    all_indices = list(sh.iter_indices(x1.shape, x2.shape, result_shape))
+@settings(max_examples=1)
+@given(data=st.data())
+def test_binary(func_name, func, case, data):
+    # We don't use example() like in test_unary because the same internal shared
+    # strategies used in both x1's and x2's don't "sync" with example() draws.
+    x1_value = data.draw(case.x1_cond_from_dtype(xp.float64), label="x1_value")
+    x2_value = data.draw(case.x2_cond_from_dtype(xp.float64), label="x2_value")
+    x1 = xp.asarray(x1_value, dtype=xp.float64)
+    x2 = xp.asarray(x2_value, dtype=xp.float64)
 
-    indices_strat = st.shared(st.sampled_from(all_indices))
-    set_x1_idx = data.draw(indices_strat.map(lambda t: t[0]), label="set x1 idx")
-    set_x1_value = data.draw(case.x1_cond_from_dtype(x1.dtype), label="set x1 value")
-    x1[set_x1_idx] = set_x1_value
-    note(f"{x1=}")
-    set_x2_idx = data.draw(indices_strat.map(lambda t: t[1]), label="set x2 idx")
-    set_x2_value = data.draw(case.x2_cond_from_dtype(x2.dtype), label="set x2 value")
-    x2[set_x2_idx] = set_x2_value
-    note(f"{x2=}")
+    out = func(x1, x2)
+    out_value = float(out)
 
-    res = func(x1, x2)
-    # sanity check
-    ph.assert_result_shape(
-        func_name,
-        in_shapes=[x1.shape, x2.shape],
-        out_shape=res.shape,
-        expected=result_shape,
+    assert case.check_result(x1_value, x2_value, out_value), (
+        f"out={out_value}, but should be {case.result_expr} [{func_name}()]\n"
+        f"condition: {case}\n"
+        f"x1={x1_value}, x2={x2_value}"
     )
 
-    good_example = False
-    for l_idx, r_idx, o_idx in all_indices:
-        l = float(x1[l_idx])
-        r = float(x2[r_idx])
-        if case.cond(l, r):
-            good_example = True
-            o = float(res[o_idx])
-            f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
-            f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
-            f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
-            assert case.check_result(l, r, o), (
-                f"{f_out}, but should be {case.result_expr} [{func_name}()]\n"
-                f"condition: {case}\n"
-                f"{f_left}, {f_right}"
-            )
-            break
-    assume(good_example)
 
 
 @pytest.mark.parametrize("iop_name, iop, case", iop_params)
-@given(
-    oneway_dtypes=hh.oneway_promotable_dtypes(dh.real_float_dtypes),
-    oneway_shapes=hh.oneway_broadcastable_shapes(),
-    data=st.data(),
-)
-def test_iop(iop_name, iop, case, oneway_dtypes, oneway_shapes, data):
-    x1 = data.draw(
-        hh.arrays(dtype=oneway_dtypes.result_dtype, shape=oneway_shapes.result_shape),
-        label="x1",
+@settings(max_examples=1)
+@given(data=st.data())
+def test_iop(iop_name, iop, case, data):
+    # See test_binary comment
+    x1_value = data.draw(case.x1_cond_from_dtype(xp.float64), label="x1_value")
+    x2_value = data.draw(case.x2_cond_from_dtype(xp.float64), label="x2_value")
+    x1 = xp.asarray(x1_value, dtype=xp.float64)
+    x2 = xp.asarray(x2_value, dtype=xp.float64)
+
+    res = iop(x1, x2)
+    res_value = float(res)
+
+    assert case.check_result(x1_value, x2_value, res_value), (
+        f"x1={res}, but should be {case.result_expr} [{func_name}()]\n"
+        f"condition: {case}\n"
+        f"x1={x1_value}, x2={x2_value}"
     )
-    x2 = data.draw(
-        hh.arrays(dtype=oneway_dtypes.input_dtype, shape=oneway_shapes.input_shape),
-        label="x2",
-    )
-
-    all_indices = list(sh.iter_indices(x1.shape, x2.shape, x1.shape))
-
-    indices_strat = st.shared(st.sampled_from(all_indices))
-    set_x1_idx = data.draw(indices_strat.map(lambda t: t[0]), label="set x1 idx")
-    set_x1_value = data.draw(case.x1_cond_from_dtype(x1.dtype), label="set x1 value")
-    x1[set_x1_idx] = set_x1_value
-    note(f"{x1=}")
-    set_x2_idx = data.draw(indices_strat.map(lambda t: t[1]), label="set x2 idx")
-    set_x2_value = data.draw(case.x2_cond_from_dtype(x2.dtype), label="set x2 value")
-    x2[set_x2_idx] = set_x2_value
-    note(f"{x2=}")
-
-    res = xp.asarray(x1, copy=True)
-    res = iop(res, x2)
-    # sanity check
-    ph.assert_result_shape(
-        iop_name, in_shapes=[x1.shape, x2.shape], out_shape=res.shape
-    )
-
-    good_example = False
-    for l_idx, r_idx, o_idx in all_indices:
-        l = float(x1[l_idx])
-        r = float(x2[r_idx])
-        if case.cond(l, r):
-            good_example = True
-            o = float(res[o_idx])
-            f_left = f"{sh.fmt_idx('x1', l_idx)}={l}"
-            f_right = f"{sh.fmt_idx('x2', r_idx)}={r}"
-            f_out = f"{sh.fmt_idx('out', o_idx)}={o}"
-            assert case.check_result(l, r, o), (
-                f"{f_out}, but should be {case.result_expr} [{iop_name}()]\n"
-                f"condition: {case}\n"
-                f"{f_left}, {f_right}"
-            )
-            break
-    assume(good_example)
 
 
 @pytest.mark.parametrize(
@@ -1371,18 +1331,20 @@ def test_empty_arrays(func_name, expected):  # TODO: parse docstrings to get exp
 
 
 @pytest.mark.parametrize(
-    "func_name", [f.__name__ for f in category_to_funcs["statistical"]]
+    "func_name", [f.__name__ for f in category_to_funcs["statistical"]
+                  if f.__name__ not in ['cumulative_sum', 'cumulative_prod']]
 )
 @given(
-    x=hh.arrays(dtype=xps.floating_dtypes(), shape=hh.shapes(min_side=1)),
+    x=hh.arrays(dtype=hh.real_floating_dtypes, shape=hh.shapes(min_side=1)),
     data=st.data(),
 )
 def test_nan_propagation(func_name, x, data):
     func = getattr(xp, func_name)
-    set_idx = data.draw(
-        xps.indices(x.shape, max_dims=0, allow_ellipsis=False), label="set idx"
+    nan_positions = data.draw(
+        hh.arrays(dtype=hh.bool_dtype, shape=x.shape), label="nan_positions"
     )
-    x[set_idx] = float("nan")
+    assume(xp.any(nan_positions))
+    x = xp.where(nan_positions, xp.asarray(float("nan")), x)
     note(f"{x=}")
 
     out = func(x)

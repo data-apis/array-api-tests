@@ -3,8 +3,8 @@
 This is the test suite for array libraries adopting the [Python Array API
 standard](https://data-apis.org/array-api/latest).
 
-Note the suite is still a **work in progress**. Feedback and contributions are
-welcome!
+Keeping full coverage of the spec is an on-going priority as the Array API evolves.
+Feedback and contributions are welcome!
 
 ## Quickstart
 
@@ -33,10 +33,28 @@ You need to specify the array library to test. It can be specified via the
 `ARRAY_API_TESTS_MODULE` environment variable, e.g.
 
 ```bash
-$ export ARRAY_API_TESTS_MODULE=numpy.array_api
+$ export ARRAY_API_TESTS_MODULE=array_api_strict
+```
+
+To specify a runtime-defined module, define `xp` using the `exec('...')` syntax:
+
+```bash
+$ export ARRAY_API_TESTS_MODULE="exec('import quantity_array, numpy; xp = quantity_array.quantity_namespace(numpy)')"
 ```
 
 Alternately, import/define the `xp` variable in `array_api_tests/__init__.py`.
+
+### Specifying the API version
+
+You can specify the API version to use when testing via the
+`ARRAY_API_TESTS_VERSION` environment variable, e.g.
+
+```bash
+$ export ARRAY_API_TESTS_VERSION="2023.12"
+```
+
+Currently this defaults to the array module's `__array_api_version__` value, and
+if that attribute doesn't exist then we fallback to `"2021.12"`.
 
 ### Run the suite
 
@@ -138,9 +156,9 @@ issues](https://github.com/data-apis/array-api-tests/issues/) to us.
 
 ## Running on CI
 
-See our existing [GitHub Actions workflow for
-Numpy](https://github.com/data-apis/array-api-tests/blob/master/.github/workflows/numpy.yml)
-for an example of using the test suite on CI.
+See our existing [GitHub Actions workflow for `array-api-strict`](https://github.com/data-apis/array-api-tests/blob/master/.github/workflows/test.yml)
+for an example of using the test suite on CI. Note [`array-api-strict`](https://github.com/data-apis/array-api-strict)
+is an implementation of the array API that uses NumPy under the hood.
 
 ### Releases
 
@@ -153,19 +171,6 @@ new tests (or improvements to existing tests) may cause a previously passing
 library to fail.
 
 ### Configuration
-
-#### API version
-
-You can specify the API version to use when testing via the
-`ARRAY_API_TESTS_VERSION` environment variable. Currently this defaults to the
-array module's `__array_api_version__` value, and if that attribute doesn't
-exist then we fallback to `"2021.12"`.
-
-#### CI flag
-
-Use the `--ci` flag to run only the primary and special cases tests. You can
-ignore the other test cases as they are redundant for the purposes of checking
-compliance.
 
 #### Data-dependent shapes
 
@@ -260,7 +265,7 @@ jobs:
 > There are several ways to avoid this problem:
 >
 > - Increase the maximum number of examples, e.g., by adding `--max-examples
->   200` to the test command (the default is `100`, see below). This will
+>   200` to the test command (the default is `20`, see below). This will
 >   make it more likely that the failing case will be found, but it will also
 >   make the tests take longer to run.
 > - Don't use `-o xfail_strict=True`. This will make it so that if an XFAIL
@@ -281,10 +286,43 @@ jobs:
 The tests make heavy use
 [Hypothesis](https://hypothesis.readthedocs.io/en/latest/). You can configure
 how many examples are generated using the `--max-examples` flag, which
-defaults to `100`. Lower values can be useful for quick checks, and larger
+defaults to `20`. Lower values can be useful for quick checks, and larger
 values should result in more rigorous runs. For example, `--max-examples
 10_000` may find bugs where default runs don't but will take much longer to
 run.
+
+#### Skipping Dtypes
+
+The test suite will automatically skip testing of inessential dtypes if they
+are not present on the array module namespace, but dtypes can also be skipped
+manually by setting the environment variable `ARRAY_API_TESTS_SKIP_DTYPES` to
+a comma separated list of dtypes to skip. For example
+
+```
+ARRAY_API_TESTS_SKIP_DTYPES=uint16,uint32,uint64 pytest array_api_tests/
+```
+
+Note that skipping certain essential dtypes such as `bool` and the default
+floating-point dtype is not supported.
+
+#### Turning xfails into skips
+
+Keeping a large number of ``xfails`` can have drastic effects on the run time. This is due
+to the way `hypothesis` works: when it detects a failure, it does a large amount
+of work to simplify the failing example.
+If the run time of the test suite becomes a problem, you can use the
+``ARRAY_API_TESTS_XFAIL_MARK`` environment variable: setting it to ``skip`` skips the
+entries from the ``xfail.txt`` file instead of xfailing them. Anecdotally, we saw
+speed-ups by a factor of 4-5---which allowed us to use 4-5 larger values of
+``--max-examples`` within the same time budget.
+
+#### Limiting the array sizes
+
+The test suite generates random arrays as inputs to functions it tests. "unvectorized"
+tests iterate over elements of arrays, which might be slow. If the run time becomes
+a problem, you can limit the maximum number of elements in generated arrays by
+setting the environment variable ``ARRAY_API_TESTS_MAX_ARRAY_SIZE`` to the
+desired value. By default, it is set to 1024.
 
 
 ## Contributing
@@ -354,26 +392,6 @@ GitHub](https://github.com/data-apis/array-api-tests/tags) and convert the tag
 into a release. If you want, you can add release notes, which GitHub can
 generate for you.
 
-
-## Future plans
-
-Keeping full coverage of the spec is an on-going priority as the Array API
-evolves.
-
-Additionally, we have features and general improvements planned. Work on such
-functionality is guided primarily by the concerete needs of developers
-implementing and using the Array API—be sure to [let us
-know](https://github.com/data-apis/array-api-tests/issues) any limitations you
-come across.
-
-* A dependency graph for every test case, which could be used to modify pytest's
-  collection so that low-dependency tests are run first, and tests with faulty
-  dependencies would skip/xfail.
-
-* In some tests we've found it difficult to find appropaite assertion parameters
-  for output values (particularly epsilons for floating-point outputs), so we
-  need to review these and either implement assertions or properly note the lack
-  thereof.
 
 ---
 

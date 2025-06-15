@@ -11,10 +11,7 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps
 from .typing import Scalar, Shape
-
-pytestmark = pytest.mark.ci
 
 
 def assert_scalar_in_set(
@@ -32,9 +29,10 @@ def assert_scalar_in_set(
 
 
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
@@ -58,7 +56,7 @@ def test_argsort(x, data):
     ph.assert_default_index("argsort", out.dtype)
     ph.assert_shape("argsort", out_shape=out.shape, expected=x.shape, kw=kw)
     axis = kw.get("axis", -1)
-    axes = sh.normalise_axis(axis, x.ndim)
+    axes = sh.normalize_axis(axis, x.ndim)
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices in sh.axes_ndindex(x.shape, axes):
         elements = [scalar_type(x[idx]) for idx in indices]
@@ -91,10 +89,11 @@ def test_argsort(x, data):
                     )
 
 
+@pytest.mark.unvectorized
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
 @given(
     x=hh.arrays(
-        dtype=xps.real_dtypes(),
+        dtype=hh.real_dtypes,
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
@@ -118,7 +117,7 @@ def test_sort(x, data):
     ph.assert_dtype("sort", out_dtype=out.dtype, in_dtype=x.dtype)
     ph.assert_shape("sort", out_shape=out.shape, expected=x.shape, kw=kw)
     axis = kw.get("axis", -1)
-    axes = sh.normalise_axis(axis, x.ndim)
+    axes = sh.normalize_axis(axis, x.ndim)
     scalar_type = dh.get_scalar_type(x.dtype)
     for indices in sh.axes_ndindex(x.shape, axes):
         elements = [scalar_type(x[idx]) for idx in indices]

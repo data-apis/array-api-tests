@@ -13,10 +13,7 @@ from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
-from . import xp as _xp
 from .typing import DataType, Index, Param, Scalar, ScalarType, Shape
-
-pytestmark = pytest.mark.ci
 
 
 def scalar_objects(
@@ -29,9 +26,9 @@ def scalar_objects(
     )
 
 
-def normalise_key(key: Index, shape: Shape) -> Tuple[Union[int, slice], ...]:
+def normalize_key(key: Index, shape: Shape) -> Tuple[Union[int, slice], ...]:
     """
-    Normalise an indexing key.
+    Normalize an indexing key.
 
     * If a non-tuple index, wrap as a tuple.
     * Represent ellipsis as equivalent slices.
@@ -51,7 +48,7 @@ def get_indexed_axes_and_out_shape(
     key: Tuple[Union[int, slice, None], ...], shape: Shape
 ) -> Tuple[Tuple[Sequence[int], ...], Shape]:
     """
-    From the (normalised) key and input shape, calculates:
+    From the (normalized) key and input shape, calculates:
 
     * indexed_axes: For each dimension, the axes which the key indexes.
     * out_shape: The resulting shape of indexing an array (of the input shape)
@@ -77,7 +74,7 @@ def get_indexed_axes_and_out_shape(
     return tuple(axes_indices), tuple(out_shape)
 
 
-@given(shape=hh.shapes(), dtype=xps.scalar_dtypes(), data=st.data())
+@given(shape=hh.shapes(), dtype=hh.all_dtypes, data=st.data())
 def test_getitem(shape, dtype, data):
     zero_sided = any(side == 0 for side in shape)
     if zero_sided:
@@ -91,7 +88,7 @@ def test_getitem(shape, dtype, data):
     out = x[key]
 
     ph.assert_dtype("__getitem__", in_dtype=x.dtype, out_dtype=out.dtype)
-    _key = normalise_key(key, shape)
+    _key = normalize_key(key, shape)
     axes_indices, expected_shape = get_indexed_axes_and_out_shape(_key, shape)
     ph.assert_shape("__getitem__", out_shape=out.shape, expected=expected_shape)
     out_zero_sided = any(side == 0 for side in expected_shape)
@@ -107,6 +104,7 @@ def test_getitem(shape, dtype, data):
         ph.assert_array_elements("__getitem__", out=out, expected=expected)
 
 
+@pytest.mark.unvectorized
 @given(
     shape=hh.shapes(),
     dtypes=hh.oneway_promotable_dtypes(dh.all_dtypes),
@@ -121,7 +119,7 @@ def test_setitem(shape, dtypes, data):
         x = xp.asarray(obj, dtype=dtypes.result_dtype)
     note(f"{x=}")
     key = data.draw(xps.indices(shape=shape), label="key")
-    _key = normalise_key(key, shape)
+    _key = normalize_key(key, shape)
     axes_indices, out_shape = get_indexed_axes_and_out_shape(_key, shape)
     value_strat = hh.arrays(dtype=dtypes.result_dtype, shape=out_shape)
     if out_shape == ():
@@ -154,10 +152,11 @@ def test_setitem(shape, dtypes, data):
         )
 
 
+@pytest.mark.unvectorized
 @pytest.mark.data_dependent_shapes
 @given(hh.shapes(), st.data())
 def test_getitem_masking(shape, data):
-    x = data.draw(hh.arrays(xps.scalar_dtypes(), shape=shape), label="x")
+    x = data.draw(hh.arrays(hh.all_dtypes, shape=shape), label="x")
     mask_shapes = st.one_of(
         st.sampled_from([x.shape, ()]),
         st.lists(st.booleans(), min_size=x.ndim, max_size=x.ndim).map(
@@ -199,9 +198,10 @@ def test_getitem_masking(shape, data):
                 )
 
 
+@pytest.mark.unvectorized
 @given(hh.shapes(), st.data())
 def test_setitem_masking(shape, data):
-    x = data.draw(hh.arrays(xps.scalar_dtypes(), shape=shape), label="x")
+    x = data.draw(hh.arrays(hh.all_dtypes, shape=shape), label="x")
     key = data.draw(hh.arrays(dtype=xp.bool, shape=shape), label="key")
     value = data.draw(
         hh.from_dtype(x.dtype) | hh.arrays(dtype=x.dtype, shape=()), label="value"
@@ -242,27 +242,97 @@ def test_setitem_masking(shape, data):
             )
 
 
+# ### Fancy indexing ###
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.unvectorized
+@pytest.mark.parametrize("idx_max_dims", [1, None])
+@given(shape=hh.shapes(min_dims=2), data=st.data())
+def test_getitem_arrays_and_ints_1(shape, data, idx_max_dims):
+    # min_dims=2 : test multidim `x` arrays
+    # index arrays are 1D for idx_max_dims=1 and multidim for idx_max_dims=None
+    _test_getitem_arrays_and_ints(shape, data, idx_max_dims)
+
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.unvectorized
+@pytest.mark.parametrize("idx_max_dims", [1, None])
+@given(shape=hh.shapes(min_dims=1), data=st.data())
+def test_getitem_arrays_and_ints_2(shape, data, idx_max_dims):
+    # min_dims=1 : favor 1D `x` arrays
+    # index arrays are 1D for idx_max_dims=1 and multidim for idx_max_dims=None
+    _test_getitem_arrays_and_ints(shape, data, idx_max_dims)
+
+
+def _test_getitem_arrays_and_ints(shape, data, idx_max_dims):
+    assume((len(shape) > 0) and all(sh > 0 for sh in shape))
+
+    dtype = xp.int32
+    obj = data.draw(scalar_objects(dtype, shape), label="obj")
+    x = xp.asarray(obj, dtype=dtype)
+
+    # draw a mix of ints and index arrays
+    arr_index = [data.draw(st.booleans()) for _ in range(len(shape))]
+    assume(sum(arr_index) > 0)
+
+    # draw shapes for index arrays: max_dims=1 ==> 1D indexing arrays ONLY
+    #                               max_dims=None ==> multidim indexing arrays
+    if sum(arr_index) > 0:
+        index_shapes = data.draw(
+            hh.mutually_broadcastable_shapes(
+                sum(arr_index), min_dims=1, max_dims=idx_max_dims, min_side=1
+            )
+        )
+        index_shapes = list(index_shapes)
+
+    # prepare the indexing tuple, a mix of integer indices and index arrays
+    key = []
+    for i,typ in enumerate(arr_index):
+        if typ:
+            # draw an array index
+            this_idx = data.draw(
+                xps.arrays(
+                    dtype,
+                    shape=index_shapes.pop(),
+                    elements=st.integers(0, shape[i]-1)
+                )
+            )
+            key.append(this_idx)
+
+        else:
+            # draw an integer
+            key.append(data.draw(st.integers(-shape[i], shape[i]-1)))
+
+    key = tuple(key)
+    out = x[key]
+
+    arrays = [xp.asarray(k) for k in key]
+    bcast_shape = sh.broadcast_shapes(*[arr.shape for arr in arrays])
+    bcast_key = [xp.broadcast_to(arr, bcast_shape) for arr in arrays]
+
+    for idx in sh.ndindex(bcast_shape):
+        tpl = tuple(k[idx] for k in bcast_key)
+        assert out[idx] == x[tpl], f"failing at {idx = } w/ {key = }"
+
+
 def make_scalar_casting_param(
-    method_name: str, dtype_name: DataType, stype: ScalarType
+    method_name: str, dtype: DataType, stype: ScalarType
 ) -> Param:
+    dtype_name = dh.dtype_to_name[dtype]
     return pytest.param(
-        method_name, dtype_name, stype, id=f"{method_name}({dtype_name})"
+        method_name, dtype, stype, id=f"{method_name}({dtype_name})"
     )
 
 
 @pytest.mark.parametrize(
-    "method_name, dtype_name, stype",
-    [make_scalar_casting_param("__bool__", "bool", bool)]
-    + [make_scalar_casting_param("__int__", n, int) for n in dh.all_int_names]
-    + [make_scalar_casting_param("__index__", n, int) for n in dh.all_int_names]
-    + [make_scalar_casting_param("__float__", n, float) for n in dh.real_float_names],
+    "method_name, dtype, stype",
+    [make_scalar_casting_param("__bool__", xp.bool, bool)]
+    + [make_scalar_casting_param("__int__", n, int) for n in dh.all_int_dtypes]
+    + [make_scalar_casting_param("__index__", n, int) for n in dh.all_int_dtypes]
+    + [make_scalar_casting_param("__float__", n, float) for n in dh.real_float_dtypes],
 )
 @given(data=st.data())
-def test_scalar_casting(method_name, dtype_name, stype, data):
-    try:
-        dtype = getattr(_xp, dtype_name)
-    except AttributeError as e:
-        pytest.skip(str(e))
+def test_scalar_casting(method_name, dtype, stype, data):
     x = data.draw(hh.arrays(dtype, shape=()), label="x")
     method = getattr(x, method_name)
     out = method()

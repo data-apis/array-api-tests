@@ -14,11 +14,6 @@ from . import shape_helpers as sh
 from . import xps
 from .typing import Array, Shape
 
-pytestmark = pytest.mark.ci
-
-MAX_SIDE = hh.MAX_ARRAY_SIZE // 64
-MAX_DIMS = min(hh.MAX_ARRAY_SIZE // MAX_SIDE, 32)  # NumPy only supports up to 32 dims
-
 
 def shared_shapes(*args, **kwargs) -> st.SearchStrategy[Shape]:
     key = "shape"
@@ -48,6 +43,7 @@ def assert_array_ndindex(
             assert out[out_idx] == x[x_idx], msg
 
 
+@pytest.mark.unvectorized
 @given(
     dtypes=hh.mutually_promotable_dtypes(None, dtypes=dh.numeric_dtypes),
     base_shape=hh.shapes(),
@@ -67,7 +63,7 @@ def test_concat(dtypes, base_shape, data):
         shape_strat = hh.shapes()
     else:
         _axis = axis if axis >= 0 else len(base_shape) + axis
-        shape_strat = st.integers(0, MAX_SIDE).map(
+        shape_strat = st.integers(0, hh.MAX_SIDE).map(
             lambda i: base_shape[:_axis] + (i,) + base_shape[_axis + 1 :]
         )
     arrays = []
@@ -121,8 +117,9 @@ def test_concat(dtypes, base_shape, data):
                     )
 
 
+@pytest.mark.unvectorized
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=shared_shapes()),
     axis=shared_shapes().flatmap(
         # Generate both valid and invalid axis
         lambda s: st.integers(2 * (-len(s) - 1), 2 * len(s))
@@ -149,9 +146,55 @@ def test_expand_dims(x, axis):
     )
 
 
+@pytest.mark.min_version("2023.12")
+@given(x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_dims=1)), data=st.data())
+def test_moveaxis(x, data):
+    source = data.draw(
+        st.integers(-x.ndim, x.ndim - 1) | xps.valid_tuple_axes(x.ndim), label="source"
+    )
+    if isinstance(source, int):
+        destination = data.draw(st.integers(-x.ndim, x.ndim - 1), label="destination")
+    else:
+        assert isinstance(source, tuple)  # sanity check
+        destination = data.draw(
+            st.lists(
+                st.integers(-x.ndim, x.ndim - 1),
+                min_size=len(source),
+                max_size=len(source),
+                unique_by=lambda n: n if n >= 0 else x.ndim + n,
+            ).map(tuple),
+            label="destination"
+        )
+
+    out = xp.moveaxis(x, source, destination)
+
+    ph.assert_dtype("moveaxis", in_dtype=x.dtype, out_dtype=out.dtype)
+
+
+    _source = sh.normalize_axis(source, x.ndim)
+    _destination = sh.normalize_axis(destination, x.ndim)
+
+    new_axes = [n for n in range(x.ndim) if n not in _source]
+
+    for dest, src in sorted(zip(_destination, _source)):
+        new_axes.insert(dest, src)
+
+    expected_shape = tuple(x.shape[i] for i in new_axes)
+
+    ph.assert_result_shape("moveaxis", in_shapes=[x.shape],
+                           out_shape=out.shape, expected=expected_shape,
+                           kw={"source": source, "destination": destination})
+
+    indices = list(sh.ndindex(x.shape))
+    permuted_indices = [tuple(idx[axis] for axis in new_axes) for idx in indices]
+    assert_array_ndindex(
+        "moveaxis", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=permuted_indices
+    )
+
+@pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=xps.scalar_dtypes(), shape=hh.shapes(min_side=1).filter(lambda s: 1 in s)
+        dtype=hh.all_dtypes, shape=hh.shapes(min_side=1).filter(lambda s: 1 in s)
     ),
     data=st.data(),
 )
@@ -164,7 +207,7 @@ def test_squeeze(x, data):
     )
 
     axes = (axis,) if isinstance(axis, int) else axis
-    axes = sh.normalise_axis(axes, x.ndim)
+    axes = sh.normalize_axis(axes, x.ndim)
 
     squeezable_axes = [i for i, side in enumerate(x.shape) if side == 1]
     if any(i not in squeezable_axes for i in axes):
@@ -186,8 +229,9 @@ def test_squeeze(x, data):
     assert_array_ndindex("squeeze", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=sh.ndindex(out.shape))
 
 
+@pytest.mark.unvectorized
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes()),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes()),
     data=st.data(),
 )
 def test_flip(x, data):
@@ -203,15 +247,16 @@ def test_flip(x, data):
 
     ph.assert_dtype("flip", in_dtype=x.dtype, out_dtype=out.dtype)
 
-    _axes = sh.normalise_axis(kw.get("axis", None), x.ndim)
+    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
     for indices in sh.axes_ndindex(x.shape, _axes):
         reverse_indices = indices[::-1]
         assert_array_ndindex("flip", x, x_indices=indices, out=out,
                              out_indices=reverse_indices, kw=kw)
 
 
+@pytest.mark.unvectorized
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes(min_dims=1)),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=shared_shapes(min_dims=1)),
     axes=shared_shapes(min_dims=1).flatmap(
         lambda s: st.lists(
             st.integers(0, len(s) - 1),
@@ -239,25 +284,75 @@ def test_permute_dims(x, axes):
                          out_indices=permuted_indices)
 
 
-@st.composite
-def reshape_shapes(draw, shape):
-    size = 1 if len(shape) == 0 else math.prod(shape)
-    rshape = draw(st.lists(st.integers(0)).filter(lambda s: math.prod(s) == size))
-    assume(all(side <= MAX_SIDE for side in rshape))
-    if len(rshape) != 0 and size > 0 and draw(st.booleans()):
-        index = draw(st.integers(0, len(rshape) - 1))
-        rshape[index] = -1
-    return tuple(rshape)
-
-
-@pytest.mark.skip("flaky")  # TODO: fix!
+@pytest.mark.min_version("2023.12")
 @given(
-    x=hh.arrays(dtype=xps.scalar_dtypes(), shape=hh.shapes(max_side=MAX_SIDE)),
+    x=hh.arrays(dtype=hh.all_dtypes, shape=shared_shapes(min_dims=1)),
+    kw=hh.kwargs(
+        axis=st.none() | shared_shapes(min_dims=1).flatmap(
+            lambda s: st.integers(-len(s), len(s) - 1)
+        )
+    ),
     data=st.data(),
 )
-def test_reshape(x, data):
-    shape = data.draw(reshape_shapes(x.shape))
+def test_repeat(x, kw, data):
+    shape = x.shape
+    axis = kw.get("axis", None)
+    size = math.prod(shape) if axis is None else shape[axis]
+    repeat_strat = st.integers(1, 10)
+    repeats = data.draw(repeat_strat
+                        | hh.arrays(dtype=hh.int_dtypes, elements=repeat_strat,
+                                    shape=st.sampled_from([(1,), (size,)])),
+        label="repeats")
+    if isinstance(repeats, int):
+        n_repititions = size*repeats
+    else:
+        if repeats.shape == (1,):
+            n_repititions = size*int(repeats[0])
+        else:
+            n_repititions = int(xp.sum(repeats))
 
+    assume(n_repititions <= hh.SQRT_MAX_ARRAY_SIZE)
+
+    out = xp.repeat(x, repeats, **kw)
+    ph.assert_dtype("repeat", in_dtype=x.dtype, out_dtype=out.dtype)
+    if axis is None:
+        expected_shape = (n_repititions,)
+    else:
+        expected_shape = list(shape)
+        expected_shape[axis] = n_repititions
+        expected_shape = tuple(expected_shape)
+    ph.assert_shape("repeat", out_shape=out.shape, expected=expected_shape)
+
+    # Test values
+
+    if isinstance(repeats, int):
+        repeats_array = xp.full(size, repeats, dtype=xp.int32)
+    else:
+        repeats_array = repeats
+
+    if kw.get("axis") is None:
+        x = xp.reshape(x, (-1,))
+        axis = 0
+
+    for idx, in sh.iter_indices(x.shape, skip_axes=axis):
+        x_slice = x[idx]
+        out_slice = out[idx]
+        start = 0
+        for i, count in enumerate(repeats_array):
+            end = start + count
+            ph.assert_array_elements("repeat", out=out_slice[start:end],
+                                     expected=xp.full((count,), x_slice[i], dtype=x.dtype),
+                                     kw=kw)
+            start = end
+
+reshape_shape = st.shared(hh.shapes(), key="reshape_shape")
+
+@pytest.mark.unvectorized
+@given(
+    x=hh.arrays(dtype=hh.all_dtypes, shape=reshape_shape),
+    shape=hh.reshape_shapes(reshape_shape),
+)
+def test_reshape(x, shape):
     out = xp.reshape(x, shape)
 
     ph.assert_dtype("reshape", in_dtype=x.dtype, out_dtype=out.dtype)
@@ -282,7 +377,8 @@ def roll_ndindex(shape: Shape, shifts: Tuple[int], axes: Tuple[int]) -> Iterator
         yield tuple((i + sh) % si for i, sh, si in zip(idx, all_shifts, shape))
 
 
-@given(hh.arrays(dtype=xps.scalar_dtypes(), shape=shared_shapes()), st.data())
+@pytest.mark.unvectorized
+@given(hh.arrays(dtype=hh.all_dtypes, shape=shared_shapes()), st.data())
 def test_roll(x, data):
     shift_strat = st.integers(-hh.MAX_ARRAY_SIZE, hh.MAX_ARRAY_SIZE)
     if x.ndim > 0:
@@ -316,11 +412,12 @@ def test_roll(x, data):
         assert_array_ndindex("roll", x, x_indices=indices, out=out, out_indices=shifted_indices, kw=kw)
     else:
         shifts = (shift,) if isinstance(shift, int) else shift
-        axes = sh.normalise_axis(kw["axis"], x.ndim)
+        axes = sh.normalize_axis(kw["axis"], x.ndim)
         shifted_indices = roll_ndindex(x.shape, shifts, axes)
         assert_array_ndindex("roll", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=shifted_indices, kw=kw)
 
 
+@pytest.mark.unvectorized
 @given(
     shape=shared_shapes(min_dims=1),
     dtypes=hh.mutually_promotable_dtypes(None),
@@ -365,3 +462,52 @@ def test_stack(shape, dtypes, kw, data):
                     out_val=out[out_idx],
                     kw=kw,
                 )
+
+
+@pytest.mark.min_version("2023.12")
+@given(x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes()), data=st.data())
+def test_tile(x, data):
+    repetitions = data.draw(
+        st.lists(st.integers(1, 4), min_size=1, max_size=x.ndim + 1).map(tuple),
+        label="repetitions"
+    )
+    out = xp.tile(x, repetitions)
+    ph.assert_dtype("tile", in_dtype=x.dtype, out_dtype=out.dtype)
+    # TODO: values testing
+
+    # shape check; the notation is from the Array API docs
+    N, M = len(x.shape), len(repetitions)
+    if N > M:
+        S = x.shape
+        R = (1,)*(N - M) + repetitions
+    else:
+        S = (1,)*(M - N) + x.shape
+        R = repetitions
+
+    assert out.shape == tuple(r*s for r, s in zip(R, S))
+
+
+@pytest.mark.min_version("2023.12")
+@given(x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_dims=1)), data=st.data())
+def test_unstack(x, data):
+    axis = data.draw(st.integers(min_value=-x.ndim, max_value=x.ndim - 1), label="axis")
+    kw = data.draw(hh.specified_kwargs(("axis", axis, 0)), label="kw")
+    out = xp.unstack(x, **kw)
+
+    assert isinstance(out, tuple)
+    assert len(out) == x.shape[axis]
+    expected_shape = list(x.shape)
+    expected_shape.pop(axis)
+    expected_shape = tuple(expected_shape)
+    for i in range(x.shape[axis]):
+        arr = out[i]
+        ph.assert_result_shape("unstack", in_shapes=[x.shape],
+                               out_shape=arr.shape, expected=expected_shape,
+                               kw=kw, repr_name=f"out[{i}].shape")
+
+        ph.assert_dtype("unstack", in_dtype=x.dtype, out_dtype=arr.dtype,
+                        repr_name=f"out[{i}].dtype")
+
+        idx = [slice(None)] * x.ndim
+        idx[axis] = i
+        ph.assert_array_elements("unstack", out=arr, expected=x[tuple(idx)], kw=kw, out_repr=f"out[{i}]")

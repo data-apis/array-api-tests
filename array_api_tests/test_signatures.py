@@ -31,9 +31,8 @@ import pytest
 
 from . import dtype_helpers as dh
 from . import xp
-from .stubs import array_methods, category_to_funcs, extension_to_funcs, name_to_func
-
-pytestmark = pytest.mark.ci
+from .stubs import (array_methods, category_to_funcs, extension_to_funcs,
+                    name_to_func, info_funcs)
 
 ParameterKind = Literal[
     Parameter.POSITIONAL_ONLY,
@@ -137,6 +136,7 @@ func_to_specified_arg_exprs = defaultdict(
         "solve": {
             a: "xp.asarray([[1, 2], [3, 4]], dtype=xp.float64)" for a in ["x1", "x2"]
         },
+        "outer": {"x1": "xp.ones((5,))", "x2": "xp.ones((5,))"},
     },
 )
 # We default most array arguments heuristically. As functions/methods work only
@@ -309,3 +309,15 @@ def test_array_method_signature(stub: FunctionType):
     assert hasattr(x, stub.__name__), f"{stub.__name__} not found in array object {x!r}"
     method = getattr(x, stub.__name__)
     _test_func_signature(method, stub, is_method=True)
+
+if info_funcs: # pytest fails collecting if info_funcs is empty
+    @pytest.mark.min_version("2023.12")
+    @pytest.mark.parametrize("stub", info_funcs, ids=lambda f: f.__name__)
+    def test_info_func_signature(stub: FunctionType):
+        try:
+            info_namespace = xp.__array_namespace_info__()
+        except Exception as e:
+            raise AssertionError(f"Could not get info namespace from xp.__array_namespace_info__(): {e}")
+
+        func = getattr(info_namespace, stub.__name__)
+        _test_func_signature(func, stub)

@@ -33,6 +33,8 @@ def to_json_serializable(o):
         return tuple(to_json_serializable(i) for i in o)
     if isinstance(o, list):
         return [to_json_serializable(i) for i in o]
+    if callable(o):
+        return repr(o)
 
     # Ensure everything is JSON serializable. If this warning is issued, it
     # means the given type needs to be added above if possible.
@@ -103,7 +105,7 @@ def pytest_json_modifyreport(json_report):
     # doesn't store a full stack of where it was issued from. The resulting
     # warnings will be in order of the first time each warning is issued since
     # collections.Counter is ordered just like dict().
-    counted_warnings = Counter([frozenset(i.items()) for i in json_report['warnings']])
+    counted_warnings = Counter([frozenset(i.items()) for i in json_report.get('warnings', dict())])
     deduped_warnings = [{**dict(i), 'count': counted_warnings[i]} for i in counted_warnings]
 
     json_report['warnings'] = deduped_warnings
