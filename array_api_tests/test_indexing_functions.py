@@ -17,12 +17,11 @@ from . import shape_helpers as sh
 )
 def test_take(x, data):
     # TODO:
-    # * negative axis
     # * negative indices
     # * different dtypes for indices
 
     # axis is optional but only if x.ndim == 1
-    _axis_st = st.integers(0, max(x.ndim - 1, 0))
+    _axis_st = st.integers(-x.ndim, max(x.ndim - 1, 0))
     if x.ndim == 1:
         kw = data.draw(hh.kwargs(axis=_axis_st))
     else:
@@ -32,6 +31,7 @@ def test_take(x, data):
         st.lists(st.integers(0, x.shape[axis] - 1), min_size=1, unique=True),
         label="_indices",
     )
+    n_axis = axis if axis>=0 else x.ndim + axis
     indices = xp.asarray(_indices, dtype=dh.default_int)
     note(f"{indices=}")
 
@@ -41,7 +41,7 @@ def test_take(x, data):
     ph.assert_shape(
         "take",
         out_shape=out.shape,
-        expected=x.shape[:axis] + (len(_indices),) + x.shape[axis + 1 :],
+        expected=x.shape[:n_axis] + (len(_indices),) + x.shape[n_axis + 1:],
         kw=dict(
             x=x,
             indices=indices,
@@ -49,7 +49,7 @@ def test_take(x, data):
         ),
     )
     out_indices = sh.ndindex(out.shape)
-    axis_indices = list(sh.axis_ndindex(x.shape, axis))
+    axis_indices = list(sh.axis_ndindex(x.shape, n_axis))
     for axis_idx in axis_indices:
         f_axis_idx = sh.fmt_idx("x", axis_idx)
         for i in _indices:
@@ -67,7 +67,6 @@ def test_take(x, data):
     # sanity check
     with pytest.raises(StopIteration):
         next(out_indices)
-
 
 
 @pytest.mark.unvectorized
