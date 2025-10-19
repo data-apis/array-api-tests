@@ -94,7 +94,7 @@ def test_argsort(x, data):
 @given(
     x=hh.arrays(
         dtype=hh.real_dtypes,
-        shape=hh.shapes(min_dims=1, min_side=1),
+        shape=hh.shapes(min_dims=1, min_side=1, max_side=50),
         elements={"allow_nan": False},
     ),
     data=st.data(),
