@@ -160,13 +160,17 @@ def test_finfo(dtype):
         # np.float64 and np.asarray(1, dtype=np.float64).dtype are different
         xp.asarray(1, dtype=dtype).dtype,
     ):
-        out = xp.finfo(arg)
-        assert isinstance(out.bits, int)
-        assert isinstance(out.eps, float)
-        assert isinstance(out.max, float)
-        assert isinstance(out.min, float)
-        assert isinstance(out.smallest_normal, float)
-
+        repro_snippet = ph.format_snippet(f"xp.finfo({arg})")
+        try:
+            out = xp.finfo(arg)
+            assert isinstance(out.bits, int)
+            assert isinstance(out.eps, float)
+            assert isinstance(out.max, float)
+            assert isinstance(out.min, float)
+            assert isinstance(out.smallest_normal, float)
+        except Exception as exc:
+            exc.add_note(repro_snippet)
+            raise
 
 @pytest.mark.min_version("2022.12")
 @pytest.mark.parametrize("dtype", dh.real_float_dtypes + dh.complex_dtypes)
