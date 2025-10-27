@@ -51,43 +51,47 @@ def test_argsort(x, data):
         label="kw",
     )
 
-    out = xp.argsort(x, **kw)
+    repro_snippet = ph.format_snippet(f"xp.argsort({x!r}, **kw) with {kw = }")
+    try:
+        out = xp.argsort(x, **kw)
 
-    ph.assert_default_index("argsort", out.dtype)
-    ph.assert_shape("argsort", out_shape=out.shape, expected=x.shape, kw=kw)
-    axis = kw.get("axis", -1)
-    axes = sh.normalize_axis(axis, x.ndim)
-    scalar_type = dh.get_scalar_type(x.dtype)
-    for indices in sh.axes_ndindex(x.shape, axes):
-        elements = [scalar_type(x[idx]) for idx in indices]
-        orders = list(range(len(elements)))
-        sorders = sorted(
-            orders, key=elements.__getitem__, reverse=kw.get("descending", False)
-        )
-        if kw.get("stable", True):
-            for idx, o in zip(indices, sorders):
-                ph.assert_scalar_equals("argsort", type_=int, idx=idx, out=int(out[idx]), expected=o, kw=kw)
-        else:
-            idx_elements = dict(zip(indices, elements))
-            idx_orders = dict(zip(indices, orders))
-            element_orders = {}
-            for e in set(elements):
-                element_orders[e] = [
-                    idx_orders[idx] for idx in indices if idx_elements[idx] == e
-                ]
-            selements = [elements[o] for o in sorders]
-            for idx, e in zip(indices, selements):
-                expected_orders = element_orders[e]
-                out_o = int(out[idx])
-                if len(expected_orders) == 1:
-                    ph.assert_scalar_equals(
-                        "argsort", type_=int, idx=idx, out=out_o, expected=expected_orders[0], kw=kw
-                    )
-                else:
-                    assert_scalar_in_set(
-                        "argsort", idx=idx, out=out_o, set_=set(expected_orders), kw=kw
-                    )
-
+        ph.assert_default_index("argsort", out.dtype)
+        ph.assert_shape("argsort", out_shape=out.shape, expected=x.shape, kw=kw)
+        axis = kw.get("axis", -1)
+        axes = sh.normalize_axis(axis, x.ndim)
+        scalar_type = dh.get_scalar_type(x.dtype)
+        for indices in sh.axes_ndindex(x.shape, axes):
+            elements = [scalar_type(x[idx]) for idx in indices]
+            orders = list(range(len(elements)))
+            sorders = sorted(
+                orders, key=elements.__getitem__, reverse=kw.get("descending", False)
+            )
+            if kw.get("stable", True):
+                for idx, o in zip(indices, sorders):
+                    ph.assert_scalar_equals("argsort", type_=int, idx=idx, out=int(out[idx]), expected=o, kw=kw)
+            else:
+                idx_elements = dict(zip(indices, elements))
+                idx_orders = dict(zip(indices, orders))
+                element_orders = {}
+                for e in set(elements):
+                    element_orders[e] = [
+                        idx_orders[idx] for idx in indices if idx_elements[idx] == e
+                    ]
+                selements = [elements[o] for o in sorders]
+                for idx, e in zip(indices, selements):
+                    expected_orders = element_orders[e]
+                    out_o = int(out[idx])
+                    if len(expected_orders) == 1:
+                        ph.assert_scalar_equals(
+                            "argsort", type_=int, idx=idx, out=out_o, expected=expected_orders[0], kw=kw
+                        )
+                    else:
+                        assert_scalar_in_set(
+                            "argsort", idx=idx, out=out_o, set_=set(expected_orders), kw=kw
+                        )
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 @pytest.mark.unvectorized
 # TODO: Test with signed zeros and NaNs (and ignore them somehow)
@@ -112,27 +116,32 @@ def test_sort(x, data):
         label="kw",
     )
 
-    out = xp.sort(x, **kw)
+    repro_snippet = ph.format_snippet(f"xp.sort({x!r}, **kw) with {kw = }")
+    try:
+        out = xp.sort(x, **kw)
 
-    ph.assert_dtype("sort", out_dtype=out.dtype, in_dtype=x.dtype)
-    ph.assert_shape("sort", out_shape=out.shape, expected=x.shape, kw=kw)
-    axis = kw.get("axis", -1)
-    axes = sh.normalize_axis(axis, x.ndim)
-    scalar_type = dh.get_scalar_type(x.dtype)
-    for indices in sh.axes_ndindex(x.shape, axes):
-        elements = [scalar_type(x[idx]) for idx in indices]
-        size = len(elements)
-        orders = sorted(
-            range(size), key=elements.__getitem__, reverse=kw.get("descending", False)
-        )
-        for out_idx, o in zip(indices, orders):
-            x_idx = indices[o]
-            # TODO: error message when unstable should not imply just one idx
-            ph.assert_0d_equals(
-                "sort",
-                x_repr=f"x[{x_idx}]",
-                x_val=x[x_idx],
-                out_repr=f"out[{out_idx}]",
-                out_val=out[out_idx],
-                kw=kw,
+        ph.assert_dtype("sort", out_dtype=out.dtype, in_dtype=x.dtype)
+        ph.assert_shape("sort", out_shape=out.shape, expected=x.shape, kw=kw)
+        axis = kw.get("axis", -1)
+        axes = sh.normalize_axis(axis, x.ndim)
+        scalar_type = dh.get_scalar_type(x.dtype)
+        for indices in sh.axes_ndindex(x.shape, axes):
+            elements = [scalar_type(x[idx]) for idx in indices]
+            size = len(elements)
+            orders = sorted(
+                range(size), key=elements.__getitem__, reverse=kw.get("descending", False)
             )
+            for out_idx, o in zip(indices, orders):
+                x_idx = indices[o]
+                # TODO: error message when unstable should not imply just one idx
+                ph.assert_0d_equals(
+                    "sort",
+                    x_repr=f"x[{x_idx}]",
+                    x_val=x[x_idx],
+                    out_repr=f"out[{out_idx}]",
+                    out_val=out[out_idx],
+                    kw=kw,
+                )
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
