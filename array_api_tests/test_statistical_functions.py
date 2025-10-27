@@ -42,55 +42,59 @@ def test_cumulative_sum(x, data):
         label="kw",
     )
 
-    out = xp.cumulative_sum(x, **kw)
+    repro_snippet = ph.format_snippet(f"xp.cumulative_sum({x!r}, **kw) with {kw = }")
+    try:
+        out = xp.cumulative_sum(x, **kw)
 
-    expected_shape = list(x.shape)
-    if include_initial:
-        expected_shape[_axis] += 1
-    expected_shape = tuple(expected_shape)
-    ph.assert_shape("cumulative_sum", out_shape=out.shape, expected=expected_shape)
-
-    expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
-    if expected_dtype is None:
-        # If a default uint cannot exist (i.e. in PyTorch which doesn't support
-        # uint32 or uint64), we skip testing the output dtype.
-        # See https://github.com/data-apis/array-api-tests/issues/106
-        if x.dtype in dh.uint_dtypes:
-            assert dh.is_int_dtype(out.dtype)  # sanity check
-    else:
-        ph.assert_dtype("cumulative_sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
-
-    scalar_type = dh.get_scalar_type(out.dtype)
-
-    for x_idx, out_idx, in iter_indices(x.shape, expected_shape, skip_axes=_axis):
-        x_arr = x[x_idx.raw]
-        out_arr = out[out_idx.raw]
-
+        expected_shape = list(x.shape)
         if include_initial:
-            ph.assert_scalar_equals("cumulative_sum", type_=scalar_type, idx=out_idx.raw, out=out_arr[0], expected=0)
+            expected_shape[_axis] += 1
+        expected_shape = tuple(expected_shape)
+        ph.assert_shape("cumulative_sum", out_shape=out.shape, expected=expected_shape)
 
-        for n in range(x.shape[_axis]):
-            start = 1 if include_initial else 0
-            out_val = out_arr[n + start]
-            assume(cmath.isfinite(out_val))
-            elements = []
-            for idx in range(n + 1):
-                s = scalar_type(x_arr[idx])
-                elements.append(s)
-            expected = sum(elements)
-            if dh.is_int_dtype(out.dtype):
-                m, M = dh.dtype_ranges[out.dtype]
-                assume(m <= expected <= M)
-                ph.assert_scalar_equals("cumulative_sum", type_=scalar_type,
-                                        idx=out_idx.raw, out=out_val,
-                                        expected=expected)
-            else:
-                condition_number = _sum_condition_number(elements)
-                assume(condition_number < 1e6)
-                ph.assert_scalar_isclose("cumulative_sum", type_=scalar_type,
-                                         idx=out_idx.raw, out=out_val,
-                                         expected=expected)
+        expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
+        if expected_dtype is None:
+            # If a default uint cannot exist (i.e. in PyTorch which doesn't support
+            # uint32 or uint64), we skip testing the output dtype.
+            # See https://github.com/data-apis/array-api-tests/issues/106
+            if x.dtype in dh.uint_dtypes:
+                assert dh.is_int_dtype(out.dtype)  # sanity check
+        else:
+            ph.assert_dtype("cumulative_sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
 
+        scalar_type = dh.get_scalar_type(out.dtype)
+
+        for x_idx, out_idx, in iter_indices(x.shape, expected_shape, skip_axes=_axis):
+            x_arr = x[x_idx.raw]
+            out_arr = out[out_idx.raw]
+
+            if include_initial:
+                ph.assert_scalar_equals("cumulative_sum", type_=scalar_type, idx=out_idx.raw, out=out_arr[0], expected=0)
+
+            for n in range(x.shape[_axis]):
+                start = 1 if include_initial else 0
+                out_val = out_arr[n + start]
+                assume(cmath.isfinite(out_val))
+                elements = []
+                for idx in range(n + 1):
+                    s = scalar_type(x_arr[idx])
+                    elements.append(s)
+                expected = sum(elements)
+                if dh.is_int_dtype(out.dtype):
+                    m, M = dh.dtype_ranges[out.dtype]
+                    assume(m <= expected <= M)
+                    ph.assert_scalar_equals("cumulative_sum", type_=scalar_type,
+                                            idx=out_idx.raw, out=out_val,
+                                            expected=expected)
+                else:
+                    condition_number = _sum_condition_number(elements)
+                    assume(condition_number < 1e6)
+                    ph.assert_scalar_isclose("cumulative_sum", type_=scalar_type,
+                                             idx=out_idx.raw, out=out_val,
+                                             expected=expected)
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @pytest.mark.min_version("2024.12")
@@ -119,34 +123,39 @@ def test_cumulative_prod(x, data):
         label="kw",
     )
 
-    out = xp.cumulative_prod(x, **kw)
+    repro_snippet = ph.format_snippet(f"xp.cumulative_prod({x!r}, **kw) with {kw = }")
+    try:
+        out = xp.cumulative_prod(x, **kw)
 
-    expected_shape = list(x.shape)
-    if include_initial:
-        expected_shape[_axis] += 1
-    expected_shape = tuple(expected_shape)
-    ph.assert_shape("cumulative_prod", out_shape=out.shape, expected=expected_shape)
-
-    expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
-    if expected_dtype is None:
-        # If a default uint cannot exist (i.e. in PyTorch which doesn't support
-        # uint32 or uint64), we skip testing the output dtype.
-        # See https://github.com/data-apis/array-api-tests/issues/106
-        if x.dtype in dh.uint_dtypes:
-            assert dh.is_int_dtype(out.dtype)  # sanity check
-    else:
-        ph.assert_dtype("cumulative_prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
-
-    scalar_type = dh.get_scalar_type(out.dtype)
-
-    for x_idx, out_idx, in iter_indices(x.shape, expected_shape, skip_axes=_axis):
-        #x_arr = x[x_idx.raw]
-        out_arr = out[out_idx.raw]
-
+        expected_shape = list(x.shape)
         if include_initial:
-            ph.assert_scalar_equals("cumulative_prod", type_=scalar_type, idx=out_idx.raw, out=out_arr[0], expected=1)
+            expected_shape[_axis] += 1
+        expected_shape = tuple(expected_shape)
+        ph.assert_shape("cumulative_prod", out_shape=out.shape, expected=expected_shape)
 
-        #TODO: add value testing of cumulative_prod
+        expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
+        if expected_dtype is None:
+            # If a default uint cannot exist (i.e. in PyTorch which doesn't support
+            # uint32 or uint64), we skip testing the output dtype.
+            # See https://github.com/data-apis/array-api-tests/issues/106
+            if x.dtype in dh.uint_dtypes:
+                assert dh.is_int_dtype(out.dtype)  # sanity check
+        else:
+            ph.assert_dtype("cumulative_prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
+
+        scalar_type = dh.get_scalar_type(out.dtype)
+
+        for x_idx, out_idx, in iter_indices(x.shape, expected_shape, skip_axes=_axis):
+            #x_arr = x[x_idx.raw]
+            out_arr = out[out_idx.raw]
+
+            if include_initial:
+                ph.assert_scalar_equals("cumulative_prod", type_=scalar_type, idx=out_idx.raw, out=out_arr[0], expected=1)
+
+            #TODO: add value testing of cumulative_prod
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 def kwarg_dtypes(dtype: DataType) -> st.SearchStrategy[Optional[DataType]]:
@@ -169,22 +178,27 @@ def test_max(x, data):
     kw = data.draw(hh.kwargs(axis=hh.axes(x.ndim), keepdims=st.booleans()), label="kw")
     keepdims = kw.get("keepdims", False)
 
-    out = xp.max(x, **kw)
+    repro_snippet = ph.format_snippet(f"xp.max({x!r}, **kw) with {kw = }")
+    try:
+        out = xp.max(x, **kw)
 
-    ph.assert_dtype("max", in_dtype=x.dtype, out_dtype=out.dtype)
-    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
-    ph.assert_keepdimable_shape(
-        "max", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
-    )
-    scalar_type = dh.get_scalar_type(out.dtype)
-    for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
-        max_ = scalar_type(out[out_idx])
-        elements = []
-        for idx in indices:
-            s = scalar_type(x[idx])
-            elements.append(s)
-        expected = max(elements)
-        ph.assert_scalar_equals("max", type_=scalar_type, idx=out_idx, out=max_, expected=expected)
+        ph.assert_dtype("max", in_dtype=x.dtype, out_dtype=out.dtype)
+        _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
+        ph.assert_keepdimable_shape(
+            "max", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
+        )
+        scalar_type = dh.get_scalar_type(out.dtype)
+        for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
+            max_ = scalar_type(out[out_idx])
+            elements = []
+            for idx in indices:
+                s = scalar_type(x[idx])
+                elements.append(s)
+            expected = max(elements)
+            ph.assert_scalar_equals("max", type_=scalar_type, idx=out_idx, out=max_, expected=expected)
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @given(
@@ -199,14 +213,19 @@ def test_mean(x, data):
     kw = data.draw(hh.kwargs(axis=hh.axes(x.ndim), keepdims=st.booleans()), label="kw")
     keepdims = kw.get("keepdims", False)
 
-    out = xp.mean(x, **kw)
+    repro_snippet = ph.format_snippet(f"xp.mean({x!r}, **kw) with {kw = }")
+    try:
+        out = xp.mean(x, **kw)
 
-    ph.assert_dtype("mean", in_dtype=x.dtype, out_dtype=out.dtype)
-    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
-    ph.assert_keepdimable_shape(
-        "mean", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
-    )
-    # Values testing mean is too finicky
+        ph.assert_dtype("mean", in_dtype=x.dtype, out_dtype=out.dtype)
+        _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
+        ph.assert_keepdimable_shape(
+            "mean", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
+        )
+        # Values testing mean is too finicky
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @pytest.mark.unvectorized
@@ -222,22 +241,27 @@ def test_min(x, data):
     kw = data.draw(hh.kwargs(axis=hh.axes(x.ndim), keepdims=st.booleans()), label="kw")
     keepdims = kw.get("keepdims", False)
 
-    out = xp.min(x, **kw)
+    repro_snippet = ph.format_snippet(f"xp.min({x!r}, **kw) with {kw = }")
+    try:
+        out = xp.min(x, **kw)
 
-    ph.assert_dtype("min", in_dtype=x.dtype, out_dtype=out.dtype)
-    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
-    ph.assert_keepdimable_shape(
-        "min", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
-    )
-    scalar_type = dh.get_scalar_type(out.dtype)
-    for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
-        min_ = scalar_type(out[out_idx])
-        elements = []
-        for idx in indices:
-            s = scalar_type(x[idx])
-            elements.append(s)
-        expected = min(elements)
-        ph.assert_scalar_equals("min", type_=scalar_type, idx=out_idx, out=min_, expected=expected)
+        ph.assert_dtype("min", in_dtype=x.dtype, out_dtype=out.dtype)
+        _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
+        ph.assert_keepdimable_shape(
+            "min", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
+        )
+        scalar_type = dh.get_scalar_type(out.dtype)
+        for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
+            min_ = scalar_type(out[out_idx])
+            elements = []
+            for idx in indices:
+                s = scalar_type(x[idx])
+                elements.append(s)
+            expected = min(elements)
+            ph.assert_scalar_equals("min", type_=scalar_type, idx=out_idx, out=min_, expected=expected)
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 def _prod_condition_number(elements):
@@ -249,6 +273,7 @@ def _prod_condition_number(elements):
         return float('inf')
 
     return abs_max / abs_min
+
 
 @pytest.mark.unvectorized
 @given(
@@ -270,42 +295,47 @@ def test_prod(x, data):
     )
     keepdims = kw.get("keepdims", False)
 
-    with hh.reject_overflow():
-        out = xp.prod(x, **kw)
+    repro_snippet = ph.format_snippet(f"xp.prod({x!r}, **kw) with {kw = }")
+    try:
+        with hh.reject_overflow():
+            out = xp.prod(x, **kw)
 
-    dtype = kw.get("dtype", None)
-    expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
-    if expected_dtype is None:
-        # If a default uint cannot exist (i.e. in PyTorch which doesn't support
-        # uint32 or uint64), we skip testing the output dtype.
-        # See https://github.com/data-apis/array-api-tests/issues/106
-        if x.dtype in dh.uint_dtypes:
-            assert dh.is_int_dtype(out.dtype)  # sanity check
-    else:
-        ph.assert_dtype("prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
-    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
-    ph.assert_keepdimable_shape(
-        "prod", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
-    )
-    scalar_type = dh.get_scalar_type(out.dtype)
-    for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
-        prod = scalar_type(out[out_idx])
-        assume(cmath.isfinite(prod))
-        elements = []
-        for idx in indices:
-            s = scalar_type(x[idx])
-            elements.append(s)
-        expected = math.prod(elements)
-        if dh.is_int_dtype(out.dtype):
-            m, M = dh.dtype_ranges[out.dtype]
-            assume(m <= expected <= M)
-            ph.assert_scalar_equals("prod", type_=scalar_type, idx=out_idx,
-                                    out=prod, expected=expected)
+        dtype = kw.get("dtype", None)
+        expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
+        if expected_dtype is None:
+            # If a default uint cannot exist (i.e. in PyTorch which doesn't support
+            # uint32 or uint64), we skip testing the output dtype.
+            # See https://github.com/data-apis/array-api-tests/issues/106
+            if x.dtype in dh.uint_dtypes:
+                assert dh.is_int_dtype(out.dtype)  # sanity check
         else:
-            condition_number = _prod_condition_number(elements)
-            assume(condition_number < 1e15)
-            ph.assert_scalar_isclose("prod", type_=scalar_type, idx=out_idx,
-                                     out=prod, expected=expected)
+            ph.assert_dtype("prod", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
+        _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
+        ph.assert_keepdimable_shape(
+            "prod", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
+        )
+        scalar_type = dh.get_scalar_type(out.dtype)
+        for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
+            prod = scalar_type(out[out_idx])
+            assume(cmath.isfinite(prod))
+            elements = []
+            for idx in indices:
+                s = scalar_type(x[idx])
+                elements.append(s)
+            expected = math.prod(elements)
+            if dh.is_int_dtype(out.dtype):
+                m, M = dh.dtype_ranges[out.dtype]
+                assume(m <= expected <= M)
+                ph.assert_scalar_equals("prod", type_=scalar_type, idx=out_idx,
+                                        out=prod, expected=expected)
+            else:
+                condition_number = _prod_condition_number(elements)
+                assume(condition_number < 1e15)
+                ph.assert_scalar_isclose("prod", type_=scalar_type, idx=out_idx,
+                                         out=prod, expected=expected)
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @pytest.mark.skip(reason="flaky")  # TODO: fix!
@@ -336,13 +366,18 @@ def test_std(x, data):
     )
     keepdims = kw.get("keepdims", False)
 
-    out = xp.std(x, **kw)
+    repro_snippet = ph.format_snippet(f"xp.std({x!r}, **kw) with {kw = }")
+    try:
+        out = xp.std(x, **kw)
 
-    ph.assert_dtype("std", in_dtype=x.dtype, out_dtype=out.dtype)
-    ph.assert_keepdimable_shape(
-        "std", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
-    )
-    # We can't easily test the result(s) as standard deviation methods vary a lot
+        ph.assert_dtype("std", in_dtype=x.dtype, out_dtype=out.dtype)
+        ph.assert_keepdimable_shape(
+            "std", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
+        )
+        # We can't easily test the result(s) as standard deviation methods vary a lot
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 def _sum_condition_number(elements):
@@ -353,6 +388,7 @@ def _sum_condition_number(elements):
         return float('inf')
 
     return sum_abs / abs_sum
+
 
 # @pytest.mark.unvectorized
 @given(
@@ -374,44 +410,49 @@ def test_sum(x, data):
     )
     keepdims = kw.get("keepdims", False)
 
-    with hh.reject_overflow():
-        out = xp.sum(x, **kw)
+    repro_snippet = ph.format_snippet(f"xp.sum({x!r}, **kw) with {kw = }")
+    try:
+        with hh.reject_overflow():
+            out = xp.sum(x, **kw)
 
-    dtype = kw.get("dtype", None)
-    expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
-    if expected_dtype is None:
-        # If a default uint cannot exist (i.e. in PyTorch which doesn't support
-        # uint32 or uint64), we skip testing the output dtype.
-        # See https://github.com/data-apis/array-api-tests/issues/160
-        if x.dtype in dh.uint_dtypes:
-            assert dh.is_int_dtype(out.dtype)  # sanity check
-    else:
-        ph.assert_dtype("sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
-    _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
-    ph.assert_keepdimable_shape(
-        "sum", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
-    )
-    scalar_type = dh.get_scalar_type(out.dtype)
-    for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
-        sum_ = scalar_type(out[out_idx])
-        assume(cmath.isfinite(sum_))
-        elements = []
-        for idx in indices:
-            s = scalar_type(x[idx])
-            elements.append(s)
-        expected = sum(elements)
-        if dh.is_int_dtype(out.dtype):
-            m, M = dh.dtype_ranges[out.dtype]
-            assume(m <= expected <= M)
-            ph.assert_scalar_equals("sum", type_=scalar_type, idx=out_idx,
-                                    out=sum_, expected=expected)
+        dtype = kw.get("dtype", None)
+        expected_dtype = dh.accumulation_result_dtype(x.dtype, dtype)
+        if expected_dtype is None:
+            # If a default uint cannot exist (i.e. in PyTorch which doesn't support
+            # uint32 or uint64), we skip testing the output dtype.
+            # See https://github.com/data-apis/array-api-tests/issues/160
+            if x.dtype in dh.uint_dtypes:
+                assert dh.is_int_dtype(out.dtype)  # sanity check
         else:
-            # Avoid value testing for ill conditioned summations. See
-            # https://en.wikipedia.org/wiki/Kahan_summation_algorithm#Accuracy and
-            # https://en.wikipedia.org/wiki/Condition_number.
-            condition_number = _sum_condition_number(elements)
-            assume(condition_number < 1e6)
-            ph.assert_scalar_isclose("sum", type_=scalar_type, idx=out_idx, out=sum_, expected=expected)
+            ph.assert_dtype("sum", in_dtype=x.dtype, out_dtype=out.dtype, expected=expected_dtype)
+        _axes = sh.normalize_axis(kw.get("axis", None), x.ndim)
+        ph.assert_keepdimable_shape(
+            "sum", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
+        )
+        scalar_type = dh.get_scalar_type(out.dtype)
+        for indices, out_idx in zip(sh.axes_ndindex(x.shape, _axes), sh.ndindex(out.shape)):
+            sum_ = scalar_type(out[out_idx])
+            assume(cmath.isfinite(sum_))
+            elements = []
+            for idx in indices:
+                s = scalar_type(x[idx])
+                elements.append(s)
+            expected = sum(elements)
+            if dh.is_int_dtype(out.dtype):
+                m, M = dh.dtype_ranges[out.dtype]
+                assume(m <= expected <= M)
+                ph.assert_scalar_equals("sum", type_=scalar_type, idx=out_idx,
+                                        out=sum_, expected=expected)
+            else:
+                # Avoid value testing for ill conditioned summations. See
+                # https://en.wikipedia.org/wiki/Kahan_summation_algorithm#Accuracy and
+                # https://en.wikipedia.org/wiki/Condition_number.
+                condition_number = _sum_condition_number(elements)
+                assume(condition_number < 1e6)
+                ph.assert_scalar_isclose("sum", type_=scalar_type, idx=out_idx, out=sum_, expected=expected)
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @pytest.mark.unvectorized
@@ -443,10 +484,15 @@ def test_var(x, data):
     )
     keepdims = kw.get("keepdims", False)
 
-    out = xp.var(x, **kw)
+    repro_snippet = ph.format_snippet(f"xp.var({x!r}, **kw) with {kw = }")
+    try:
+        out = xp.var(x, **kw)
 
-    ph.assert_dtype("var", in_dtype=x.dtype, out_dtype=out.dtype)
-    ph.assert_keepdimable_shape(
-        "var", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
-    )
-    # We can't easily test the result(s) as variance methods vary a lot
+        ph.assert_dtype("var", in_dtype=x.dtype, out_dtype=out.dtype)
+        ph.assert_keepdimable_shape(
+            "var", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
+        )
+        # We can't easily test the result(s) as variance methods vary a lot
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
