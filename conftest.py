@@ -103,6 +103,11 @@ def pytest_configure(config):
         "markers",
         "unvectorized: asserts against values via element-wise iteration (not performative!)",
     )
+    config.addinivalue_line(
+        "markers",
+        "has_setup_funcs: run when essential draw data setup functions used "
+        "by Hypothesis are available in the namespace",
+    )
     # Hypothesis
     deadline = None if config.getoption("--hypothesis-disable-deadline") else 800
     settings.register_profile(
@@ -207,6 +212,9 @@ def pytest_collection_modifyitems(config, items):
     # ------------------------------------------------------
 
     xfail_mark = get_xfail_mark()
+    
+    essential_funcs = ["asarray", "isnan", "reshape", "zeros"]
+    HAS_ESSENTIAL_FUNCS = all(hasattr(xp, func_name) for func_name in essential_funcs)
 
     for item in items:
         markers = list(item.iter_markers())
@@ -250,6 +258,13 @@ def pytest_collection_modifyitems(config, items):
                         reason=f"requires ARRAY_API_TESTS_VERSION >= {min_version}"
                     )
                 )
+        # skip if namespace doesn't support essential draw data setup functions
+        if any(m.name == "has_setup_funcs" for m in markers) and not HAS_ESSENTIAL_FUNCS:
+            item.add_marker(
+                mark.skip(reason="At least one of the essential data setup "
+                                 "functions is not present in the namespace: "
+                                 f"{essential_funcs}")
+            )
         # reduce max generated Hypothesis example for unvectorized tests
         if any(m.name == "unvectorized" for m in markers):
             # TODO: limit generated examples when settings already applied
