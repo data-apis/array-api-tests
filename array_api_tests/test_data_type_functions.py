@@ -81,12 +81,17 @@ def test_astype(x_dtype, dtype, kw, data):
     # https://data-apis.org/array-api/latest/API_specification/generated/array_api.astype.html#astype
     assume(not ((x_dtype in _complex_dtypes) and (dtype not in _complex_dtypes)))
 
-    out = xp.astype(x, dtype, **kw)
+    repro_snippet = ph.format_snippet(f"xp.astype({x!r}, {dtype!r}, **kw) with {kw = }")
+    try:
+        out = xp.astype(x, dtype, **kw)
 
-    ph.assert_kw_dtype("astype", kw_dtype=dtype, out_dtype=out.dtype)
-    ph.assert_shape("astype", out_shape=out.shape, expected=x.shape, kw=kw)
-    # TODO: test values
-    # TODO: test copy
+        ph.assert_kw_dtype("astype", kw_dtype=dtype, out_dtype=out.dtype)
+        ph.assert_shape("astype", out_shape=out.shape, expected=x.shape, kw=kw)
+        # TODO: test values
+        # TODO: test copy
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @given(
@@ -98,24 +103,29 @@ def test_broadcast_arrays(shapes, data):
         x = data.draw(hh.arrays(dtype=hh.all_dtypes, shape=shape), label=f"x{c}")
         arrays.append(x)
 
-    out = xp.broadcast_arrays(*arrays)
+    repro_snippet = ph.format_snippet(f"xp.broadcast_arrays(*arrays) with {arrays = }")
+    try:
+        out = xp.broadcast_arrays(*arrays)
 
-    expected_shape = sh.broadcast_shapes(*shapes)
-    for i, x in enumerate(arrays):
-        ph.assert_dtype(
-            "broadcast_arrays",
-            in_dtype=x.dtype,
-            out_dtype=out[i].dtype,
-            repr_name=f"out[{i}].dtype"
-        )
-        ph.assert_result_shape(
-            "broadcast_arrays",
-            in_shapes=shapes,
-            out_shape=out[i].shape,
-            expected=expected_shape,
-            repr_name=f"out[{i}].shape",
-        )
-    # TODO: test values
+        expected_shape = sh.broadcast_shapes(*shapes)
+        for i, x in enumerate(arrays):
+            ph.assert_dtype(
+                "broadcast_arrays",
+                in_dtype=x.dtype,
+                out_dtype=out[i].dtype,
+                repr_name=f"out[{i}].dtype"
+            )
+            ph.assert_result_shape(
+                "broadcast_arrays",
+                in_shapes=shapes,
+                out_shape=out[i].shape,
+                expected=expected_shape,
+                repr_name=f"out[{i}].shape",
+            )
+        # TODO: test values
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @given(x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes()), data=st.data())
@@ -127,29 +137,39 @@ def test_broadcast_to(x, data):
         label="shape",
     )
 
-    out = xp.broadcast_to(x, shape)
+    repro_snippet = ph.format_snippet(f"xp.broadcast_to({x!r}, {shape!r})")
+    try:
+        out = xp.broadcast_to(x, shape)
 
-    ph.assert_dtype("broadcast_to", in_dtype=x.dtype, out_dtype=out.dtype)
-    ph.assert_shape("broadcast_to", out_shape=out.shape, expected=shape)
-    # TODO: test values
+        ph.assert_dtype("broadcast_to", in_dtype=x.dtype, out_dtype=out.dtype)
+        ph.assert_shape("broadcast_to", out_shape=out.shape, expected=shape)
+        # TODO: test values
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @given(_from=hh.all_dtypes, to=hh.all_dtypes)
 def test_can_cast(_from, to):
-    out = xp.can_cast(_from, to)
+    repro_snippet = ph.format_snippet(f"xp.can_cast({_from!r}, {to!r})")
+    try:
+        out = xp.can_cast(_from, to)
 
-    expected = False
-    for other in dh.all_dtypes:
-        if dh.promotion_table.get((_from, other)) == to:
-            expected = True
-            break
+        expected = False
+        for other in dh.all_dtypes:
+            if dh.promotion_table.get((_from, other)) == to:
+                expected = True
+                break
 
-    f_func = f"[can_cast({dh.dtype_to_name[_from]}, {dh.dtype_to_name[to]})]"
-    if expected:
-        # cross-kind casting is not explicitly disallowed. We can only test
-        # the cases where it should return True. TODO: if expected=False,
-        # check that the array library actually allows such casts.
-        assert out == expected, f"{out=}, but should be {expected} {f_func}"
+        f_func = f"[can_cast({dh.dtype_to_name[_from]}, {dh.dtype_to_name[to]})]"
+        if expected:
+            # cross-kind casting is not explicitly disallowed. We can only test
+            # the cases where it should return True. TODO: if expected=False,
+            # check that the array library actually allows such casts.
+            assert out == expected, f"{out=}, but should be {expected} {f_func}"
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @pytest.mark.parametrize("dtype", dh.real_float_dtypes + dh.complex_dtypes)
@@ -160,7 +180,7 @@ def test_finfo(dtype):
         # np.float64 and np.asarray(1, dtype=np.float64).dtype are different
         xp.asarray(1, dtype=dtype).dtype,
     ):
-        repro_snippet = ph.format_snippet(f"xp.finfo({arg})")
+        repro_snippet = ph.format_snippet(f"xp.finfo({arg!r})")
         try:
             out = xp.finfo(arg)
             assert isinstance(out.bits, int)
@@ -175,19 +195,24 @@ def test_finfo(dtype):
 @pytest.mark.min_version("2022.12")
 @pytest.mark.parametrize("dtype", dh.real_float_dtypes + dh.complex_dtypes)
 def test_finfo_dtype(dtype):
-    out = xp.finfo(dtype)
+    repro_snippet = ph.format_snippet(f"xp.finfo({dtype!r})")
+    try:
+        out = xp.finfo(dtype)
 
-    if dtype == xp.complex64:
-        assert out.dtype == xp.float32
-    elif dtype == xp.complex128:
-        assert out.dtype == xp.float64
-    else:
-        assert out.dtype == dtype
+        if dtype == xp.complex64:
+            assert out.dtype == xp.float32
+        elif dtype == xp.complex128:
+            assert out.dtype == xp.float64
+        else:
+            assert out.dtype == dtype
 
-    # Guard vs. numpy.dtype.__eq__ lax comparison
-    assert not isinstance(out.dtype, str)
-    assert out.dtype is not float
-    assert out.dtype is not complex
+        # Guard vs. numpy.dtype.__eq__ lax comparison
+        assert not isinstance(out.dtype, str)
+        assert out.dtype is not float
+        assert out.dtype is not complex
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @pytest.mark.parametrize("dtype", dh.int_dtypes + dh.uint_dtypes)
@@ -198,20 +223,30 @@ def test_iinfo(dtype):
         # np.int64 and np.asarray(1, dtype=np.int64).dtype are different
         xp.asarray(1, dtype=dtype).dtype,
     ):
-        out = xp.iinfo(arg)
-        assert isinstance(out.bits, int)
-        assert isinstance(out.max, int)
-        assert isinstance(out.min, int)
+        repro_snippet = ph.format_snippet(f"xp.iinfo({arg!r})")
+        try:
+            out = xp.iinfo(arg)
+            assert isinstance(out.bits, int)
+            assert isinstance(out.max, int)
+            assert isinstance(out.min, int)
+        except Exception as exc:
+            exc.add_note(repro_snippet)
+            raise
 
 
 @pytest.mark.min_version("2022.12")
 @pytest.mark.parametrize("dtype", dh.int_dtypes + dh.uint_dtypes)
 def test_iinfo_dtype(dtype):
-    out = xp.iinfo(dtype)
-    assert out.dtype == dtype
-    # Guard vs. numpy.dtype.__eq__ lax comparison
-    assert not isinstance(out.dtype, str)
-    assert out.dtype is not int
+    repro_snippet = ph.format_snippet(f"xp.iinfo({dtype!r})")
+    try:
+        out = xp.iinfo(dtype)
+        assert out.dtype == dtype
+        # Guard vs. numpy.dtype.__eq__ lax comparison
+        assert not isinstance(out.dtype, str)
+        assert out.dtype is not int
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 def atomic_kinds() -> st.SearchStrategy[Union[DataType, str]]:
@@ -224,29 +259,39 @@ def atomic_kinds() -> st.SearchStrategy[Union[DataType, str]]:
     kind=atomic_kinds() | st.lists(atomic_kinds(), min_size=1).map(tuple),
 )
 def test_isdtype(dtype, kind):
-    out = xp.isdtype(dtype, kind)
+    repro_snippet = ph.format_snippet(f"xp.isdtype({dtype!r}, {kind!r})")
+    try:
+        out = xp.isdtype(dtype, kind)
 
-    assert isinstance(out, bool), f"{type(out)=}, but should be bool [isdtype()]"
-    _kinds = kind if isinstance(kind, tuple) else (kind,)
-    expected = False
-    for _kind in _kinds:
-        if isinstance(_kind, str):
-            if dtype in dh.kind_to_dtypes[_kind]:
-                expected = True
-                break
-        else:
-            if dtype == _kind:
-                expected = True
-                break
-    assert out == expected, f"{out=}, but should be {expected} [isdtype()]"
+        assert isinstance(out, bool), f"{type(out)=}, but should be bool [isdtype()]"
+        _kinds = kind if isinstance(kind, tuple) else (kind,)
+        expected = False
+        for _kind in _kinds:
+            if isinstance(_kind, str):
+                if dtype in dh.kind_to_dtypes[_kind]:
+                    expected = True
+                    break
+            else:
+                if dtype == _kind:
+                    expected = True
+                    break
+        assert out == expected, f"{out=}, but should be {expected} [isdtype()]"
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @pytest.mark.min_version("2024.12")
 class TestResultType:
     @given(dtypes=hh.mutually_promotable_dtypes(None))
     def test_result_type(self, dtypes):
-        out = xp.result_type(*dtypes)
-        ph.assert_dtype("result_type", in_dtype=dtypes, out_dtype=out, repr_name="out")
+        repro_snippet = ph.format_snippet(f"xp.result_type(*dtypes) with {dtypes = }")
+        try:
+            out = xp.result_type(*dtypes)
+            ph.assert_dtype("result_type", in_dtype=dtypes, out_dtype=out, repr_name="out")
+        except Exception as exc:
+            exc.add_note(repro_snippet)
+            raise
 
     @given(pair=hh.pair_of_mutually_promotable_dtypes(None))
     def test_shuffled(self, pair):
@@ -261,33 +306,55 @@ class TestResultType:
         s1, s2 = pair
         a2 = tuple(xp.empty(1, dtype=dt) for dt in s2)
         a_and_dt = data.draw(st.permutations(s1 + a2))
-        out = xp.result_type(*a_and_dt)
-        ph.assert_dtype("result_type", in_dtype=s1+s2, out_dtype=out, repr_name="out")
+
+        repro_snippet = ph.format_snippet(f"xp.result_type(*a_and_dt) with {a_and_dt = }")
+        try:
+            out = xp.result_type(*a_and_dt)
+            ph.assert_dtype("result_type", in_dtype=s1+s2, out_dtype=out, repr_name="out")
+        except Exception as exc:
+            exc.add_note(repro_snippet)
+            raise
 
     @given(dtypes=hh.mutually_promotable_dtypes(2), data=st.data())
     def test_with_scalars(self, dtypes, data):
-        out = xp.result_type(*dtypes)
 
-        if out == xp.bool:
-            scalars = [True]
-        elif out in dh.all_int_dtypes:
-            scalars = [1]
-        elif out in dh.real_dtypes:
-            scalars = [1, 1.0]
-        elif out in dh.numeric_dtypes:
-            scalars = [1, 1.0, 1j]        # numeric_types - real_types == complex_types
-        else:
-            raise ValueError(f"unknown dtype {out = }.")
+        repro_snippet = ph.format_snippet(f"xp.result_type(*dtypes) with {dtypes = }")
+        try:
+            out = xp.result_type(*dtypes)
+
+            if out == xp.bool:
+                scalars = [True]
+            elif out in dh.all_int_dtypes:
+                scalars = [1]
+            elif out in dh.real_dtypes:
+                scalars = [1, 1.0]
+            elif out in dh.numeric_dtypes:
+                scalars = [1, 1.0, 1j]        # numeric_types - real_types == complex_types
+            else:
+                raise ValueError(f"unknown dtype {out = }.")
+        except Exception as exc:
+            exc.add_note(repro_snippet)
+            raise
 
         scalar = data.draw(st.sampled_from(scalars))
         inputs = data.draw(st.permutations(dtypes + (scalar,)))
 
-        out_scalar = xp.result_type(*inputs)
-        assert out_scalar == out
+        repro_snippet = ph.format_snippet(f"xp.result_type(*inputs) with {inputs = }")
+        try:
+            out_scalar = xp.result_type(*inputs)
+            assert out_scalar == out
+        except Exception as exc:
+            exc.add_note(repro_snippet)
+            raise
 
         # retry with arrays
         arrays = tuple(xp.empty(1, dtype=dt) for dt in dtypes)
         inputs = data.draw(st.permutations(arrays + (scalar,)))
-        out_scalar = xp.result_type(*inputs)
-        assert out_scalar == out
 
+        repro_snippet = ph.format_snippet(f"xp.result_type(*inputs) with {inputs = }")
+        try:
+            out_scalar = xp.result_type(*inputs)
+            assert out_scalar == out
+        except Exception as exc:
+            exc.add_note(repro_snippet)
+            raise
