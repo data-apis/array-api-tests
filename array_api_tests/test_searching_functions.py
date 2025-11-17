@@ -255,12 +255,18 @@ def test_searchsorted(data):
         sorter = None
         x1 = xp.sort(x1)
     note(f"{x1=}")
+
     x2 = data.draw(
         st.lists(st.sampled_from(_x1), unique=True, min_size=1).map(
             lambda o: xp.asarray(o, dtype=dh.default_float)
         ),
         label="x2",
     )
+    # make x2.ndim > 1, if it makes sense
+    factors = hh._factorize(x2.shape[0])
+    if len(factors) > 1:
+        x2 = xp.reshape(x2, tuple(factors))
+
     kw = data.draw(hh.kwargs(side=st.sampled_from(["left", "right"])))
 
     repro_snippet = ph.format_snippet(
@@ -275,7 +281,7 @@ def test_searchsorted(data):
             out_dtype=out.dtype,
             expected=xp.__array_namespace_info__().default_dtypes()["indexing"],
         )
-        # TODO: x2.ndim > 1, values testing
+        # TODO: values testing
         ph.assert_shape("searchsorted", out_shape=out.shape, expected=x2.shape)
     except Exception as exc:
         exc.add_note(repro_snippet)
