@@ -246,7 +246,11 @@ def test_searchsorted(data):
     # TODO: Allow different dtypes for x1 and x2
     x1_dtype = data.draw(st.sampled_from(dh.real_dtypes))
     _x1 = data.draw(
-        st.lists(xps.from_dtype(x1_dtype), min_size=1, unique=True),
+        st.lists(
+            xps.from_dtype(x1_dtype, allow_nan=False, allow_infinity=False),
+            min_size=1,
+            unique=True
+        ),
         label="_x1",
     )
     x1 = xp.asarray(_x1, dtype=x1_dtype)
