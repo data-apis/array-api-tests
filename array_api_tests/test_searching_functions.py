@@ -243,7 +243,6 @@ def test_where(shapes, dtypes, data):
 @pytest.mark.min_version("2023.12")
 @given(data=st.data())
 def test_searchsorted(data):
-    # TODO: test side="right"
     # TODO: Allow different dtypes for x1 and x2
     _x1 = data.draw(
         st.lists(xps.from_dtype(dh.default_float), min_size=1, unique=True),
@@ -262,10 +261,13 @@ def test_searchsorted(data):
         ),
         label="x2",
     )
+    kw = data.draw(hh.kwargs(side=st.sampled_from(["left", "right"])))
 
-    repro_snippet = ph.format_snippet(f"xp.searchsorted({x1!r}, {x2!r}, sorter={sorter!r})")
+    repro_snippet = ph.format_snippet(
+        f"xp.searchsorted({x1!r}, {x2!r}, sorter={sorter!r}, **kw) with {kw=}"
+    )
     try:
-        out = xp.searchsorted(x1, x2, sorter=sorter)
+        out = xp.searchsorted(x1, x2, sorter=sorter, **kw)
 
         ph.assert_dtype(
             "searchsorted",
@@ -273,7 +275,8 @@ def test_searchsorted(data):
             out_dtype=out.dtype,
             expected=xp.__array_namespace_info__().default_dtypes()["indexing"],
         )
-        # TODO: shapes and values testing
+        # TODO: x2.ndim > 1, values testing
+        ph.assert_shape("searchsorted", out_shape=out.shape, expected=x2.shape)
     except Exception as exc:
         exc.add_note(repro_snippet)
         raise
