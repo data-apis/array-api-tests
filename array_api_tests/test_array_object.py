@@ -86,7 +86,6 @@ def test_getitem(shape, dtype, data):
     key = data.draw(xps.indices(shape=shape, allow_newaxis=True), label="key")
 
     repro_snippet = ph.format_snippet(f"{x!r}[{key!r}]")
-
     try:
         out = x[key]
 
@@ -108,6 +107,7 @@ def test_getitem(shape, dtype, data):
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
         raise
+
 
 @pytest.mark.unvectorized
 @given(
@@ -133,28 +133,34 @@ def test_setitem(shape, dtypes, data):
     value = data.draw(value_strat, label="value")
 
     res = xp.asarray(x, copy=True)
-    res[key] = value
 
-    ph.assert_dtype("__setitem__", in_dtype=x.dtype, out_dtype=res.dtype, repr_name="x.dtype")
-    ph.assert_shape("__setitem__", out_shape=res.shape, expected=x.shape, repr_name="x.shape")
-    f_res = sh.fmt_idx("x", key)
-    if isinstance(value, get_args(Scalar)):
-        msg = f"{f_res}={res[key]!r}, but should be {value=} [__setitem__()]"
-        if cmath.isnan(value):
-            assert xp.isnan(res[key]), msg
+    repro_snippet = ph.format_snippet(f"{res!r}[{key!r}] = {value!r}")
+    try:
+        res[key] = value
+
+        ph.assert_dtype("__setitem__", in_dtype=x.dtype, out_dtype=res.dtype, repr_name="x.dtype")
+        ph.assert_shape("__setitem__", out_shape=res.shape, expected=x.shape, repr_name="x.shape")
+        f_res = sh.fmt_idx("x", key)
+        if isinstance(value, get_args(Scalar)):
+            msg = f"{f_res}={res[key]!r}, but should be {value=} [__setitem__()]"
+            if cmath.isnan(value):
+                assert xp.isnan(res[key]), msg
+            else:
+                assert res[key] == value, msg
         else:
-            assert res[key] == value, msg
-    else:
-        ph.assert_array_elements("__setitem__", out=res[key], expected=value, out_repr=f_res)
-    unaffected_indices = set(sh.ndindex(res.shape)) - set(product(*axes_indices))
-    for idx in unaffected_indices:
-        ph.assert_0d_equals(
-            "__setitem__",
-            x_repr=f"old {f_res}",
-            x_val=x[idx],
-            out_repr=f"modified {f_res}",
-            out_val=res[idx],
-        )
+            ph.assert_array_elements("__setitem__", out=res[key], expected=value, out_repr=f_res)
+        unaffected_indices = set(sh.ndindex(res.shape)) - set(product(*axes_indices))
+        for idx in unaffected_indices:
+            ph.assert_0d_equals(
+                "__setitem__",
+                x_repr=f"old {f_res}",
+                x_val=x[idx],
+                out_repr=f"modified {f_res}",
+                out_val=res[idx],
+            )
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @pytest.mark.unvectorized
@@ -178,29 +184,34 @@ def test_getitem_masking(shape, data):
             x[key]
         return
 
-    out = x[key]
+    repro_snippet = ph.format_snippet(f"out = {x!r}[{key!r}]")
+    try:
+        out = x[key]
 
-    ph.assert_dtype("__getitem__", in_dtype=x.dtype, out_dtype=out.dtype)
-    if key.ndim == 0:
-        expected_shape = (1,) if key else (0,)
-        expected_shape += x.shape
-    else:
-        size = int(xp.sum(xp.astype(key, xp.uint8)))
-        expected_shape = (size,) + x.shape[key.ndim :]
-    ph.assert_shape("__getitem__", out_shape=out.shape, expected=expected_shape)
-    if not any(s == 0 for s in key.shape):
-        assume(key.ndim == x.ndim)  # TODO: test key.ndim < x.ndim scenarios
-        out_indices = sh.ndindex(out.shape)
-        for x_idx in sh.ndindex(x.shape):
-            if key[x_idx]:
-                out_idx = next(out_indices)
-                ph.assert_0d_equals(
-                    "__getitem__",
-                    x_repr=f"x[{x_idx}]",
-                    x_val=x[x_idx],
-                    out_repr=f"out[{out_idx}]",
-                    out_val=out[out_idx],
-                )
+        ph.assert_dtype("__getitem__", in_dtype=x.dtype, out_dtype=out.dtype)
+        if key.ndim == 0:
+            expected_shape = (1,) if key else (0,)
+            expected_shape += x.shape
+        else:
+            size = int(xp.sum(xp.astype(key, xp.uint8)))
+            expected_shape = (size,) + x.shape[key.ndim :]
+        ph.assert_shape("__getitem__", out_shape=out.shape, expected=expected_shape)
+        if not any(s == 0 for s in key.shape):
+            assume(key.ndim == x.ndim)  # TODO: test key.ndim < x.ndim scenarios
+            out_indices = sh.ndindex(out.shape)
+            for x_idx in sh.ndindex(x.shape):
+                if key[x_idx]:
+                    out_idx = next(out_indices)
+                    ph.assert_0d_equals(
+                        "__getitem__",
+                        x_repr=f"x[{x_idx}]",
+                        x_val=x[x_idx],
+                        out_repr=f"out[{out_idx}]",
+                        out_val=out[out_idx],
+                    )
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 @pytest.mark.unvectorized
@@ -213,38 +224,44 @@ def test_setitem_masking(shape, data):
     )
 
     res = xp.asarray(x, copy=True)
-    res[key] = value
 
-    ph.assert_dtype("__setitem__", in_dtype=x.dtype, out_dtype=res.dtype, repr_name="x.dtype")
-    ph.assert_shape("__setitem__", out_shape=res.shape, expected=x.shape, repr_name="x.dtype")
-    scalar_type = dh.get_scalar_type(x.dtype)
-    for idx in sh.ndindex(x.shape):
-        if key[idx]:
-            if isinstance(value, get_args(Scalar)):
-                ph.assert_scalar_equals(
-                    "__setitem__",
-                    type_=scalar_type,
-                    idx=idx,
-                    out=scalar_type(res[idx]),
-                    expected=value,
-                    repr_name="modified x",
-                )
+    repro_snippet = ph.format_snippet(f"{res}[{key!r}] = {value!r}")
+    try:
+        res[key] = value
+
+        ph.assert_dtype("__setitem__", in_dtype=x.dtype, out_dtype=res.dtype, repr_name="x.dtype")
+        ph.assert_shape("__setitem__", out_shape=res.shape, expected=x.shape, repr_name="x.dtype")
+        scalar_type = dh.get_scalar_type(x.dtype)
+        for idx in sh.ndindex(x.shape):
+            if key[idx]:
+                if isinstance(value, get_args(Scalar)):
+                    ph.assert_scalar_equals(
+                        "__setitem__",
+                        type_=scalar_type,
+                        idx=idx,
+                        out=scalar_type(res[idx]),
+                        expected=value,
+                        repr_name="modified x",
+                    )
+                else:
+                    ph.assert_0d_equals(
+                        "__setitem__",
+                        x_repr="value",
+                        x_val=value,
+                        out_repr=f"modified x[{idx}]",
+                        out_val=res[idx]
+                    )
             else:
                 ph.assert_0d_equals(
                     "__setitem__",
-                    x_repr="value",
-                    x_val=value,
+                    x_repr=f"old x[{idx}]",
+                    x_val=x[idx],
                     out_repr=f"modified x[{idx}]",
                     out_val=res[idx]
                 )
-        else:
-            ph.assert_0d_equals(
-                "__setitem__",
-                x_repr=f"old x[{idx}]",
-                x_val=x[idx],
-                out_repr=f"modified x[{idx}]",
-                out_val=res[idx]
-            )
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 # ### Fancy indexing ###
@@ -309,15 +326,20 @@ def _test_getitem_arrays_and_ints(shape, data, idx_max_dims):
             key.append(data.draw(st.integers(-shape[i], shape[i]-1)))
 
     key = tuple(key)
-    out = x[key]
+    repro_snippet = ph.format_snippet(f"out = {x!r}[{key!r}]")
+    try:
+        out = x[key]
 
-    arrays = [xp.asarray(k) for k in key]
-    bcast_shape = sh.broadcast_shapes(*[arr.shape for arr in arrays])
-    bcast_key = [xp.broadcast_to(arr, bcast_shape) for arr in arrays]
+        arrays = [xp.asarray(k) for k in key]
+        bcast_shape = sh.broadcast_shapes(*[arr.shape for arr in arrays])
+        bcast_key = [xp.broadcast_to(arr, bcast_shape) for arr in arrays]
 
-    for idx in sh.ndindex(bcast_shape):
-        tpl = tuple(k[idx] for k in bcast_key)
-        assert out[idx] == x[tpl], f"failing at {idx = } w/ {key = }"
+        for idx in sh.ndindex(bcast_shape):
+            tpl = tuple(k[idx] for k in bcast_key)
+            assert out[idx] == x[tpl], f"failing at {idx = } w/ {key = }"
+    except Exception as exc:
+        exc.add_note(repro_snippet)
+        raise
 
 
 def make_scalar_casting_param(
