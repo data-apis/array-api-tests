@@ -77,7 +77,6 @@ def test_take(x, data):
 )
 def test_take_along_axis(x, data):
     # TODO
-    # 2. negative indices
     # 3. different dtypes for indices
     # 4. "broadcast-compatible" indices
     axis = data.draw(
@@ -97,7 +96,7 @@ def test_take_along_axis(x, data):
         hh.arrays(
             shape=idx_shape,
             dtype=dh.default_int,
-            elements={"min_value": 0, "max_value": x.shape[n_axis]-1}
+            elements={"min_value": -x.shape[n_axis], "max_value": x.shape[n_axis]-1}
         ),
         label="indices"
     )
