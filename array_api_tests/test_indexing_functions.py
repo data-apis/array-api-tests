@@ -17,7 +17,6 @@ from . import shape_helpers as sh
 )
 def test_take(x, data):
     # TODO:
-    # * negative indices
     # * different dtypes for indices
 
     # axis is optional but only if x.ndim == 1
@@ -28,7 +27,7 @@ def test_take(x, data):
         kw = {"axis": data.draw(_axis_st)}
     axis = kw.get("axis", 0)
     _indices = data.draw(
-        st.lists(st.integers(0, x.shape[axis] - 1), min_size=1, unique=True),
+        st.lists(st.integers(-x.shape[axis], x.shape[axis] - 1), min_size=1, unique=True),
         label="_indices",
     )
     n_axis = axis if axis>=0 else x.ndim + axis
