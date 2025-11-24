@@ -38,6 +38,8 @@ def add_note(exc, note):
 
     For Python 3.11+, this uses the built-in exc.add_note() method.
     For earlier versions, it manually appends to exc.__notes__.
+
+    https://github.com/HypothesisWorks/hypothesis/issues/4606#issuecomment-3568140174
     """
     try:
         exc.add_note(note)
