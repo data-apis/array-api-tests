@@ -106,7 +106,7 @@ def test_getitem(shape, dtype, data):
             expected = xp.asarray(out_obj, dtype=dtype)
             ph.assert_array_elements("__getitem__", out=out, expected=expected)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 @pytest.mark.unvectorized

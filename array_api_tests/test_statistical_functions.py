@@ -93,7 +93,7 @@ def test_cumulative_sum(x, data):
                                              idx=out_idx.raw, out=out_val,
                                              expected=expected)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -154,7 +154,7 @@ def test_cumulative_prod(x, data):
 
             #TODO: add value testing of cumulative_prod
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -197,7 +197,7 @@ def test_max(x, data):
             expected = max(elements)
             ph.assert_scalar_equals("max", type_=scalar_type, idx=out_idx, out=max_, expected=expected)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -224,7 +224,7 @@ def test_mean(x, data):
         )
         # Values testing mean is too finicky
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -260,7 +260,7 @@ def test_min(x, data):
             expected = min(elements)
             ph.assert_scalar_equals("min", type_=scalar_type, idx=out_idx, out=min_, expected=expected)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -334,7 +334,7 @@ def test_prod(x, data):
                 ph.assert_scalar_isclose("prod", type_=scalar_type, idx=out_idx,
                                          out=prod, expected=expected)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -376,7 +376,7 @@ def test_std(x, data):
         )
         # We can't easily test the result(s) as standard deviation methods vary a lot
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -451,7 +451,7 @@ def test_sum(x, data):
                 assume(condition_number < 1e6)
                 ph.assert_scalar_isclose("sum", type_=scalar_type, idx=out_idx, out=sum_, expected=expected)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -494,5 +494,5 @@ def test_var(x, data):
         )
         # We can't easily test the result(s) as variance methods vary a lot
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise

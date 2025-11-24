@@ -90,7 +90,7 @@ def test_astype(x_dtype, dtype, kw, data):
         # TODO: test values
         # TODO: test copy
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -124,7 +124,7 @@ def test_broadcast_arrays(shapes, data):
             )
         # TODO: test values
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -145,7 +145,7 @@ def test_broadcast_to(x, data):
         ph.assert_shape("broadcast_to", out_shape=out.shape, expected=shape)
         # TODO: test values
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -168,7 +168,7 @@ def test_can_cast(_from, to):
             # check that the array library actually allows such casts.
             assert out == expected, f"{out=}, but should be {expected} {f_func}"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -189,7 +189,7 @@ def test_finfo(dtype):
             assert isinstance(out.min, float)
             assert isinstance(out.smallest_normal, float)
         except Exception as exc:
-            exc.add_note(repro_snippet)
+            ph.add_note(exc, repro_snippet)
             raise
 
 @pytest.mark.min_version("2022.12")
@@ -211,7 +211,7 @@ def test_finfo_dtype(dtype):
         assert out.dtype is not float
         assert out.dtype is not complex
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -230,7 +230,7 @@ def test_iinfo(dtype):
             assert isinstance(out.max, int)
             assert isinstance(out.min, int)
         except Exception as exc:
-            exc.add_note(repro_snippet)
+            ph.add_note(exc, repro_snippet)
             raise
 
 
@@ -245,7 +245,7 @@ def test_iinfo_dtype(dtype):
         assert not isinstance(out.dtype, str)
         assert out.dtype is not int
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -277,7 +277,7 @@ def test_isdtype(dtype, kind):
                     break
         assert out == expected, f"{out=}, but should be {expected} [isdtype()]"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -290,7 +290,7 @@ class TestResultType:
             out = xp.result_type(*dtypes)
             ph.assert_dtype("result_type", in_dtype=dtypes, out_dtype=out, repr_name="out")
         except Exception as exc:
-            exc.add_note(repro_snippet)
+            ph.add_note(exc, repro_snippet)
             raise
 
     @given(pair=hh.pair_of_mutually_promotable_dtypes(None))
@@ -312,7 +312,7 @@ class TestResultType:
             out = xp.result_type(*a_and_dt)
             ph.assert_dtype("result_type", in_dtype=s1+s2, out_dtype=out, repr_name="out")
         except Exception as exc:
-            exc.add_note(repro_snippet)
+            ph.add_note(exc, repro_snippet)
             raise
 
     @given(dtypes=hh.mutually_promotable_dtypes(2), data=st.data())
@@ -333,7 +333,7 @@ class TestResultType:
             else:
                 raise ValueError(f"unknown dtype {out = }.")
         except Exception as exc:
-            exc.add_note(repro_snippet)
+            ph.add_note(exc, repro_snippet)
             raise
 
         scalar = data.draw(st.sampled_from(scalars))
@@ -344,7 +344,7 @@ class TestResultType:
             out_scalar = xp.result_type(*inputs)
             assert out_scalar == out
         except Exception as exc:
-            exc.add_note(repro_snippet)
+            ph.add_note(exc, repro_snippet)
             raise
 
         # retry with arrays
@@ -356,5 +356,5 @@ class TestResultType:
             out_scalar = xp.result_type(*inputs)
             assert out_scalar == out
         except Exception as exc:
-            exc.add_note(repro_snippet)
+            ph.add_note(exc, repro_snippet)
             raise

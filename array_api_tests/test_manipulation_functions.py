@@ -118,7 +118,7 @@ def test_concat(dtypes, base_shape, data):
                             kw=kw,
                         )
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -152,7 +152,7 @@ def test_expand_dims(x, axis):
             "expand_dims", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=sh.ndindex(out.shape)
         )
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -202,7 +202,7 @@ def test_moveaxis(x, data):
             "moveaxis", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=permuted_indices
         )
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -245,7 +245,7 @@ def test_squeeze(x, data):
 
         assert_array_ndindex("squeeze", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=sh.ndindex(out.shape))
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -275,7 +275,7 @@ def test_flip(x, data):
             assert_array_ndindex("flip", x, x_indices=indices, out=out,
                                  out_indices=reverse_indices, kw=kw)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -310,7 +310,7 @@ def test_permute_dims(x, axes):
         assert_array_ndindex("permute_dims", x, x_indices=indices, out=out,
                              out_indices=permuted_indices)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 @pytest.mark.min_version("2023.12")
@@ -378,7 +378,7 @@ def test_repeat(x, kw, data):
                 start = end
 
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -406,7 +406,7 @@ def test_reshape(x, shape):
 
         assert_array_ndindex("reshape", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=sh.ndindex(out.shape))
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -460,7 +460,7 @@ def test_roll(x, data):
             shifted_indices = roll_ndindex(x.shape, shifts, axes)
             assert_array_ndindex("roll", x, x_indices=sh.ndindex(x.shape), out=out, out_indices=shifted_indices, kw=kw)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -512,7 +512,7 @@ def test_stack(shape, dtypes, kw, data):
                         kw=kw,
                     )
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -540,7 +540,7 @@ def test_tile(x, data):
 
         assert out.shape == tuple(r*s for r, s in zip(R, S))
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 @pytest.mark.min_version("2023.12")
@@ -571,5 +571,5 @@ def test_unstack(x, data):
             idx[axis] = i
             ph.assert_array_elements("unstack", out=arr, expected=x[tuple(idx)], kw=kw, out_repr=f"out[{i}]")
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise

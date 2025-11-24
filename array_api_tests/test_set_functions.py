@@ -116,7 +116,7 @@ def test_unique_all(x):
             expected = sum(v for k, v in counts.items() if cmath.isnan(k))
             assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -168,7 +168,7 @@ def test_unique_counts(x):
             expected = sum(v for k, v in counts.items() if cmath.isnan(k))
             assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 @given(hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_side=1)))
@@ -225,7 +225,7 @@ def test_unique_inverse(x):
             expected = xp.sum(xp.astype(xp.isnan(x), xp.uint8))
             assert nans == expected, f"{nans} NaNs in out.values, but should be {expected}"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -254,5 +254,5 @@ def test_unique_values(x):
             expected = xp.sum(xp.astype(xp.isnan(x), xp.uint8))
             assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
