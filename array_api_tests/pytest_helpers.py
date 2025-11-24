@@ -35,7 +35,7 @@ __all__ = [
 def add_note(exc, note):
     """
     Add a note to an exception in a backward-compatible way.
-    
+
     For Python 3.11+, this uses the built-in exc.add_note() method.
     For earlier versions, it manually appends to exc.__notes__.
     """
