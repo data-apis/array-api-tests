@@ -20,11 +20,12 @@ from dataclasses import dataclass, field
 from decimal import ROUND_HALF_EVEN, Decimal
 from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Protocol, Tuple, Literal
-from warnings import warn
+from warnings import warn, filterwarnings, catch_warnings
 
 import pytest
 from hypothesis import given, note, settings, assume
 from hypothesis import strategies as st
+from hypothesis.errors import NonInteractiveExampleWarning
 
 from array_api_tests.typing import Array, DataType
 
@@ -1250,7 +1251,13 @@ assert len(iop_params) != 0
 
 @pytest.mark.parametrize("func_name, func, case", unary_params)
 def test_unary(func_name, func, case):
-    in_value = case.cond_from_dtype(xp.float64).example()
+    with catch_warnings():
+        # XXX: We are using example here to generate one example draw, but
+        # hypothesis issues a warning from this. We should consider either
+        # drawing multiple examples like a normal test, or just hard-coding a
+        # single example test case without using hypothesis.
+        filterwarnings('ignore', category=NonInteractiveExampleWarning)
+        in_value = case.cond_from_dtype(xp.float64).example()
     x = xp.asarray(in_value, dtype=xp.float64)
     out = func(x)
     out_value = float(out)
@@ -1325,7 +1332,7 @@ def test_empty_arrays(func_name, expected):  # TODO: parse docstrings to get exp
 
 @pytest.mark.parametrize(
     "func_name", [f.__name__ for f in category_to_funcs["statistical"]
-                  if f.__name__ != 'cumulative_sum']
+                  if f.__name__ not in ['cumulative_sum', 'cumulative_prod']]
 )
 @given(
     x=hh.arrays(dtype=hh.real_floating_dtypes, shape=hh.shapes(min_side=1)),

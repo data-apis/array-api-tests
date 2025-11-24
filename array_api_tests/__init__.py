@@ -13,19 +13,27 @@ __all__ = ["xp", "api_version", "xps"]
 # You can comment the following out and instead import the specific array module
 # you want to test, e.g. `import array_api_strict as xp`.
 if "ARRAY_API_TESTS_MODULE" in os.environ:
-    xp_name = os.environ["ARRAY_API_TESTS_MODULE"]
-    _module, _sub = xp_name, None
-    if "." in xp_name:
-        _module, _sub = xp_name.split(".", 1)
-    xp = import_module(_module)
-    if _sub:
-        try:
-            xp = getattr(xp, _sub)
-        except AttributeError:
-            # _sub may be a submodule that needs to be imported. WE can't
-            # do this in every case because some array modules are not
-            # submodules that can be imported (like mxnet.nd).
-            xp = import_module(xp_name)
+    env_var = os.environ["ARRAY_API_TESTS_MODULE"]
+    if env_var.startswith("exec('") and env_var.endswith("')"):
+        script = env_var[6:][:-2]
+        namespace = {}
+        exec(script, namespace)
+        xp = namespace["xp"]
+        xp_name = xp.__name__
+    else:
+        xp_name = env_var
+        _module, _sub = xp_name, None
+        if "." in xp_name:
+            _module, _sub = xp_name.split(".", 1)
+        xp = import_module(_module)
+        if _sub:
+            try:
+                xp = getattr(xp, _sub)
+            except AttributeError:
+                # _sub may be a submodule that needs to be imported. We can't
+                # do this in every case because some array modules are not
+                # submodules that can be imported (like mxnet.nd).
+                xp = import_module(xp_name)
 else:
     raise RuntimeError(
         "No array module specified - either edit __init__.py or set the "
@@ -78,7 +86,7 @@ except AttributeError:
 
 
 api_version = os.getenv(
-    "ARRAY_API_TESTS_VERSION", getattr(xp, "__array_api_version__", "2023.12")
+    "ARRAY_API_TESTS_VERSION", getattr(xp, "__array_api_version__", "2024.12")
 )
 xps = array_api.make_strategies_namespace(xp, api_version=api_version)
 

@@ -164,6 +164,11 @@ kind_to_dtypes = {
 }
 
 
+def available_kinds():
+    return {
+        kind for kind, dtypes in kind_to_dtypes.items() if dtypes
+    }
+
 def is_int_dtype(dtype):
     return dtype in all_int_dtypes
 
@@ -192,6 +197,7 @@ def get_scalar_type(dtype: DataType) -> ScalarType:
 
 def is_scalar(x):
     return isinstance(x, (int, float, complex, bool))
+
 
 def _make_dtype_mapping_from_names(mapping: Dict[str, Any]) -> EqualityMapping:
     dtype_value_pairs = []

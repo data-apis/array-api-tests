@@ -1,17 +1,17 @@
 from __future__ import annotations
 
+import os
 import re
 from contextlib import contextmanager
-from functools import reduce, wraps
+from functools import wraps
 import math
-from operator import mul
 import struct
 from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Tuple, Union
 
 from hypothesis import assume, reject
 from hypothesis.strategies import (SearchStrategy, booleans, composite, floats,
-                                   integers, just, lists, none, one_of,
-                                   sampled_from, shared, builds)
+                                   integers, complex_numbers, just, lists, none, one_of,
+                                   sampled_from, shared, builds, nothing, permutations)
 
 from . import _array_module as xp, api_version
 from . import array_helpers as ah
@@ -20,7 +20,7 @@ from . import shape_helpers as sh
 from . import xps
 from ._array_module import _UndefinedStub
 from ._array_module import bool as bool_dtype
-from ._array_module import broadcast_to, eye, float32, float64, full
+from ._array_module import broadcast_to, eye, float32, float64, full, complex64, complex128
 from .stubs import category_to_funcs
 from .pytest_helpers import nargs
 from .typing import Array, DataType, Scalar, Shape
@@ -65,7 +65,7 @@ def from_dtype(dtype, **kwargs) -> SearchStrategy[Scalar]:
 
 
 @wraps(xps.arrays)
-def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
+def arrays_no_scalars(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
     """xps.arrays() without the crazy large numbers."""
     if isinstance(dtype, SearchStrategy):
         return dtype.flatmap(lambda d: arrays(d, *args, elements=elements, **kwargs))
@@ -76,6 +76,19 @@ def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
         elements = from_dtype(dtype, **elements)
 
     return xps.arrays(dtype, *args, elements=elements, **kwargs)
+
+
+def _f(a, flag):
+    return a[()] if a.ndim==0 and flag else a
+
+
+@wraps(xps.arrays)
+def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
+    """xps.arrays() without the crazy large numbers. Also draw 0D arrays or numpy scalars.
+
+    Is only relevant for numpy: on all other libraries, array[()] is no-op.
+    """
+    return builds(_f, arrays_no_scalars(dtype, *args, elements=elements, **kwargs), booleans())
 
 
 _dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]
@@ -136,6 +149,13 @@ def mutually_promotable_dtypes(
     return one_of(strats).map(tuple)
 
 
+@composite
+def pair_of_mutually_promotable_dtypes(draw, max_size=2, *, dtypes=dh.all_dtypes):
+    sample = draw(mutually_promotable_dtypes( max_size, dtypes=dtypes))
+    permuted = draw(permutations(sample))
+    return sample, tuple(permuted)
+
+
 class OnewayPromotableDtypes(NamedTuple):
     input_dtype: DataType
     result_dtype: DataType
@@ -188,11 +208,11 @@ floating_dtypes = sampled_from(dh.all_float_dtypes)
 real_floating_dtypes = sampled_from(dh.real_float_dtypes)
 numeric_dtypes = sampled_from(dh.numeric_dtypes)
 # Note: this always returns complex dtypes, even if api_version < 2022.12
-complex_dtypes: SearchStrategy[Any] | None = sampled_from(dh.complex_dtypes) if dh.complex_dtypes else None
+complex_dtypes: SearchStrategy[Any] = sampled_from(dh.complex_dtypes) if dh.complex_dtypes else nothing()
 
 def all_floating_dtypes() -> SearchStrategy[DataType]:
     strat = floating_dtypes
-    if api_version >= "2022.12" and complex_dtypes is not None:
+    if api_version >= "2022.12" and not complex_dtypes.is_empty:
         strat |= complex_dtypes
     return strat
 
@@ -213,13 +233,10 @@ multiarg_array_functions = multiarg_array_functions_names.map(
     lambda i: getattr(xp, i))
 
 # Limit the total size of an array shape
-MAX_ARRAY_SIZE = 10000
+MAX_ARRAY_SIZE = int(os.environ.get("ARRAY_API_TESTS_MAX_ARRAY_SIZE", 1024))
 # Size to use for 2-dim arrays
 SQRT_MAX_ARRAY_SIZE = int(math.sqrt(MAX_ARRAY_SIZE))
 
-# np.prod and others have overflow and math.prod is Python 3.8+ only
-def prod(seq):
-    return reduce(mul, seq, 1)
 
 # hypotheses.strategies.tuples only generates tuples of a fixed size
 def tuples(elements, *, min_size=0, max_size=None, unique_by=None, unique=False):
@@ -233,9 +250,71 @@ def shapes(**kw):
     kw.setdefault('min_dims', 0)
     kw.setdefault('min_side', 0)
     return xps.array_shapes(**kw).filter(
-        lambda shape: prod(i for i in shape if i) < MAX_ARRAY_SIZE
+        lambda shape: math.prod(i for i in shape if i) < MAX_ARRAY_SIZE
     )
 
+def _factorize(n: int) -> List[int]:
+    # Simple prime factorization. Only needs to handle n ~ MAX_ARRAY_SIZE
+    factors = []
+    while n % 2 == 0:
+        factors.append(2)
+        n //= 2
+
+    for i in range(3, int(math.sqrt(n)) + 1, 2):
+        while n % i == 0:
+            factors.append(i)
+            n //= i
+
+    if n > 1:  # n is a prime number greater than 2
+        factors.append(n)
+
+    return factors
+
+MAX_SIDE = MAX_ARRAY_SIZE // 64
+# NumPy only supports up to 32 dims. TODO: Get this from the new inspection APIs
+MAX_DIMS = min(MAX_ARRAY_SIZE // MAX_SIDE, 32)
+
+
+@composite
+def reshape_shapes(draw, arr_shape, ndims=integers(1, MAX_DIMS)):
+    """
+    Generate shape tuples whose product equals the product of array_shape.
+    """
+    shape = draw(arr_shape)
+
+    array_size = math.prod(shape)
+
+    n_dims = draw(ndims)
+
+    # Handle special cases
+    if array_size == 0:
+        # Generate a random tuple, and ensure at least one of the entries is 0
+        result = list(draw(shapes(min_dims=n_dims, max_dims=n_dims)))
+        pos = draw(integers(0, n_dims - 1))
+        result[pos] = 0
+        return tuple(result)
+
+    if array_size == 1:
+        return tuple(1 for _ in range(n_dims))
+
+    # Get prime factorization
+    factors = _factorize(array_size)
+
+    # Distribute prime factors randomly
+    result = [1] * n_dims
+    for factor in factors:
+        pos = draw(integers(0, n_dims - 1))
+        result[pos] *= factor
+
+    assert math.prod(result) == array_size
+
+    # An element of the reshape tuple can be -1, which means it is a stand-in
+    # for the remaining factors.
+    if draw(booleans()):
+        pos = draw(integers(0, n_dims - 1))
+        result[pos] = -1
+
+    return tuple(result)
 
 one_d_shapes = xps.array_shapes(min_dims=1, max_dims=1, min_side=0, max_side=SQRT_MAX_ARRAY_SIZE)
 
@@ -245,7 +324,7 @@ def matrix_shapes(draw, stack_shapes=shapes()):
     stack_shape = draw(stack_shapes)
     mat_shape = draw(xps.array_shapes(max_dims=2, min_dims=2))
     shape = stack_shape + mat_shape
-    assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
+    assume(math.prod(i for i in shape if i) < MAX_ARRAY_SIZE)
     return shape
 
 square_matrix_shapes = matrix_shapes().filter(lambda shape: shape[-1] == shape[-2])
@@ -290,7 +369,7 @@ def mutually_broadcastable_shapes(
         )
         .map(lambda BS: BS.input_shapes)
         .filter(lambda shapes: all(
-            prod(i for i in s if i > 0) < MAX_ARRAY_SIZE for s in shapes
+            math.prod(i for i in s if i > 0) < MAX_ARRAY_SIZE for s in shapes
         ))
     )
 
@@ -299,17 +378,23 @@ two_mutually_broadcastable_shapes = mutually_broadcastable_shapes(2)
 # TODO: Add support for complex Hermitian matrices
 @composite
 def symmetric_matrices(draw, dtypes=real_floating_dtypes, finite=True, bound=10.):
+    # for now, only generate elements from (1, bound); TODO: restore
+    # generating from (-bound, -1/bound).or.(1/bound, bound)
+    # Note that using `assume` triggers a HealthCheck for filtering too much.
     shape = draw(square_matrix_shapes)
     dtype = draw(dtypes)
     if not isinstance(finite, bool):
         finite = draw(finite)
-    elements = {'allow_nan': False, 'allow_infinity': False} if finite else None
+    if finite:
+        elements = {'allow_nan': False, 'allow_infinity': False,
+                    'min_value': 1, 'max_value': bound}
+    else:
+        elements = None
     a = draw(arrays(dtype=dtype, shape=shape, elements=elements))
     at = ah._matrix_transpose(a)
     H = (a + at)*0.5
     if finite:
         assume(not xp.any(xp.isinf(H)))
-    assume(xp.all((H == 0.) | ((1/bound <= xp.abs(H)) & (xp.abs(H) <= bound))))
     return H
 
 @composite
@@ -321,7 +406,7 @@ def positive_definite_matrices(draw, dtypes=floating_dtypes):
     base_shape = draw(shapes())
     n = draw(integers(0, 8))  # 8 is an arbitrary small but interesting-enough value
     shape = base_shape + (n, n)
-    assume(prod(i for i in shape if i) < MAX_ARRAY_SIZE)
+    assume(math.prod(i for i in shape if i) < MAX_ARRAY_SIZE)
     dtype = draw(dtypes)
     return broadcast_to(eye(n, dtype=dtype), shape)
 
@@ -365,26 +450,38 @@ numeric_arrays = arrays(
 )
 
 @composite
-def scalars(draw, dtypes, finite=False):
+def scalars(draw, dtypes, finite=False, **kwds):
     """
     Strategy to generate a scalar that matches a dtype strategy
 
     dtypes should be one of the shared_* dtypes strategies.
     """
     dtype = draw(dtypes)
+    mM = kwds.pop('mM', None)
     if dh.is_int_dtype(dtype):
-        m, M = dh.dtype_ranges[dtype]
+        if mM is None:
+            m, M = dh.dtype_ranges[dtype]
+        else:
+            m, M = mM
         return draw(integers(m, M))
     elif dtype == bool_dtype:
         return draw(booleans())
     elif dtype == float64:
         if finite:
-            return draw(floats(allow_nan=False, allow_infinity=False))
-        return draw(floats())
+            return draw(floats(allow_nan=False, allow_infinity=False, **kwds))
+        return draw(floats(), **kwds)
     elif dtype == float32:
         if finite:
-            return draw(floats(width=32, allow_nan=False, allow_infinity=False))
-        return draw(floats(width=32))
+            return draw(floats(width=32, allow_nan=False, allow_infinity=False, **kwds))
+        return draw(floats(width=32, **kwds))
+    elif dtype == complex64:
+        if finite:
+            return draw(complex_numbers(width=32, allow_nan=False, allow_infinity=False))
+        return draw(complex_numbers(width=32))
+    elif dtype == complex128:
+        if finite:
+            return draw(complex_numbers(allow_nan=False, allow_infinity=False))
+        return draw(complex_numbers())
     else:
         raise ValueError(f"Unrecognized dtype {dtype}")
 
@@ -493,6 +590,30 @@ def two_mutual_arrays(
         shape=mutual_shapes.map(lambda pair: pair[1]),
     )
     return arrays1, arrays2
+
+
+@composite
+def array_and_py_scalar(draw, dtypes, mM=None, positive=False):
+    """Draw a pair: (array, scalar) or (scalar, array)."""
+    dtype = draw(sampled_from(dtypes))
+
+    scalar_var = draw(scalars(just(dtype), finite=True, mM=mM))
+    if positive:
+        assume (scalar_var > 0)
+
+    elements={}
+    if dtype in dh.real_float_dtypes:
+        elements = {'allow_nan': False, 'allow_infinity': False,
+                    'min_value': 1.0 / (2<<5), 'max_value': 2<<5}
+    if positive:
+        elements = {'min_value': 0}
+    array_var = draw(arrays(dtype, shape=shapes(min_dims=1), elements=elements))
+
+    if draw(booleans()):
+        return scalar_var, array_var
+    else:
+        return array_var, scalar_var
+
 
 @composite
 def kwargs(draw, **kw):

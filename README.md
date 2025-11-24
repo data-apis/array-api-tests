@@ -36,7 +36,13 @@ You need to specify the array library to test. It can be specified via the
 $ export ARRAY_API_TESTS_MODULE=array_api_strict
 ```
 
-Alternately, import/define the `xp` variable in `array_api_tests/__init__.py`.
+To specify a runtime-defined module, define `xp` using the `exec('...')` syntax:
+
+```bash
+$ export ARRAY_API_TESTS_MODULE="exec('import quantity_array, numpy; xp = quantity_array.quantity_namespace(numpy)')"
+```
+
+Alternately, import/define the `xp` and `xp_name` variables in `array_api_tests/__init__.py`.
 
 ### Specifying the API version
 
@@ -298,6 +304,26 @@ ARRAY_API_TESTS_SKIP_DTYPES=uint16,uint32,uint64 pytest array_api_tests/
 
 Note that skipping certain essential dtypes such as `bool` and the default
 floating-point dtype is not supported.
+
+#### Turning xfails into skips
+
+Keeping a large number of ``xfails`` can have drastic effects on the run time. This is due
+to the way `hypothesis` works: when it detects a failure, it does a large amount
+of work to simplify the failing example.
+If the run time of the test suite becomes a problem, you can use the
+``ARRAY_API_TESTS_XFAIL_MARK`` environment variable: setting it to ``skip`` skips the
+entries from the ``xfail.txt`` file instead of xfailing them. Anecdotally, we saw
+speed-ups by a factor of 4-5---which allowed us to use 4-5 larger values of
+``--max-examples`` within the same time budget.
+
+#### Limiting the array sizes
+
+The test suite generates random arrays as inputs to functions it tests. "unvectorized"
+tests iterate over elements of arrays, which might be slow. If the run time becomes
+a problem, you can limit the maximum number of elements in generated arrays by
+setting the environment variable ``ARRAY_API_TESTS_MAX_ARRAY_SIZE`` to the
+desired value. By default, it is set to 1024.
+
 
 ## Contributing
 

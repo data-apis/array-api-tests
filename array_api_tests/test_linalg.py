@@ -45,6 +45,7 @@ from . import _array_module
 from . import _array_module as xp
 from ._array_module import linalg
 
+
 def assert_equal(x, y, msg_extra=None):
     extra = '' if not msg_extra else f' ({msg_extra})'
     if x.dtype in dh.all_float_dtypes:
@@ -59,6 +60,7 @@ def assert_equal(x, y, msg_extra=None):
         assert x.dtype == y.dtype, f"The input arrays do not have the same dtype ({x.dtype} != {y.dtype}){extra}"
     else:
         assert_exactly_equal(x, y, msg_extra=msg_extra)
+
 
 def _test_stacks(f, *args, res=None, dims=2, true_val=None,
                  matrix_axes=(-2, -1),
@@ -106,6 +108,7 @@ def _test_stacks(f, *args, res=None, dims=2, true_val=None,
         if true_val:
             assert_equal(decomp_res_stack, true_val(*x_stacks, **kw), msg_extra)
 
+
 def _test_namedtuple(res, fields, func_name):
     """
     Test that res is a namedtuple with the correct fields.
@@ -120,6 +123,7 @@ def _test_namedtuple(res, fields, func_name):
     for i, field in enumerate(fields):
         assert hasattr(res, field), f"{func_name}() result namedtuple doesn't have the '{field}' field"
         assert res[i] is getattr(res, field), f"{func_name}() result namedtuple '{field}' field is not in position {i}"
+
 
 @pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
@@ -202,11 +206,11 @@ def test_cross(x1_x2_kw):
 
     def exact_cross(a, b):
         assert a.shape == b.shape == (3,), "Invalid cross() stack shapes. This indicates a bug in the test suite."
-        return asarray([
+        return asarray(xp.stack([
             a[1]*b[2] - a[2]*b[1],
             a[2]*b[0] - a[0]*b[2],
             a[0]*b[1] - a[1]*b[0],
-        ], dtype=res.dtype)
+        ]), dtype=res.dtype)
 
     # We don't want to pass in **kw here because that would pass axis to
     # cross() on a single stack, but the axis is not meaningful on unstacked
@@ -263,7 +267,7 @@ def test_diagonal(x, kw):
             x_stack_diag = [x_stack[i, i + offset] for i in range(diag_size)]
         else:
             x_stack_diag = [x_stack[i - offset, i] for i in range(diag_size)]
-        return asarray(x_stack_diag, dtype=x.dtype)
+        return asarray(xp.stack(x_stack_diag) if x_stack_diag else [], dtype=x.dtype)
 
     _test_stacks(linalg.diagonal, x, **kw, res=res, dims=1, true_val=true_diag)
 
@@ -897,9 +901,20 @@ def test_trace(x, kw):
             x_stack_diag = [x_stack[i, i + offset] for i in range(diag_size)]
         else:
             x_stack_diag = [x_stack[i - offset, i] for i in range(diag_size)]
-        return _array_module.sum(asarray(x_stack_diag, dtype=x.dtype))
+        result = xp.asarray(xp.stack(x_stack_diag) if x_stack_diag else [], dtype=x.dtype)
+        return _array_module.sum(result)
+
 
     _test_stacks(linalg.trace, x, **kw, res=res, dims=0, true_val=true_trace)
+
+
+def _conj(x):
+    # XXX: replace with xp.dtype when all array libraries implement it 
+    if x.dtype in (xp.complex64, xp.complex128):
+        return xp.conj(x)
+    else:
+        return x
+
 
 def _test_vecdot(namespace, x1, x2, data):
     vecdot = namespace.vecdot
@@ -925,11 +940,8 @@ def _test_vecdot(namespace, x1, x2, data):
     ph.assert_result_shape("vecdot", in_shapes=[x1.shape, x2.shape],
                            out_shape=res.shape, expected=expected_shape)
 
-    if x1.dtype in dh.int_dtypes:
-        def true_val(x, y, axis=-1):
-            return xp.sum(xp.multiply(x, y), dtype=res.dtype)
-    else:
-        true_val = None
+    def true_val(x, y, axis=-1):
+        return xp.sum(xp.multiply(_conj(x), y), dtype=res.dtype)
 
     _test_stacks(vecdot, x1, x2, res=res, dims=0,
                  matrix_axes=(axis,), true_val=true_val)
@@ -944,6 +956,7 @@ def _test_vecdot(namespace, x1, x2, data):
 def test_linalg_vecdot(x1, x2, data):
     _test_vecdot(linalg, x1, x2, data)
 
+
 @pytest.mark.unvectorized
 @given(
     *two_mutual_arrays(dh.numeric_dtypes, mutually_broadcastable_shapes(2, min_dims=1)),
@@ -952,9 +965,21 @@ def test_linalg_vecdot(x1, x2, data):
 def test_vecdot(x1, x2, data):
     _test_vecdot(_array_module, x1, x2, data)
 
+
+@pytest.mark.xp_extension('linalg')
+def test_vecdot_conj():
+    # no-hypothesis test to check that the 1st argument is in fact conjugated
+    x1 = xp.asarray([1j, 2j, 3j])
+    x2 = xp.asarray([1, 2j, 3])
+
+    import cmath
+    assert cmath.isclose(complex(xp.linalg.vecdot(x1, x2)), 4 - 10j)
+
+
 # Insanely large orders might not work. There isn't a limit specified in the
 # spec, so we just limit to reasonable values here.
 max_ord = 100
+
 
 @pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')

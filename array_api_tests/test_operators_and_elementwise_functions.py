@@ -26,6 +26,9 @@ from .typing import Array, DataType, Param, Scalar, ScalarType, Shape
 pytestmark = pytest.mark.unvectorized
 
 
+EPS32 = xp.finfo(xp.float32).eps
+
+
 def mock_int_dtype(n: int, dtype: DataType) -> int:
     """Returns equivalent of `n` that mocks `dtype` behaviour."""
     nbits = dh.dtype_nbits[dtype]
@@ -690,6 +693,42 @@ def binary_param_assert_against_refimpl(
         )
 
 
+def _convert_scalars_helper(x1, x2):
+    """Convert python scalar to arrays, record the shapes/dtypes of arrays.
+
+    For inputs being scalars or arrays, return the dtypes and shapes of array arguments,
+    and all arguments converted to arrays.
+
+    dtypes are separate to help distinguishing between 
+    `py_scalar + f32_array -> f32_array` and `f64_array + f32_array -> f64_array`
+    """
+    if dh.is_scalar(x1):
+        in_dtypes = [x2.dtype]
+        in_shapes = [x2.shape]
+        x1a, x2a = xp.asarray(x1), x2
+    elif dh.is_scalar(x2):
+        in_dtypes = [x1.dtype]
+        in_shapes = [x1.shape]
+        x1a, x2a = x1, xp.asarray(x2)
+    else:
+        in_dtypes = [x1.dtype, x2.dtype]
+        in_shapes = [x1.shape, x2.shape]
+        x1a, x2a = x1, x2
+
+    return in_dtypes, in_shapes, (x1a, x2a)
+
+
+def _assert_correctness_binary(
+    name, func, in_dtypes, in_shapes, in_arrs, out, expected_dtype=None, **kwargs
+):
+    x1a, x2a = in_arrs
+    ph.assert_dtype(name, in_dtype=in_dtypes, out_dtype=out.dtype, expected=expected_dtype)
+    ph.assert_result_shape(name, in_shapes=in_shapes, out_shape=out.shape)
+    check_values = kwargs.pop('check_values', None)
+    if check_values:
+        binary_assert_against_refimpl(name, x1a, x2a, out, func, **kwargs)
+
+
 @pytest.mark.parametrize("ctx", make_unary_params("abs", dh.numeric_dtypes))
 @given(data=st.data())
 def test_abs(ctx, data):
@@ -789,10 +828,14 @@ def test_atan(x):
 @given(*hh.two_mutual_arrays(dh.real_float_dtypes))
 def test_atan2(x1, x2):
     out = xp.atan2(x1, x2)
-    ph.assert_dtype("atan2", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
-    ph.assert_result_shape("atan2", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
-    refimpl = cmath.atan2 if x1.dtype in dh.complex_dtypes else math.atan2
-    binary_assert_against_refimpl("atan2", x1, x2, out, refimpl)
+    _assert_correctness_binary(
+        "atan",
+        cmath.atan2 if x1.dtype in dh.complex_dtypes else math.atan2,
+        in_dtypes=[x1.dtype, x2.dtype],
+        in_shapes=[x1.shape, x2.shape],
+        in_arrs=[x1, x2],
+        out=out,
+    )
 
 
 @given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
@@ -946,21 +989,19 @@ def test_clip(x, data):
                                                                 base_shape=x.shape),
                                 label="min.shape, max.shape")
 
-    dtypes = hh.real_floating_dtypes if dh.is_float_dtype(x.dtype) else hh.int_dtypes
-
     min = data.draw(st.one_of(
         st.none(),
         hh.scalars(dtypes=st.just(x.dtype)),
-        hh.arrays(dtype=dtypes, shape=shape1),
+        hh.arrays(dtype=st.just(x.dtype), shape=shape1),
     ), label="min")
     max = data.draw(st.one_of(
         st.none(),
         hh.scalars(dtypes=st.just(x.dtype)),
-        hh.arrays(dtype=dtypes, shape=shape2),
+        hh.arrays(dtype=st.just(x.dtype), shape=shape2),
     ), label="max")
 
-    # min > max is undefined (but allow nans)
-    assume(min is None or max is None or not xp.any(ah.less(xp.asarray(max), xp.asarray(min))))
+    # Note1: min > max is undefined (but allow nans)
+    assume(min is None or max is None or not xp.any(ah.less(xp.asarray(max, dtype=x.dtype), xp.asarray(min, dtype=x.dtype))))
 
     kw = data.draw(
         hh.specified_kwargs(
@@ -1055,20 +1096,26 @@ def test_clip(x, data):
                 f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
             )
         else:
-            assert out_val == expected, (
+            if out.dtype == xp.float32:
+                # conversion to builtin float is prone to roundoff errors
+                close_enough = math.isclose(out_val, expected, rel_tol=EPS32)
+            else:
+                close_enough = out_val == expected
+
+            assert close_enough, (
                 f"out[{o_idx}]={out[o_idx]} but should be {expected} [clip()]\n"
                 f"x[{x_idx}]={x_val}, min[{min_idx}]={min_val}, max[{max_idx}]={max_val}"
             )
 
 
-if api_version >= "2022.12":
-
-    @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
-    def test_conj(x):
-        out = xp.conj(x)
-        ph.assert_dtype("conj", in_dtype=x.dtype, out_dtype=out.dtype)
-        ph.assert_shape("conj", out_shape=out.shape, expected=x.shape)
-        unary_assert_against_refimpl("conj", x, out, operator.methodcaller("conjugate"))
+@pytest.mark.min_version("2022.12")
+@pytest.mark.skipif(hh.complex_dtypes.is_empty, reason="no complex data types to draw from")
+@given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
+def test_conj(x):
+    out = xp.conj(x)
+    ph.assert_dtype("conj", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_shape("conj", out_shape=out.shape, expected=x.shape)
+    unary_assert_against_refimpl("conj", x, out, operator.methodcaller("conjugate"))
 
 
 @pytest.mark.min_version("2023.12")
@@ -1110,8 +1157,6 @@ def test_divide(ctx, data):
 
     binary_param_assert_dtype(ctx, left, right, res)
     binary_param_assert_shape(ctx, left, right, res)
-    if res.dtype in dh.complex_dtypes:
-        return  # TOOD: handle complex division
     binary_param_assert_against_refimpl(
         ctx,
         left,
@@ -1260,19 +1305,24 @@ def test_greater_equal(ctx, data):
 @given(*hh.two_mutual_arrays(dh.real_float_dtypes))
 def test_hypot(x1, x2):
     out = xp.hypot(x1, x2)
-    ph.assert_dtype("hypot", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
-    ph.assert_result_shape("hypot", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
-    binary_assert_against_refimpl("hypot", x1, x2, out, math.hypot)
+    _assert_correctness_binary(
+        "hypot",
+        math.hypot,
+        in_dtypes=[x1.dtype, x2.dtype],
+        in_shapes=[x1.shape, x2.shape],
+        in_arrs=[x1, x2],
+        out=out
+    )
 
 
-if api_version >= "2022.12":
-
-    @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
-    def test_imag(x):
-        out = xp.imag(x)
-        ph.assert_dtype("imag", in_dtype=x.dtype, out_dtype=out.dtype, expected=dh.dtype_components[x.dtype])
-        ph.assert_shape("imag", out_shape=out.shape, expected=x.shape)
-        unary_assert_against_refimpl("imag", x, out, operator.attrgetter("imag"))
+@pytest.mark.min_version("2022.12")
+@pytest.mark.skipif(hh.complex_dtypes.is_empty, reason="no complex data types to draw from")
+@given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
+def test_imag(x):
+    out = xp.imag(x)
+    ph.assert_dtype("imag", in_dtype=x.dtype, out_dtype=out.dtype, expected=dh.dtype_components[x.dtype])
+    ph.assert_shape("imag", out_shape=out.shape, expected=x.shape)
+    unary_assert_against_refimpl("imag", x, out, operator.attrgetter("imag"))
 
 
 @given(hh.arrays(dtype=hh.numeric_dtypes, shape=hh.shapes()))
@@ -1412,21 +1462,17 @@ def logaddexp_refimpl(l: float, r: float) -> float:
         raise OverflowError
 
 
+@pytest.mark.min_version("2023.12")
 @given(*hh.two_mutual_arrays(dh.real_float_dtypes))
 def test_logaddexp(x1, x2):
     out = xp.logaddexp(x1, x2)
-    ph.assert_dtype("logaddexp", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
-    ph.assert_result_shape("logaddexp", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
-    binary_assert_against_refimpl("logaddexp", x1, x2, out, logaddexp_refimpl)
-
-
-@given(*hh.two_mutual_arrays([xp.bool]))
-def test_logical_and(x1, x2):
-    out = xp.logical_and(x1, x2)
-    ph.assert_dtype("logical_and", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
-    ph.assert_result_shape("logical_and", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
-    binary_assert_against_refimpl(
-        "logical_and", x1, x2, out, operator.and_, expr_template="({} and {})={}"
+    _assert_correctness_binary(
+        "logaddexp",
+        logaddexp_refimpl,
+        in_dtypes=[x1.dtype, x2.dtype],
+        in_shapes=[x1.shape, x2.shape],
+        in_arrs=[x1, x2],
+        out=out
     )
 
 
@@ -1441,22 +1487,44 @@ def test_logical_not(x):
 
 
 @given(*hh.two_mutual_arrays([xp.bool]))
+def test_logical_and(x1, x2):
+    out = xp.logical_and(x1, x2)
+    _assert_correctness_binary(
+        "logical_and",
+        operator.and_,
+        in_dtypes=[x1.dtype, x2.dtype],
+        in_shapes=[x1.shape, x2.shape],
+        in_arrs=[x1, x2],
+        out=out,
+        expr_template="({} and {})={}"
+    )
+
+
+@given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_or(x1, x2):
     out = xp.logical_or(x1, x2)
-    ph.assert_dtype("logical_or", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
-    ph.assert_result_shape("logical_or", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
-    binary_assert_against_refimpl(
-        "logical_or", x1, x2, out, operator.or_, expr_template="({} or {})={}"
+    _assert_correctness_binary(
+        "logical_or",
+        operator.or_,
+        in_dtypes=[x1.dtype, x2.dtype],
+        in_shapes=[x1.shape, x2.shape],
+        in_arrs=[x1, x2],
+        out=out,
+        expr_template="({} or {})={}"
     )
 
 
 @given(*hh.two_mutual_arrays([xp.bool]))
 def test_logical_xor(x1, x2):
     out = xp.logical_xor(x1, x2)
-    ph.assert_dtype("logical_xor", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
-    ph.assert_result_shape("logical_xor", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
-    binary_assert_against_refimpl(
-        "logical_xor", x1, x2, out, operator.xor, expr_template="({} ^ {})={}"
+    _assert_correctness_binary(
+        "logical_xor",
+        operator.xor,
+        in_dtypes=[x1.dtype, x2.dtype],
+        in_shapes=[x1.shape, x2.shape],
+        in_arrs=[x1, x2],
+        out=out,
+        expr_template="({} ^ {})={}"
     )
 
 
@@ -1464,18 +1532,18 @@ def test_logical_xor(x1, x2):
 @given(*hh.two_mutual_arrays(dh.real_float_dtypes))
 def test_maximum(x1, x2):
     out = xp.maximum(x1, x2)
-    ph.assert_dtype("maximum", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
-    ph.assert_result_shape("maximum", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
-    binary_assert_against_refimpl("maximum", x1, x2, out, max, strict_check=True)
+    _assert_correctness_binary(
+        "maximum", max, [x1.dtype, x2.dtype], [x1.shape, x2.shape], (x1, x2), out, strict_check=True
+    )
 
 
 @pytest.mark.min_version("2023.12")
 @given(*hh.two_mutual_arrays(dh.real_float_dtypes))
 def test_minimum(x1, x2):
     out = xp.minimum(x1, x2)
-    ph.assert_dtype("minimum", in_dtype=[x1.dtype, x2.dtype], out_dtype=out.dtype)
-    ph.assert_result_shape("minimum", in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
-    binary_assert_against_refimpl("minimum", x1, x2, out, min, strict_check=True)
+    _assert_correctness_binary(
+        "minimum", min, [x1.dtype, x2.dtype], [x1.shape, x2.shape], (x1, x2), out, strict_check=True
+    )
 
 
 @pytest.mark.parametrize("ctx", make_binary_params("multiply", dh.numeric_dtypes))
@@ -1529,6 +1597,26 @@ def test_not_equal(ctx, data):
     )
 
 
+@pytest.mark.min_version("2024.12")
+@given(
+    shapes=hh.two_mutually_broadcastable_shapes,
+    dtype=hh.real_floating_dtypes,
+    data=st.data() 
+)
+def test_nextafter(shapes, dtype, data):
+    x1 = data.draw(hh.arrays(dtype=dtype, shape=shapes[0]), label="x1")
+    x2 = data.draw(hh.arrays(dtype=dtype, shape=shapes[0]), label="x2")
+
+    out = xp.nextafter(x1, x2)
+    _assert_correctness_binary(
+        "nextafter",
+        math.nextafter,
+        in_dtypes=[x1.dtype, x2.dtype],
+        in_shapes=[x1.shape, x2.shape],
+        in_arrs=[x1, x2],
+        out=out
+    )
+
 @pytest.mark.parametrize("ctx", make_unary_params("positive", dh.numeric_dtypes))
 @given(data=st.data())
 def test_positive(ctx, data):
@@ -1561,14 +1649,30 @@ def test_pow(ctx, data):
     # Values testing pow is too finicky
 
 
-if api_version >= "2022.12":
+@pytest.mark.min_version("2022.12")
+@pytest.mark.skipif(hh.complex_dtypes.is_empty, reason="no complex data types to draw from")
+@given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
+def test_real(x):
+    out = xp.real(x)
+    ph.assert_dtype("real", in_dtype=x.dtype, out_dtype=out.dtype, expected=dh.dtype_components[x.dtype])
+    ph.assert_shape("real", out_shape=out.shape, expected=x.shape)
+    unary_assert_against_refimpl("real", x, out, operator.attrgetter("real"))
 
-    @given(hh.arrays(dtype=hh.complex_dtypes, shape=hh.shapes()))
-    def test_real(x):
-        out = xp.real(x)
-        ph.assert_dtype("real", in_dtype=x.dtype, out_dtype=out.dtype, expected=dh.dtype_components[x.dtype])
-        ph.assert_shape("real", out_shape=out.shape, expected=x.shape)
-        unary_assert_against_refimpl("real", x, out, operator.attrgetter("real"))
+
+@pytest.mark.min_version("2024.12")
+@given(hh.arrays(dtype=hh.floating_dtypes, shape=hh.shapes(), elements=finite_kw))
+def test_reciprocal(x):
+    out = xp.reciprocal(x)
+    ph.assert_dtype("reciprocal", in_dtype=x.dtype, out_dtype=out.dtype)
+    ph.assert_shape("reciprocal", out_shape=out.shape, expected=x.shape)
+    refimpl = lambda x: 1.0 / x
+    unary_assert_against_refimpl(
+        "reciprocal",
+        x,
+        out,
+        refimpl,
+        strict_check=True,
+    )
 
 
 @pytest.mark.skip(reason="flaky")
@@ -1704,3 +1808,148 @@ def test_trunc(x):
     ph.assert_dtype("trunc", in_dtype=x.dtype, out_dtype=out.dtype)
     ph.assert_shape("trunc", out_shape=out.shape, expected=x.shape)
     unary_assert_against_refimpl("trunc", x, out, math.trunc, strict_check=True)
+
+
+def _check_binary_with_scalars(func_data, x1x2):
+    x1, x2 = x1x2
+    func_name, refimpl, kwds, expected_dtype = func_data
+    func = getattr(xp, func_name)
+    out = func(x1, x2)
+    in_dtypes, in_shapes, (x1a, x2a) = _convert_scalars_helper(x1, x2)
+    _assert_correctness_binary(
+        func_name, refimpl, in_dtypes, in_shapes, (x1a, x2a), out, expected_dtype, **kwds
+    )
+
+
+def _filter_zero(x):
+    return x != 0 if dh.is_scalar(x) else (not xp.any(x == 0))
+
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.parametrize('func_data',
+    # func_name, refimpl, kwargs, expected_dtype
+    [
+        ("add", operator.add, {}, None),
+        ("atan2", math.atan2, {}, None),
+        ("copysign", math.copysign, {}, None),
+        ("divide", operator.truediv, {"filter_": lambda s: s != 0}, None),
+        ("hypot", math.hypot, {}, None),
+        ("logaddexp", logaddexp_refimpl, {}, None),
+        ("nextafter", math.nextafter, {}, None),
+        ("maximum", max, {'strict_check': True}, None),
+        ("minimum", min, {'strict_check': True}, None),
+        ("multiply", operator.mul, {}, None),
+        ("subtract", operator.sub, {}, None),
+
+        ("equal", operator.eq, {}, xp.bool),
+        ("not_equal", operator.ne, {}, xp.bool),
+        ("less", operator.lt, {}, xp.bool),
+        ("less_equal", operator.le, {}, xp.bool),
+        ("greater", operator.gt, {}, xp.bool),
+        ("greater_equal", operator.ge, {}, xp.bool),
+        ("pow", operator.pow, {'check_values': False}, None)   # value tests are too finicky for pow
+    ],
+    ids=lambda func_data: func_data[0]  # use names for test IDs
+)
+@given(x1x2=hh.array_and_py_scalar(dh.real_float_dtypes))
+def test_binary_with_scalars_real(func_data, x1x2):
+    _check_binary_with_scalars(func_data, x1x2)
+
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.parametrize('func_data',
+    # func_name, refimpl, kwargs, expected_dtype
+    [
+        ("logical_and", operator.and_, {"expr_template": "({} or {})={}"}, None),
+        ("logical_or", operator.or_, {"expr_template": "({} or {})={}"}, None),
+        ("logical_xor", operator.xor, {"expr_template": "({} or {})={}"}, None),
+    ],
+    ids=lambda func_data: func_data[0]  # use names for test IDs
+)
+@given(x1x2=hh.array_and_py_scalar([xp.bool]))
+def test_binary_with_scalars_bool(func_data, x1x2):
+    _check_binary_with_scalars(func_data, x1x2)
+
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.parametrize('func_data',
+    # func_name, refimpl, kwargs, expected_dtype
+    [
+        ("floor_divide", operator.floordiv, {}, None),
+        ("remainder", operator.mod, {}, None),
+    ],
+    ids=lambda func_data: func_data[0]  # use names for test IDs
+)
+@given(x1x2=hh.array_and_py_scalar([xp.int64]))
+def test_binary_with_scalars_int(func_data, x1x2):
+    assume(_filter_zero(x1x2[1]))
+    assume(_filter_zero(x1x2[0]) and _filter_zero(x1x2[1]))
+    _check_binary_with_scalars(func_data, x1x2)
+
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.parametrize('func_data',
+    # func_name, refimpl, kwargs, expected_dtype
+    [
+        ("bitwise_and", operator.and_, {}, None),
+        ("bitwise_or", operator.or_, {}, None),
+        ("bitwise_xor", operator.xor, {}, None),
+    ],
+    ids=lambda func_data: func_data[0]  # use names for test IDs
+)
+@given(x1x2=hh.array_and_py_scalar([xp.int32]))
+def test_binary_with_scalars_bitwise(func_data, x1x2):
+    func_name, refimpl, kwargs, expected = func_data
+    # repack the refimpl
+    refimpl_ = lambda l, r: mock_int_dtype(refimpl(l, r), xp.int32 )
+    _check_binary_with_scalars((func_name, refimpl_, kwargs, expected), x1x2)
+
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.parametrize('func_data',
+    # func_name, refimpl, kwargs, expected_dtype
+    [
+        ("bitwise_left_shift", operator.lshift, {}, None),
+        ("bitwise_right_shift", operator.rshift, {}, None),
+    ],
+    ids=lambda func_data: func_data[0]  # use names for test IDs
+)
+@given(x1x2=hh.array_and_py_scalar([xp.int32], positive=True, mM=(1, 3)))
+def test_binary_with_scalars_bitwise_shifts(func_data, x1x2):
+    func_name, refimpl, kwargs, expected = func_data
+    # repack the refimpl
+    refimpl_ = lambda l, r: mock_int_dtype(refimpl(l, r), xp.int32 )
+    _check_binary_with_scalars((func_name, refimpl_, kwargs, expected), x1x2)
+
+
+@pytest.mark.min_version("2024.12")
+@pytest.mark.unvectorized
+@given(
+    x1x2=hh.array_and_py_scalar([xp.int32]),
+    data=st.data()
+)
+def test_where_with_scalars(x1x2, data):
+    x1, x2 = x1x2
+
+    if dh.is_scalar(x1):
+        dtype, shape = x2.dtype, x2.shape
+        x1_arr, x2_arr = xp.broadcast_to(xp.asarray(x1), shape), x2
+    else:
+        dtype, shape = x1.dtype, x1.shape
+        x1_arr, x2_arr = x1, xp.broadcast_to(xp.asarray(x2), shape)
+
+    condition = data.draw(hh.arrays(shape=shape, dtype=xp.bool))
+
+    out = xp.where(condition, x1, x2)
+
+    assert out.dtype == dtype, f"where: got {out.dtype = } for {dtype=}, {x1=} and {x2=}"
+    assert out.shape == shape, f"where: got {out.shape = } for {shape=}, {x1=} and {x2=}"
+
+    # value test
+    for idx in sh.ndindex(shape):
+        if condition[idx]:
+            assert out[idx] == x1_arr[idx]
+        else:
+            assert out[idx] == x2_arr[idx]
+
+

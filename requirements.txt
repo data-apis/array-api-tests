@@ -1,4 +1,4 @@
 pytest
 pytest-json-report
-hypothesis>=6.68.0
+hypothesis>=6.130.5
 ndindex>=1.8
