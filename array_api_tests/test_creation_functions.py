@@ -196,7 +196,7 @@ def test_arange(dtype, data):
                     out[0], xp.asarray(_start, dtype=out.dtype)
                 ), f"out[0]={out[0]}, but should be {_start} {f_func}"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise        
 
 
@@ -257,7 +257,7 @@ def test_asarray_scalars(shape, data):
             v = scalar_type(out[idx])
             ph.assert_scalar_equals("asarray", type_=scalar_type, idx=idx, out=v, expected=v_expect, kw=kw)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise 
 
 def scalar_eq(s1: Scalar, s2: Scalar) -> bool:
@@ -323,7 +323,7 @@ def test_asarray_arrays(shape, dtypes, data):
                     new_out_value, value
                 ), f"{f_out}, but should be {value} after x was mutated"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise 
 
 
@@ -339,7 +339,7 @@ def test_empty(shape, kw):
             ph.assert_kw_dtype("empty", kw_dtype=kw["dtype"], out_dtype=out.dtype)
         ph.assert_shape("empty", out_shape=out.shape, expected=shape, kw=dict(shape=shape))
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -357,7 +357,7 @@ def test_empty_like(x, kw):
             ph.assert_kw_dtype("empty_like", kw_dtype=kw["dtype"], out_dtype=out.dtype)
         ph.assert_shape("empty_like", out_shape=out.shape, expected=x.shape)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 @given(
@@ -387,7 +387,7 @@ def test_eye(n_rows, n_cols, kw):
             expected = xp.reshape(expected, (n_rows, _n_cols))
         ph.assert_array_elements("eye", out=out, expected=expected, kw=kw)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -455,7 +455,7 @@ def test_full(shape, fill_value, kw):
         ph.assert_shape("full", out_shape=out.shape, expected=shape, kw=dict(shape=shape))
         ph.assert_fill("full", fill_value=fill_value, dtype=dtype, out=out, kw=dict(fill_value=fill_value))
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -476,7 +476,7 @@ def test_full_like(kw, data):
         ph.assert_shape("full_like", out_shape=out.shape, expected=x.shape)
         ph.assert_fill("full_like", fill_value=fill_value, dtype=dtype, out=out, kw=dict(fill_value=fill_value))
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 finite_kw = {"allow_nan": False, "allow_infinity": False}
@@ -534,7 +534,7 @@ def test_linspace(num, dtype, endpoint, data):
             expected = expected[:-1]
             ph.assert_array_elements("linspace", out=out, expected=expected)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -563,7 +563,7 @@ def test_meshgrid(dtype, data):
         for i, x in enumerate(out):
             ph.assert_dtype("meshgrid", in_dtype=dtype, out_dtype=x.dtype, repr_name=f"out[{i}].dtype")
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -590,7 +590,7 @@ def test_ones(shape, kw):
         dtype = kw.get("dtype", None) or dh.default_float
         ph.assert_fill("ones", fill_value=make_one(dtype), dtype=dtype, out=out, kw=kw)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -611,7 +611,7 @@ def test_ones_like(x, kw):
         ph.assert_fill("ones_like", fill_value=make_one(dtype), dtype=dtype,
                        out=out, kw=kw)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -638,7 +638,7 @@ def test_zeros(shape, kw):
         ph.assert_fill("zeros", fill_value=make_zero(dtype), dtype=dtype, out=out,
                        kw=kw)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -660,5 +660,5 @@ def test_zeros_like(x, kw):
         ph.assert_fill("zeros_like", fill_value=make_zero(dtype), dtype=dtype,
                        out=out, kw=kw)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise

@@ -92,7 +92,7 @@ def test_argsort(x, data):
                             "argsort", idx=idx, out=out_o, set_=set(expected_orders), kw=kw
                         )
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 @pytest.mark.unvectorized
@@ -147,5 +147,5 @@ def test_sort(x, data):
                     kw=kw,
                 )
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise

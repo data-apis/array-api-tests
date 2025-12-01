@@ -53,7 +53,7 @@ def test_argmax(x, data):
             ph.assert_scalar_equals("argmax", type_=int, idx=out_idx, out=max_i,
                                     expected=expected, kw=kw)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -94,7 +94,7 @@ def test_argmin(x, data):
             expected = min(range(len(elements)), key=elements.__getitem__)
             ph.assert_scalar_equals("argmin", type_=int, idx=out_idx, out=min_i, expected=expected)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -145,7 +145,7 @@ def test_count_nonzero(x, data):
             expected = sum(el != 0 for el in elements)
             ph.assert_scalar_equals("count_nonzero", type_=int, idx=out_idx, out=count, expected=expected)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -194,7 +194,7 @@ def test_nonzero(x):
                     idx == indices[i]
                 ), f"{f_idx} is in the wrong position, should be {indices.index(idx)}"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -236,7 +236,7 @@ def test_where(shapes, dtypes, data):
                     out_val=out[idx]
                 )
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -275,5 +275,5 @@ def test_searchsorted(data):
         )
         # TODO: shapes and values testing
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise

@@ -11,6 +11,7 @@ from . import xp as _xp
 from .typing import Array, DataType, Scalar, ScalarType, Shape
 
 __all__ = [
+    "add_note",
     "raises",
     "doesnt_raise",
     "nargs",
@@ -29,6 +30,26 @@ __all__ = [
     "assert_fill",
     "assert_array_elements",
 ]
+
+
+def add_note(exc, note):
+    """
+    Add a note to an exception in a backward-compatible way.
+
+    For Python 3.11+, this uses the built-in exc.add_note() method.
+    For earlier versions, it manually appends to exc.__notes__.
+
+    https://github.com/HypothesisWorks/hypothesis/issues/4606#issuecomment-3568140174
+    """
+    try:
+        exc.add_note(note)
+    except AttributeError:
+        if not hasattr(exc, "__notes__"):
+            try:
+                exc.__notes__ = []
+            except AttributeError:
+                return  # give up, might be e.g. a frozen dataclass
+        exc.__notes__.append(note)
 
 
 def raises(exceptions, function, message=""):
