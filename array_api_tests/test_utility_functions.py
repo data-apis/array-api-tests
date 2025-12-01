@@ -38,7 +38,7 @@ def test_all(x, data):
             ph.assert_scalar_equals("all", type_=scalar_type, idx=out_idx,
                                     out=result, expected=expected, kw=kw)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -71,7 +71,7 @@ def test_any(x, data):
             ph.assert_scalar_equals("any", type_=scalar_type, idx=out_idx,
                                     out=result, expected=expected, kw=kw)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -111,7 +111,7 @@ def test_diff(x, data):
                 l[n_axis] += 1
                 assert out[idx] == x[tuple(l)] - x[idx], f"diff failed with {idx = }"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -158,6 +158,6 @@ def test_diff_append_prepend(x, data):
         for idx in sh.ndindex(out.shape):
             assert out[idx] == out_1[idx], f"{idx = }"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 

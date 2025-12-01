@@ -70,7 +70,7 @@ def test_take(x, data):
         with pytest.raises(StopIteration):
             next(out_indices)
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 @pytest.mark.unvectorized
@@ -135,5 +135,5 @@ def test_take_along_axis(x, data):
                 for j in range(new_len):
                     assert o_1d[j] == a_1d[i_1d[j]], f'{ii=}, {kk=}, {j=}'
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise

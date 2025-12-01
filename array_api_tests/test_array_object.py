@@ -159,7 +159,7 @@ def test_setitem(shape, dtypes, data):
                 out_val=res[idx],
             )
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -210,7 +210,7 @@ def test_getitem_masking(shape, data):
                         out_val=out[out_idx],
                     )
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -260,7 +260,7 @@ def test_setitem_masking(shape, data):
                     out_val=res[idx]
                 )
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
@@ -338,7 +338,7 @@ def _test_getitem_arrays_and_ints(shape, data, idx_max_dims):
             tpl = tuple(k[idx] for k in bcast_key)
             assert out[idx] == x[tpl], f"failing at {idx = } w/ {key = }"
     except Exception as exc:
-        exc.add_note(repro_snippet)
+        ph.add_note(exc, repro_snippet)
         raise
 
 
