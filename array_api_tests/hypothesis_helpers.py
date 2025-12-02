@@ -454,9 +454,12 @@ def scalars(draw, dtypes, finite=False, **kwds):
     """
     Strategy to generate a scalar that matches a dtype strategy
 
-    dtypes should be one of the shared_* dtypes strategies.
+    dtypes should be one of the shared_* dtypes strategies or a sequence of dtypes.
     """
-    dtype = draw(dtypes)
+    if isinstance(dtypes, Sequence):
+        dtype = draw(sampled_from(dtypes))
+    else:
+        dtype = draw(dtypes)
     mM = kwds.pop('mM', None)
     if dh.is_int_dtype(dtype):
         if mM is None:
