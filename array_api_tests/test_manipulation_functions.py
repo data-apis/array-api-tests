@@ -284,10 +284,10 @@ def test_flip(x, data):
     x=hh.arrays(dtype=hh.all_dtypes, shape=shared_shapes(min_dims=1)),
     axes=shared_shapes(min_dims=1).flatmap(
         lambda s: st.lists(
-            st.integers(0, len(s) - 1),
+            st.integers(-len(s), len(s) - 1),
             min_size=len(s),
             max_size=len(s),
-            unique=True,
+            unique_by=lambda ax: ax if ax >= 0 else ax + len(s),
         ).map(tuple)
     ),
 )
