@@ -3,6 +3,7 @@ import math
 from itertools import count
 from typing import Iterator, NamedTuple, Union
 
+import pytest
 from hypothesis import assume, given, note
 from hypothesis import strategies as st
 
@@ -76,6 +77,7 @@ def reals(min_value=None, max_value=None) -> st.SearchStrategy[Union[int, float]
     )
 
 
+@pytest.mark.has_setup_funcs
 @given(dtype=st.none() | hh.real_dtypes, data=st.data())
 def test_arange(dtype, data):
     if dtype is None or dh.is_float_dtype(dtype):
@@ -200,6 +202,7 @@ def test_arange(dtype, data):
         raise        
 
 
+@pytest.mark.has_setup_funcs
 @given(shape=hh.shapes(min_side=1), data=st.data())
 def test_asarray_scalars(shape, data):
     kw = data.draw(
@@ -267,6 +270,7 @@ def scalar_eq(s1: Scalar, s2: Scalar) -> bool:
         return s1 == s2
 
 
+@pytest.mark.has_setup_funcs
 @given(
     shape=hh.shapes(),
     dtypes=hh.oneway_promotable_dtypes(dh.all_dtypes),
@@ -459,6 +463,7 @@ def test_full(shape, fill_value, kw):
         raise
 
 
+@pytest.mark.has_setup_funcs
 @given(kw=hh.kwargs(dtype=st.none() | hh.all_dtypes), data=st.data())
 def test_full_like(kw, data):
     dtype = kw.get("dtype", None) or data.draw(hh.all_dtypes, label="dtype")
@@ -482,6 +487,7 @@ def test_full_like(kw, data):
 finite_kw = {"allow_nan": False, "allow_infinity": False}
 
 
+@pytest.mark.has_setup_funcs
 @given(
     num=hh.sizes,
     dtype=st.none() | hh.real_floating_dtypes,
@@ -538,6 +544,7 @@ def test_linspace(num, dtype, endpoint, data):
         raise
 
 
+@pytest.mark.has_setup_funcs
 @given(dtype=hh.numeric_dtypes, data=st.data())
 def test_meshgrid(dtype, data):
     # The number and size of generated arrays is arbitrarily limited to prevent
