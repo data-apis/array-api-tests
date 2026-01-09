@@ -77,6 +77,7 @@ def test_any(x, data):
 
 @pytest.mark.unvectorized
 @pytest.mark.min_version("2024.12")
+@pytest.mark.has_setup_funcs
 @given(
     x=hh.arrays(hh.numeric_dtypes, hh.shapes(min_dims=1, min_side=1)),
     data=st.data(),
