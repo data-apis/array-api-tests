@@ -13,6 +13,7 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 from .typing import DataType, Scalar
+from . import api_version
 
 
 class frange(NamedTuple):
@@ -569,6 +570,8 @@ def test_meshgrid(dtype, kw, data):
     repro_snippet = ph.format_snippet(f"xp.meshgrid(*arrays, **kw) with {arrays = } and {kw = }")
     try:
         out = xp.meshgrid(*arrays, **kw)
+
+        assert type(out) == (list if api_version < "2025.12" else tuple)
         for i, x in enumerate(out):
             ph.assert_dtype("meshgrid", in_dtype=dtype, out_dtype=x.dtype, repr_name=f"out[{i}].dtype")
             ph.assert_shape("meshgrid", out_shape=x.shape, expected=tgt_shape)

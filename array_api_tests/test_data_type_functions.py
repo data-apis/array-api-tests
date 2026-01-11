@@ -12,7 +12,7 @@ from . import pytest_helpers as ph
 from . import shape_helpers as sh
 from . import xps
 from .typing import DataType
-
+from . import api_version
 
 # TODO: test with complex dtypes
 def non_complex_dtypes():
@@ -106,6 +106,8 @@ def test_broadcast_arrays(shapes, data):
     repro_snippet = ph.format_snippet(f"xp.broadcast_arrays(*arrays) with {arrays = }")
     try:
         out = xp.broadcast_arrays(*arrays)
+
+        assert type(out) == (list if api_version < "2025.12" else tuple)
 
         expected_shape = sh.broadcast_shapes(*shapes)
         for i, x in enumerate(arrays):
