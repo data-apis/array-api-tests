@@ -3,6 +3,7 @@ from hypothesis import given, strategies as st
 from array_api_tests.dtype_helpers import available_kinds, dtype_names
 
 from . import xp
+from . import api_version
 
 pytestmark = pytest.mark.min_version("2023.12")
 
@@ -31,7 +32,7 @@ class TestInspection:
         assert hasattr(out, "devices")
         assert hasattr(out, "default_device")
 
-        assert isinstance(out.devices(), list)
+        assert isinstance(out.devices(), list if api_version < "2025.12" else tuple)
         if out.default_device() is not None:
             # Per https://github.com/data-apis/array-api/issues/923
             # default_device() can return None. Otherwise, it must be a valid device.
