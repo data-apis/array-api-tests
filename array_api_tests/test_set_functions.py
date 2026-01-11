@@ -5,6 +5,7 @@ from collections import Counter, defaultdict
 
 import pytest
 from hypothesis import assume, given
+from hypothesis import strategies as st
 
 from . import _array_module as xp
 from . import dtype_helpers as dh
@@ -253,6 +254,26 @@ def test_unique_values(x):
             assume(math.prod(x.shape) <= 128)  # may not be representable
             expected = xp.sum(xp.astype(xp.isnan(x), xp.uint8))
             assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
+    except Exception as exc:
+        ph.add_note(exc, repro_snippet)
+        raise
+
+
+@given(
+    *hh.two_mutual_arrays(two_shapes=st.tuples(hh.shapes(), hh.shapes())),
+    hh.kwargs(invert=st.booleans())
+)
+def test_isin(x1, x2, kw):
+    print("\nx1 = ", type(x1))
+    print(x1.shape, x2.shape,  x1.dtype, x2.dtype, kw)
+
+    repro_snippet = ph.format_snippet(f"xp.isin({x1!r}, {x2!r}, **kw) with {kw = }")
+    try:
+        out = xp.isin(x1, x2, **kw)
+
+        assert out.dtype == xp.bool
+        assert out.shape == x1.shape
+        # TODO value tests
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
         raise
