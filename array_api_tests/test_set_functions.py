@@ -277,3 +277,22 @@ def test_isin(x1, x2, kw):
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
         raise
+
+
+@given(
+    x1x2=hh.array_and_py_scalar(dh.all_dtypes),
+    kw=hh.kwargs(invert=st.booleans())
+)
+def test_isin_scalars(x1x2, kw):
+    x1, x2 = x1x2
+
+    repro_snippet = ph.format_snippet(f"xp.isin({x1!r}, {x2!r}, **kw) with {kw = }")
+    try:
+        out = xp.isin(x1, x2, **kw)
+
+        assert out.dtype == xp.bool
+        assert out.shape == () if isinstance(x1, bool | int | float | complex) else x1.shape
+        # TODO value tests
+    except Exception as exc:
+        ph.add_note(exc, repro_snippet)
+        raise
