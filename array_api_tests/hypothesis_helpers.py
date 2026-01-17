@@ -596,8 +596,15 @@ def array_and_py_scalar(draw, dtypes, **kwds):
     """Draw a pair: (array, scalar) or (scalar, array)."""
     dtype = draw(sampled_from(dtypes))
 
-    scalar_var = draw(scalars(just(dtype), finite=True, **kwds))
+    # draw the scalar: for float arrays, draw a float or an int
+    if dtype in dh.real_float_dtypes:
+        scalar_strategy = sampled_from([xp.int32, dtype])
+    else:
+        scalar_strategy = just(dtype)
+    scalar_var = draw(scalars(scalar_strategy, finite=True, **kwds))
 
+    # draw the array.
+    # XXX artificially limit the range of values for floats, otherwise value testing is flaky
     elements={}
     if dtype in dh.real_float_dtypes:
         elements = {
