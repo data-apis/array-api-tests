@@ -2246,7 +2246,7 @@ def test_binary_with_scalars_bitwise(func_data, x1x2):
     ],
     ids=lambda func_data: func_data[0]  # use names for test IDs
 )
-@given(x1x2=hh.array_and_py_scalar([xp.int32], positive=True, mM=(1, 3)))
+@given(x1x2=hh.array_and_py_scalar([xp.int32], min_value=1, max_value=3))
 def test_binary_with_scalars_bitwise_shifts(func_data, x1x2):
     func_name, refimpl, kwargs, expected = func_data
     # repack the refimpl

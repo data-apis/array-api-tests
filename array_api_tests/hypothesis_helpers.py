@@ -457,13 +457,12 @@ def scalars(draw, dtypes, finite=False, **kwds):
     dtypes should be one of the shared_* dtypes strategies.
     """
     dtype = draw(dtypes)
-    mM = kwds.pop('mM', None)
     if dh.is_int_dtype(dtype):
-        if mM is None:
-            m, M = dh.dtype_ranges[dtype]
-        else:
-            m, M = mM
-        return draw(integers(m, M))
+        m, M = dh.dtype_ranges[dtype]
+        min_value = kwds.get('min_value', m)
+        max_value = kwds.get('max_value', M)
+
+        return draw(integers(min_value, max_value))
     elif dtype == bool_dtype:
         return draw(booleans())
     elif dtype == float64:
@@ -593,20 +592,25 @@ def two_mutual_arrays(
 
 
 @composite
-def array_and_py_scalar(draw, dtypes, mM=None, positive=False):
+def array_and_py_scalar(draw, dtypes, **kwds):
     """Draw a pair: (array, scalar) or (scalar, array)."""
     dtype = draw(sampled_from(dtypes))
 
-    scalar_var = draw(scalars(just(dtype), finite=True, mM=mM))
-    if positive:
-        assume (scalar_var > 0)
+    scalar_var = draw(scalars(just(dtype), finite=True, **kwds))
 
     elements={}
     if dtype in dh.real_float_dtypes:
-        elements = {'allow_nan': False, 'allow_infinity': False,
-                    'min_value': 1.0 / (2<<5), 'max_value': 2<<5}
-    if positive:
-        elements = {'min_value': 0}
+        elements = {
+            'allow_nan': False,
+            'allow_infinity': False,
+            'min_value': kwds.get('min_value', 1.0 / (2<<5)),
+            'max_value': kwds.get('max_value', 2<<5)
+        }
+    elif dtype in dh.int_dtypes:
+        elements = {
+            'min_value': kwds.get('min_value', None),
+            'max_value': kwds.get('max_value', None)
+        }
     array_var = draw(arrays(dtype, shape=shapes(min_dims=1), elements=elements))
 
     if draw(booleans()):
