@@ -578,17 +578,8 @@ def parse_complex_cond(
         assert len(kw) == 0  # sanity check
         # For complex dtype, we need to get the corresponding float dtype
         # complex64 -> float32, complex128 -> float64
-        if hasattr(dtype, 'name'):
-            if 'complex64' in str(dtype):
-                float_dtype = xp.float32
-            elif 'complex128' in str(dtype):
-                float_dtype = xp.float64
-            else:
-                # Fallback to float64
-                float_dtype = xp.float64
-        else:
-            float_dtype = xp.float64
-        
+        float_dtype = dh.real_dtype_for(dtype)
+
         real_strat = a_from_dtype(float_dtype)
         imag_strat = b_from_dtype(float_dtype)
         return st.builds(complex, real_strat, imag_strat)
