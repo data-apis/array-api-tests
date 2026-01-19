@@ -316,8 +316,9 @@ def test_searchsorted_with_scalars(data):
     kw = data.draw(hh.kwargs(side=st.sampled_from(["left", "right"])))
 
     # 2. draw x2, a real-valued scalar
-    # TODO: draw x2 of promotion compatible dtype (int for float x1 etc) -- cf gh-364
-    x2 = data.draw(hh.scalars(st.just(x1.dtype), finite=True))
+    # NB: for a float-dtype x1 array, draw python ints or floats
+    x2 = data.draw(hh.scalars(st.sampled_from([x1.dtype, xp.int32]), finite=True))
+
 
     # 3. testing: similar to test_searchsorted, modulo `out.shape == ()`
     repro_snippet = ph.format_snippet(
