@@ -515,12 +515,18 @@ def parse_complex_value(value_str: str) -> complex:
         raise ParseError(value_str)
     
     # Parse real part with its sign
+    # Normalize ± to + (we choose positive arbitrarily since sign is unspecified)
     real_sign = m.group(1) if m.group(1) else "+"
+    if '±' in real_sign:
+        real_sign = '+'
     real_val_str = m.group(2)
     real_val = parse_value(real_sign + real_val_str)
     
     # Parse imaginary part with its sign
+    # Normalize ± to + for imaginary part as well
     imag_sign = m.group(3)
+    if '±' in imag_sign:
+        imag_sign = '+'
     # Group 4 is πj form (e.g., "πj/2"), group 5 is plain form (e.g., "NaN")
     if m.group(4):  # πj form
         imag_val_str_raw = m.group(4)
@@ -609,7 +615,7 @@ def parse_complex_result(result_str: str) -> Tuple[Callable[[complex], bool], st
         - "``0 + NaN j`` (sign of the real component is unspecified)" 
         - "``+0 + πj/2``" - with π expressions (uses approximate equality)
     """
-    # Check for unspecified sign notes
+    # Check for unspecified sign notes (text-based detection)
     unspecified_real_sign = "sign of the real component is unspecified" in result_str
     unspecified_imag_sign = "sign of the imaginary component is unspecified" in result_str
     
@@ -618,6 +624,20 @@ def parse_complex_result(result_str: str) -> Tuple[Callable[[complex], bool], st
     m = re.search(r"``([^`]+)``", result_str)
     if m:
         value_str = m.group(1)
+
+        # Check for ± symbols in the value string (symbol-based detection)
+        # This works in addition to the text-based detection above
+        if '±' in value_str:
+            # Parse the value to determine which component has ±
+            m_val = r_complex_value.match(value_str)
+            if m_val:
+                # Check if real part has ±
+                if m_val.group(1) and '±' in m_val.group(1):
+                    unspecified_real_sign = True
+                # Check if imaginary part has ±
+                if m_val.group(3) and '±' in m_val.group(3):
+                    unspecified_imag_sign = True
+
         # Check if the value contains π expressions (for approximate comparison)
         has_pi = 'π' in value_str
         
@@ -722,8 +742,9 @@ r_complex_marker = re.compile(
 r_complex_case = re.compile(r"If ``a`` is (.+) and ``b`` is (.+), the result is (.+)")
 # Matches complex values like "+0 + 0j", "NaN + NaN j", "infinity + NaN j", "πj/2", "3πj/4"
 # Two formats: 1) πj/N expressions where j is part of the coefficient, 2) plain values followed by j
+# Also handles ± symbol for unspecified signs (with or without spaces after the sign)
 r_complex_value = re.compile(
-    r"([+-]?)([^\s]+)\s*([+-])\s*(?:(\d*πj(?:/\d+)?)|([^\s]+))\s*j?"
+    r"([±+-]?)\s*([^\s]+)\s*([±+-])\s*(?:(\d*πj(?:/\d+)?)|([^\s]+))\s*j?"
 )
 
 
