@@ -199,6 +199,26 @@ def is_scalar(x):
     return isinstance(x, (int, float, complex, bool))
 
 
+def complex_for_float(dtyp):
+    """For a real or complex dtype, return a matching complex dtype."""
+    if api_version <= '2021.12':
+        raise TypeError("complex dtypes require api_version >= 2022.12.")
+
+    if dtyp not in all_float_dtypes:
+        raise ValueError(f"expected a real dtype, got {dtyp}.")
+
+    if dtyp == xp.float32:
+        return xp.complex64
+    elif dtyp == xp.float64:
+        return xp.complex128
+    elif dtyp == xp.complex64:
+        return xp.complex64
+    elif dtype == xp.complex128:
+        return xp.complex128
+    else:
+        raise ValueError(f"Unknown dtype {dtyp}.")
+
+
 def _make_dtype_mapping_from_names(mapping: Dict[str, Any]) -> EqualityMapping:
     dtype_value_pairs = []
     for name, value in mapping.items():
