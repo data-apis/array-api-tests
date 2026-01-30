@@ -372,8 +372,9 @@ def test_repeat(x, kw, data):
             start = 0
             for i, count in enumerate(repeats_array):
                 end = start + count
+                x_slice_i = dh.get_scalar_type(x.dtype)((x_slice[i]))
                 ph.assert_array_elements("repeat", out=out_slice[start:end],
-                                         expected=xp.full((int(count),), x_slice[i], dtype=x.dtype),
+                                         expected=xp.full((int(count),), x_slice_i, dtype=x.dtype),
                                          kw=kw)
                 start = end
 
