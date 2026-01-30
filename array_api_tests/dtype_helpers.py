@@ -199,6 +199,39 @@ def is_scalar(x):
     return isinstance(x, (int, float, complex, bool))
 
 
+def complex_dtype_for(dtyp):
+    """Complex dtype for a float or complex."""
+    if dtyp in complex_dtypes:
+        return dtyp
+    if dtyp not in real_float_dtypes:
+        raise ValueError(f"no complex dtype to match {dtyp}")
+
+    real_name = dtype_to_name[dtyp]
+    complex_name = {"float32": "complex64", "float64": "complex128"}[real_name]
+
+    complex_dtype = _name_to_dtype.get(complex_name, None)
+    if complex_dtype is None:
+        raise ValueError(f"no complex dtype to match {dtyp}")
+    return complex_dtype
+
+
+def real_dtype_for(dtyp):
+    """Real float dtype for a float or complex."""
+    if dtyp in real_float_dtypes:
+        return dtyp
+    if dtyp not in complex_dtypes:
+        raise ValueError(f"no real float dtype to match {dtyp}")
+
+    complex_name = dtype_to_name[dtyp]
+    real_name = {"complex64": "float32", "complex128": "float64"}[complex_name]
+
+    real_dtype = _name_to_dtype.get(real_name, None)
+    if real_dtype is None:
+        raise ValueError(f"no real dtype to match {dtyp}")
+    return real_dtype
+
+
+
 def _make_dtype_mapping_from_names(mapping: Dict[str, Any]) -> EqualityMapping:
     dtype_value_pairs = []
     for name, value in mapping.items():
