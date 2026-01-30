@@ -1067,14 +1067,20 @@ def test_clip(x, data):
                                                                 base_shape=x.shape),
                                 label="min.shape, max.shape")
 
+    # for min,max being scalars: clip(float_array, min=int_scalar, max=int_scalar)
+    if x.dtype in dh.real_float_dtypes:
+        scalar_strategy = st.sampled_from([xp.int32, x.dtype])
+    else:
+        scalar_strategy = st.just(x.dtype)
+
     min = data.draw(st.one_of(
         st.none(),
-        hh.scalars(dtypes=st.just(x.dtype)),
+        hh.scalars(dtypes=scalar_strategy),
         hh.arrays(dtype=st.just(x.dtype), shape=shape1),
     ), label="min")
     max = data.draw(st.one_of(
         st.none(),
-        hh.scalars(dtypes=st.just(x.dtype)),
+        hh.scalars(dtypes=scalar_strategy),
         hh.arrays(dtype=st.just(x.dtype), shape=shape2),
     ), label="max")
 
