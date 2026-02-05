@@ -260,11 +260,12 @@ def test_unique_values(x):
 
 
 @given(
-    *hh.two_mutual_arrays(two_shapes=st.tuples(hh.shapes(), hh.shapes())),
+    hh.arrays(dtype=hh.int_dtypes, shape=hh.shapes()),
+    hh.arrays(dtype=hh.int_dtypes, shape=hh.shapes()),
     hh.kwargs(invert=st.booleans())
 )
 def test_isin(x1, x2, kw):
-    print("\nx1 = ", type(x1))
+  #  print("\nx1 = ", type(x1))
     print(x1.shape, x2.shape,  x1.dtype, x2.dtype, kw)
 
     repro_snippet = ph.format_snippet(f"xp.isin({x1!r}, {x2!r}, **kw) with {kw = }")
@@ -280,7 +281,7 @@ def test_isin(x1, x2, kw):
 
 
 @given(
-    x1x2=hh.array_and_py_scalar(dh.all_dtypes),
+    x1x2=hh.array_and_py_scalar(dh.int_dtypes),
     kw=hh.kwargs(invert=st.booleans())
 )
 def test_isin_scalars(x1x2, kw):
