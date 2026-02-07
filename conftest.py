@@ -1,7 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
 import argparse
-import inspect
 import warnings
 import os
 
@@ -254,18 +253,15 @@ def pytest_collection_modifyitems(config, items):
         # reduce max generated Hypothesis example for unvectorized tests
         if any(m.name == "unvectorized" for m in markers):
             # TODO: limit generated examples when settings already applied
-            # For class methods, we need to access the underlying function
-            test_func = item.obj
-            if inspect.ismethod(test_func):
-                test_func = test_func.__func__
 
+            # account for both test functions and test methods of test classes
+            test_func = getattr(item.obj, "__func__", item.obj)
+
+            # https://groups.google.com/g/hypothesis-users/c/6K6WPR5knAs
             if not hasattr(test_func, "_hypothesis_internal_settings_applied"):
                 try:
-                    decorated_func = settings(max_examples=unvectorized_max_examples)(test_func)
-                    if inspect.ismethod(item.obj):
-                        setattr(item.cls, item.obj.__name__, decorated_func)
-                    else:
-                        item.obj = decorated_func
+                    sett = settings(max_examples=unvectorized_max_examples)
+                    test_func._hypothesis_internal_use_settings = sett
                 except InvalidArgument as e:
                     warnings.warn(
                         f"Tried decorating {item.name} with settings() but got "
