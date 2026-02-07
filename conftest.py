@@ -262,10 +262,10 @@ def pytest_collection_modifyitems(config, items):
             if not hasattr(test_func, "_hypothesis_internal_settings_applied"):
                 try:
                     decorated_func = settings(max_examples=unvectorized_max_examples)(test_func)
-                    # For class methods, replace the function in the class
+                    # For class methods, use pytest's item.cls to access the class
                     if inspect.ismethod(item.obj):
-                        # Get the class and method name
-                        setattr(item.obj.__self__.__class__, item.obj.__name__, decorated_func)
+                        # Use pytest-provided item.cls instead of manually accessing the class
+                        setattr(item.cls, item.obj.__name__, decorated_func)
                     else:
                         item.obj = decorated_func
                 except InvalidArgument as e:
