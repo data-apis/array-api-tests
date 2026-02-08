@@ -338,7 +338,6 @@ def test_prod(x, data):
         raise
 
 
-@pytest.mark.skip(reason="flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
         dtype=hh.real_floating_dtypes,
@@ -456,7 +455,6 @@ def test_sum(x, data):
 
 
 @pytest.mark.unvectorized
-@pytest.mark.skip(reason="flaky")  # TODO: fix!
 @given(
     x=hh.arrays(
         dtype=hh.real_floating_dtypes,
