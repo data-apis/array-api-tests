@@ -447,7 +447,14 @@ def result_type(*dtypes: DataType):
 
 
 r_alias = re.compile("[aA]lias")
-r_in_dtypes = re.compile("x1?: array\n.+have an? (.+) data type.")
+
+r_in_dtypes = re.compile(
+    r'(?:x(?:1)?: (?:Union\[)?array(?:, (?:int|float|complex|bool))*(?:\])?\s*\n.+?'
+    r'(?:x2: (?:Union\[)?array(?:, (?:int|float|complex|bool))*(?:\])?\s*\n.+?)?)?'
+    r'Should have an? (boolean|integer or boolean|real-valued floating-point|complex floating-point|real-valued|floating-point|integer|numeric) data type\.',
+    re.DOTALL
+)
+
 r_int_note = re.compile(
     "If one or both of the input arrays have integer data types, "
     "the result is implementation-dependent"
