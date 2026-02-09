@@ -329,7 +329,7 @@ def test_repeat(x, kw, data):
     size = math.prod(shape) if axis is None else shape[axis]
     repeat_strat = st.integers(1, 10)
     repeats = data.draw(repeat_strat
-                        | hh.arrays(dtype=hh.int_dtypes, elements=repeat_strat,
+                        | hh.arrays(dtype=hh.all_int_dtypes, elements=repeat_strat,
                                     shape=st.sampled_from([(1,), (size,)])),
         label="repeats")
     if isinstance(repeats, int):
