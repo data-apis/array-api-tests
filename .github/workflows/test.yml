@@ -18,6 +18,11 @@ jobs:
       uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Get the skips file
+      run: |
+        cd /tmp
+        git clone --depth 1 https://github.com/data-apis/array-api-strict.git
+        cd
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -28,6 +33,6 @@ jobs:
         ARRAY_API_TESTS_MODULE: array_api_strict
         ARRAY_API_STRICT_API_VERSION: 2024.12
       run: |
-        pytest -v -rxXfE --skips-file array-api-strict-skips.txt array_api_tests/
+        pytest -v -rxXfE --skips-file=/tmp/array-api-strict/array-api-tests-xfails.txt array_api_tests/
         # We also have internal tests that isn't really necessary for adopters
         pytest -v -rxXfE meta_tests/
