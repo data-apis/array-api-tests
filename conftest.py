@@ -253,9 +253,15 @@ def pytest_collection_modifyitems(config, items):
         # reduce max generated Hypothesis example for unvectorized tests
         if any(m.name == "unvectorized" for m in markers):
             # TODO: limit generated examples when settings already applied
-            if not hasattr(item.obj, "_hypothesis_internal_settings_applied"):
+
+            # account for both test functions and test methods of test classes
+            test_func = getattr(item.obj, "__func__", item.obj)
+
+            # https://groups.google.com/g/hypothesis-users/c/6K6WPR5knAs
+            if not hasattr(test_func, "_hypothesis_internal_settings_applied"):
                 try:
-                    item.obj = settings(max_examples=unvectorized_max_examples)(item.obj)
+                    sett = settings(max_examples=unvectorized_max_examples)
+                    test_func._hypothesis_internal_use_settings = sett
                 except InvalidArgument as e:
                     warnings.warn(
                         f"Tried decorating {item.name} with settings() but got "
