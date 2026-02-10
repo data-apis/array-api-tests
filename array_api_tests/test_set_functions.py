@@ -5,6 +5,7 @@ from collections import Counter, defaultdict
 
 import pytest
 from hypothesis import assume, given
+from hypothesis import strategies as st
 
 from . import _array_module as xp
 from . import dtype_helpers as dh
@@ -253,6 +254,54 @@ def test_unique_values(x):
             assume(math.prod(x.shape) <= 128)  # may not be representable
             expected = xp.sum(xp.astype(xp.isnan(x), xp.uint8))
             assert nans == expected, f"{nans} NaNs in out, but should be {expected}"
+    except Exception as exc:
+        ph.add_note(exc, repro_snippet)
+        raise
+
+
+@given(
+    hh.arrays(dtype=hh.all_int_dtypes, shape=hh.shapes()),
+    hh.arrays(dtype=hh.all_int_dtypes, shape=hh.shapes()),
+    hh.kwargs(invert=st.booleans())
+)
+def test_isin(x1, x2, kw):
+  #  print("\nx1 = ", type(x1))
+    print(x1.shape, x2.shape,  x1.dtype, x2.dtype, kw)
+
+    # uint64 promotion with signed integers is prohibited in the spec, but many
+    # array libraries allow it in an implementation-defined way
+    is_mixed_int_promotion = (
+        (x1.dtype == xp.uint64 and x2.dtype in dh.int_dtypes) or
+        (x2.dtype == xp.uint64 and x1.dtype in dh.int_dtypes)
+    )
+    assume(not is_mixed_int_promotion)
+
+    repro_snippet = ph.format_snippet(f"xp.isin({x1!r}, {x2!r}, **kw) with {kw = }")
+    try:
+        out = xp.isin(x1, x2, **kw)
+
+        assert out.dtype == xp.bool
+        assert out.shape == x1.shape
+        # TODO value tests
+    except Exception as exc:
+        ph.add_note(exc, repro_snippet)
+        raise
+
+
+@given(
+    x1x2=hh.array_and_py_scalar(dh.int_dtypes),
+    kw=hh.kwargs(invert=st.booleans())
+)
+def test_isin_scalars(x1x2, kw):
+    x1, x2 = x1x2
+
+    repro_snippet = ph.format_snippet(f"xp.isin({x1!r}, {x2!r}, **kw) with {kw = }")
+    try:
+        out = xp.isin(x1, x2, **kw)
+
+        assert out.dtype == xp.bool
+        assert out.shape == () if isinstance(x1, bool | int | float | complex) else x1.shape
+        # TODO value tests
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
         raise
