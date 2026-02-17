@@ -163,6 +163,41 @@ def test_setitem(shape, dtypes, data):
         raise
 
 
+class AwkwardIndexable:
+    def __init__(self, value: int):
+        self._value = value
+
+    def __int__(self):
+        raise TypeError("__int__() should not be called")
+
+    def __index__(self):
+        return self._value
+
+
+@pytest.mark.parametrize(
+    "x, key",
+    [
+        (xp.asarray([0, 1]), AwkwardIndexable(1)),
+        (xp.asarray([[0, 1], [2, 3]]), (0, AwkwardIndexable(1))),
+    ]
+)
+def test_getitem_supports_index(x, key):
+    out = x[key]
+    assert out == xp.asarray(1)
+
+
+@pytest.mark.parametrize(
+    "x, key, expected",
+    [
+        (xp.asarray([0, 1]), AwkwardIndexable(1), xp.asarray([0, 42])),
+        (xp.asarray([[0, 1], [2, 3]]), (0, AwkwardIndexable(1)), xp.asarray([[0, 42], [2, 3]])),
+    ]
+)
+def test_setitem_supports_index(x, key, expected):
+    x[key] = xp.asarray(42)
+    ph.assert_array_elements("__setitem__", out=x, expected=expected, out_repr="x")
+
+
 @pytest.mark.unvectorized
 @pytest.mark.data_dependent_shapes
 @given(hh.shapes(), st.data())
