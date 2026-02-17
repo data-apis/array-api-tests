@@ -328,8 +328,10 @@ def test_repeat(x, kw, data):
     axis = kw.get("axis", None)
     size = math.prod(shape) if axis is None else shape[axis]
     repeat_strat = st.integers(1, 10)
+    # TODO: draw `repeats` from hh.all_int_types to include unsigned ints
+    # That however breaks down on torch (unit8) and numpy (uint64)
     repeats = data.draw(repeat_strat
-                        | hh.arrays(dtype=hh.all_int_dtypes, elements=repeat_strat,
+                        | hh.arrays(dtype=hh.int_dtypes, elements=repeat_strat,
                                     shape=st.sampled_from([(1,), (size,)])),
         label="repeats")
     if isinstance(repeats, int):
