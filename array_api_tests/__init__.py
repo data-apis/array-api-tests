@@ -86,7 +86,7 @@ except AttributeError:
 
 
 api_version = os.getenv(
-    "ARRAY_API_TESTS_VERSION", getattr(xp, "__array_api_version__", "2024.12")
+    "ARRAY_API_TESTS_VERSION", getattr(xp, "__array_api_version__", "2025.12")
 )
 xps = array_api.make_strategies_namespace(xp, api_version=api_version)
 
