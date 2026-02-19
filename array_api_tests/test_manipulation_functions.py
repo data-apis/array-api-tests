@@ -156,6 +156,7 @@ class TestExpandDims:
             ph.add_note(exc, repro_snippet)
             raise
 
+    @pytest.mark.min_version("2025.12")
     @given(
         x=hh.arrays(dtype=hh.all_dtypes, shape=shared_shapes(max_dims=4)),
         axes=shared_shapes().flatmap(
