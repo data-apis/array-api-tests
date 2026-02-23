@@ -5,6 +5,7 @@ from collections import Counter, defaultdict
 
 import pytest
 from hypothesis import assume, given
+from hypothesis import strategies as st
 
 from . import _array_module as xp
 from . import dtype_helpers as dh
@@ -256,3 +257,44 @@ def test_unique_values(x):
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
         raise
+
+
+@pytest.mark.min_version("2025.12")
+class TestIsin:
+    @given(
+        hh.mutually_promotable_dtypes(2, dtypes=dh.all_int_dtypes),
+        hh.kwargs(invert=st.booleans()),
+        st.data()
+    )
+    def test_isin(self, dt, kw, data):
+        x1 = data.draw(hh.arrays(dtype=dt[0], shape=hh.shapes()))
+        x2 = data.draw(hh.arrays(dtype=dt[1], shape=hh.shapes()))
+
+        repro_snippet = ph.format_snippet(f"xp.isin({x1!r}, {x2!r}, **kw) with {kw = }")
+        try:
+            out = xp.isin(x1, x2, **kw)
+
+            assert out.dtype == xp.bool
+            assert out.shape == x1.shape
+            # TODO value tests
+        except Exception as exc:
+            ph.add_note(exc, repro_snippet)
+            raise
+
+    @given(
+        x1x2=hh.array_and_py_scalar(dh.all_int_dtypes),
+        kw=hh.kwargs(invert=st.booleans())
+    )
+    def test_isin_scalars(self, x1x2, kw):
+        x1, x2 = x1x2
+
+        repro_snippet = ph.format_snippet(f"xp.isin({x1!r}, {x2!r}, **kw) with {kw = }")
+        try:
+            out = xp.isin(x1, x2, **kw)
+
+            assert out.dtype == xp.bool
+            assert out.shape == () if isinstance(x1, int) else x1.shape
+            # TODO value tests
+        except Exception as exc:
+            ph.add_note(exc, repro_snippet)
+            raise
