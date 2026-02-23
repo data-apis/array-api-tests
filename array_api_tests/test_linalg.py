@@ -331,6 +331,59 @@ def test_eigvalsh(x):
 
     # TODO: Test that res actually corresponds to the eigenvalues of x
 
+
+@pytest.mark.unvectorized
+@pytest.mark.xp_extension('linalg')
+@pytest.mark.min_version("2025.12")
+@given(x=arrays(dtype=all_floating_dtypes(), shape=square_matrix_shapes))
+def test_eig(x):
+    res = linalg.eig(x)
+
+    _test_namedtuple(res, ['eigenvalues', 'eigenvectors'], 'eig')
+
+    eigenvalues = res.eigenvalues
+    eigenvectors = res.eigenvectors
+    expected_dtype = dh.complex_dtype_for(x.dtype)
+
+    ph.assert_dtype("eig", in_dtype=x.dtype, out_dtype=eigenvalues.dtype,
+                    expected=expected_dtype, repr_name="eigenvalues.dtype")
+    ph.assert_result_shape("eig", in_shapes=[x.shape],
+                           out_shape=eigenvalues.shape,
+                           expected=x.shape[:-1],
+                           repr_name="eigenvalues.shape")
+
+    ph.assert_dtype("eig", in_dtype=x.dtype, out_dtype=eigenvectors.dtype,
+                    expected=expected_dtype, repr_name="eigenvectors.dtype")
+    ph.assert_result_shape("eig", in_shapes=[x.shape],
+                           out_shape=eigenvectors.shape, expected=x.shape,
+                           repr_name="eigenvectors.shape")
+
+    # TODO: Test that eigenvectors are orthonormal.
+
+    _test_stacks(lambda x: linalg.eig(x).eigenvectors, x,
+                 res=eigenvectors, dims=2)
+
+    # TODO: Test that res actually corresponds to the eigenvalues and
+    # eigenvectors of x
+
+
+@pytest.mark.unvectorized
+@pytest.mark.xp_extension('linalg')
+@pytest.mark.min_version("2025.12")
+@given(x=arrays(dtype=all_floating_dtypes(), shape=square_matrix_shapes))
+def test_eigvals(x):
+    res = linalg.eigvals(x)
+    expected_dtype = dh.complex_dtype_for(x.dtype)
+
+    ph.assert_dtype("eigvals", in_dtype=x.dtype, out_dtype=res.dtype,
+                    expected=expected_dtype, repr_name="eigvals")
+    ph.assert_result_shape("eigvals", in_shapes=[x.shape],
+                           out_shape=res.shape, expected=x.shape[:-1])
+    # TODO: Test that res actually corresponds to the eigenvalues of x
+
+    _test_stacks(linalg.eigvals, x, res=res, dims=1)
+
+
 @pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(x=invertible_matrices())
