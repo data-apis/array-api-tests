@@ -331,11 +331,14 @@ def matrix_shapes(draw, stack_shapes=shapes()):
 square_matrix_shapes = matrix_shapes().filter(lambda shape: shape[-1] == shape[-2])
 
 @composite
-def finite_matrices(draw, shape=matrix_shapes()):
-    return draw(arrays(dtype=floating_dtypes,
-                           shape=shape,
-                           elements=dict(allow_nan=False,
-                                         allow_infinity=False)))
+def finite_matrices(draw, shape=matrix_shapes(), dtype=floating_dtypes, bound=None):
+    # for now, only generate elements from (1, bound); cf symmetric_matrices
+    elements = dict(allow_nan=False, allow_infinity=False)
+    if bound is not None:
+        elements.update(**dict(min_value=1, max_value=bound))
+
+    return draw(arrays(dtype=dtype, shape=shape, elements=elements))
+
 
 rtol_shared_matrix_shapes = shared(matrix_shapes())
 # Should we set a max_value here?

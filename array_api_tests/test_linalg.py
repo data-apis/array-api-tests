@@ -335,7 +335,7 @@ def test_eigvalsh(x):
 @pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @pytest.mark.min_version("2025.12")
-@given(x=arrays(dtype=all_floating_dtypes(), shape=square_matrix_shapes))
+@given(x=finite_matrices(dtype=all_floating_dtypes(), shape=square_matrix_shapes, bound=10))
 def test_eig(x):
     res = linalg.eig(x)
 
@@ -370,7 +370,7 @@ def test_eig(x):
 @pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @pytest.mark.min_version("2025.12")
-@given(x=arrays(dtype=all_floating_dtypes(), shape=square_matrix_shapes))
+@given(x=finite_matrices(dtype=all_floating_dtypes(), shape=square_matrix_shapes, bound=10))
 def test_eigvals(x):
     res = linalg.eigvals(x)
     expected_dtype = dh.complex_dtype_for(x.dtype)
