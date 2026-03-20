@@ -961,14 +961,6 @@ def test_trace(x, kw):
     _test_stacks(linalg.trace, x, **kw, res=res, dims=0, true_val=true_trace)
 
 
-def _conj(x):
-    # XXX: replace with xp.dtype when all array libraries implement it 
-    if x.dtype in (xp.complex64, xp.complex128):
-        return xp.conj(x)
-    else:
-        return x
-
-
 def _test_vecdot(namespace, x1, x2, data):
     vecdot = namespace.vecdot
     broadcasted_shape = sh.broadcast_shapes(x1.shape, x2.shape)
@@ -994,7 +986,7 @@ def _test_vecdot(namespace, x1, x2, data):
                            out_shape=res.shape, expected=expected_shape)
 
     def true_val(x, y, axis=-1):
-        return xp.sum(xp.multiply(_conj(x), y), dtype=res.dtype)
+        return xp.sum(xp.multiply(xp.conj(x), y), dtype=res.dtype)
 
     _test_stacks(vecdot, x1, x2, res=res, dims=0,
                  matrix_axes=(axis,), true_val=true_val)
