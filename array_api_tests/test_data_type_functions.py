@@ -10,26 +10,22 @@ from . import dtype_helpers as dh
 from . import hypothesis_helpers as hh
 from . import pytest_helpers as ph
 from . import shape_helpers as sh
-from . import xps
 from .typing import DataType
 from . import api_version
-
-# TODO: test with complex dtypes
-def non_complex_dtypes():
-    return xps.boolean_dtypes() | hh.real_dtypes
 
 
 def float32(n: Union[int, float]) -> float:
     return struct.unpack("!f", struct.pack("!f", float(n)))[0]
 
 
-def _float_match_complex(complex_dtype):
-    if complex_dtype == xp.complex64:
-        return xp.float32
-    elif complex_dtype == xp.complex128:
-        return xp.float64
+def _get_ranges(dtype):
+    """Ranges of dtype if integer, else ranges of the matching real float."""
+    if dh.is_int_dtype(dtype):
+        _real_dtype = dtype
     else:
-        return dh.default_float
+        _real_dtype = dh.real_dtype_for(dtype)
+    m, M = dh.dtype_ranges[_real_dtype]  
+    return m, M
 
 
 @given(
@@ -39,7 +35,6 @@ def _float_match_complex(complex_dtype):
     data=st.data(),
 )
 def test_astype(x_dtype, dtype, kw, data):
-    _complex_dtypes = (xp.complex64, xp.complex128)
 
     if xp.bool in (x_dtype, dtype):
         elements_strat = hh.from_dtype(x_dtype)
@@ -52,15 +47,9 @@ def test_astype(x_dtype, dtype, kw, data):
         else:
             cast = float
 
-        real_dtype = x_dtype
-        if x_dtype in _complex_dtypes:
-            real_dtype = _float_match_complex(x_dtype)
-        m1, M1 = dh.dtype_ranges[real_dtype]
-
-        real_dtype = dtype
-        if dtype in _complex_dtypes:
-            real_dtype = _float_match_complex(x_dtype)
-        m2, M2 = dh.dtype_ranges[real_dtype]
+        # generate values in range for both src and target dtypes
+        m1, M1 = _get_ranges(x_dtype)
+        m2, M2 = _get_ranges(dtype)
 
         min_value = cast(max(m1, m2))
         max_value = cast(min(M1, M2))
@@ -79,7 +68,7 @@ def test_astype(x_dtype, dtype, kw, data):
     # according to the spec, "Casting a complex floating-point array to a real-valued
     # data type should not be permitted."
     # https://data-apis.org/array-api/latest/API_specification/generated/array_api.astype.html#astype
-    assume(not ((x_dtype in _complex_dtypes) and (dtype not in _complex_dtypes)))
+    assume(not ((x_dtype in dh.complex_dtypes) and (dtype not in dh.complex_dtypes)))
 
     repro_snippet = ph.format_snippet(f"xp.astype({x!r}, {dtype!r}, **kw) with {kw = }")
     try:
