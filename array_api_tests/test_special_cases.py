@@ -496,7 +496,7 @@ def parse_result(result_str: str) -> Tuple[UnaryCheck, str]:
 def parse_complex_value(value_str: str) -> complex:
     """
     Parses a complex value string to return a complex number, e.g.
-    
+
         >>> parse_complex_value('+0 + 0j')
         0j
         >>> parse_complex_value('NaN + NaN j')
@@ -507,13 +507,13 @@ def parse_complex_value(value_str: str) -> complex:
         1.5707963267948966j
         >>> parse_complex_value('+infinity + 3πj/4')
         (inf+2.356194490192345j)
-    
+
     Handles formats: "A + Bj", "A + B j", "A + πj/N", "A + Nπj/M"
     """
     m = r_complex_value.match(value_str)
     if m is None:
         raise ParseError(value_str)
-    
+
     # Parse real part with its sign
     # Normalize ± to + (we choose positive arbitrarily since sign is unspecified)
     real_sign = m.group(1) if m.group(1) else "+"
@@ -521,7 +521,7 @@ def parse_complex_value(value_str: str) -> complex:
         real_sign = '+'
     real_val_str = m.group(2)
     real_val = parse_value(real_sign + real_val_str)
-    
+
     # Parse imaginary part with its sign
     # Normalize ± to + for imaginary part as well
     imag_sign = m.group(3)
@@ -536,9 +536,9 @@ def parse_complex_value(value_str: str) -> complex:
         imag_val_str_raw = m.group(5)
         # Strip trailing 'j' if present: "0j" -> "0"
         imag_val_str = imag_val_str_raw[:-1] if imag_val_str_raw.endswith('j') else imag_val_str_raw
-    
+
     imag_val = parse_value(imag_sign + imag_val_str)
-    
+
     return complex(real_val, imag_val)
 
 
@@ -548,10 +548,10 @@ def make_strict_eq_complex(v: complex) -> Callable[[complex], bool]:
     """
     real_check = make_strict_eq(v.real)
     imag_check = make_strict_eq(v.imag)
-    
+
     def strict_eq_complex(z: complex) -> bool:
         return real_check(z.real) and imag_check(z.imag)
-    
+
     return strict_eq_complex
 
 
@@ -560,7 +560,7 @@ def parse_complex_cond(
 ) -> Tuple[Callable[[complex], bool], str, FromDtypeFunc]:
     """
     Parses complex condition strings for real (a) and imaginary (b) parts.
-    
+
     Returns:
         - cond: Function that checks if a complex number meets the condition
         - expr: String expression for the condition
@@ -569,16 +569,16 @@ def parse_complex_cond(
     # Parse conditions for real and imaginary parts separately
     a_cond, a_expr_template, a_from_dtype = parse_cond(a_cond_str)
     b_cond, b_expr_template, b_from_dtype = parse_cond(b_cond_str)
-    
+
     # Create compound condition
     def complex_cond(z: complex) -> bool:
         return a_cond(z.real) and b_cond(z.imag)
-    
+
     # Create expression
     a_expr = a_expr_template.replace("{}", "real(x_i)")
     b_expr = b_expr_template.replace("{}", "imag(x_i)")
     expr = f"{a_expr} and {b_expr}"
-    
+
     # Create strategy that generates complex numbers
     def complex_from_dtype(dtype: DataType, **kw) -> st.SearchStrategy[complex]:
         assert len(kw) == 0  # sanity check
@@ -589,7 +589,7 @@ def parse_complex_cond(
         real_strat = a_from_dtype(float_dtype)
         imag_strat = b_from_dtype(float_dtype)
         return st.builds(complex, real_strat, imag_strat)
-    
+
     return complex_cond, expr, complex_from_dtype
 
 
@@ -609,7 +609,7 @@ def _check_component_with_tolerance(actual: float, expected: float, allow_any_si
 def parse_complex_result(result_str: str) -> Tuple[Callable[[complex], bool], str]:
     """
     Parses a complex result string to return a checker and expression.
-    
+
     Handles cases like:
         - "``+0 + 0j``" - exact complex value
         - "``0 + NaN j`` (sign of the real component is unspecified)" 
@@ -618,7 +618,7 @@ def parse_complex_result(result_str: str) -> Tuple[Callable[[complex], bool], st
     # Check for unspecified sign notes (text-based detection)
     unspecified_real_sign = "sign of the real component is unspecified" in result_str
     unspecified_imag_sign = "sign of the imaginary component is unspecified" in result_str
-    
+
     # Extract the complex value from backticks - need to handle spaces in complex values
     # Pattern: ``...`` where ... can contain spaces (for complex values like "0 + NaN j")
     m = re.search(r"``([^`]+)``", result_str)
@@ -640,12 +640,12 @@ def parse_complex_result(result_str: str) -> Tuple[Callable[[complex], bool], st
 
         # Check if the value contains π expressions (for approximate comparison)
         has_pi = 'π' in value_str
-        
+
         try:
             expected = parse_complex_value(value_str)
         except ParseError:
             raise ParseError(result_str)
-        
+
         # Create checker based on whether signs are unspecified and whether π is involved
         if has_pi:
             # Use approximate equality for both real and imaginary parts if they involve π
@@ -670,7 +670,7 @@ def parse_complex_result(result_str: str) -> Tuple[Callable[[complex], bool], st
         else:
             # Exact match including signs
             check_result = make_strict_eq_complex(expected)
-        
+
         expr = value_str
         return check_result, expr
     else:
@@ -884,35 +884,34 @@ def parse_unary_case_block(case_block: str, func_name: str, record_list: Optiona
     cases = []
     # Check if the case block contains complex cases by looking for the marker
     in_complex_section = r_complex_marker.search(case_block) is not None
-    
+
     for case_m in r_case.finditer(case_block):
         case_str = case_m.group(1)
-        
+
         # Record this special case if a record list is provided
         if record_list is not None:
             record_list.append(f"{func_name}: {case_str}.")
-        
-        
+
         # Try to parse complex cases if we're in the complex section
         if in_complex_section and (m := r_complex_case.search(case_str)):
             try:
                 a_cond_str = m.group(1)
                 b_cond_str = m.group(2)
                 result_str = m.group(3)
-                
+
                 # Skip cases with complex expressions like "cis(b)"
                 if "cis" in result_str or "*" in result_str:
                     warn(f"case for {func_name} not machine-readable: '{case_str}'")
                     continue
-                
+
                 # Parse the complex condition and result
                 complex_cond, cond_expr, complex_from_dtype = parse_complex_cond(
                     a_cond_str, b_cond_str
                 )
                 _check_result, result_expr = parse_complex_result(result_str)
-                
+
                 check_result = make_complex_unary_check_result(_check_result)
-                
+
                 case = UnaryCase(
                     cond_expr=cond_expr,
                     cond=complex_cond,
@@ -926,7 +925,7 @@ def parse_unary_case_block(case_block: str, func_name: str, record_list: Optiona
             except ParseError as e:
                 warn(f"case for {func_name} not machine-readable: '{e.value}'")
             continue
-        
+
         # Parse regular (real-valued) cases
         if r_already_int_case.search(case_str):
             cases.append(already_int_case)
@@ -1394,11 +1393,11 @@ def parse_binary_case_block(case_block: str, func_name: str, record_list: Option
     cases = []
     for case_m in r_case.finditer(case_block):
         case_str = case_m.group(1)
-        
+
         # Record this special case if a record list is provided
         if record_list is not None:
             record_list.append(f"{func_name}: {case_str}.")
-        
+
         if r_redundant_case.search(case_str):
             continue
         if r_binary_case.match(case_str):
@@ -1528,24 +1527,24 @@ def test_unary(func_name, func, case):
         # drawing multiple examples like a normal test, or just hard-coding a
         # single example test case without using hypothesis.
         filterwarnings('ignore', category=NonInteractiveExampleWarning)
-        
+
         # Use the is_complex flag to determine the appropriate dtype
         if case.is_complex:
-            dtype = xp.complex128
+            dtype = dh.widest_complex_dtype
             in_value = case.cond_from_dtype(dtype).example()
         else:
-            dtype = xp.float64
+            dtype = dh.widest_real_dtype
             in_value = case.cond_from_dtype(dtype).example()
-    
+
     # Create array and compute result based on dtype
     x = xp.asarray(in_value, dtype=dtype)
     out = func(x)
-    
+
     if case.is_complex:
         out_value = complex(out)
     else:
         out_value = float(out)
-    
+
     assert case.check_result(in_value, out_value), (
         f"out={out_value}, but should be {case.result_expr} [{func_name}()]\n"
     )
@@ -1557,10 +1556,11 @@ def test_unary(func_name, func, case):
 def test_binary(func_name, func, case, data):
     # We don't use example() like in test_unary because the same internal shared
     # strategies used in both x1's and x2's don't "sync" with example() draws.
-    x1_value = data.draw(case.x1_cond_from_dtype(xp.float64), label="x1_value")
-    x2_value = data.draw(case.x2_cond_from_dtype(xp.float64), label="x2_value")
-    x1 = xp.asarray(x1_value, dtype=xp.float64)
-    x2 = xp.asarray(x2_value, dtype=xp.float64)
+    dtyp = dh.widest_real_dtype  # float64 if available else float32
+    x1_value = data.draw(case.x1_cond_from_dtype(dtyp), label="x1_value")
+    x2_value = data.draw(case.x2_cond_from_dtype(dtyp), label="x2_value")
+    x1 = xp.asarray(x1_value, dtype=dtyp)
+    x2 = xp.asarray(x2_value, dtype=dtyp)
 
     out = func(x1, x2)
     out_value = float(out)
@@ -1572,16 +1572,16 @@ def test_binary(func_name, func, case, data):
     )
 
 
-
 @pytest.mark.parametrize("iop_name, iop, case", iop_params)
 @settings(max_examples=1)
 @given(data=st.data())
 def test_iop(iop_name, iop, case, data):
     # See test_binary comment
-    x1_value = data.draw(case.x1_cond_from_dtype(xp.float64), label="x1_value")
-    x2_value = data.draw(case.x2_cond_from_dtype(xp.float64), label="x2_value")
-    x1 = xp.asarray(x1_value, dtype=xp.float64)
-    x2 = xp.asarray(x2_value, dtype=xp.float64)
+    dtyp = dh.widest_real_dtype
+    x1_value = data.draw(case.x1_cond_from_dtype(dtyp), label="x1_value")
+    x2_value = data.draw(case.x2_cond_from_dtype(dtyp), label="x2_value")
+    x1 = xp.asarray(x1_value, dtype=dtyp)
+    x2 = xp.asarray(x2_value, dtype=dtyp)
 
     res = iop(x1, x2)
     res_value = float(res)

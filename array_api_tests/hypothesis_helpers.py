@@ -20,7 +20,7 @@ from . import shape_helpers as sh
 from . import xps
 from ._array_module import _UndefinedStub
 from ._array_module import bool as bool_dtype
-from ._array_module import broadcast_to, eye, float32, float64, full, complex64, complex128
+from ._array_module import broadcast_to, eye, full
 from .stubs import category_to_funcs
 from .pytest_helpers import nargs
 from .typing import Array, DataType, Scalar, Shape
@@ -465,26 +465,21 @@ def scalars(draw, dtypes, finite=False, **kwds):
         m, M = dh.dtype_ranges[dtype]
         min_value = kwds.get('min_value', m)
         max_value = kwds.get('max_value', M)
-
         return draw(integers(min_value, max_value))
+
     elif dtype == bool_dtype:
         return draw(booleans())
-    elif dtype == float64:
-        if finite:
-            return draw(floats(allow_nan=False, allow_infinity=False, **kwds))
-        return draw(floats(), **kwds)
-    elif dtype == float32:
-        if finite:
-            return draw(floats(width=32, allow_nan=False, allow_infinity=False, **kwds))
-        return draw(floats(width=32, **kwds))
-    elif dtype == complex64:
-        if finite:
-            return draw(complex_numbers(width=32, allow_nan=False, allow_infinity=False))
-        return draw(complex_numbers(width=32))
-    elif dtype == complex128:
-        if finite:
-            return draw(complex_numbers(allow_nan=False, allow_infinity=False))
-        return draw(complex_numbers())
+
+    elif dtype in dh.real_float_dtypes:
+        f_kwds = dict(allow_nan=False, allow_infinity=False) if finite else dict()
+        width = dh.dtype_nbits[dtype]    # 32 or 64
+        return draw(floats(width=width, **f_kwds, **kwds))
+
+    elif dtype in dh.complex_dtypes:
+        f_kwds = dict(allow_nan=False, allow_infinity=False) if finite else dict()
+        width = dh.dtype_nbits[dtype]    # 64 or 128
+        return draw(complex_numbers(width=width, **f_kwds, **kwds))
+
     else:
         raise ValueError(f"Unrecognized dtype {dtype}")
 
