@@ -1530,10 +1530,10 @@ def test_unary(func_name, func, case):
 
         # Use the is_complex flag to determine the appropriate dtype
         if case.is_complex:
-            dtype = xp.complex128
+            dtype = dh.widest_complex_dtype
             in_value = case.cond_from_dtype(dtype).example()
         else:
-            dtype = xp.float64
+            dtype = dh.widest_real_dtype
             in_value = case.cond_from_dtype(dtype).example()
 
     # Create array and compute result based on dtype

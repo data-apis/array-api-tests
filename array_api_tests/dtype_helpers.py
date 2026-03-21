@@ -281,9 +281,22 @@ dtype_signed = _make_dtype_mapping_from_names(
 )
 
 
+# complex128 if available else complex64
+widest_complex_dtype = max(
+    [(dt, dtype_nbits[dt]) for dt in complex_dtypes], key=lambda x: x[1]
+)[0]
+
+
+# float64 if available else float32
+widest_real_dtype = max(
+    [(dt, dtype_nbits[dt]) for dt in real_float_dtypes], key=lambda x: x[1]
+)[0]
+
+
 dtype_components = _make_dtype_mapping_from_names(
     {"complex64": xp.float32, "complex128": xp.float64}
 )
+
 
 def as_real_dtype(dtype):
     """
