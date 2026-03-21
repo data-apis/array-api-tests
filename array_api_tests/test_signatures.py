@@ -130,11 +130,11 @@ func_to_specified_arg_exprs = defaultdict(
     {
         "stack": {"arrays": "[xp.ones((5,)), xp.ones((5,))]"},
         "iinfo": {"type": "xp.int64"},
-        "finfo": {"type": "xp.float64"},
-        "cholesky": {"x": "xp.asarray([[1, 0], [0, 1]], dtype=xp.float64)"},
-        "inv": {"x": "xp.asarray([[1, 2], [3, 4]], dtype=xp.float64)"},
+        "finfo": {"type": "xp.float32"},
+        "cholesky": {"x": "xp.asarray([[1, 0], [0, 1]], dtype=xp.float32)"},
+        "inv": {"x": "xp.asarray([[1, 2], [3, 4]], dtype=xp.float32)"},
         "solve": {
-            a: "xp.asarray([[1, 2], [3, 4]], dtype=xp.float64)" for a in ["x1", "x2"]
+            a: "xp.asarray([[1, 2], [3, 4]], dtype=xp.float32)" for a in ["x1", "x2"]
         },
         "outer": {"x1": "xp.ones((5,))", "x2": "xp.ones((5,))"},
     },
