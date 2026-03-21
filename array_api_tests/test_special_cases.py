@@ -1556,10 +1556,11 @@ def test_unary(func_name, func, case):
 def test_binary(func_name, func, case, data):
     # We don't use example() like in test_unary because the same internal shared
     # strategies used in both x1's and x2's don't "sync" with example() draws.
-    x1_value = data.draw(case.x1_cond_from_dtype(xp.float64), label="x1_value")
-    x2_value = data.draw(case.x2_cond_from_dtype(xp.float64), label="x2_value")
-    x1 = xp.asarray(x1_value, dtype=xp.float64)
-    x2 = xp.asarray(x2_value, dtype=xp.float64)
+    dtyp = dh.widest_real_dtype  # float64 if available else float32
+    x1_value = data.draw(case.x1_cond_from_dtype(dtyp), label="x1_value")
+    x2_value = data.draw(case.x2_cond_from_dtype(dtyp), label="x2_value")
+    x1 = xp.asarray(x1_value, dtype=dtyp)
+    x2 = xp.asarray(x2_value, dtype=dtyp)
 
     out = func(x1, x2)
     out_value = float(out)
@@ -1576,10 +1577,11 @@ def test_binary(func_name, func, case, data):
 @given(data=st.data())
 def test_iop(iop_name, iop, case, data):
     # See test_binary comment
-    x1_value = data.draw(case.x1_cond_from_dtype(xp.float64), label="x1_value")
-    x2_value = data.draw(case.x2_cond_from_dtype(xp.float64), label="x2_value")
-    x1 = xp.asarray(x1_value, dtype=xp.float64)
-    x2 = xp.asarray(x2_value, dtype=xp.float64)
+    dtyp = dh.widest_real_dtype
+    x1_value = data.draw(case.x1_cond_from_dtype(dtyp), label="x1_value")
+    x2_value = data.draw(case.x2_cond_from_dtype(dtyp), label="x2_value")
+    x1 = xp.asarray(x1_value, dtype=dtyp)
+    x2 = xp.asarray(x2_value, dtype=dtyp)
 
     res = iop(x1, x2)
     res_value = float(res)
