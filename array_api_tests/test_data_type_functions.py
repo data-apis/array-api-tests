@@ -215,12 +215,7 @@ def test_finfo_dtype(dtype):
     try:
         out = xp.finfo(dtype)
 
-        if dtype == xp.complex64:
-            assert out.dtype == xp.float32
-        elif dtype == xp.complex128:
-            assert out.dtype == xp.float64
-        else:
-            assert out.dtype == dtype
+        assert out.dtype == dh.real_dtype_for(dtype)
 
         # Guard vs. numpy.dtype.__eq__ lax comparison
         assert not isinstance(out.dtype, str)
