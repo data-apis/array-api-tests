@@ -428,13 +428,15 @@ reshape_shape = st.shared(hh.shapes(), key="reshape_shape")
 @given(
     x=hh.arrays(dtype=hh.all_dtypes, shape=reshape_shape),
     shape=hh.reshape_shapes(reshape_shape),
+    kw=hh.kwargs(copy=st.booleans())
 )
-def test_reshape(x, shape):
-    repro_snippet = ph.format_snippet(f"xp.reshape({x!r},{shape!r})")
+def test_reshape(x, shape, kw):
+    repro_snippet = ph.format_snippet(f"xp.reshape({x!r},{shape!r}, **kw) with {kw =}")
     try: 
-        out = xp.reshape(x, shape)
+        out = xp.reshape(x, shape, **kw)
 
         ph.assert_dtype("reshape", in_dtype=x.dtype, out_dtype=out.dtype)
+        # TODO: test copy
 
         _shape = list(shape)
         if any(side == -1 for side in shape):
