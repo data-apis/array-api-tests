@@ -2218,7 +2218,7 @@ def test_binary_with_scalars_bool(func_data, x1x2):
     ],
     ids=lambda func_data: func_data[0]  # use names for test IDs
 )
-@given(x1x2=hh.array_and_py_scalar([xp.int64]))
+@given(x1x2=hh.array_and_py_scalar([xp.int32]))
 def test_binary_with_scalars_int(func_data, x1x2):
     assume(_filter_zero(x1x2[1]))
     assume(_filter_zero(x1x2[0]) and _filter_zero(x1x2[1]))
