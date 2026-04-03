@@ -198,7 +198,7 @@ def test_arange(dtype, data):
                 ), f"out[0]={out[0]}, but should be {_start} {f_func}"
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
-        raise        
+        raise
 
 
 @given(shape=hh.shapes(min_side=1), data=st.data())
