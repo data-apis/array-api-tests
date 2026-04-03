@@ -156,7 +156,10 @@ for func_name, func in name_to_func.items():
     array_argnames -= set(func_to_specified_arg_exprs[func_name].keys())
     if len(array_argnames) > 0:
         in_dtypes = dh.func_in_dtypes[func_name]
-        for dtype_name in ["float64", "bool", "int64", "complex128"]:
+        # use "float64" if available, "float32" otherwise; ditto for complex128/complex64
+        float_name = dh.dtype_to_name[dh.widest_real_dtype]
+        cmplx_name = dh.dtype_to_name[dh.widest_complex_dtype]
+        for dtype_name in [float_name, "bool", "int64", cmplx_name]:
             # We try float64 first because uninspectable numerical functions
             # tend to support float inputs first-and-foremost (i.e. PyTorch)
             try:

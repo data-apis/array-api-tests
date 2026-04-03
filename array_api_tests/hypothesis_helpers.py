@@ -341,8 +341,8 @@ def finite_matrices(draw, shape=matrix_shapes(), dtype=floating_dtypes, bound=No
 
 
 rtol_shared_matrix_shapes = shared(matrix_shapes())
-# Should we set a max_value here?
-_rtol_float_kw = dict(allow_nan=False, allow_infinity=False, min_value=0)
+# Arbitrary max_value for rtols, to avoid overflows when float64 is not available
+_rtol_float_kw = dict(allow_nan=False, allow_infinity=False, min_value=0, max_value=42)
 rtols = one_of(floats(**_rtol_float_kw),
                arrays(dtype=real_floating_dtypes,
                           shape=rtol_shared_matrix_shapes.map(lambda shape:  shape[:-2]),
