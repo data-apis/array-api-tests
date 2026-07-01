@@ -358,15 +358,38 @@ def test_top_k(x, mode_kw, data,):
 #    if dh.is_float_dtype(x.dtype):
 #        assume(not xp.any(x == -0.0) and not xp.any(x == +0.0))
 
-    # XXX: default -1
-    axis = data.draw(st.integers(-x.ndim, x.ndim - 1), label='axis')
+    # default axis=-1
+    axis_kw = data.draw(hh.kwargs(axis=st.integers(-x.ndim, x.ndim - 1)))
+    axis = axis_kw.get('axis', -1)
+
     k = data.draw(st.integers(1, x.shape[axis]))
 
     repro_snippet = ph.format_snippet(
-        f"xp.top_k(x, k, axis=axis, **mode_kw) with {mode_kw = }"
+        f"xp.top_k(x, k, **axis_kw, **mode_kw) with {axis_kw = } and {mode_kw = }"
     )
     try:
-        out_values, out_indices = xp.top_k(x, k, axis=axis, **mode_kw)
+
+        print(x.dtype, k, axis, axis_kw)
+
+        out_values, out_indices = xp.top_k(x, k, **axis_kw, **mode_kw)
+
+        ph.assert_dtype("top_k", in_dtype=x.dtype, out_dtype=out_values.dtype)
+        ph.assert_dtype(
+            "top_k",
+            in_dtype=x.dtype,
+            out_dtype=out_indices.dtype,
+            expected=dh.default_int
+        )
+
+        axes, = sh.normalize_axis(axis, x.ndim)
+        for arr in [out_values, out_indices]:
+            ph.assert_shape(
+                "top_k",
+                out_shape=arr.shape,
+                expected=x.shape[:axes] + (k,) + x.shape[axes + 1:],
+            )
+
+        # TODO: test values
 
 
     except Exception as exc:
@@ -375,45 +398,6 @@ def test_top_k(x, mode_kw, data,):
 
 
 """
-    largest = data.draw(st.booleans(), label='largest')
-
-
-    kw = dict(
-        x=x,
-        k=k,
-        axis=axis,
-        largest=largest,
-    )
-
-
-
-
-
-    out_values, out_indices = xp.top_k(x, k, axis, largest=largest)
-
-
-
-
-    if axis is None:
-        x = xp.reshape(x, (-1,))
-        axis = 0
-
-    ph.assert_dtype("top_k", in_dtype=x.dtype, out_dtype=out_values.dtype)
-    ph.assert_dtype(
-        "top_k",
-        in_dtype=x.dtype,
-        out_dtype=out_indices.dtype,
-        expected=dh.default_int
-    )
-    axes, = sh.normalise_axis(axis, x.ndim)
-    for arr in [out_values, out_indices]:
-        ph.assert_shape(
-            "top_k",
-            out_shape=arr.shape,
-            expected=x.shape[:axes] + (k,) + x.shape[axes + 1:],
-            kw=kw
-        )
-
     scalar_type = dh.get_scalar_type(x.dtype)
 
     for indices in sh.axes_ndindex(x.shape, (axes,)):
