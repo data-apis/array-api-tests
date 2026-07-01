@@ -369,7 +369,7 @@ def test_top_k(x, mode_kw, data,):
     )
     try:
 
-        print(x.dtype, k, axis, axis_kw)
+        print(x.dtype, k, axis, axis_kw, mode_kw)
 
         out_values, out_indices = xp.top_k(x, k, **axis_kw, **mode_kw)
 
