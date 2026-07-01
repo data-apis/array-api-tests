@@ -3,7 +3,6 @@ import math
 import pytest
 from hypothesis import given, note, assume
 from hypothesis import strategies as st
-from hypothesis.control import assume
 
 from . import _array_module as xp
 from . import dtype_helpers as dh
@@ -351,20 +350,33 @@ def test_searchsorted_with_scalars(data):
         shape=hh.shapes(min_dims=1, min_side=1),
         elements={"allow_nan": False},
     ),
+    mode_kw=hh.kwargs(mode=st.sampled_from(['largest', 'smallest'])),
     data=st.data()
 )
-def test_top_k(x, data):
+def test_top_k(x, mode_kw, data,):
 
-    if dh.is_float_dtype(x.dtype):
-        assume(not xp.any(x == -0.0) and not xp.any(x == +0.0))
+#    if dh.is_float_dtype(x.dtype):
+#        assume(not xp.any(x == -0.0) and not xp.any(x == +0.0))
 
-    axis = data.draw(
-        st.integers(-x.ndim, x.ndim - 1), label='axis')
+    # XXX: default -1
+    axis = data.draw(st.integers(-x.ndim, x.ndim - 1), label='axis')
+    k = data.draw(st.integers(1, x.shape[axis]))
+
+    repro_snippet = ph.format_snippet(
+        f"xp.top_k(x, k, axis=axis, **mode_kw) with {mode_kw = }"
+    )
+    try:
+        out_values, out_indices = xp.top_k(x, k, axis=axis, **mode_kw)
+
+
+    except Exception as exc:
+        ph.add_note(exc, repro_snippet)
+        raise
+
+
+"""
     largest = data.draw(st.booleans(), label='largest')
-    if axis is None:
-        k = data.draw(st.integers(1, math.prod(x.shape)))
-    else:
-        k = data.draw(st.integers(1, x.shape[axis]))
+
 
     kw = dict(
         x=x,
@@ -373,7 +385,15 @@ def test_top_k(x, data):
         largest=largest,
     )
 
-    (out_values, out_indices) = xp.top_k(x, k, axis, largest=largest)
+
+
+
+
+    out_values, out_indices = xp.top_k(x, k, axis, largest=largest)
+
+
+
+
     if axis is None:
         x = xp.reshape(x, (-1,))
         axis = 0
@@ -440,4 +460,4 @@ def test_top_k(x, data):
                 out_val=x[y_idx],
                 kw=kw
             )
->>>>>>> WIP: top_k tests
+"""
