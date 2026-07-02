@@ -342,8 +342,7 @@ def test_searchsorted_with_scalars(data):
         raise
 
 
-@pytest.mark.unvectorized
-# TODO: Test with signed zeros and NaNs (and ignore them somehow)
+# TODO: min_version
 @given(
     x=hh.arrays(
         dtype=hh.real_dtypes,
@@ -354,10 +353,6 @@ def test_searchsorted_with_scalars(data):
     data=st.data()
 )
 def test_top_k(x, mode_kw, data,):
-
-#    if dh.is_float_dtype(x.dtype):
-#        assume(not xp.any(x == -0.0) and not xp.any(x == +0.0))
-
     # default axis=-1
     axis_kw = data.draw(hh.kwargs(axis=st.integers(-x.ndim, x.ndim - 1)))
     axis = axis_kw.get('axis', -1)
@@ -365,12 +360,9 @@ def test_top_k(x, mode_kw, data,):
     k = data.draw(st.integers(1, x.shape[axis]))
 
     repro_snippet = ph.format_snippet(
-        f"xp.top_k(x, k, **axis_kw, **mode_kw) with {axis_kw = } and {mode_kw = }"
+        f"xp.top_k({x!r}, {k}, **axis_kw, **mode_kw) with {axis_kw = } and {mode_kw = }"
     )
     try:
-
-        print(x.dtype, k, axis, axis_kw, mode_kw)
-
         out_values, out_indices = xp.top_k(x, k, **axis_kw, **mode_kw)
 
         ph.assert_dtype("top_k", in_dtype=x.dtype, out_dtype=out_values.dtype)
@@ -388,60 +380,7 @@ def test_top_k(x, mode_kw, data,):
                 out_shape=arr.shape,
                 expected=x.shape[:axes] + (k,) + x.shape[axes + 1:],
             )
-
-        # TODO: test values
-
-
+        # TODO: values testing, test with signed zeros and NaNs
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
         raise
-
-
-"""
-    scalar_type = dh.get_scalar_type(x.dtype)
-
-    for indices in sh.axes_ndindex(x.shape, (axes,)):
-
-        # Test if the values indexed by out_indices corresponds to
-        # the correct top_k values.
-        elements = [scalar_type(x[idx]) for idx in indices]
-        size = len(elements)
-        correct_order = sorted(
-            range(size),
-            key=elements.__getitem__,
-            reverse=largest
-        )
-        correct_order = correct_order[:k]
-        test_order = [out_indices[idx] for idx in indices[:k]]
-        # Sort because top_k does not necessarily return the values in
-        # sorted order.
-        test_sorted_order = sorted(
-            test_order,
-            key=elements.__getitem__,
-            reverse=largest
-        )
-
-        for y_o, x_o in zip(correct_order, test_sorted_order):
-            y_idx = indices[y_o]
-            x_idx = indices[x_o]
-            ph.assert_0d_equals(
-                "top_k",
-                x_repr=f"x[{x_idx}]",
-                x_val=x[x_idx],
-                out_repr=f"x[{y_idx}]",
-                out_val=x[y_idx],
-                kw=kw,
-            )
-
-        # Test if the values indexed by out_indices corresponds to out_values.
-        for y_o, x_idx in zip(test_order, indices[:k]):
-            y_idx = indices[y_o]
-            ph.assert_0d_equals(
-                "top_k",
-                x_repr=f"out_values[{x_idx}]",
-                x_val=scalar_type(out_values[x_idx]),
-                out_repr=f"x[{y_idx}]",
-                out_val=x[y_idx],
-                kw=kw
-            )
-"""
