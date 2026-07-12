@@ -920,7 +920,8 @@ def test_tensordot(x1, x2, kw):
     x=arrays(dtype=numeric_dtypes, shape=matrix_shapes()),
     # offset may produce an overflow if it is too large. Supporting offsets
     # that are way larger than the array shape isn't very important.
-    kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE))
+    kw=kwargs(offset=integers(-MAX_ARRAY_SIZE, MAX_ARRAY_SIZE),
+              dtype=sampled_from(dh.numeric_dtypes))
 )
 def test_trace(x, kw):
     res = linalg.trace(x, **kw)
@@ -939,10 +940,11 @@ def test_trace(x, kw):
     n, m = x.shape[-2:]
     ph.assert_result_shape('trace', x.shape, res.shape, expected=x.shape[:-2])
 
-    def true_trace(x_stack, offset=0):
+    def true_trace(x_stack, offset=0, dtype=None):
         # Note: the spec does not specify that offset must be within the
         # bounds of the matrix. A large offset should just produce a size 0
         # diagonal in the last dimension (trace 0). See test_diagonal().
+        out_dtype = x.dtype if dtype is None else dtype
         if offset < 0:
             diag_size = min(n, m, max(n + offset, 0))
         elif offset == 0:
@@ -954,8 +956,8 @@ def test_trace(x, kw):
             x_stack_diag = [x_stack[i, i + offset] for i in range(diag_size)]
         else:
             x_stack_diag = [x_stack[i - offset, i] for i in range(diag_size)]
-        result = xp.asarray(xp.stack(x_stack_diag) if x_stack_diag else [], dtype=x.dtype)
-        return _array_module.sum(result)
+        result = xp.asarray(xp.stack(x_stack_diag) if x_stack_diag else [], dtype=out_dtype)
+        return _array_module.sum(result, dtype=dtype)
 
 
     _test_stacks(linalg.trace, x, **kw, res=res, dims=0, true_val=true_trace)
