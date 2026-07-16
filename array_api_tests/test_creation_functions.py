@@ -392,29 +392,27 @@ def test_eye(n_rows, n_cols, kw):
         raise
 
 
-def _triangular_expected(x, *, k, upper):
-    expected = xp.zeros_like(x)
-    n, m = x.shape[-2:]
-    for idx in sh.ndindex(x.shape[:-2]):
-        for i in range(n):
-            for j in range(m):
-                keep = j <= i + k if not upper else j >= i + k
-                if keep:
-                    expected[idx + (i, j)] = x[idx + (i, j)]
-    return expected
-
 
 @given(x=hh.arrays(dtype=hh.numeric_dtypes, shape=hh.matrix_shapes()), data=st.data())
 def test_tril(x, data):
     n, m = x.shape[-2:]
-    k = data.draw(st.integers(min_value=-max(n, m, 1), max_value=max(n, m, 1)), label="k")
+    k = data.draw(
+        st.integers(min_value=-max(n, m, 1), max_value=max(n, m, 1)),
+        label="k",
+    )
     repro_snippet = ph.format_snippet(f"xp.tril({x!r}, k={k!r})")
     try:
         out = xp.tril(x, k=k)
         ph.assert_dtype("tril", in_dtype=x.dtype, out_dtype=out.dtype)
         ph.assert_shape("tril", out_shape=out.shape, expected=x.shape)
-        expected = _triangular_expected(x, k=k, upper=False)
-        ph.assert_array_elements("tril", out=out, expected=expected, kw={"k": k})
+        for idx in sh.ndindex(out.shape):
+            *_, i, j = idx
+            expected = x[idx] if j <= i + k else xp.asarray(0, dtype=out.dtype)
+            ph.assert_array_elements(
+                "tril",
+                out=out[idx],
+                expected=expected,
+            )
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
         raise
@@ -423,14 +421,23 @@ def test_tril(x, data):
 @given(x=hh.arrays(dtype=hh.numeric_dtypes, shape=hh.matrix_shapes()), data=st.data())
 def test_triu(x, data):
     n, m = x.shape[-2:]
-    k = data.draw(st.integers(min_value=-max(n, m, 1), max_value=max(n, m, 1)), label="k")
+    k = data.draw(
+        st.integers(min_value=-max(n, m, 1), max_value=max(n, m, 1)),
+        label="k",
+    )
     repro_snippet = ph.format_snippet(f"xp.triu({x!r}, k={k!r})")
     try:
         out = xp.triu(x, k=k)
         ph.assert_dtype("triu", in_dtype=x.dtype, out_dtype=out.dtype)
         ph.assert_shape("triu", out_shape=out.shape, expected=x.shape)
-        expected = _triangular_expected(x, k=k, upper=True)
-        ph.assert_array_elements("triu", out=out, expected=expected, kw={"k": k})
+        for idx in sh.ndindex(out.shape):
+            *_, i, j = idx
+            expected = x[idx] if j >= i + k else xp.asarray(0, dtype=out.dtype)
+            ph.assert_array_elements(
+                "triu",
+                out=out[idx],
+                expected=expected,
+            )
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
         raise
