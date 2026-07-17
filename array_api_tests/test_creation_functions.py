@@ -406,13 +406,15 @@ def test_tril(x, data):
         out = xp.tril(x, k=k)
         ph.assert_dtype("tril", in_dtype=x.dtype, out_dtype=out.dtype)
         ph.assert_shape("tril", out_shape=out.shape, expected=x.shape)
-        expected = xp.asarray(
-            [
-                x[idx] if idx[-1] <= idx[-2] + k else 0
+        expected_elements = [
+                x[idx] if idx[-1] <= idx[-2] + k 
+                else xp.asarray(0, dtype=out.dtype)
                 for idx in sh.ndindex(x.shape)
-            ],
-            dtype=out.dtype,
-        )
+        ]
+        if expected_elements:
+            expected = xp.stack(expected_elements)
+        else:
+            expected = xp.asarray([], dtype=out.dtype)
         expected = xp.reshape(expected, x.shape)
         ph.assert_array_elements(
             "tril",
@@ -436,13 +438,15 @@ def test_triu(x, data):
         out = xp.triu(x, k=k)
         ph.assert_dtype("triu", in_dtype=x.dtype, out_dtype=out.dtype)
         ph.assert_shape("triu", out_shape=out.shape, expected=x.shape)
-        expected = xp.asarray(
-            [
-                x[idx] if idx[-1] >= idx[-2] + k else 0
+        expected_elements = [
+                x[idx] if idx[-1] >= idx[-2] + k 
+                else xp.asarray(0, dtype=out.dtype)
                 for idx in sh.ndindex(x.shape)
-            ],
-            dtype=out.dtype,
-        )
+        ]
+        if expected_elements:
+            expected = xp.stack(expected_elements)
+        else:
+            expected = xp.asarray([], dtype=out.dtype)
         expected = xp.reshape(expected, x.shape)
         ph.assert_array_elements(
             "triu",
