@@ -255,7 +255,6 @@ def test_asarray_scalars(shape, data):
             ph.assert_kw_dtype("asarray", kw_dtype=_dtype, out_dtype=out.dtype)
         ph.assert_shape("asarray", out_shape=out.shape, expected=shape)
         for idx, v_expect in zip(sh.ndindex(out.shape), _obj):
-            print(f"out.shape is : {out.shape} idx is:  {idx}")
             v = scalar_type(out[idx])
             ph.assert_scalar_equals("asarray", type_=scalar_type, idx=idx, out=v, expected=v_expect, kw=kw)
     except Exception as exc:
@@ -406,14 +405,17 @@ def test_tril(x, data):
         out = xp.tril(x, k=k)
         ph.assert_dtype("tril", in_dtype=x.dtype, out_dtype=out.dtype)
         ph.assert_shape("tril", out_shape=out.shape, expected=x.shape)
+        zero = xp.asarray(0, dtype=out.dtype)
         expected_elements = [
                 x[idx] if idx[-1] <= idx[-2] + k 
-                else xp.asarray(0, dtype=out.dtype)
+                else zero
                 for idx in sh.ndindex(x.shape)
         ]
         if expected_elements:
             expected = xp.stack(expected_elements)
         else:
+            # xp.stack does not accept an empty sequence, and the dtype cannot
+            # be inferred when there are no elements, so use out.dtype explicitly.
             expected = xp.asarray([], dtype=out.dtype)
         expected = xp.reshape(expected, x.shape)
         ph.assert_array_elements(
@@ -438,9 +440,10 @@ def test_triu(x, data):
         out = xp.triu(x, k=k)
         ph.assert_dtype("triu", in_dtype=x.dtype, out_dtype=out.dtype)
         ph.assert_shape("triu", out_shape=out.shape, expected=x.shape)
+        zero = xp.asarray(0, dtype=out.dtype)
         expected_elements = [
                 x[idx] if idx[-1] >= idx[-2] + k 
-                else xp.asarray(0, dtype=out.dtype)
+                else zero
                 for idx in sh.ndindex(x.shape)
         ]
         if expected_elements:
