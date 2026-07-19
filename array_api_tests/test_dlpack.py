@@ -88,22 +88,22 @@ def test_dunder_dlpack(x, copy_kw, max_version_kw, dl_device_kw, data):
 
 
 @given(
-    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_dims=1, max_side=2)),
+    dtype_device_pair = hh.device_dtype_pairs,
     copy_kw=hh.kwargs(copy=st.booleans()),
     data=st.data()
 )
-def test_from_dlpack(x, copy_kw, data):
+def test_from_dlpack(copy_kw, data, dtype_device_pair):
     # TODO: 1. test copy;  2. generate inputs on non-default devices;
     #       3. test for copy=False cross-device transfers
     #       4. test 0D arrays / numpy scalars (the latter do not support dlpack ATM)
-
+    dtype, device = dtype_device_pair
+    x = data.draw(hh.arrays(dtype=dtype, shape=hh.shapes(min_dims=1, max_side=2)))
     copy = copy_kw["copy"] if copy_kw else None
     if copy is False:
         # XXX there is no way to tell if a no-copy cross-device transfer is meant to succeed
         devices = [x.device]
     else:
-        devices = xp.__array_namespace_info__().devices()
-        devices = _compatible_devices(devices)
+        devices = [device]
 
     tgt_device_kw = data.draw(
         hh.kwargs(device=st.sampled_from(devices) | st.none())

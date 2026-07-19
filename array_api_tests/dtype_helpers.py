@@ -198,6 +198,13 @@ def get_scalar_type(dtype: DataType) -> ScalarType:
 def is_scalar(x):
     return isinstance(x, (int, float, complex, bool))
 
+def is_dtype_device_compatible(dtype, device):
+    try:
+        xp.asarray([0], dtype=dtype, device=device)
+    except Exception:
+        return False
+    else:
+        return True
 
 def complex_dtype_for(dtyp):
     """Complex dtype for a float or complex."""
