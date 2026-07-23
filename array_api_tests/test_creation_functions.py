@@ -365,7 +365,7 @@ def test_empty_like(x, kw):
     n_rows=hh.sqrt_sizes,
     n_cols=st.none() | hh.sqrt_sizes,
     kw=hh.kwargs(
-        k=st.integers(),
+        k=st.integers(min_value=-hh.SQRT_MAX_ARRAY_SIZE, max_value=hh.SQRT_MAX_ARRAY_SIZE),
         dtype=hh.numeric_dtypes,
     ),
 )
