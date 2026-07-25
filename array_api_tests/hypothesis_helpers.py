@@ -93,7 +93,12 @@ def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
 
 _dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]
 _sorted_dtypes = [d for category in _dtype_categories for d in category]
-_device_dtype_pairs = [(d, device) for d in _sorted_dtypes for device in xp.__array_namespace_info__().devices() if dh.is_dtype_device_compatible(d, device)]
+_device_dtype_pairs = [
+    (dtype, device)
+    for dtype in _sorted_dtypes
+    for device in xp.__array_namespace_info__().devices()
+    if dh.is_dtype_device_compatible(dtype, device)
+]
 
 def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):
     dtype1, dtype2 = dtype_pair

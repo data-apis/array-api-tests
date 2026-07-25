@@ -198,13 +198,34 @@ def get_scalar_type(dtype: DataType) -> ScalarType:
 def is_scalar(x):
     return isinstance(x, (int, float, complex, bool))
 
-def is_dtype_device_compatible(dtype, device):
+
+def _is_device_compatable(device):
+    """If device is dlpack compatible, return True, else False"""
+    # XXX: there seems to be no better way than try-catch for __dlpack_device__()
+
+    x = xp.empty(2, device=device)
     try:
-        xp.asarray([0], dtype=dtype, device=device)
-    except Exception:
+        x.__dlpack_device__()
+    except:
+        # case in point: torch.device(type="meta") raises
+        # ValueError: Unknown device type meta for Dlpack
         return False
     else:
+        # no exception => device is compatible (or a cuda device)
         return True
+
+
+def is_dtype_device_compatible(dtype, device):
+    if _is_device_compatable(device):
+        try:
+            xp.asarray([0], dtype=dtype, device=device)
+        except Exception:
+            return False
+        else:
+            return True
+    else:
+        return False
+
 
 def complex_dtype_for(dtyp):
     """Complex dtype for a float or complex."""
