@@ -88,7 +88,7 @@ def test_dunder_dlpack(x, copy_kw, max_version_kw, dl_device_kw, data):
 
 
 @given(
-    dtype_device_pair = hh.device_dtype_pairs,
+    dtype_device_pair=hh.device_dtype_pairs,
     copy_kw=hh.kwargs(copy=st.booleans()),
     data=st.data()
 )
