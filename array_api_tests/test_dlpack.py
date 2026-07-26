@@ -99,16 +99,13 @@ def test_from_dlpack(copy_kw, data, dtype_device_pair):
     dtype, device = dtype_device_pair
     x = data.draw(hh.arrays(dtype=dtype, shape=hh.shapes(min_dims=1, max_side=2)))
     copy = copy_kw["copy"] if copy_kw else None
-    if copy is False:
-        # XXX there is no way to tell if a no-copy cross-device transfer is meant to succeed
-        devices = [x.device]
+    # XXX there is no way to tell if a no-copy cross-device transfer is meant to succeed
+    tgt_device = x.device if copy is False else device
+    if  data.draw(st.booleans()):
+        tgt_device_kw = {"device": tgt_device}
     else:
-        devices = [device]
-
-    tgt_device_kw = data.draw(
-        hh.kwargs(device=st.sampled_from(devices) | st.none())
-    )
-    tgt_device = tgt_device_kw['device'] if tgt_device_kw else None
+        tgt_device_kw = {}
+    tgt_device = tgt_device_kw.get("device")
 
     repro_snippet = ph.format_snippet(
         f"y = from_dlpack({x!r}, **tgt_device_kw, **copy_kw) with {tgt_device_kw=} and {copy_kw=}"

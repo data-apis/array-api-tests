@@ -97,6 +97,7 @@ _device_dtype_pairs = [
     (dtype, device)
     for dtype in _sorted_dtypes
     for device in xp.__array_namespace_info__().devices()
+    if dh.is_device_dlpack_compatible(device)
     if dh.is_dtype_device_compatible(dtype, device)
 ]
 

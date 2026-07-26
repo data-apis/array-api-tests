@@ -199,7 +199,7 @@ def is_scalar(x):
     return isinstance(x, (int, float, complex, bool))
 
 
-def _is_device_dlpack_compatible(device):
+def is_device_dlpack_compatible(device):
     """If device is dlpack compatible, return True, else False"""
     # XXX: there seems to be no better way than try-catch for __dlpack_device__()
 
@@ -216,15 +216,12 @@ def _is_device_dlpack_compatible(device):
 
 
 def is_dtype_device_compatible(dtype, device):
-    if _is_device_compatable(device):
-        try:
-            xp.asarray([0], dtype=dtype, device=device)
-        except Exception:
-            return False
-        else:
-            return True
-    else:
+    try:
+        xp.asarray([0], dtype=dtype, device=device)
+    except Exception:
         return False
+    else:
+        return True
 
 
 def complex_dtype_for(dtyp):
