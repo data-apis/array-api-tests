@@ -21,29 +21,6 @@ class DLPackDeviceEnum(Enum):
     ONE_API = 14
 
 
-def _compatible_devices(devices):
-    """Given a list of devices, filter out dlpack-incompatible ones."""
-    # XXX: there seems to be no better way than try-catch for __dlpack_device__()
-
-    # XXX: this process actually fails with CuPy because CuPy ignores the device= argument
-    # cf https://github.com/data-apis/array-api-compat/issues/337 and
-    # https://github.com/cupy/cupy/issues/9848
-    # Luckily, CuPy only supports CUDA devices, and they are all compatible.
-    compatible_ = []
-    for device in devices:
-        x = xp.empty(2, device=device)
-        try:
-            x.__dlpack_device__()
-        except:
-            # case in point: torch.device(type="meta") raises
-            # ValueError: Unknown device type meta for Dlpack
-            pass
-        else:
-            # no exception => device is compatible
-            compatible_.append(device)
-    return compatible_
-
-
 @given(dtype=hh.all_dtypes, data=st.data())
 def test_dlpack_device(dtype, data):
     """Test the array object __dlpack_device__ method."""
