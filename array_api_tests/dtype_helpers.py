@@ -199,7 +199,7 @@ def is_scalar(x):
     return isinstance(x, (int, float, complex, bool))
 
 
-def _is_device_compatable(device):
+def _is_device_dlpack_compatible(device):
     """If device is dlpack compatible, return True, else False"""
     # XXX: there seems to be no better way than try-catch for __dlpack_device__()
 
