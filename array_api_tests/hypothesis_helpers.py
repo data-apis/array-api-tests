@@ -93,6 +93,13 @@ def arrays(dtype, *args, elements=None, **kwargs) -> SearchStrategy[Array]:
 
 _dtype_categories = [(xp.bool,), dh.uint_dtypes, dh.int_dtypes, dh.real_float_dtypes, dh.complex_dtypes]
 _sorted_dtypes = [d for category in _dtype_categories for d in category]
+_device_dtype_pairs = [
+    (dtype, device)
+    for dtype in _sorted_dtypes
+    for device in xp.__array_namespace_info__().devices()
+    if dh.is_device_dlpack_compatible(device)
+    if dh.is_dtype_device_compatible(dtype, device)
+]
 
 def _dtypes_sorter(dtype_pair: Tuple[DataType, DataType]):
     dtype1, dtype2 = dtype_pair
@@ -199,6 +206,7 @@ def oneway_broadcastable_shapes(draw) -> OnewayBroadcastableShapes:
 # Use these instead of xps.scalar_dtypes, etc. because it skips dtypes from
 # ARRAY_API_TESTS_SKIP_DTYPES
 all_dtypes = sampled_from(_sorted_dtypes)
+device_dtype_pairs = sampled_from(_device_dtype_pairs)
 all_int_dtypes = sampled_from(dh.all_int_dtypes)
 int_dtypes = sampled_from(dh.int_dtypes)   # signed ints
 uint_dtypes = sampled_from(dh.uint_dtypes)

@@ -21,29 +21,6 @@ class DLPackDeviceEnum(Enum):
     ONE_API = 14
 
 
-def _compatible_devices(devices):
-    """Given a list of devices, filter out dlpack-incompatible ones."""
-    # XXX: there seems to be no better way than try-catch for __dlpack_device__()
-
-    # XXX: this process actually fails with CuPy because CuPy ignores the device= argument
-    # cf https://github.com/data-apis/array-api-compat/issues/337 and
-    # https://github.com/cupy/cupy/issues/9848
-    # Luckily, CuPy only supports CUDA devices, and they are all compatible.
-    compatible_ = []
-    for device in devices:
-        x = xp.empty(2, device=device)
-        try:
-            x.__dlpack_device__()
-        except:
-            # case in point: torch.device(type="meta") raises
-            # ValueError: Unknown device type meta for Dlpack
-            pass
-        else:
-            # no exception => device is compatible
-            compatible_.append(device)
-    return compatible_
-
-
 @given(dtype=hh.all_dtypes, data=st.data())
 def test_dlpack_device(dtype, data):
     """Test the array object __dlpack_device__ method."""
@@ -88,27 +65,24 @@ def test_dunder_dlpack(x, copy_kw, max_version_kw, dl_device_kw, data):
 
 
 @given(
-    x=hh.arrays(dtype=hh.all_dtypes, shape=hh.shapes(min_dims=1, max_side=2)),
+    dtype_device_pair=hh.device_dtype_pairs,
     copy_kw=hh.kwargs(copy=st.booleans()),
     data=st.data()
 )
-def test_from_dlpack(x, copy_kw, data):
+def test_from_dlpack(copy_kw, data, dtype_device_pair):
     # TODO: 1. test copy;  2. generate inputs on non-default devices;
     #       3. test for copy=False cross-device transfers
     #       4. test 0D arrays / numpy scalars (the latter do not support dlpack ATM)
-
+    dtype, device = dtype_device_pair
+    x = data.draw(hh.arrays(dtype=dtype, shape=hh.shapes(min_dims=1, max_side=2)))
     copy = copy_kw["copy"] if copy_kw else None
-    if copy is False:
-        # XXX there is no way to tell if a no-copy cross-device transfer is meant to succeed
-        devices = [x.device]
+    # XXX there is no way to tell if a no-copy cross-device transfer is meant to succeed
+    tgt_device = x.device if copy is False else device
+    if  data.draw(st.booleans()):
+        tgt_device_kw = {"device": tgt_device}
     else:
-        devices = xp.__array_namespace_info__().devices()
-        devices = _compatible_devices(devices)
-
-    tgt_device_kw = data.draw(
-        hh.kwargs(device=st.sampled_from(devices) | st.none())
-    )
-    tgt_device = tgt_device_kw['device'] if tgt_device_kw else None
+        tgt_device_kw = {}
+    tgt_device = tgt_device_kw.get("device")
 
     repro_snippet = ph.format_snippet(
         f"y = from_dlpack({x!r}, **tgt_device_kw, **copy_kw) with {tgt_device_kw=} and {copy_kw=}"
