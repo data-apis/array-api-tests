@@ -17,7 +17,7 @@ except ImportError:
     raise ImportError("pytest-json-report is required to run the array API tests")
 
 def to_json_serializable(o):
-    if o in dtype_to_name:
+    if o is not None and o in dtype_to_name:
         return dtype_to_name[o]
     if isinstance(o, (BuiltinFunctionType, FunctionType, type)):
         return o.__name__
