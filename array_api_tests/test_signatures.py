@@ -264,16 +264,6 @@ def _test_func_signature(func: Callable, stub: FunctionType, is_method=False):
     try:
         sig = signature(func)
     except ValueError:
-        sig = None
-    # nanobind sometimes return a generic signature instead
-    if sig is not None:
-        params = list(sig.parameters.values())
-        if [p.kind for p in params] == [
-            Parameter.VAR_POSITIONAL,
-            Parameter.VAR_KEYWORD,
-        ]:
-            sig = None
-    if sig is None:
         try:
             _test_uninspectable_func(stub.__name__, func, stub_sig)
         except Exception as e:
