@@ -340,7 +340,7 @@ def test_prod(x, data):
 
 @given(
     x=hh.arrays(
-        dtype=hh.real_floating_dtypes,
+        dtype=hh.floating_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ).filter(lambda x: math.prod(x.shape) >= 2),
@@ -369,7 +369,7 @@ def test_std(x, data):
     try:
         out = xp.std(x, **kw)
 
-        ph.assert_dtype("std", in_dtype=x.dtype, out_dtype=out.dtype)
+        ph.assert_dtype("std", in_dtype=x.dtype, out_dtype=out.dtype, expected=dh.real_dtype_for(x.dtype))
         ph.assert_keepdimable_shape(
             "std", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
         )
@@ -457,7 +457,7 @@ def test_sum(x, data):
 @pytest.mark.unvectorized
 @given(
     x=hh.arrays(
-        dtype=hh.real_floating_dtypes,
+        dtype=hh.floating_dtypes,
         shape=hh.shapes(min_side=1),
         elements={"allow_nan": False},
     ).filter(lambda x: math.prod(x.shape) >= 2),
@@ -486,7 +486,7 @@ def test_var(x, data):
     try:
         out = xp.var(x, **kw)
 
-        ph.assert_dtype("var", in_dtype=x.dtype, out_dtype=out.dtype)
+        ph.assert_dtype("var", in_dtype=x.dtype, out_dtype=out.dtype, expected=dh.real_dtype_for(x.dtype))
         ph.assert_keepdimable_shape(
             "var", in_shape=x.shape, out_shape=out.shape, axes=_axes, keepdims=keepdims, kw=kw
         )
