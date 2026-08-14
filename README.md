@@ -194,6 +194,14 @@ By default, the skips and xfails files are `skips.txt` and `fails.txt` in the ro
 of this repository, but any file can be specified with the `--skips-file` and
 `--xfails-file` command line flags.
 
+Both flags can be given several times, in which case the files are merged. This
+is useful to keep entries which only apply to some platforms separate from the
+general ones:
+
+```
+pytest --skips-file skips-general.txt --skips-file skips-macos.txt array_api_tests/
+```
+
 The files should list the test ids to be skipped/xfailed. Empty lines and
 lines starting with `#` are ignored. The test id can be any substring of the
 test ids to skip/xfail.

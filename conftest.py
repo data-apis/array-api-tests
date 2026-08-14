@@ -78,13 +78,19 @@ def pytest_addoption(parser):
     parser.addoption("--ci", action="store_true", help=argparse.SUPPRESS )  # deprecated
     parser.addoption(
         "--skips-file",
-        action="store",
-        help="file with tests to skip. Defaults to skips.txt"
+        action="append",
+        default=None,
+        metavar="FILE",
+        help="file with tests to skip; can be given multiple times, in which "
+             "case the files are merged. Defaults to skips.txt"
     )
     parser.addoption(
         "--xfails-file",
-        action="store",
-        help="file with tests to skip. Defaults to xfails.txt"
+        action="append",
+        default=None,
+        metavar="FILE",
+        help="file with tests to xfail; can be given multiple times, in which "
+             "case the files are merged. Defaults to xfails.txt"
     )
 
 
@@ -149,6 +155,28 @@ def check_id_match(id_, pattern):
     return False
 
 
+def _load_ids(cli_files, default_name):
+    """Map each test id listed in the given files to the file it came from.
+
+    Falls back to `default_name` in this repository when no file was given on
+    the command line.
+    """
+    files = [Path(os.path.expanduser(f)) for f in cli_files or []]
+    if not files:
+        default_file = Path(__file__).parent / default_name
+        if default_file.exists():
+            files = [default_file]
+
+    ids = {}
+    for file in files:
+        with open(file) as f:
+            for line in f:
+                if not line.strip() or line.startswith('#'):
+                    continue
+                ids[line.strip("\n")] = file
+    return ids
+
+
 def get_xfail_mark():
     """Skip or xfail tests from the xfails-file.txt."""
     m = os.environ.get("ARRAY_API_TESTS_XFAIL_MARK", "xfail")
@@ -167,34 +195,8 @@ def pytest_collection_modifyitems(config, items):
     # 1. Prepare for iterating over items
     # -----------------------------------
 
-    skips_file = skips_path = config.getoption('--skips-file')
-    if skips_file is None:
-        skips_file = Path(__file__).parent / "skips.txt"
-        if skips_file.exists():
-            skips_path = skips_file
-
-    skip_ids = []
-    if skips_path:
-        with open(os.path.expanduser(skips_path)) as f:
-            for line in f:
-                if line.startswith("array_api_tests"):
-                    id_ = line.strip("\n")
-                    skip_ids.append(id_)
-
-    xfails_file = xfails_path = config.getoption('--xfails-file')
-    if xfails_file is None:
-        xfails_file = Path(__file__).parent / "xfails.txt"
-        if xfails_file.exists():
-            xfails_path = xfails_file
-
-    xfail_ids = []
-    if xfails_path:
-        with open(os.path.expanduser(xfails_path)) as f:
-            for line in f:
-                if not line.strip() or line.startswith('#'):
-                    continue
-                id_ = line.strip("\n")
-                xfail_ids.append(id_)
+    skip_ids = _load_ids(config.getoption('--skips-file'), "skips.txt")
+    xfail_ids = _load_ids(config.getoption('--xfails-file'), "xfails.txt")
 
     skip_id_matched = {id_: False for id_ in skip_ids}
     xfail_id_matched = {id_: False for id_ in xfail_ids}
@@ -213,13 +215,13 @@ def pytest_collection_modifyitems(config, items):
         # skip if specified in skips file
         for id_ in skip_ids:
             if check_id_match(item.nodeid, id_):
-                item.add_marker(mark.skip(reason=f"--skips-file ({skips_file})"))
+                item.add_marker(mark.skip(reason=f"--skips-file ({skip_ids[id_]})"))
                 skip_id_matched[id_] = True
                 break
         # xfail if specified in xfails file
         for id_ in xfail_ids:
             if check_id_match(item.nodeid, id_):
-                item.add_marker(xfail_mark(reason=f"--xfails-file ({xfails_file})"))
+                item.add_marker(xfail_mark(reason=f"--xfails-file ({xfail_ids[id_]})"))
                 xfail_id_matched[id_] = True
                 break
         # skip if disabled or non-existent extension
@@ -278,19 +280,17 @@ def pytest_collection_modifyitems(config, items):
     )
     bad_skip_ids = [id_ for id_, matched in skip_id_matched.items() if not matched]
     if bad_skip_ids:
-        f_bad_ids = "\n".join(f"    {id_}" for id_ in bad_skip_ids)
+        f_bad_ids = "\n".join(f"    {id_}  ({skip_ids[id_]})" for id_ in bad_skip_ids)
         warnings.warn(
-            f"{len(bad_skip_ids)} ids in skips file don't match any collected tests: \n"
+            f"{len(bad_skip_ids)} ids in skips files don't match any collected tests: \n"
             f"{f_bad_ids}\n"
-            f"(skips file: {skips_file})\n"
             f"{bad_ids_end_msg}"
         )
     bad_xfail_ids = [id_ for id_, matched in xfail_id_matched.items() if not matched]
     if bad_xfail_ids:
-        f_bad_ids = "\n".join(f"    {id_}" for id_ in bad_xfail_ids)
+        f_bad_ids = "\n".join(f"    {id_}  ({xfail_ids[id_]})" for id_ in bad_xfail_ids)
         warnings.warn(
-            f"{len(bad_xfail_ids)} ids in xfails file don't match any collected tests: \n"
+            f"{len(bad_xfail_ids)} ids in xfails files don't match any collected tests: \n"
             f"{f_bad_ids}\n"
-            f"(xfails file: {xfails_file})\n"
             f"{bad_ids_end_msg}"
         )
