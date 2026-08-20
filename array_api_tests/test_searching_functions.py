@@ -340,3 +340,47 @@ def test_searchsorted_with_scalars(data):
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
         raise
+
+
+# TODO: min_version
+@given(
+    x=hh.arrays(
+        dtype=hh.real_dtypes,
+        shape=hh.shapes(min_dims=1, min_side=1),
+        elements={"allow_nan": False},
+    ),
+    mode_kw=hh.kwargs(mode=st.sampled_from(['largest', 'smallest'])),
+    data=st.data()
+)
+def test_top_k(x, mode_kw, data,):
+    # default axis=-1
+    axis_kw = data.draw(hh.kwargs(axis=st.integers(-x.ndim, x.ndim - 1)))
+    axis = axis_kw.get('axis', -1)
+
+    k = data.draw(st.integers(1, x.shape[axis]))
+
+    repro_snippet = ph.format_snippet(
+        f"xp.top_k({x!r}, {k}, **axis_kw, **mode_kw) with {axis_kw = } and {mode_kw = }"
+    )
+    try:
+        out_values, out_indices = xp.top_k(x, k, **axis_kw, **mode_kw)
+
+        ph.assert_dtype("top_k", in_dtype=x.dtype, out_dtype=out_values.dtype)
+        ph.assert_dtype(
+            "top_k",
+            in_dtype=x.dtype,
+            out_dtype=out_indices.dtype,
+            expected=dh.default_int
+        )
+
+        axes, = sh.normalize_axis(axis, x.ndim)
+        for arr in [out_values, out_indices]:
+            ph.assert_shape(
+                "top_k",
+                out_shape=arr.shape,
+                expected=x.shape[:axes] + (k,) + x.shape[axes + 1:],
+            )
+        # TODO: values testing, test with signed zeros and NaNs
+    except Exception as exc:
+        ph.add_note(exc, repro_snippet)
+        raise

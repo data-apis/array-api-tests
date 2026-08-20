@@ -35,6 +35,9 @@ _funcs = [f.__name__ for funcs in stubs.category_to_funcs.values() for f in func
 _funcs += ["take", "isdtype", "conj", "imag", "real"]  # TODO: bump spec and update array-api-tests to new spec layout
 _top_level_attrs = _dtypes + _constants + _funcs + stubs.EXTENSIONS + ["fft"]
 
+# FIXME
+_funcs += ["top_k"]
+
 for attr in _top_level_attrs:
     try:
         globals()[attr] = getattr(xp, attr)
