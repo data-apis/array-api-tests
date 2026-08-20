@@ -205,6 +205,9 @@ def is_device_dlpack_compatible(device):
 
     try:
         x = xp.empty(2, device=device)
+    except:
+        x = xp.empty(2)
+    try:
         x.__dlpack_device__()
     except:
         # case in point: torch.device(type="meta") raises
