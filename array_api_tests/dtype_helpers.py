@@ -203,12 +203,13 @@ def is_device_dlpack_compatible(device):
     """If device is dlpack compatible, return True, else False"""
     # XXX: there seems to be no better way than try-catch for __dlpack_device__()
 
-    x = xp.empty(2, device=device)
     try:
+        x = xp.empty(2, device=device)
         x.__dlpack_device__()
     except:
         # case in point: torch.device(type="meta") raises
         # ValueError: Unknown device type meta for Dlpack
+        # also covers libraries whose creation functions don't accept device
         return False
     else:
         # no exception => device is compatible (or a cuda device)
