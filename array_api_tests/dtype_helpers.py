@@ -206,7 +206,7 @@ def is_device_dlpack_compatible(device):
     try:
         x = xp.empty(2, device=device)
     except:
-        # also covers libraries that does not support device parameter
+        # also covers libraries that do not support device parameter
         x = xp.empty(2)
     try:
         x.__dlpack_device__()
