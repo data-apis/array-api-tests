@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from functools import lru_cache
 from typing import Any, DefaultDict, Dict, List, NamedTuple, Sequence, Tuple, Union
 from warnings import warn
+import inspect
 
 from . import api_version
 from . import xp
@@ -204,9 +205,13 @@ def is_device_dlpack_compatible(device):
     # XXX: there seems to be no better way than try-catch for __dlpack_device__()
 
     try:
+        has_device = "device" in inspect.signature(xp.empty).parameters
+    except (TypeError, ValueError):
+        has_device = False
+    if has_device:
         x = xp.empty(2, device=device)
-    except:
-        # also covers libraries that does not support device parameter
+    else:
+        # also covers libraries that do not support device parameter
         x = xp.empty(2)
     try:
         x.__dlpack_device__()
