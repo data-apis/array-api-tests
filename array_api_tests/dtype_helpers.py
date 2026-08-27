@@ -205,13 +205,8 @@ def is_device_dlpack_compatible(device):
     # XXX: there seems to be no better way than try-catch for __dlpack_device__()
 
     try:
-        has_device = "device" in inspect.signature(xp.empty).parameters
-    except (TypeError, ValueError):
-        has_device = False
-    if has_device:
         x = xp.empty(2, device=device)
-    else:
-        # also covers libraries that do not support device parameter
+    except TypeError:
         x = xp.empty(2)
     try:
         x.__dlpack_device__()
