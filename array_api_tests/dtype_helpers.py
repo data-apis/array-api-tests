@@ -5,7 +5,6 @@ from collections.abc import Mapping
 from functools import lru_cache
 from typing import Any, DefaultDict, Dict, List, NamedTuple, Sequence, Tuple, Union
 from warnings import warn
-import inspect
 
 from . import api_version
 from . import xp
