@@ -206,6 +206,9 @@ def is_device_dlpack_compatible(device):
     try:
         x = xp.empty(2, device=device)
     except TypeError:
+        # array library does not have a device= argument, try without
+        # NB: we cannot use inspect.signature because e.g. torch
+        # functions don't work with inspect
         x = xp.empty(2)
     try:
         x.__dlpack_device__()
