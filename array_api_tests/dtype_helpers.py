@@ -203,7 +203,13 @@ def is_device_dlpack_compatible(device):
     """If device is dlpack compatible, return True, else False"""
     # XXX: there seems to be no better way than try-catch for __dlpack_device__()
 
-    x = xp.empty(2, device=device)
+    try:
+        x = xp.empty(2, device=device)
+    except TypeError:
+        # array library does not have a device= argument, try without
+        # NB: we cannot use inspect.signature because e.g. torch
+        # functions don't work with inspect
+        x = xp.empty(2)
     try:
         x.__dlpack_device__()
     except:
