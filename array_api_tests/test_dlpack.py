@@ -59,6 +59,17 @@ def test_dunder_dlpack(x, copy_kw, max_version_kw, dl_device_kw, data):
     try:
         x.__dlpack__(**copy_kw, **max_version_kw, **dl_device_kw)
         # apparently, we cannot do anything with the DLPack capsule from python
+    except BufferError as exc:
+        copy = copy_kw["copy"] if copy_kw else None
+        dl_device = dl_device_kw["dl_device"] if dl_device_kw else None
+
+        cross_device = dl_device is not None and dl_device != x.__dlpack_device__()
+        if copy is False and cross_device:
+            # a no-copy cross-device transfer must be refused with a BufferError
+            return
+
+        ph.add_note(exc, repro_snippet)
+        raise
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
         raise
