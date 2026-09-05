@@ -516,10 +516,14 @@ def test_matrix_rank(x, kw):
 def _test_matrix_transpose(namespace, x):
     matrix_transpose = namespace.matrix_transpose
     res = matrix_transpose(x)
-    true_val = lambda a: _array_module.asarray([[a[i, j] for i in
-                                                range(a.shape[0])] for j in
-                                                range(a.shape[1])],
-                                               dtype=a.dtype)
+    def true_val(a):
+        expected = _array_module.empty((a.shape[1], a.shape[0]),
+                                       dtype=a.dtype, device=a.device)
+        for i in range(a.shape[0]):
+            for j in range(a.shape[1]):
+                expected[j, i] = a[i, j]
+        return expected
+
     shape = list(x.shape)
     shape[-1], shape[-2] = shape[-2], shape[-1]
     shape = tuple(shape)
