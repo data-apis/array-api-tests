@@ -478,7 +478,8 @@ def test_matrix_norm(x, kw):
     _test_stacks(linalg.matrix_norm, x, **kw, dims=2 if keepdims else 0,
                  res=res)
 
-matrix_power_n = shared(integers(-100, 100), key='matrix_power n')
+# use moderate range of `n` to avoid numerical difficulties
+matrix_power_n = shared(integers(-10, 10), key='matrix_power n')
 @pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
 @given(

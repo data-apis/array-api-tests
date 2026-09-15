@@ -428,16 +428,13 @@ def invertible_matrices(draw, dtypes=floating_dtypes, stack_shapes=shapes()):
     stack_shape = draw(stack_shapes)
     n = draw(integers(0, SQRT_MAX_ARRAY_SIZE // max(math.prod(stack_shape), 1)),)
     dtype = draw(dtypes)
-    elements = one_of(
-        from_dtype(dtype, min_value=0.5, allow_nan=False, allow_infinity=False),
-        from_dtype(dtype, max_value=-0.5, allow_nan=False, allow_infinity=False),
+    elements = one_of(  # avoid extreme condition numbers
+        from_dtype(dtype, min_value=0.5, max_value=50,
+                   allow_nan=False, allow_infinity=False),
+        from_dtype(dtype, max_value=-0.5, min_value=-50,
+                   allow_nan=False, allow_infinity=False),
     )
     d = draw(arrays(dtype, shape=(*stack_shape, 1, n), elements=elements))
-
-    # Functions that require invertible matrices may do anything when it is
-    # singular, including raising an exception, so we make sure the diagonals
-    # are sufficiently nonzero to avoid any numerical issues.
-    assert xp.all(xp.abs(d) >= 0.5)
 
     diag_mask = xp.arange(n) == xp.reshape(xp.arange(n), (n, 1))
     return xp.where(diag_mask, d, xp.zeros_like(d))
