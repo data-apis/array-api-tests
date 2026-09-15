@@ -561,10 +561,10 @@ def test_outer(x1, x2):
     if 0 in shape:
         true_res = xp.empty(shape, dtype=res.dtype)
     else:
-        true_res = xp.asarray([[x1[i]*x2[j]
-                                           for j in range(x2.shape[0])]
-                                          for i in range(x1.shape[0])],
-                                         dtype=res.dtype)
+        true_res = xp.asarray(xp.stack([xp.stack([x1[i]*x2[j]
+                              for j in range(x2.shape[0])])
+                              for i in range(x1.shape[0])]),
+                              dtype=res.dtype)
 
     assert_exactly_equal(res, true_res)
 
