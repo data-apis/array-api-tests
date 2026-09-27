@@ -400,7 +400,6 @@ def test_inv(x):
 def _test_matmul(namespace, x1, x2):
     matmul = namespace.matmul
 
-    # TODO: Make this also test the @ operator
     if (x1.shape == () or x2.shape == ()
         or len(x1.shape) == len(x2.shape) == 1 and x1.shape != x2.shape
         or len(x1.shape) == 1 and len(x2.shape) >= 2 and x1.shape[0] != x2.shape[-2]
@@ -410,6 +409,9 @@ def _test_matmul(namespace, x1, x2):
         # libraries will use a custom exception class.
         ph.raises(Exception, lambda: xp.matmul(x1, x2),
                "matmul did not raise an exception for invalid shapes")
+        if x1.dtype == x2.dtype:
+            ph.raises(Exception, lambda: x1 @ x2,
+                   "@ did not raise an exception for invalid shapes")
         return
     else:
         res = matmul(x1, x2)
@@ -436,6 +438,20 @@ def _test_matmul(namespace, x1, x2):
                                out_shape=res.shape,
                                expected=stack_shape + (x1.shape[-2], x2.shape[-1]))
         _test_stacks(matmul, x1, x2, res=res)
+
+    # @ bypasses the compat wrapper, so mixed-dtype promotion cannot be
+    # tested portably here. See data-apis/array-api-compat#245.
+    if x1.dtype == x2.dtype:
+        res_op = x1 @ x2
+        ph.assert_dtype("@", in_dtype=[x1.dtype, x2.dtype], out_dtype=res_op.dtype)
+        assert_equal(res, res_op, "@ gives a different result from matmul()")
+
+        # Test @= where result fits in x1; compare values only since
+        # in-place keeps x1's dtype and may fall back to x1 = x1 @ x2.
+        if res.shape == x1.shape and res.dtype == x1.dtype:
+            x1_inplace = xp.asarray(x1, copy=True)
+            x1_inplace @= x2
+            assert_equal(res, x1_inplace, "@= gives a different result from matmul()")
 
 @pytest.mark.unvectorized
 @pytest.mark.xp_extension('linalg')
