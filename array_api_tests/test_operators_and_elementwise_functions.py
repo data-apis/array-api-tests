@@ -2106,40 +2106,49 @@ def test_subtract(ctx, data):
 
 def make_reflected_scalar_params():
     cases = (
-        ("__radd__", "add", operator.add, dh.numeric_dtypes, 7, (2, 3)),
-        ("__rsub__", "subtract", operator.sub, dh.numeric_dtypes, 7, (2, 3)),
-        ("__rmul__", "multiply", operator.mul, dh.numeric_dtypes, 7, (2, 3)),
-        ("__rtruediv__", "divide", operator.truediv, dh.all_float_dtypes, 6, (2, 4)),
-        ("__rfloordiv__", "floor_divide", operator.floordiv, dh.real_dtypes, 7, (2, 3)),
-        ("__rpow__", "pow", operator.pow, dh.numeric_dtypes, 3, (1, 2)),
-        ("__rmod__", "remainder", operator.mod, dh.real_dtypes, 7, (2, 3)),
-        ("__rand__", "bitwise_and", operator.and_, dh.bool_and_all_int_dtypes, 6, (1, 2)),
-        ("__ror__", "bitwise_or", operator.or_, dh.bool_and_all_int_dtypes, 6, (1, 2)),
-        ("__rxor__", "bitwise_xor", operator.xor, dh.bool_and_all_int_dtypes, 6, (1, 2)),
-        ("__rlshift__", "bitwise_left_shift", operator.lshift, dh.all_int_dtypes, 3, (1, 2)),
-        ("__rrshift__", "bitwise_right_shift", operator.rshift, dh.all_int_dtypes, 8, (1, 2)),
+        ("__radd__", "add", operator.add, dh.numeric_dtypes),
+        ("__rsub__", "subtract", operator.sub, dh.numeric_dtypes),
+        ("__rmul__", "multiply", operator.mul, dh.numeric_dtypes),
+        ("__rtruediv__", "divide", operator.truediv, dh.all_float_dtypes),
+        ("__rfloordiv__", "floor_divide", operator.floordiv, dh.real_dtypes),
+        ("__rpow__", "pow", operator.pow, dh.numeric_dtypes),
+        ("__rmod__", "remainder", operator.mod, dh.real_dtypes),
+        ("__rand__", "bitwise_and", operator.and_, dh.bool_and_all_int_dtypes),
+        ("__ror__", "bitwise_or", operator.or_, dh.bool_and_all_int_dtypes),
+        ("__rxor__", "bitwise_xor", operator.xor, dh.bool_and_all_int_dtypes),
+        ("__rlshift__", "bitwise_left_shift", operator.lshift, dh.all_int_dtypes),
+        ("__rrshift__", "bitwise_right_shift", operator.rshift, dh.all_int_dtypes),
     )
-    for method, func_name, op, dtypes, scalar, values in cases:
+    for method, func_name, op, dtypes in cases:
         for dtype in dtypes:
             if isinstance(dtype, xp._UndefinedStub):
                 continue
-            if dtype == xp.bool:
-                operand, elements = True, (False, True)
-            else:
-                scalar_type = dh.get_scalar_type(dtype)
-                operand = scalar_type(scalar)
-                elements = tuple(scalar_type(value) for value in values)
             yield pytest.param(
-                method, func_name, op, dtype, operand, elements,
+                method, func_name, op, dtype,
                 id=f"{method}-{dh.dtype_to_name[dtype]}",
             )
 
 
 @pytest.mark.parametrize(
-    "method, func_name, op, dtype, scalar, values", make_reflected_scalar_params()
+    "method, func_name, op, dtype", make_reflected_scalar_params()
 )
-def test_reflected_scalar_operator(method, func_name, op, dtype, scalar, values):
-    x = xp.asarray(values, dtype=dtype)
+@given(data=st.data())
+def test_reflected_scalar_operator(method, func_name, op, dtype, data):
+    # Small positive values avoid division by zero, invalid powers, and overflow.
+    if dtype == xp.bool:
+        elements = st.booleans()
+    else:
+        elements = st.integers(1, 3).map(dh.get_scalar_type(dtype))
+    scalar_strategy = elements
+    if func_name == "subtract" and dtype in dh.uint_dtypes:
+        scalar_strategy = st.integers(3, 7)
+    scalar = data.draw(scalar_strategy, label="scalar")
+    x = data.draw(
+        hh.arrays(
+            dtype=dtype, shape=hh.shapes(min_dims=1, min_side=1), elements=elements
+        ),
+        label="x",
+    )
     out = op(scalar, x)
     expected = getattr(xp, func_name)(xp.asarray(scalar, dtype=dtype), x)
 
