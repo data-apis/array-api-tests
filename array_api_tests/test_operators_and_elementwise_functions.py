@@ -2130,7 +2130,7 @@ def make_reflected_scalar_params():
 
 
 @pytest.mark.parametrize(
-    "method, func_name, op, dtype", make_reflected_scalar_params()
+    "method, func_name, op, dtype", list(make_reflected_scalar_params())
 )
 @given(data=st.data())
 def test_reflected_scalar_operator(method, func_name, op, dtype, data):
