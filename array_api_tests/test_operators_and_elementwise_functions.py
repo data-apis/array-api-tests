@@ -2149,12 +2149,18 @@ def test_reflected_scalar_operator(method, func_name, op, dtype, data):
         ),
         label="x",
     )
-    out = op(scalar, x)
-    expected = getattr(xp, func_name)(xp.asarray(scalar, dtype=dtype), x)
+    op_sym = dh.binary_op_to_symbol[func_to_op[func_name]]
+    repro_snippet = ph.format_snippet(f"{scalar!r} {op_sym} {x!r}  # {method}")
+    try:
+        out = op(scalar, x)
+        expected = getattr(xp, func_name)(xp.asarray(scalar, dtype=dtype), x)
 
-    ph.assert_dtype(method, in_dtype=dtype, out_dtype=out.dtype)
-    ph.assert_result_shape(method, in_shapes=[x.shape], out_shape=out.shape)
-    ph.assert_array_elements(method, out=out, expected=expected)
+        ph.assert_dtype(method, in_dtype=dtype, out_dtype=out.dtype)
+        ph.assert_result_shape(method, in_shapes=[x.shape], out_shape=out.shape)
+        ph.assert_array_elements(method, out=out, expected=expected)
+    except Exception as exc:
+        ph.add_note(exc, repro_snippet)
+        raise
 
 
 @given(hh.arrays(dtype=hh.all_floating_dtypes(), shape=hh.shapes()))
