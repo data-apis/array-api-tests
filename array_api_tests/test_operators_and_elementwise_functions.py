@@ -2129,6 +2129,8 @@ def make_reflected_scalar_params():
             )
 
 
+# XXX: this test is parametrized over lists of dtypes not dtype strategies.
+# Therefore adding `--max-examples` to the test run does not improve coverage.
 @pytest.mark.parametrize(
     "method, func_name, op, dtype", list(make_reflected_scalar_params())
 )
