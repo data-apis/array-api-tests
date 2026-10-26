@@ -2104,22 +2104,24 @@ def test_subtract(ctx, data):
         raise
 
 
+reflected_operator_cases = (
+    ("__radd__", "add", operator.add, dh.numeric_dtypes),
+    ("__rsub__", "subtract", operator.sub, dh.numeric_dtypes),
+    ("__rmul__", "multiply", operator.mul, dh.numeric_dtypes),
+    ("__rtruediv__", "divide", operator.truediv, dh.all_float_dtypes),
+    ("__rfloordiv__", "floor_divide", operator.floordiv, dh.real_dtypes),
+    ("__rpow__", "pow", operator.pow, dh.numeric_dtypes),
+    ("__rmod__", "remainder", operator.mod, dh.real_dtypes),
+    ("__rand__", "bitwise_and", operator.and_, dh.bool_and_all_int_dtypes),
+    ("__ror__", "bitwise_or", operator.or_, dh.bool_and_all_int_dtypes),
+    ("__rxor__", "bitwise_xor", operator.xor, dh.bool_and_all_int_dtypes),
+    ("__rlshift__", "bitwise_left_shift", operator.lshift, dh.all_int_dtypes),
+    ("__rrshift__", "bitwise_right_shift", operator.rshift, dh.all_int_dtypes),
+)
+
+
 def make_reflected_scalar_params():
-    cases = (
-        ("__radd__", "add", operator.add, dh.numeric_dtypes),
-        ("__rsub__", "subtract", operator.sub, dh.numeric_dtypes),
-        ("__rmul__", "multiply", operator.mul, dh.numeric_dtypes),
-        ("__rtruediv__", "divide", operator.truediv, dh.all_float_dtypes),
-        ("__rfloordiv__", "floor_divide", operator.floordiv, dh.real_dtypes),
-        ("__rpow__", "pow", operator.pow, dh.numeric_dtypes),
-        ("__rmod__", "remainder", operator.mod, dh.real_dtypes),
-        ("__rand__", "bitwise_and", operator.and_, dh.bool_and_all_int_dtypes),
-        ("__ror__", "bitwise_or", operator.or_, dh.bool_and_all_int_dtypes),
-        ("__rxor__", "bitwise_xor", operator.xor, dh.bool_and_all_int_dtypes),
-        ("__rlshift__", "bitwise_left_shift", operator.lshift, dh.all_int_dtypes),
-        ("__rrshift__", "bitwise_right_shift", operator.rshift, dh.all_int_dtypes),
-    )
-    for method, func_name, op, dtypes in cases:
+    for method, func_name, op, dtypes in reflected_operator_cases:
         for dtype in dtypes:
             if isinstance(dtype, xp._UndefinedStub):
                 continue
@@ -2159,6 +2161,65 @@ def test_reflected_scalar_operator(method, func_name, op, dtype, data):
 
         ph.assert_dtype(method, in_dtype=dtype, out_dtype=out.dtype)
         ph.assert_result_shape(method, in_shapes=[x.shape], out_shape=out.shape)
+        ph.assert_array_elements(method, out=out, expected=expected)
+    except Exception as exc:
+        ph.add_note(exc, repro_snippet)
+        raise
+
+
+@pytest.mark.parametrize(
+    "method, func_name, dtypes",
+    [
+        pytest.param(method, func_name, dtypes, id=method)
+        for method, func_name, _, dtypes in reflected_operator_cases
+    ],
+)
+@pytest.mark.parametrize(
+    "left_shape, right_shape",
+    [
+        pytest.param((), (), id="0d"),
+        pytest.param((), (2,), id="0d-left"),
+        pytest.param((2,), (), id="0d-right"),
+        pytest.param((2,), (2,), id="same-shape"),
+        pytest.param((2, 1), (1, 3), id="broadcast"),
+    ],
+)
+@given(data=st.data())
+def test_reflected_array_operator(method, func_name, dtypes, left_shape, right_shape, data):
+    dtype = data.draw(
+        st.sampled_from([d for d in dtypes if not isinstance(d, xp._UndefinedStub)]),
+        label="dtype",
+    )
+    # Small positive values avoid division by zero, invalid powers, and overflow.
+    if dtype == xp.bool:
+        elements = st.booleans()
+    elif dtype in dh.complex_dtypes:
+        elements = st.builds(complex, st.integers(1, 3), st.integers(1, 3))
+    else:
+        elements = st.integers(1, 3).map(dh.get_scalar_type(dtype))
+    left_elements = elements
+    if func_name == "subtract" and dtype in dh.uint_dtypes:
+        left_elements = st.integers(3, 7)
+    x1 = data.draw(
+        hh.arrays_no_scalars(dtype=dtype, shape=left_shape, elements=left_elements),
+        label="x1",
+    )
+    x2 = data.draw(
+        hh.arrays_no_scalars(dtype=dtype, shape=right_shape, elements=elements),
+        label="x2",
+    )
+    op_name = func_to_op[func_name]
+    repro_snippet = ph.format_snippet(
+        f"x1 = {x1!r}\nx2 = {x2!r}\nx2.{method}(x1)  # x1.{op_name}(x2)"
+    )
+    try:
+        expected = getattr(x1, op_name)(x2)
+        out = getattr(x2, method)(x1)
+
+        ph.assert_dtype(
+            method, in_dtype=dtype, out_dtype=out.dtype, expected=expected.dtype
+        )
+        ph.assert_result_shape(method, in_shapes=[x1.shape, x2.shape], out_shape=out.shape)
         ph.assert_array_elements(method, out=out, expected=expected)
     except Exception as exc:
         ph.add_note(exc, repro_snippet)
